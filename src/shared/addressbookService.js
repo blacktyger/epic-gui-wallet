@@ -30,7 +30,8 @@ class AddressbookService extends BaseService {
     addAddress(address) {
         return this.connection.insert({
             into: this.tableName,
-            values: [address],
+            //legacy: keybase is a NOT NULL column in the stored schema (see idbService)
+            values: [{keybase: '', ...address}],
             return: true
         })
     }
@@ -50,9 +51,6 @@ class AddressbookService extends BaseService {
                     like: '%'+ value +'%'
                   },
                   onion: {
-                    like: '%'+ value +'%'
-                  },
-                  keybase: {
                     like: '%'+ value +'%'
                   },
                   proofaddr: {

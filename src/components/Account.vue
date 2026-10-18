@@ -10,13 +10,6 @@
         </div>
 
         <div class="field">
-          <label class="label">{{ $t("msg.account.keybase") }}</label>
-          <div class="control">
-            <input class="input" type="keybase" required v-model="keybase" />
-          </div>
-        </div>
-
-        <div class="field">
           <div class="control">
             <button class="button is-primary" @click="save" >{{ $t("msg.save") }}</button>
           </div>
@@ -47,20 +40,17 @@ import TextField from "@/components/form/textField";
 
       const store = useStore();
       const textField = ref('');
-      const keybase = ref('');
 
       return{
         store,
         textField,
-        resetFormErrors,
-        keybase
+        resetFormErrors
       }
     },
 
     mounted(){
 
       this.textField.input = this.store.state.user.name;
-      this.keybase = this.store.state.user.keybase;
 
     },
 
@@ -75,7 +65,7 @@ import TextField from "@/components/form/textField";
 
         if(!isFormAllValid.includes(false)){
 
-          let updated = await this.$userService.updateUserByAccount(this.configService.configAccount, {name:this.textField.defaultValue, keybase: this.keybase});
+          let updated = await this.$userService.updateUserByAccount(this.configService.configAccount, {name:this.textField.defaultValue});
           if(updated){
             this.$toast.success(this.$t("msg.account.settings_saved"));
           }else{

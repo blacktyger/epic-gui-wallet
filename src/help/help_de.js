@@ -62,7 +62,7 @@ const messages = [
   },
   {
     title: 'Konto',
-    text: `Legen Sie Ihren Benutzernamen und Ihr Keybase-Konto unter Konto fest.<br/>
+    text: `Legen Sie Ihren Benutzernamen unter Konto fest.<br/>
     <br/>
     Der Benutzername wird im oberen Bereich der App angezeigt.<br/>`
   },

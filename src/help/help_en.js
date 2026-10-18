@@ -60,7 +60,7 @@ const messages = [
   },
   {
     title: 'Account',
-    text: `Set your username and keybase account in Account.<br/>
+    text: `Set your username in Account.<br/>
     <br/>
     The username is displayed at the top of the app.<br/>`
   },

@@ -61,7 +61,7 @@ const messages = [
   },
   {
     title: 'Účet',
-    text: `Nastavte své uživatelské jméno a účet keybase v na stránce Účet.<br/>
+    text: `Nastavte své uživatelské jméno na stránce Účet.<br/>
     <br/>
     Uživatelské jméno se zobrazuje v horní části aplikace.<br/>`
   },

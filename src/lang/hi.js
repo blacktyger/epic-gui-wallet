@@ -107,8 +107,6 @@ const messages = {
       account_information: 'खाते की जानकारी',
       your_name: 'आपका नाम',
       name_only_internal: 'नाम केवल आंतरिक उपयोग किया गया है',
-      keybase: 'कीबेस',
-      enter_keybase: 'यदि आपके पास कीबेस खाता है, तो आप यहां प्रवेश कर सकते हैं।',
       next_step: 'अगला कदम',
       network_node: 'नेटवर्क नोड',
       network_node_txt: `आपके वॉलेट को लेन-देन भेजने और प्राप्त करने के लिए एक नेटवर्क नोड की आवश्यकता होती है।<br/>
@@ -132,7 +130,6 @@ const messages = {
       values_correct: 'क्या ये मान सही हैं?',
       save_and_finish: 'सहेजें और समाप्त करें',
       name: 'नाम',
-      keybase_account: 'कीबेस खाता',
       language: 'भाषा',
       ngrok_authtoken: 'Ngrok Auth-Token',
       db_fatal: 'DB घातक: DB सम्मिलित नहीं कर सकता',
@@ -204,7 +201,6 @@ const messages = {
     },
     account: {
       account: 'खाता',
-      keybase: 'कीबेस',
       your_name: 'तुम्हारा  नाम',
       settings_saved: 'खाता सेटिंग सहेजी गई',
       error_save: 'त्रुटि बचत खाता'
@@ -214,7 +210,6 @@ const messages = {
       country: 'देश',
       city: 'शहर',
       tor_onion_address: 'Tor-Onion एड्रेस',
-      keybase_account: 'कीबेस खाता',
       external_one: 'बाहरी एड्रेस 1',
       external_two: 'बाहरी एड्रेस 2',
       proof_address: 'सबूत एड्रेस',

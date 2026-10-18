@@ -455,10 +455,11 @@ class WalletService {
             '-t', this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
             '-c', this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
             'listen',
-            '--method', (method == 'http' ? 'http' : 'keybase')
+            //the GUI only listens via http (Epicbox has its own startEpicbox); method is kept for callers
+            '--method', 'http'
           ];
 
-          if(tor == false || method == 'keybase'){
+          if(tor == false){
             args.push('--no_tor');
           }
 

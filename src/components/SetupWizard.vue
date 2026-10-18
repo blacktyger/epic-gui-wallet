@@ -72,16 +72,6 @@
                         </div>
 
                         <div class="field">
-                          <label class="label">{{ $t("msg.setupwizard.keybase") }}</label>
-                          <div class="control">
-                            <input class="input" type="keybase" required v-model="keybase" />
-                            <p class="help">
-                               {{ $t("msg.setupwizard.enter_keybase") }}
-                             </p>
-                          </div>
-                        </div>
-
-                        <div class="field">
                           <label class="label">{{ $t("msg.lang.lang") }}</label>
                           <div class="control">
                             <div class="select is-fullwidth">
@@ -154,7 +144,6 @@
                       <h2 class="title is-4" style="color: #d19944!important;margin-bottom: 24px;">{{ $t("msg.setupwizard.values_correct") }}</h2>
                       <p>
                         {{ $t("msg.setupwizard.name") }}: {{this.textField.defaultValue}}<br/>
-                        <span v-if="keybase">{{ $t("msg.setupwizard.keybase_account") }}: {{keybase}}<br/></span>
                         {{ $t("msg.setupwizard.language") }}: {{localeSelected}}<br/>
                         {{ $t("msg.setupwizard.network_node") }}: {{this.nodeserverField.nodeInternal ? 'internal' : this.nodeserverField.defaultValue}}<br/>
 
@@ -215,7 +204,6 @@
       const step = ref('step1');
       const moveback = ref(false);
       const name = ref('');
-      const keybase = ref('');
       const domain = ref('');
       const epicboxDomain = ref('');
 
@@ -240,7 +228,6 @@
         nodeserverField,
         resetFormErrors,
         name,
-        keybase,
         textField,
         moveback,
         fromRoute,
@@ -277,7 +264,6 @@
 
       if(user && user[0]){
         this.textField.input = user[0].name ? user[0].name : '';
-        this.keybase = user[0].keybase ? user[0].keybase : '';
       }
 
     },
@@ -335,7 +321,6 @@
             await this.$userService.updateUserByAccount(this.configService.configAccount, {
               account: this.configService.configAccount,
               name: this.textField.defaultValue,
-              keybase: this.keybase,
               language: this.localeSelected,
               nodeInternal: this.nodeserverField.nodeInternal,
               epicbox_domain: this.epicboxDomain.defaultValue,
@@ -347,7 +332,6 @@
             let inserted = await this.$userService.addUser({
               account: this.configService.configAccount,
               name: this.textField.defaultValue,
-              keybase: this.keybase,
               ngrok: '', //column is NOT NULL in the user table
               language: this.localeSelected,
               nodeInternal: this.nodeserverField.nodeInternal,

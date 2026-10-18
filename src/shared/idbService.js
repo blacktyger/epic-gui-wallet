@@ -52,6 +52,8 @@ const getDatabase = () => {
                 notNull: true,
                 enableSearch: true,
             },
+            //legacy: Keybase was removed from the GUI; column kept so the IndexedDB schema (v5) and existing records stay unchanged.
+            //JsStore validates inserts against the schema stored with the DB, so inserts still need keybase: '' (see addressbookService)
             keybase: {
               dataType: DATA_TYPE.String,
               notNull: true,
@@ -149,6 +151,8 @@ const getDatabase = () => {
               notNull: true,
               dataType: DATA_TYPE.String
             },
+            //legacy: Keybase was removed from the GUI; column kept so the IndexedDB schema (v5) and existing records stay unchanged.
+            //JsStore validates inserts against the schema stored with the DB, so inserts still need keybase: '' (see userService)
             keybase: {
               notNull: true,
               dataType: DATA_TYPE.String

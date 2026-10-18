@@ -110,8 +110,6 @@ const messages = {
       account_information: 'Account information',
       your_name:'Your name',
       name_only_internal: 'Name is only internally used',
-      keybase: 'Keybase',
-      enter_keybase: 'If you have a Keybase Account, you can enter it here.',
       next_step: 'Next step',
       network_node: 'Network node',
       network_node_txt: `Your wallet requires a network node to send and receive transactions.<br/>
@@ -123,7 +121,6 @@ const messages = {
       values_correct: 'Are these values correct?',
       save_and_finish: 'Save and finish',
       name: 'Name',
-      keybase_account: 'Keybase Account',
       language: 'Language',
       db_fatal: 'DB Fatal: can not insert DB',
       errors_save: 'Error saving user settings: {0}',
@@ -190,7 +187,6 @@ const messages = {
     },
     account: {
       account: 'Profile',
-      keybase: 'Keybase',
       your_name: 'Your name',
       settings_saved: 'Profile settings saved',
       error_save: 'Error saving profile settings'
@@ -200,7 +196,6 @@ const messages = {
       country: 'Country',
       city: 'City',
       tor_onion_address: 'Tor-Onion Address',
-      keybase_account: 'Keybase Account',
       external_one: 'Epicbox Address',
       external_two: 'External Address',
       proof_address: 'Proof Address',

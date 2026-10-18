@@ -104,8 +104,6 @@ const messages = {
       account_information: 'Kontoinformationen',
       your_name: 'Ihr Name',
       name_only_internal: 'Name wird nur intern verwendet',
-      keybase: 'Keybase',
-      enter_keybase: 'Wenn Sie ein Keybase-Konto haben, können Sie es hier eingeben.',
       next_step: 'Nächster Schritt',
       network_node: 'Netzwerkknoten',
       network_node_txt: `Ihre Wallet benötigt einen Netzwerkknoten, um Transaktionen zu senden und zu empfangen.<br/>
@@ -126,7 +124,6 @@ const messages = {
       values_correct: 'Sind diese Werte korrekt?',
       save_and_finish: 'Speichern und beenden',
       name: 'Name',
-      keybase_account: 'Keybase Konto',
       language: 'Sprache',
       ngrok_authtoken: 'ngrok Authtoken',
       db_fatal: 'Schwerwiegender Fehler: DB kann nicht eingefügt werden',
@@ -199,7 +196,6 @@ const messages = {
     },
     account: {
       account: 'Konto',
-      keybase: 'Keybase',
       your_name: 'Ihr Name',
       settings_saved: 'Kontoeinstellungen gespeichert',
       error_save: 'Fehler beim Speichern des Kontos'
@@ -209,7 +205,6 @@ const messages = {
       country: 'Land',
       city: 'Stadt',
       tor_onion_address: 'Tor-Onion Adresse',
-      keybase_account: 'Keybase Konto',
       external_one: 'Epicbox Adresse',
       external_two: 'Externe Adresse 2',
       proof_address: 'Adresse für Zahlungsnachweis',

@@ -28,7 +28,8 @@ class UserService extends BaseService {
     addUser(user) {
         return this.connection.insert({
             into: this.tableName,
-            values: [user],
+            //legacy: keybase is a NOT NULL column in the stored schema (see idbService)
+            values: [{keybase: '', ...user}],
             return: true
         })
     }
