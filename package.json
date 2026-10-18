@@ -37,7 +37,7 @@
     "electron-context-menu": "^3.3.0",
     "electron-log": "^4.4.6",
     "electron-osx-sign": "^0.6.0",
-    "electron-updater": "^6.1.1",
+    "electron-updater": "^6.8.9",
     "find-process": "^1.4.7",
     "fs-extra": "^10.0.0",
     "is-port-reachable": "^4.0.0",
@@ -82,7 +82,7 @@
   },
   "overrides": {
     "vue-cli-plugin-electron-builder": {
-      "electron-builder": "^23.0.6"
+      "electron-builder": "^26.15.3"
     }
   },
   "eslintConfig": {

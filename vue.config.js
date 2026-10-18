@@ -183,11 +183,13 @@ module.exports = {
             }
           ],
           "desktop": {
-            "Name": "EpicWallet",
-            "Encoding": "UTF-8",
-            "Type": "Application",
-            "Comment": "Epic Wallet, mind your Epic!",
-            "StartupWMClass": "EpicWallet"
+            "entry": {
+              "Name": "EpicWallet",
+              "Encoding": "UTF-8",
+              "Type": "Application",
+              "Comment": "Epic Wallet, mind your Epic!",
+              "StartupWMClass": "EpicWallet"
+            }
           }
         }
 
