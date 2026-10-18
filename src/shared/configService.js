@@ -320,6 +320,8 @@ class ConfigService {
         }else{
           nodeApiHttp = this.config.check_node_api_http_addr;
         }
+        //the node the wallet is told to use, for the log (it can differ from the one the GUI polls)
+        this.walletNodeAddr = nodeApiHttp;
 
         if(tomlContent.search(re3) != -1){
           tomlContent = tomlContent.replace(re3, 'check_node_api_http_addr = "' + nodeApiHttp + '"');

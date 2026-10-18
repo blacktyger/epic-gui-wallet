@@ -1,5 +1,6 @@
 
 import axios from 'axios';
+import { REFRESH_CALL_TIMEOUT } from '@/shared/walletSync';
 const Buffer = require('buffer').Buffer;
 const crypto = window.nodeCrypto;
 
@@ -96,7 +97,10 @@ class WalletService {
       });
     }
 
-    async jsonRPC(method, params, isForeign){
+    /* timeout (ms, 0: none): give up on a call the wallet does not answer; why the last call
+       failed is kept in lastError, for the log */
+    async jsonRPC(method, params, isForeign, timeout = 0){
+        this.lastError = '';
         const headers = {
             'Content-Type': 'application/json',
             'withCredentials': true,
@@ -129,6 +133,7 @@ class WalletService {
 
           //no shared key: the wallet api is down
           if(this.shared_key == undefined){
+            this.lastError = 'no secure connection to the wallet API';
             return false;
           }
 
@@ -148,9 +153,11 @@ class WalletService {
           }
 
 
-          let response = await this.client.post(url, encBody, headers,{withCredentials:true})
+          let response = await this.client.post(url, encBody, Object.assign({}, headers, timeout ? {timeout: timeout} : {}))
           .catch(error => {
-                this.debug ? console.log('WalletService.error', error) : null;
+                //the error object holds the request, with the owner API secret: log its message only
+                this.lastError = (error.code == 'ECONNABORTED' || error.code == 'ETIMEDOUT') ? 'no answer within ' + Math.round(timeout/1000) + ' s' : (error.message || String(error));
+                this.debug ? console.log('WalletService.error', method, this.lastError) : null;
                 return false;
           });
           let nonce2;
@@ -159,6 +166,9 @@ class WalletService {
             nonce2 = Buffer.from(response.data.result.Ok.nonce, 'hex');
             data = Buffer.from(response.data.result.Ok.body_enc, 'base64');
           }else{
+            if(response && response.data && response.data.error && !this.lastError){
+              this.lastError = response.data.error.message || JSON.stringify(response.data.error);
+            }
             this.debug ? console.log('WalletService.jsonRPC', method) : null;
             return false;
           }
@@ -206,7 +216,7 @@ class WalletService {
             token: this.token,
             refresh_from_node: refreshfromNode,
             minimum_confirmations: minimum_confirmations
-          }, false);
+          }, false, REFRESH_CALL_TIMEOUT);
     }
 
     async getTransactions(toRefresh, tx_id, tx_salte_id){
@@ -219,7 +229,7 @@ class WalletService {
             limit: null,
             offset: null,
             sort_order: null,
-          }, false);
+          }, false, REFRESH_CALL_TIMEOUT);
     }
 
     async getCommits(include_spent, toRefresh, tx_id){
@@ -233,7 +243,7 @@ class WalletService {
             limit: null,
             offset: null,
             sort_order: null,
-          }, false);
+          }, false, REFRESH_CALL_TIMEOUT);
     }
 
     async cancelTransactions(tx_id, tx_salte_id){
