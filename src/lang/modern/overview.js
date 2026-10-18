@@ -2,8 +2,8 @@
 export default {
   //upgraded notice
   upgraded_title: 'This is the new look of your wallet',
-  upgraded_text: 'Same wallet, contacts and settings. Prefer the old one? Switch to Classic in Settings › Appearance.',
-  upgraded_open: 'Open Appearance',
+  upgraded_text: 'Same wallet, contacts and settings. Prefer the old one? Switch to Classic in Settings › Interface.',
+  upgraded_open: 'Open Settings',
   dismiss: 'Dismiss',
 
   title: 'Overview',

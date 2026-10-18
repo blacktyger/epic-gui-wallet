@@ -198,6 +198,9 @@
   import HeaderBar from '@/components/HeaderBar.vue';
   import { reskin } from '@/components/modern/reskin';
   import { noticeSeen, markNoticeSeen } from '@/shared/theme';
+
+  //the fiat value last shown, for the balance it was computed for (see mounted)
+  const lastFiat = { total: null, usd: 0 };
   import { nodeSyncPercent } from '@/components/modern/format';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import MoneyText from '@/components/modern/ui/MoneyText.vue';
@@ -315,9 +318,15 @@
       },
     },
     async mounted() {
-      //HeaderBar fetches the price when the balance changes; this page opens after it has loaded
+      //HeaderBar fetches the price when the balance changes. Classic keeps one HeaderBar for the
+      //whole session; this page is created on every visit, so it reuses the last value for the
+      //same balance instead of asking CoinGecko again
+      const total = this.store.state.summary.total;
+      if (lastFiat.total === total && lastFiat.usd) {
+        this.usdPrice = lastFiat.usd;
+        return;
+      }
       try {
-        const total = this.store.state.summary.total;
         if (total) await HeaderBar.watch['store.state.summary.total'].call(this, total);
       } catch (e) {
         //no price: the fiat line stays out
@@ -325,6 +334,8 @@
     },
     beforeUnmount() {
       clearTimeout(this.refreshTimer);
+      lastFiat.total = this.store.state.summary.total;
+      lastFiat.usd = this.usdPrice;
     },
     methods: {
       fmt(n) {

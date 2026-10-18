@@ -8,6 +8,7 @@
     :aria-labelledby="title ? uid + '-t' : null"
     :aria-describedby="description ? uid + '-d' : null"
     @cancel="onCancel"
+    @close="onClose"
     @click="onBackdrop"
   >
     <template v-if="drawer">
@@ -88,6 +89,15 @@
         //Esc: the parent decides through v-model:open
         e.preventDefault();
         if (this.dismissible) this.close();
+      },
+      /* the native dialog closed by itself: reopen it if it may not be dismissed, otherwise tell the parent */
+      onClose() {
+        if (!this.open) return;
+        if (!this.dismissible) {
+          this.$refs.dlg && this.$refs.dlg.showModal();
+          return;
+        }
+        this.close();
       },
       onBackdrop(e) {
         //a click on the backdrop lands on the <dialog> element itself

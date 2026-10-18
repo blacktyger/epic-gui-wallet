@@ -4,8 +4,8 @@
   <header class="e-topbar">
     <h1>{{ $t('msg.modern.activity') }}</h1>
     <nav class="e-act-tabs" :aria-label="$t('msg.modern.overview.tabs_label')">
-      <button type="button" :aria-current="transactionTab ? 'page' : null" @click="openTab('transactionTab')">{{ $t('msg.modern.overview.tab_tx') }}</button>
-      <button type="button" :aria-current="commitTab ? 'page' : null" @click="openTab('commitTab')">{{ $t('msg.modern.overview.tab_outputs') }}</button>
+      <button type="button" :aria-pressed="transactionTab ? 'true' : 'false'" @click="openTab('transactionTab')">{{ $t('msg.modern.overview.tab_tx') }}</button>
+      <button type="button" :aria-pressed="commitTab ? 'true' : 'false'" @click="openTab('commitTab')">{{ $t('msg.modern.overview.tab_outputs') }}</button>
     </nav>
     <div class="e-topbar-actions">
       <!-- the active tab's search form is moved here -->

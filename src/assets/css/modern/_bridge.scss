@@ -1,6 +1,7 @@
-/* What the modern UI needs to undo from the Classic stylesheet, which stays loaded.
- * Bulma's generic rules style bare html/body, and the JustBoil layout pads <body> for its
- * navbar and aside through classes on <html> (has-aside-left, has-navbar-fixed-top, ...). */
+/* Bridges between the Modern styles and what the app shares with Classic. Only one interface's
+ * stylesheet is loaded (main.js), but the JustBoil store mutations still toggle layout classes on
+ * <html> (has-aside-left, has-navbar-fixed-top, ...) at login and logout, and the toaster and
+ * the native <dialog> need the Modern look. */
 html[data-ui='modern'] {
   background: var(--bg);
   overflow-y: auto;

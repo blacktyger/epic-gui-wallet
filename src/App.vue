@@ -252,8 +252,11 @@
       /* switch between the Modern and Classic interface: log out cleanly, then start the
          renderer again with the other stylesheet (shared/theme.js) */
       this.emitter.on('app.reloadUi', async () => {
-        await this.logoutApp();
-        reloadUi();
+        try {
+          await this.logoutApp();
+        } finally {
+          reloadUi();
+        }
       });
 
       this.emitter.on('app.accountLoggedIn', async () => {

@@ -1,5 +1,5 @@
-/* The modern interface (6.1 redesign). Loaded after the Classic stylesheet; everything here is
- * either an e- class or scoped to html[data-ui='modern'] (see shared/theme.js). */
+/* The Modern interface (6.1 redesign). Loaded instead of the Classic stylesheet (src/ui/modern.js);
+ * everything here is an e- class or scoped to html[data-ui='modern'] (see shared/theme.js). */
 @import "tokens";
 @import "base";
 @import "bridge";
