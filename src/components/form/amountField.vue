@@ -25,6 +25,7 @@
 
 <script>
   import { ref, computed } from "vue";
+  import { MIN_CONFIRMATIONS } from "@/shared/confirmations";
   import useFormValidation from "@/modules/useFormValidation";
 
   export default {
@@ -48,7 +49,7 @@
     methods: {
       async sendAll(){
 
-        let summary = await this.$walletService.getSummaryInfo(3, true);
+        let summary = await this.$walletService.getSummaryInfo(MIN_CONFIRMATIONS, true);
         if(summary && summary.result && summary.result.Ok){
           let data = summary.result.Ok;
           let spendable = data[1]['amount_currently_spendable'];
@@ -58,7 +59,7 @@
             "src_acct_name": null,
             "amount": spendable,
             "message": "",
-            "minimum_confirmations": 3,
+            "minimum_confirmations": MIN_CONFIRMATIONS,
             "max_outputs": 500,
             "num_change_outputs": 1,
             "selection_strategy_is_use_all": false,
@@ -90,7 +91,7 @@
           "src_acct_name": null,
           "amount": this.input * 100000000,
           "message": "",
-          "minimum_confirmations": 3,
+          "minimum_confirmations": MIN_CONFIRMATIONS,
           "max_outputs": 500,
           "num_change_outputs": 1,
           "selection_strategy_is_use_all": false,

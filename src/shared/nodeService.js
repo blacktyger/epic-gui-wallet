@@ -112,6 +112,34 @@ class NodeService {
 
   }
 
+  /* is there an Epic node at this address? GET /v1/version needs no auth on 4.x nodes.
+     returns {ok: true, version} or {ok: false, reason} */
+  async checkNodeVersion(address){
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    let result;
+    try{
+      const res = await fetch(address.replace(/\/+$/, '') + '/v1/version', {
+        method: 'GET',
+        signal: controller.signal
+      });
+      if(!res.ok){
+        result = {ok: false, reason: 'HTTP ' + res.status};
+      }else{
+        let body = null;
+        try{ body = await res.json(); }catch(e){ /* not JSON */ }
+        result = body && body.node_version
+          ? {ok: true, version: body.node_version}
+          : {ok: false, reason: 'no node version in the reply'};
+      }
+    }catch(e){
+      result = {ok: false, reason: e.name === 'AbortError' ? 'no reply within 5 s' : 'not reachable'};
+    }
+    clearTimeout(timeoutId);
+    return result;
+  }
+
   async getNodeStatus(internal){
 
     let baseURL = this.configService.config['check_node_api_http_addr'] ? this.configService.config['check_node_api_http_addr'] : this.configService.defaultEpicNode;
@@ -120,12 +148,21 @@ class NodeService {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+    let headers = { 'Content-Type': 'application/json' };
+    //the node secret belongs to the local node only
+    let isLocalNode = false;
+    try{
+      isLocalNode = ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(baseURL).hostname);
+    }catch(e){
+      //invalid address: send no credentials
+    }
+    if(isLocalNode){
+      headers['Authorization'] = 'Basic ' + btoa('epic:' + password);
+    }
+
     let response = await fetch(baseURL +'/v1/status', {
       method:'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + btoa('epic:' + password)
-      },
+      headers: headers,
       signal: controller.signal
     }).then(function(res){
       if (!res.ok) { throw Error(res) }
@@ -134,6 +171,7 @@ class NodeService {
       window.log ? console.log('NodeService.fetch', error) : null;
       return false;
     });
+    clearTimeout(timeoutId);
 
     /* check if node status is ok or need a restart because is stalled */
     if(internal){

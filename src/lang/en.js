@@ -24,6 +24,10 @@ const messages = {
 
     locked: 'Locked',
     send: 'Send',
+    node_not_synced: 'Node not synced',
+    epicbox_not_connected: 'Epicbox not connected',
+    epicbox_not_connected_hint: 'Sending to an Epicbox address is possible once the Epicbox listener is running. Use a file or HTTP address meanwhile.',
+    node_not_synced_hint: 'Sending is possible once the node has synced.',
     send_proof: 'send proof',
     dandelion: 'Dandelion++',
     dandelion_hint: 'Broadcasting transactions via Dandelion++',
@@ -53,7 +57,6 @@ const messages = {
     page_of: 'Page {0} of {1}',
     only_letter: 'Only lower case letters from a-z,',
     custom_settings: 'Custom settings',
-    advanced_settings: 'Advanced Settings',
     step_of: 'Step {0}/{1}',
     close_all_process: 'Terminate all processes',
 
@@ -117,21 +120,11 @@ const messages = {
       If you are not sure which one to use, then leave the settings as they are.<br/>`,
       previous_step: 'Previous step',
       receive_transactions: 'NEW Feature* Epic Address',
-      receive_transactions_txt: `To receive transactions from other wallets, your wallet must be accessible over the Internet.<br/>
-      <br/>
-      If you are not familiar with router settings and port forwarding, we recommend using the ngrok service.<br/>
-      Once ngrok has been activated, your wallet will be accessible via a temporary ngrok address.<br/>
-      <br/>
-      <br/>
-      Leave the fields below blank if you don’t want to use the ngrok service.`,
-      authtoken: 'Your ngrok Authtoken',
-      howto: 'How to get your Authtoken from ngrok',
       values_correct: 'Are these values correct?',
       save_and_finish: 'Save and finish',
       name: 'Name',
       keybase_account: 'Keybase Account',
       language: 'Language',
-      ngrok_authtoken: 'ngrok Auth-Token',
       db_fatal: 'DB Fatal: can not insert DB',
       errors_save: 'Error saving user settings: {0}',
       epicbox_domain: 'Epicbox Web Address',
@@ -269,10 +262,6 @@ const messages = {
       updateMsg: 'Found new version of EPIC wallet. Please update Right NOW.',
       yes: 'yes',
       no: 'no',
-      ngrok_service_started: 'Ngrok service started',
-      ngrok_address_changed: 'Your ngrok address has changed',
-      ngrok_service_stopped: 'Ngrok service stopped',
-      ngrok_service_error: 'Error starting Ngrok service',
       error_setup_internal_node: 'Can not setup internal node server',
       node_started: 'Node started',
       node_restarting: 'Node is restarting',
@@ -280,6 +269,10 @@ const messages = {
       node_offline: 'Node is offline',
       external_node_online: 'External Node is online',
       external_node_offline: 'External Node is offline',
+      external_node_invalid: 'Your node address {0} is not an Epic node ({1}). Change it in Settings.',
+      epicbox_wait_timeout: 'Epicbox not started: node not synced. Start it from the Receive page.',
+      node_unreachable: 'node unreachable',
+      wallet_api_unreachable: 'Wallet API not reachable',
       background_process: 'Please close all processes before continuing.',
       walletonline: 'Your wallet is online',
       walletoffline: 'Your wallet is offline.',
@@ -296,6 +289,14 @@ const messages = {
       noTxFound: 'No transactions Found',
       noTx:'No transactions',
       cancelSuccess:'This transaction canceled',
+    },
+    confirmations:{
+      of: '{0} of {1} confirmations',
+      confirming: 'Confirming',
+      confirmed: 'Confirmed',
+      confirmed_count: 'Confirmed ({0} confirmations)',
+      confirmed_spendable_count: 'Confirmed, spendable ({0} confirmations)',
+      waiting: 'Waiting to be mined',
     },
     fileSend:{
       sendAmount: 'Amount to send',
@@ -350,9 +351,7 @@ const messages = {
       start: 'Start',
       error: 'No password.',
       ip: 'your public ip',
-      current_ngrok_address: 'Current Ngrok Address',
       local_address: 'Local address',
-      session_end: 'You are using ngrok without an account. Your session will end in {0} hour, {1} minutes',
       tor_onion_address: 'Tor onion Address',
       proof_address: 'Proof Address',
       epicbox_address: 'Your public Epic address',
@@ -387,12 +386,6 @@ const messages = {
       network: 'Network',
       wallet_listener: 'Wallet listener',
       auto_start: 'automatically start wallet listener and Epicbox after login',
-      authtoken: 'Your ngrok Authtoken',
-      ngrok_force_start: 'use ngrok without Authtoken',
-      ngrok_hint: 'The ngrok address is active for 2 hours then gets renewed.',
-      ngrok_account_hint: 'To receive your ngrok authentication token, please create a new account at https://ngrok.com',
-      authtoken_hint: 'With a ngrok Authtoken, your address is active as long as the wallet is in listening mode',
-      howto: 'How to get your Authtoken from ngrok',
       settings_saved: 'Settings saved',
       error_save: 'Error saving settings',
       epicbox_domain: 'Epicbox Domain',
@@ -413,7 +406,8 @@ const messages = {
       number: 'The {0} field must be a number',
       spendable: 'Not enough balance',
       exist: 'The account "{0}" already exists',
-      notexist: 'The account "{0}" does not exist'
+      notexist: 'The account "{0}" does not exist',
+      not_epic_node: 'Not an Epic node: {0}'
     }
   }
 }

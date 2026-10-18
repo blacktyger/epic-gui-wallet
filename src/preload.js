@@ -224,39 +224,6 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
       });
     },
-    /* start ngrok */
-    async execNgrok(cmd, args, platform){
-
-      return new Promise(function(resolve, reject) {
-
-          let ngrok = spawn(cmd, args, {shell: platform == 'win' ? true : false});
-
-          ngrok.stdout.setEncoding('utf8');
-          ngrok.stdout.on('data', (data) => {
-
-            debug ? console.log('execNgrok.stdout', data) : null;
-
-            if(data.includes('client session established')){
-              resolve({success: true, msg: ngrok.pid});
-            }
-
-            if(data.includes('ERR_NGROK_107')){
-              resolve({success: false, msg: 'The authtoken you specified is properly formed, but it is invalid.'});
-            }
-
-
-          });
-
-          ngrok.stderr.setEncoding('utf8');
-          ngrok.stderr.on('data', (data) => {
-
-            debug ? console.log('execNgrok.stderr', data) : null;
-            resolve({success: false, msg: data});
-
-          });
-      });
-    },
-
     /* start wallet api */
     async execStart(cmd, args, platform, emitOutput){
 

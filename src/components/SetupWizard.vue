@@ -119,7 +119,7 @@
                       <p>&nbsp;</p>
                       <div class="buttons is-centered">
                           <button class="button is-primary" @click="prevStep('step1')" ><mdicon name="arrow-left-circle-outline" />&nbsp;{{ $t("msg.setupwizard.previous_step") }}</button>
-                          <button class="button is-primary" @click="nextStep('step3')" >{{ $t("msg.setupwizard.next_step") }}&nbsp;<mdicon name="arrow-right-circle-outline" /></button>
+                          <button class="button is-primary" :class="{'is-loading': nodeserverField.checking}" :disabled="nodeserverField.checking" @click="nextStep('step3')" >{{ $t("msg.setupwizard.next_step") }}&nbsp;<mdicon name="arrow-right-circle-outline" /></button>
                       </div>
 
                     </div><!-- end step 2 -->
@@ -166,7 +166,7 @@
                       <p>&nbsp;</p>
                       <div class="buttons is-centered">
                         <button class="button is-primary" @click="prevStep('step3')" ><mdicon name="arrow-left-circle-outline" />&nbsp;{{ $t("msg.setupwizard.previous_step") }}</button>
-                        <button class="button is-primary" @click="save" >{{ $t("msg.setupwizard.save_and_finish") }}</button>
+                        <button class="button is-primary" :class="{'is-loading': isSaving}" :disabled="isSaving" @click="save" >{{ $t("msg.setupwizard.save_and_finish") }}</button>
                       </div>
 
 
@@ -201,28 +201,12 @@
       TextField,
       //videoPlay,
     },
-    watch: {
-        'ngrok': function (newVal) {
-
-          if(newVal !== ''){
-            this.ngrok_force_start = false
-          }
-        },
-        'ngrok_force_start': function (newVal) {
-
-          if(newVal){
-            this.ngrok = '';
-          }
-        },
-    },
     setup(){
       const store = useStore();
       const router = useRouter();
       const route = useRoute();
       const check_node_api_http_addr = ref('');
       const network = ref('');
-      const ngrok = ref('');
-      const ngrok_force_start = ref(false);
 
       const locale = ref('en');
       const localeSelected = ref('en');
@@ -238,8 +222,8 @@
       const { resetFormErrors } = useFormValidation();
       const nodeserverField = ref('');
       const textField = ref('');
-      const advancedSettings = ref(false);
       const fromRoute = route.params.from ? route.params.from : 'login';
+      const isSaving = ref(false);
 
 
       return{
@@ -256,12 +240,10 @@
         resetFormErrors,
         name,
         keybase,
-        ngrok,
-        ngrok_force_start,
-        advancedSettings,
         textField,
         moveback,
         fromRoute,
+        isSaving,
         domain,
         epicboxDomain
 
@@ -287,10 +269,6 @@
 
     },
     methods: {
-      toggleAdvancedSettings(){
-
-        this.advancedSettings = !this.advancedSettings;
-      },
       validateStep(step){
         this.resetFormErrors();
         let isFormAllValid = [];
@@ -316,9 +294,12 @@
         return isValid;
 
       },
-      nextStep(step){
+      async nextStep(step){
 
         if(this.validateStep(step)){
+          if(step == 'step3' && !(await this.nodeserverField.verifyNode())){
+            return;
+          }
           this.moveback = false;
           this.step = step;
         }
@@ -353,8 +334,7 @@
               account: this.configService.configAccount,
               name: this.textField.defaultValue,
               keybase: this.keybase,
-              ngrok: '', //this.ngrok,
-              ngrok_force_start: false,//this.ngrok_force_start,
+              ngrok: '', //column is NOT NULL in the user table
               language: this.localeSelected,
               nodeInternal: this.nodeserverField.nodeInternal,
               email: '',
@@ -377,8 +357,8 @@
             locale: this.localeSelected,
             firstTime: false,
             walletlisten_on_startup: true,
-            node_background: true,
-            epicbox_background: true,
+            node_background: false,
+            epicbox_background: false,
             nodesynced: false,
             epicbox_domain: this.epicboxDomain.defaultValue,
 
@@ -387,6 +367,13 @@
           this.configService.checkTomlFile();
           this.store.commit('user', user[0]);
 
+          const loginWaits = this.emitter.all.get('setupwizard.saved');
+          if(this.fromRoute != 'navbar' && loginWaits && loginWaits.length){
+            //first login: the login page starts the node and the wallet api
+            this.isSaving = true;
+            this.emitter.emit('setupwizard.saved');
+            return;
+          }
 
           console.log('start node before wallet listener');
           await this.emitter.emit('app.nodeStart');

@@ -28,7 +28,7 @@
                       <mdicon size=20 v-if="!store.state.hideValues" name="eye-outline" />
                       <mdicon size=20 v-else name="eye-off-outline" />
                     </span>
-                    {{ $t("msg.info.total") }}: <span v-bind:class="{'amount-hidden': store.state.hideValues }" style="color: #d19944;">{{ $filters.currencyFormat(store.state.summary.total, locale) }} EPIC</span>&nbsp;<span v-bind:class="{'is-hidden': store.state.hideValues }" class="is-size-7">&#x2248; ${{ $filters.currencyFormat(usdPrice, locale) }}</span>
+                    {{ $t("msg.info.total") }}: <span v-bind:class="{'amount-hidden': store.state.hideValues }" style="color: #d19944;">{{ $filters.currencyFormat(store.state.summary.total, locale) }} EPIC</span>&nbsp;<span v-if="configService.defaultAccountNetwork == 'mainnet'" v-bind:class="{'is-hidden': store.state.hideValues }" class="is-size-7">&#x2248; ${{ $filters.currencyFormat(usdPrice, locale) }}</span>
 
                   </h3>
 
@@ -45,12 +45,12 @@
                     <span class="externalnode">
                     <mdicon class="show-pointer" v-if="store.state.nodeType == 'internal' && !nodeRestarting" size=20 name="restart" @click.prevent="restartNode" />
                     <mdicon v-if="store.state.nodeType == 'internal' && nodeRestarting" size=20 />
-                    <span v-if="!this.configService.config.nodesynced"><mdicon size=18 name="server-network" />{{ $t('msg.headerbar.node') }} ({{this.nodeFallBack}})</span>
-                    <span v-if="this.configService.config.nodesynced"><mdicon size=18 name="server-network" /> {{ $t('msg.headerbar.node') }} ({{store.state.nodeType}})</span>
+                    <span v-if="store.state.nodeType == 'internal' && !this.configService.config.nodesynced"><mdicon size=18 name="server-network" />{{ $t('msg.headerbar.node') }} ({{this.nodeFallBack}})</span>
+                    <span v-else><mdicon size=18 name="server-network" /> {{ $t('msg.headerbar.node') }} ({{store.state.nodeType}})</span>
                     </span>
                   </h3>
 
-                  <div v-if="!this.configService.config.nodesynced">{{ $t('msg.headerbar.node_sync_status') }}</div>
+                  <div v-if="store.state.nodeType == 'internal' && !this.configService.config.nodesynced">{{ $t('msg.headerbar.node_sync_status') }}</div>
                   <div>{{ $t('msg.headerbar.version') }}: {{store.state.nodeStatus.user_agent}}</div>
                   <div>{{ $t('msg.headerbar.peers') }}: {{store.state.nodeStatus.connections}}</div>
                   <div>{{ $t('msg.headerbar.status') }}: {{store.state.nodeStatus.sync_status}}</div>
@@ -63,7 +63,7 @@
                   </div>
 
                 </div>
-                <div v-if="store.state.nodeStatus.user_agent == undefined" style="opacity:0.8;" class="is-overlay is-align-items-center is-flex is-justify-content-center " ><span style="opacity:0.8;" class="has-background-light has-text-black-bis tag">... loading</span></div>
+                <div v-if="store.state.nodeStatus.user_agent == undefined" style="opacity:0.8;" class="is-overlay is-align-items-center is-flex is-justify-content-center " ><span style="opacity:0.8;" class="has-background-light has-text-black-bis tag">{{ store.state.nodeStatus.error ? $t('msg.app.node_unreachable') : '... loading' }}</span></div>
               </div>
             </div>
           </div>
@@ -85,7 +85,8 @@ export default {
   watch: {
       'store.state.summary.total': async function (newVal) {
 
-        if(newVal){
+        //no fiat value for test networks
+        if(newVal && this.configService.defaultAccountNetwork == 'mainnet'){
 
           let geckoPrice = await window.config.getPrice();
           if(geckoPrice.length >= 1){

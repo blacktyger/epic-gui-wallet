@@ -24,14 +24,7 @@
               </p>
               <p>&nbsp;</p>
 
-              <p v-if="store.state.ngrokService">
-                {{ $t("msg.httpReceive.current_ngrok_address") }}:<br/>
-                <code>{{ ngrokAddress }}</code>&nbsp;<mdicon class="is-clickable" @click="copy(ngrokAddress)" name="content-copy" size=16 />&nbsp;<mdicon class="is-clickable" @click="qrcode(ngrokAddress, 'ngrok')" name="qrcode-scan" size=16 />
-              </p>
-              <p v-if="store.state.user.ngrok_force_start" class="help">{{ $t("msg.httpReceive.session_end", store.state.ngrokTunnelLifetime) }}</p>
-
-              <p v-if="store.state.ngrokService">&nbsp;</p>
-              <p v-else>
+              <p>
                 {{ $t("msg.httpReceive.local_address") }}:<br/>
                 <code>{{ localAddress }}</code>
                 &nbsp;<mdicon v-if="portIsForwarded" name="flag-checkered" style="color:hsl(141, 53%, 53%);" title="port is open" /><mdicon v-else name="flag-checkered" style="color:hsl(348, 100%, 61%);" title="port is closed" />
@@ -39,7 +32,7 @@
                 &nbsp;<mdicon class="is-clickable" @click="copy(localAddress)" name="content-copy" size=16 />
                 &nbsp;<mdicon class="is-clickable" @click="qrcode(localAddress, 'local')" name="qrcode-scan" size=16 />
               </p>
-              <p v-if="!store.state.ngrokService">&nbsp;</p>
+              <p>&nbsp;</p>
 
               <p v-if="store.state.torService">
                 {{ $t("msg.httpReceive.tor_onion_address") }}:<br/>
@@ -140,15 +133,6 @@ export default {
   components: {
     PasswordField,
   },
-  watch: {
-      'store.state.ngrokTunnels': function (newVal) {
-
-        if(newVal){
-          this.ngrokAddress = newVal.public_url;
-        }
-      },
-
-  },
   setup(){
 
     const store = useStore();
@@ -156,7 +140,6 @@ export default {
     const localAddress = ref('');
     const onionAddress = ref('');
     const epicboxAddress = ref('');
-    const ngrokAddress = ref('');
     const proofAddress = ref('');
     const passwordField = ref('');
     const { resetFormErrors } = useFormValidation();
@@ -172,7 +155,6 @@ export default {
 
       onionAddress,
       epicboxAddress,
-      ngrokAddress,
       proofAddress,
       passwordField,
       resetFormErrors,
@@ -195,14 +177,8 @@ export default {
     this.epicboxAddress = await this.getEpicboxAddress();
 
 
-    if(this.store.state.user.ngrok != '' || this.store.state.user.ngrok_force_start){
-      this.ngrokAddress = await this.getNgrokAddress();
-    }
-
     var c = document.getElementById("qrcodeCanvas");
     this.vueCanvas = c;
-
-    this.tunnelLifetime = this.store.state.ngrokTunnelLifetime;
 
 
 
@@ -229,9 +205,6 @@ export default {
       }
       return '';
 
-    },
-    async getNgrokAddress(){
-      return this.$ngrokService.getAddress();
     },
     async getOnionAndProofAddress(){
       let addressRes = await this.$walletService.getPubliProofAddress();
@@ -273,7 +246,6 @@ export default {
         if(isListen && isListen.success){
 
           this.onionAddress = await this.getOnionAndProofAddress();
-          this.emitter.emit('app.ngrokStart');
           this.$toast.success(this.$t("msg.login.listener_started"));
           this.store.commit('walletListenerService', true);
 
@@ -311,7 +283,6 @@ export default {
       let killed = await this.$walletService.stopListen();
       this.isLoading = false;
       if(killed){
-        this.emitter.emit('app.ngrokStop');
         this.store.commit('walletListenerService', false);
         this.$toast.success(this.$t("msg.httpReceive.listener_stopped"));
       }

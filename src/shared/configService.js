@@ -36,15 +36,12 @@ class ConfigService {
       this.binariesPath = path.join(window.config.getResourcePath(), 'bin', this.platform);   
       this.epicWalletBinary = this.platform === 'win' ? 'epic-wallet.exe' : 'epic-wallet';
       this.epicNodeBinary = this.platform === 'win' ? 'epic.exe' : 'epic';
-      this.ngrokBinary = this.platform === 'win' ? 'ngrok.exe' : 'ngrok';
       this.epicBinPath = path.join(this.binariesPath, this.epicWalletBinary);
       this.epicNodeBinPath = path.join(this.binariesPath, this.epicNodeBinary);
-      this.ngrokBinPath = path.join(this.binariesPath, this.ngrokBinary);
 
       if(this.platform === 'win'){
         this.epicBinPath = '"' + path.resolve(this.epicBinPath) + '"';
         this.epicNodeBinPath = '"' + path.resolve(this.epicNodeBinPath) + '"';
-        this.ngrokBinPath = '"' + path.resolve(this.ngrokBinPath) + '"';
       }
 
       this.epicPath = this.epicBinPath;
@@ -66,7 +63,6 @@ class ConfigService {
       this.nodeFoundationName = 'foundation.json';
       this.tomlNetworkname = '';
 
-      this.ngrokApiAddress = 'http://127.0.0.1:4040';
       this.nodeFallBack = 'https://node.epiccash.com:3413';
       this.epicboxDomain = 'epicbox.epiccash.com';
 
@@ -92,6 +88,7 @@ class ConfigService {
     this.configFile = '';
     this.apiSecretPath = '';
     this.ownerApisecret = '';
+    this.walletListenerPort = 3415;
   }
 
   checkServerTomlFile(defaultAccountWalletdir){
@@ -293,6 +290,10 @@ class ConfigService {
 
         //rewrite some toml properties to work with owner_api lifecycle and foreign receive
         let tomlContent = window.nodeFs.readFileSync(tomlFile, {encoding:'utf8', flag:'r'});
+
+        //the listener port depends on the network (3415 mainnet, 13415 floonet)
+        const listenPort = tomlContent.match(/^api_listen_port\s*=\s*(\d+)/m);
+        this.walletListenerPort = listenPort ? parseInt(listenPort[1]) : (this.defaultAccountNetwork == 'floonet' ? 13415 : 3415);
 
         const re = /^owner_api_include_foreign(\s)*=(\s)*false/gm;
         if(tomlContent.search(re) != -1){

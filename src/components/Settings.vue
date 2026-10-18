@@ -59,71 +59,8 @@
 
           <div class="field">
             <div class="control">
-              <input class="switch is-success" id="advancedSettings" type="checkbox" @click="toggleAdvancedSettings" v-model="advancedSettings" >
-              <label for="advancedSettings">{{ $t("msg.advanced_settings") }}</label>
-
-
-              </div>
-          </div>
-
-          <div class="card" v-bind:class="{'is-hidden':!advancedSettings}" >
-
-            <div class="card-content">
-               <div class="content">
-
-                  <div class="field">
-                    <label class="label">{{ $t("msg.settings.authtoken") }}<a class="icon-text" style="font-size:0.8rem;" @click="toggleAdvancedNgrokSettings" >
-                      <mdicon size="18" v-if="!advancedNgrokSettings" name="menu-right" />
-                      <mdicon size="18" v-else name="menu-down" />
-                      {{ $t("msg.settings.howto") }}
-                    </a></label>
-
-                    <div class="card" v-bind:class="{'is-hidden':!advancedNgrokSettings}" >
-                      <div class="card-content">
-                        <div class="content">
-                          <div class="field">
-                             <p>{{ $t("msg.settings.ngrok_account_hint") }}</p>
-                             <div class="control">
-                               <videoPlay width="100%" height="auto" v-bind="playerOptions" @play="onPlay" ></videoPlay>
-                             </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="control">
-                      <input
-                        class="input"
-                        type="ngrok"
-                        required
-                        v-model="ngrok" />
-                        <p class="help">
-                          {{ $t("msg.settings.authtoken_hint") }}
-                        </p>
-                    </div>
-
-                  </div>
-
-                  <div class="field">
-                    <div class="control">
-                        <input class="switch is-success" id="ngrokSwitch" type="checkbox" v-model="ngrok_force_start">
-                        <label for="ngrokSwitch">{{ $t("msg.settings.ngrok_force_start") }}</label>
-                        <p class="help">
-                          {{ $t("msg.settings.ngrok_hint") }}
-                        </p>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-            </div>
-
-
-
-
-          <div class="field">
-            <div class="control">
               <p>&nbsp;</p>
-              <button class="button is-primary" @click="save" >{{ $t("msg.save") }}</button>
+              <button class="button is-primary" :class="{'is-loading': nodeserverField.checking}" :disabled="nodeserverField.checking" @click="save" >{{ $t("msg.save") }}</button>
             </div>
           </div>
 
@@ -136,32 +73,15 @@
 </template>
 <script>
 
-import { ref, reactive, onUnmounted } from 'vue';
+import { ref, onUnmounted } from 'vue';
 import { useStore } from '@/store';
 import NodeserverField from "@/components/form/nodeserverField";
 import useFormValidation from "@/modules/useFormValidation";
-import "vue3-video-play/dist/style.css";
-import { videoPlay } from "vue3-video-play";
 
   export default {
     name: "settings",
     components: {
       NodeserverField,
-      videoPlay,
-    },
-    watch: {
-        'ngrok': function (newVal) {
-
-          if(newVal !== ''){
-            this.ngrok_force_start = false
-          }
-        },
-        'ngrok_force_start': function (newVal) {
-
-          if(newVal){
-            this.ngrok = '';
-          }
-        },
     },
     setup(){
 
@@ -175,22 +95,7 @@ import { videoPlay } from "vue3-video-play";
       const walletlisten_on_startup = ref(false);
       const node_background = ref(false);
       const epicbox_background = ref(false);
-      const ngrok_force_start = ref(false);
-      const ngrok = ref('');
-      const advancedSettings = ref(false);
-      const advancedNgrokSettings = ref(false);
       const nodeInternal = ref(false);
-      const playerOptions = reactive({
-          // videojs options
-          autoPlay: true,
-          loop: true,
-          src: "https://github.com/EpicCash/epic-gui-wallet/blob/4.0.0-alpha/src/assets/ngrok_authtoken_1024.mov?raw=true",
-          control: false,
-
-      });
-
-      //dont remove or videoplay throws errors
-      const onPlay = (ev) => {};
 
 
 
@@ -205,12 +110,6 @@ import { videoPlay } from "vue3-video-play";
         walletlisten_on_startup,
         node_background,
         epicbox_background,
-        ngrok,
-        ngrok_force_start,
-        playerOptions,
-        advancedSettings,
-        advancedNgrokSettings,
-        onPlay,
         nodeInternal
       }
     },
@@ -236,22 +135,13 @@ import { videoPlay } from "vue3-video-play";
 
       this.epicbox_background = (this.node_background && this.nodeInternal) ? this.configService.config['epicbox_background'] : false;
 
-      this.nodeserverField.input = this.configService.config['check_node_api_http_addr'];
-      this.ngrok = this.store.state.user.ngrok;
-      this.ngrok_force_start = this.store.state.user.ngrok_force_start;
-      this.advancedSettings = this.store.state.user.advanced_settings;
+      //an internal user's address is the local node's: leave it empty so external gets the default
+      if(!this.nodeInternal){
+        this.nodeserverField.input = this.configService.config['check_node_api_http_addr'];
+      }
     },
 
     methods: {
-      toggleAdvancedSettings(){
-
-        this.advancedSettings = !this.advancedSettings;
-      },
-      toggleAdvancedNgrokSettings(){
-
-        this.advancedNgrokSettings = !this.advancedNgrokSettings;
-      },
-
       changeNodeBackgroundSetting(){
         console.log('changeNodeBackgroundSetting', this.nodeserverField.select);
         if(this.nodeserverField.select == 'external'){
@@ -274,6 +164,9 @@ import { videoPlay } from "vue3-video-play";
         let isFormAllValid = [];
 
         isFormAllValid.push(this.nodeserverField.validInput());
+        if(!isFormAllValid.includes(false)){
+          isFormAllValid.push(await this.nodeserverField.verifyNode());
+        }
 
         if(!isFormAllValid.includes(false)){
 
@@ -292,9 +185,9 @@ import { videoPlay } from "vue3-video-play";
 
           let updated = 0;
           if(this.nodeserverField.select == 'external'){
-            updated = await this.$userService.updateUserByAccount(this.configService.configAccount, {nodeInternal:false, ngrok: this.ngrok, ngrok_force_start: this.ngrok_force_start, advanced_settings: this.advancedSettings, epicbox_domain: this.epicboxDomain.trim()});
+            updated = await this.$userService.updateUserByAccount(this.configService.configAccount, {nodeInternal:false, epicbox_domain: this.epicboxDomain.trim()});
           }else{
-            updated = await this.$userService.updateUserByAccount(this.configService.configAccount, {nodeInternal:true, ngrok: this.ngrok, ngrok_force_start: this.ngrok_force_start, advanced_settings: this.advancedSettings, epicbox_domain: this.epicboxDomain.trim()});
+            updated = await this.$userService.updateUserByAccount(this.configService.configAccount, {nodeInternal:true, epicbox_domain: this.epicboxDomain.trim()});
           }
 
           /*todo simple node restart user update wallet restart here*/
@@ -302,12 +195,6 @@ import { videoPlay } from "vue3-video-play";
             this.store.commit('nodeType', this.nodeserverField.select);
             this.$toast.success(this.$t("msg.settings.settings_saved"));
             this.emitter.emit('app.nodeStart');
-            if(this.ngrok != '' || this.ngrok_force_start){
-              this.emitter.emit('app.ngrokStart');
-            }else{
-              this.emitter.emit('app.ngrokStop');
-            }
-
             this.emitter.emit('app.selectLocale', this.localeSelected);
 
           }else{

@@ -30,6 +30,7 @@
 <script>
 
   import mixin from './mixin.js';
+  import { MIN_CONFIRMATIONS, outputConfirmationState } from '@/shared/confirmations';
   import { useI18n } from 'vue-i18n';
   import { ref, onUnmounted } from 'vue';
   import { useStore } from '@/store';
@@ -64,7 +65,6 @@
 
 
       let startRefreshNodeId = 0;
-      let startRefreshNgrokId = 0;
       let refreshId = 0;
 
       store.commit('darkModeToggle', true);
@@ -74,7 +74,6 @@
       onUnmounted (_ => {
 
         clearTimeout(startRefreshNodeId);
-        clearTimeout(startRefreshNgrokId);
         clearTimeout(refreshId);
       })
 
@@ -132,6 +131,8 @@
 
 
 
+        }else{
+          this.$toast.error(this.t("msg.app.epicbox_wait_timeout"));
         }
 
 
@@ -163,9 +164,10 @@
 
           }, 3000);
 
-          setTimeout(async() => {
+          clearTimeout(this.restartRefreshId);
+          this.restartRefreshId = setTimeout(() => {
 
-            this.startRefresh();
+            this.requestRefresh();
 
           }, 30000);
 
@@ -177,40 +179,22 @@
       });
 
 
-      this.emitter.on('app.startRefreshNgrokStatus', () => {
-        this.stopRefreshNgrok();
-        this.startRefreshNgrok();
-      });
-
-      this.emitter.on('app.stopRefreshNgrokStatus', () => {
-        this.stopRefreshNgrok();
-      });
-
-      this.emitter.on('app.ngrokStart', async () => {
-         await this.ngrokStart();
-      });
-
-      this.emitter.on('app.ngrokStop', async () => {
-         await this.ngrokStop();
-      });
-
       this.emitter.on('app.selectLocale', (locale) => {
         this.locale = locale;
       })
 
       this.emitter.on('app.update', () => {
-        this.stopRefresh();
-        this.startRefresh();
+        this.requestRefresh();
       });
 
       this.emitter.on('app.logout', async () => {
 
         this.stopRefreshNode();
-        this.stopRefreshNgrok();
         this.stopRefresh();
         this.store.commit('user', {});
         this.store.commit('txs', []);
         this.store.commit('commits', []);
+        this.store.commit('walletTip', 0);
         this.store.commit('summary', {
           spendable: 0,
           total: 0,
@@ -221,9 +205,9 @@
         });
 
         await this.$walletService.stopListen(this.configService.config.epicbox_background);
+        this.store.commit('walletEpicboxService', false);
 
         await this.$walletService.stopWallet();
-        await this.$ngrokService.stopNgrok();
 
         if(this.configService.config && this.configService.config.node_background == false)
           await this.$nodeService.stopNode();
@@ -231,6 +215,7 @@
 
         this.$walletService.logoutClient();
         this.loggedIn = false;
+        this.walletApiFailed = false;
         this.configService.resetConfig();
 
         this.store.dispatch('toggleFullPage', true);
@@ -250,8 +235,6 @@
         this.store.dispatch('toggleFullPage', false);
         this.store.commit('asideStateToggle');
         this.$router.push('/dashboard');
-
-        this.emitter.emit('app.ngrokStart');
 
 
         //start refresh outputs summary etc
@@ -292,14 +275,16 @@
     },
     methods: {
 
-      waitForNodesynced (variable) {
-        function waitFor(result) {
-          if (result != null) {
-            return result;
+      waitForNodesynced (variable, timeoutMs = 10*60*1000) {
+        const started = Date.now();
+        function waitFor() {
+          if (window[variable] === true) {
+            return Promise.resolve(true);
           }
-          return new Promise((resolve) => setTimeout(resolve, 100))
-            .then(() => Promise.resolve(window[variable]))
-            .then((res) => waitFor(res));
+          if (Date.now() - started > timeoutMs) {
+            return Promise.resolve(false);
+          }
+          return new Promise((resolve) => setTimeout(resolve, 500)).then(() => waitFor());
         }
         return waitFor();
       },
@@ -324,50 +309,12 @@
         this.isFirstscanModalActive = false
       },
 
-      async ngrokStop(){
-        this.stopRefreshNgrok();
-        let respNgrok = await this.$ngrokService.stopNgrok();
-        if(respNgrok){
-          //this.$toast.success(this.t("msg.app.ngrok_service_stopped"));
-          this.store.commit('ngrokService', false);
-          this.store.commit('ngrokTunnels', {});
-        }
-      },
-
-      async ngrokStart(){
-
-        if(this.store.state.user.ngrok != '' || this.store.state.user.ngrok_force_start){
-
-          let ngrokService = await this.$ngrokService.internalStart(this.store.state.user.ngrok == '' ? '' : this.store.state.user.ngrok);
-
-
-          if(ngrokService.success){
-            let respNgrok = await this.$ngrokService.openTunnel();
-            if(respNgrok){
-              this.$toast.success(this.t("msg.app.ngrok_service_started"));
-              this.store.commit('ngrokService', true);
-              this.store.commit('ngrokTunnels', respNgrok);
-              this.emitter.emit('app.startRefreshNgrokStatus');
-            }else{
-              this.$toast.error(this.t("msg.app.ngrok_service_error"));
-              this.store.commit('ngrokService', false);
-              this.store.commit('ngrokTunnels', {});
-            }
-          }else{
-            this.$toast.error(this.t("msg.app.ngrok_service_error"));
-            this.store.commit('updates', {
-                  "status": "is-danger",
-                  "text":   "Ngrok: " + ngrokService.msg,
-                  "icon":   "information"
-            });
-            this.store.commit('ngrokService', false);
-            this.store.commit('ngrokTunnels', {});
-          }
-        }
-
-      },
-
       async nodeStart(){
+
+        this.stopRefreshNode();
+        this.nodeStatusFailed = false;
+        window.nodeSynced = null;
+        this.store.commit('nodeStatus', {});
 
         //start internal server only if its setup else just check if external node is running
         if(this.store.state.user.nodeInternal){
@@ -383,7 +330,7 @@
               this.$toast.success(this.t("msg.app.node_started"));
               //start the status check for the node
               //give the node some time before api status is called
-              setTimeout(this.startRefreshNode, 10000);
+              this.startRefreshNodeId = setTimeout(this.startRefreshNode, 10000);
             }else{
               this.$toast.error(this.t("msg.app.node_not_started"));
             }
@@ -392,15 +339,28 @@
         }else{
 
           this.store.commit('nodeType', this.configService.config['check_node_api_http_addr']);
+          //a saved address that is no Epic node (e.g. carried over from an old config): say so once
+          const nodeAddr = this.configService.config['check_node_api_http_addr'] || '';
+          const check = await this.$nodeService.checkNodeVersion(nodeAddr);
+          if(!check.ok){
+            this.$toast.error(this.t("msg.app.external_node_invalid", [nodeAddr, check.reason]), {duration: false});
+            this.nodeStatusFailed = true;
+            this.store.commit('nodeStatus', {error: true});
+            this.startRefreshNodeId = setTimeout(this.startRefreshNode, 10000);
+            return;
+          }
           let respNode = await this.$nodeService.getNodeStatus(this.store.state.user.nodeInternal);
           if(respNode){
             this.$toast.success(this.t("msg.app.external_node_online"));
             this.store.commit('nodeStatus', respNode);
             //start the status check for the node
             //give the node some time before api status is called
-            setTimeout(this.startRefreshNode, 10000);
+            this.startRefreshNodeId = setTimeout(this.startRefreshNode, 10000);
           }else{
             this.$toast.error(this.t("msg.app.external_node_offline"));
+            this.nodeStatusFailed = true;
+            this.store.commit('nodeStatus', {error: true});
+            this.startRefreshNodeId = setTimeout(this.startRefreshNode, 10000);
           }
 
         }
@@ -412,6 +372,7 @@
 
         let respNode = await this.$nodeService.getNodeStatus(this.store.state.user.nodeInternal);
         if(respNode){
+          this.nodeStatusFailed = false;
 
           window.nodeSynced = respNode.tip && respNode.tip.height > 0 && respNode.sync_status === 'no_sync';
 
@@ -427,39 +388,82 @@
 
             }
           }
+          //a new block: refresh the wallet now, so confirmations follow the tip
+          const lastTip = this.store.state.nodeStatus && this.store.state.nodeStatus.tip ? this.store.state.nodeStatus.tip.height : 0;
           this.store.commit('nodeStatus', respNode);
-        }else{
-          if(this.store.state.user.nodeInternal){
-            this.$toast.error(this.t("msg.app.node_offline"));
-          }else{
-            this.$toast.error(this.t("msg.app.external_node_offline"));
+          if(this.loggedIn && lastTip > 0 && respNode.tip && respNode.tip.height > lastTip){
+            this.requestRefresh();
           }
-          this.stopRefreshNode();
+        }else{
+          //only toast on the transition to failed, keep polling
+          if(!this.nodeStatusFailed){
+            if(this.store.state.user.nodeInternal){
+              this.$toast.error(this.t("msg.app.node_offline"));
+            }else{
+              this.$toast.error(this.t("msg.app.external_node_offline"));
+            }
+          }
+          this.nodeStatusFailed = true;
+          window.nodeSynced = false;
+          this.store.commit('nodeStatus', {error: true});
         }
 
       },
+      /* run a wallet refresh now; one already running is followed by another */
+      requestRefresh(){
+        if(this.refreshing){
+          this.refreshAgain = true;
+          return;
+        }
+        this.stopRefresh();
+        this.startRefresh();
+      },
       stopRefresh(){
+        //invalidate a refresh that is still running, so it does not schedule another one
+        this.refreshGen = (this.refreshGen || 0) + 1;
+        this.refreshAgain = false;
         clearTimeout(this.refreshId);
+        clearTimeout(this.restartRefreshId);
+      },
+
+      /* a transaction is still on its way (sent, received or in the mempool), or a coin is still confirming */
+      hasPendingTx(){
+        const recent = Date.now() - 1000*60*60;
+        return (this.store.state.txs || []).some(tx => tx.status == 'unconfirmed' && Date.parse(tx.creation_ts) > recent)
+          || (this.store.state.commits || []).some(c => outputConfirmationState(c, this.store.getters.tipHeight).state == 'confirming');
       },
 
       /* refresh wallet summary txs and outputs */
       async startRefresh() {
 
-          let refresh = _ => this.refreshId = setTimeout(this.startRefresh, 1000*60)
+          //poll faster while a transaction is pending, so its status follows the listener and the chain
+          let refresh = _ => this.refreshId = setTimeout(this.startRefresh, this.hasPendingTx() ? 1000*15 : 1000*60)
+          const gen = this.refreshGen || 0;
+          this.refreshing = true;
+          this.refreshAgain = false;
           try {
             let refreshfromNode = this.store.state.nodeStatus.sync_status == 'synced' ?  true : false;
 
-            await this.getSummaryinfo(refreshfromNode);
-            await this.getTxs(refreshfromNode);
-            await this.getCommits(refreshfromNode);
+            //skip txs and outputs while the wallet api is down
+            if(await this.getSummaryinfo(refreshfromNode, gen)){
+              await this.getTxs(refreshfromNode, gen);
+              await this.getCommits(refreshfromNode, gen);
+            }
 
 
           }
           catch (e) {
-            clearTimeout(this.refreshId);
+            if(gen === (this.refreshGen || 0)){
+              clearTimeout(this.refreshId);
+            }
           }
           finally {
-            refresh()
+            this.refreshing = false;
+            if(this.refreshAgain){
+              this.requestRefresh();
+            }else if(gen === (this.refreshGen || 0)){
+              refresh()
+            }
           }
 
       },
@@ -468,7 +472,9 @@
       async startRefreshNode() {
 
 
-          let refresh = _ => this.startRefreshNodeId = setTimeout(this.startRefreshNode, 1000*30)
+          //often enough to see each new block soon, which triggers a wallet refresh
+          let refresh = _ => this.startRefreshNodeId = setTimeout(this.startRefreshNode, 1000*10)
+          const gen = this.nodeRefreshGen || 0;
 
           try {
             await this.nodeStatus();
@@ -478,73 +484,33 @@
             clearTimeout(this.startRefreshNodeId);
           }
           finally {
-            refresh()
+            if(gen === (this.nodeRefreshGen || 0)){
+              refresh()
+            }
           }
 
       },
       stopRefreshNode(){
+        //invalidate a poll that is still running, so it does not schedule another one
+        this.nodeRefreshGen = (this.nodeRefreshGen || 0) + 1;
         clearTimeout(this.startRefreshNodeId);
       },
 
-      /* refresh ngrok status */
-      async startRefreshNgrok() {
-          let refresh = _ => this.startRefreshNgrokId = setTimeout(this.startRefreshNgrok, 1000*30)
-
-          try {
-            let ngrokStatus = await this.$ngrokService.checkStatus();
-
-            if(ngrokStatus){
-
-              this.store.commit('ngrokTunnels', await this.$ngrokService.openTunnel());
-              this.store.commit('ngrokService', true);
-
-              if(this.store.state.user.ngrok_force_start){
-
-                let timeFormat = this.$filters.timeFormat(this.$ngrokService.getTunnelLifetime());
-
-
-                if(timeFormat.length && timeFormat[0] <= 0 && timeFormat[1] <= 0){
-
-                  let restart = await this.$ngrokService.ngrokRestart();
-                  if(restart){
-                    this.$toast.warning(this.t("msg.app.ngrok_address_changed"), {duration:false});
-                    this.store.commit('ngrokTunnels', await this.$ngrokService.openTunnel());
-                    timeFormat = this.$filters.timeFormat(this.$ngrokService.getTunnelLifetime());
-                    this.store.commit('ngrokTunnelLifetime', timeFormat);
-
-                  }else{
-                    this.store.commit('ngrokService', false);
-                    this.store.commit('ngrokTunnelLifetime', [0,0]);
-                    this.store.commit('ngrokTunnels', {});
-                  }
-                }else{
-                  this.store.commit('ngrokTunnelLifetime', timeFormat);
-                }
-              }
-
-            }else{
-              this.store.commit('ngrokService', false);
-              this.store.commit('ngrokTunnelLifetime', [0,0]);
-              this.store.commit('ngrokTunnels', {});
-            }
-          }
-          catch (e) {
-            clearTimeout(this.startRefreshNgrokId);
-          }
-          finally {
-            refresh()
-          }
-
-      },
-      stopRefreshNgrok(){
-        clearTimeout(this.startRefreshNgrokId);
+      /* a refresh that was stopped while it waited (logout, restart) does not write its results */
+      isStale(gen){
+        return gen !== undefined && gen !== (this.refreshGen || 0);
       },
 
-      async getSummaryinfo(refreshfromNode) {
+      async getSummaryinfo(refreshfromNode, gen) {
 
-          let summary = await this.$walletService.getSummaryInfo(3, refreshfromNode);
+          let summary = await this.$walletService.getSummaryInfo(MIN_CONFIRMATIONS, refreshfromNode);
+          if(this.isStale(gen)){
+            return false;
+          }
           if(summary && summary.result && summary.result.Ok){
             let data = summary.result.Ok
+            //confirmations are counted from the height this balance was worked out at
+            this.store.commit('walletTip', data[1]['last_confirmed_height']);
             this.store.commit('summary', {
               spendable: data[1]['amount_currently_spendable']/100000000,
               total: data[1]['total']/100000000,
@@ -553,6 +519,19 @@
               unfinalization: data[1]['amount_awaiting_finalization']/100000000,
               immature: data[1]['amount_immature']/100000000,
             });
+            this.walletApiFailed = false;
+            return true;
+          }else if(!summary){
+            //only report the transition to failed, keep polling
+            if(!this.walletApiFailed){
+              this.$toast.error(this.t("msg.app.wallet_api_unreachable"));
+              this.store.commit('updates', {
+                    "status": "is-danger",
+                    "text": "Summary: " + this.t("msg.app.wallet_api_unreachable"),
+                    "icon":   "information"
+              });
+            }
+            this.walletApiFailed = true;
           }else{
             this.store.commit('updates', {
                   "status": "is-danger",
@@ -561,11 +540,15 @@
             });
 
           }
+          return false;
       },
 
-      async getTxs(refreshfromNode) {
+      async getTxs(refreshfromNode, gen) {
 
         let txs = await this.$walletService.getTransactions(refreshfromNode, null, null);
+        if(this.isStale(gen)){
+          return;
+        }
 
         if(txs && txs.result && txs.result.Ok){
           let data = txs.result.Ok.txs.reverse()
@@ -582,9 +565,12 @@
 
       },
 
-      async getCommits(refreshfromNode) {
+      async getCommits(refreshfromNode, gen) {
 
           let commits = await this.$walletService.getCommits(false, refreshfromNode, null);
+          if(this.isStale(gen)){
+            return;
+          }
 
           if(commits && commits.result && commits.result.Ok){
             //this.total_commits =
