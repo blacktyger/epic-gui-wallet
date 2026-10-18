@@ -140,3 +140,5 @@
 .e-stg-scanout { margin: 0; font-size: 12px; line-height: 1.7; color: var(--dim); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 280px; overflow: auto; background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-sm); padding: var(--sp-3); }
 .e-stg-line { display: block; margin-bottom: var(--sp-1); }
 .e-stg-line:last-child { margin-bottom: 0; }
+/* keep focused controls clear of the sticky save bar (WCAG 2.4.11) */
+.e-content:has(.e-stg-savebar) { scroll-padding-bottom: 96px; }
