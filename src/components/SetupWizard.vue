@@ -119,7 +119,7 @@
                       <p>&nbsp;</p>
                       <div class="buttons is-centered">
                           <button class="button is-primary" @click="prevStep('step1')" ><mdicon name="arrow-left-circle-outline" />&nbsp;{{ $t("msg.setupwizard.previous_step") }}</button>
-                          <button class="button is-primary" @click="nextStep('step3')" >{{ $t("msg.setupwizard.next_step") }}&nbsp;<mdicon name="arrow-right-circle-outline" /></button>
+                          <button class="button is-primary" :class="{'is-loading': nodeserverField.checking}" :disabled="nodeserverField.checking" @click="nextStep('step3')" >{{ $t("msg.setupwizard.next_step") }}&nbsp;<mdicon name="arrow-right-circle-outline" /></button>
                       </div>
 
                     </div><!-- end step 2 -->
@@ -294,9 +294,12 @@
         return isValid;
 
       },
-      nextStep(step){
+      async nextStep(step){
 
         if(this.validateStep(step)){
+          if(step == 'step3' && !(await this.nodeserverField.verifyNode())){
+            return;
+          }
           this.moveback = false;
           this.step = step;
         }

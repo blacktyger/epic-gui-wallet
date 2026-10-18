@@ -269,6 +269,7 @@ const messages = {
       node_offline: 'Node is offline',
       external_node_online: 'External Node is online',
       external_node_offline: 'External Node is offline',
+      external_node_invalid: 'Your node address {0} is not an Epic node ({1}). Change it in Settings.',
       epicbox_wait_timeout: 'Epicbox not started: node not synced. Start it from the Receive page.',
       node_unreachable: 'node unreachable',
       wallet_api_unreachable: 'Wallet API not reachable',
@@ -397,7 +398,8 @@ const messages = {
       number: 'The {0} field must be a number',
       spendable: 'Not enough balance',
       exist: 'The account "{0}" already exists',
-      notexist: 'The account "{0}" does not exist'
+      notexist: 'The account "{0}" does not exist',
+      not_epic_node: 'Not an Epic node: {0}'
     }
   }
 }

@@ -19,7 +19,7 @@
         type="nodeaddress"
         required
         v-model="input"
-
+        :disabled="checking"
          />
          <div style="color:red;" v-if="errors.nodeaddress">
             {{ errors.nodeaddress }}
@@ -52,6 +52,12 @@
         defaultValue.value = input.value.trim();
         if(select.value == 'external'){
           nodeInternal.value = false;
+          //no scheme given: assume https, keep any port
+          if(defaultValue.value && !/^[a-z][a-z0-9+.-]*:\/\//i.test(defaultValue.value)){
+            defaultValue.value = 'https://' + defaultValue.value;
+          }
+          defaultValue.value = defaultValue.value.replace(/\/+$/, '');
+          input.value = defaultValue.value;
           return validateAddressField("nodeaddress", defaultValue.value, true);
         }else{
           nodeInternal.value = true;
@@ -62,9 +68,31 @@
 
       };
 
-      return { input, select, nodeInternal, errors, defaultValue, validInput };
+      return { input, select, nodeInternal, errors, defaultValue, validInput, checking: ref(false) };
+    },
+    watch: {
+      //prefill the default node when external is picked and the address is empty
+      select(value){
+        if(value == 'external' && !this.input.trim()){
+          this.input = this.configService.getNodeFallBack();
+        }
+      }
     },
     methods: {
+
+      /* after validInput(): check that the external address really is an Epic node */
+      async verifyNode(){
+        if(this.select != 'external'){
+          return true;
+        }
+        this.checking = true;
+        const check = await this.$nodeService.checkNodeVersion(this.defaultValue);
+        this.checking = false;
+        if(!check.ok){
+          this.errors.nodeaddress = this.$t("msg.validators.not_epic_node", [this.defaultValue + ' (' + check.reason + ')']);
+        }
+        return check.ok;
+      },
 
       async nodeserverFieldChanged(){
         await this.emitter.emit('settings.nodeserverFieldChanged', "");

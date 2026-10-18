@@ -112,6 +112,34 @@ class NodeService {
 
   }
 
+  /* is there an Epic node at this address? GET /v1/version needs no auth on 4.x nodes.
+     returns {ok: true, version} or {ok: false, reason} */
+  async checkNodeVersion(address){
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    let result;
+    try{
+      const res = await fetch(address.replace(/\/+$/, '') + '/v1/version', {
+        method: 'GET',
+        signal: controller.signal
+      });
+      if(!res.ok){
+        result = {ok: false, reason: 'HTTP ' + res.status};
+      }else{
+        let body = null;
+        try{ body = await res.json(); }catch(e){ /* not JSON */ }
+        result = body && body.node_version
+          ? {ok: true, version: body.node_version}
+          : {ok: false, reason: 'no node version in the reply'};
+      }
+    }catch(e){
+      result = {ok: false, reason: e.name === 'AbortError' ? 'no reply within 5 s' : 'not reachable'};
+    }
+    clearTimeout(timeoutId);
+    return result;
+  }
+
   async getNodeStatus(internal){
 
     let baseURL = this.configService.config['check_node_api_http_addr'] ? this.configService.config['check_node_api_http_addr'] : this.configService.defaultEpicNode;

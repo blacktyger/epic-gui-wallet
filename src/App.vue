@@ -337,6 +337,16 @@
         }else{
 
           this.store.commit('nodeType', this.configService.config['check_node_api_http_addr']);
+          //a saved address that is no Epic node (e.g. carried over from an old config): say so once
+          const nodeAddr = this.configService.config['check_node_api_http_addr'] || '';
+          const check = await this.$nodeService.checkNodeVersion(nodeAddr);
+          if(!check.ok){
+            this.$toast.error(this.t("msg.app.external_node_invalid", [nodeAddr, check.reason]), {duration: false});
+            this.nodeStatusFailed = true;
+            this.store.commit('nodeStatus', {error: true});
+            this.startRefreshNodeId = setTimeout(this.startRefreshNode, 10000);
+            return;
+          }
           let respNode = await this.$nodeService.getNodeStatus(this.store.state.user.nodeInternal);
           if(respNode){
             this.$toast.success(this.t("msg.app.external_node_online"));

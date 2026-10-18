@@ -60,7 +60,7 @@
           <div class="field">
             <div class="control">
               <p>&nbsp;</p>
-              <button class="button is-primary" @click="save" >{{ $t("msg.save") }}</button>
+              <button class="button is-primary" :class="{'is-loading': nodeserverField.checking}" :disabled="nodeserverField.checking" @click="save" >{{ $t("msg.save") }}</button>
             </div>
           </div>
 
@@ -135,7 +135,10 @@ import useFormValidation from "@/modules/useFormValidation";
 
       this.epicbox_background = (this.node_background && this.nodeInternal) ? this.configService.config['epicbox_background'] : false;
 
-      this.nodeserverField.input = this.configService.config['check_node_api_http_addr'];
+      //an internal user's address is the local node's: leave it empty so external gets the default
+      if(!this.nodeInternal){
+        this.nodeserverField.input = this.configService.config['check_node_api_http_addr'];
+      }
     },
 
     methods: {
@@ -161,6 +164,9 @@ import useFormValidation from "@/modules/useFormValidation";
         let isFormAllValid = [];
 
         isFormAllValid.push(this.nodeserverField.validInput());
+        if(!isFormAllValid.includes(false)){
+          isFormAllValid.push(await this.nodeserverField.verifyNode());
+        }
 
         if(!isFormAllValid.includes(false)){
 
