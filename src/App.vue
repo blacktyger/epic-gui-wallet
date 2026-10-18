@@ -458,13 +458,23 @@
 
       },
       stopRefresh(){
+        //invalidate a refresh that is still running, so it does not schedule another one
+        this.refreshGen = (this.refreshGen || 0) + 1;
         clearTimeout(this.refreshId);
+      },
+
+      /* a transaction is still on its way (sent, received or in the mempool) */
+      hasPendingTx(){
+        const recent = Date.now() - 1000*60*60;
+        return (this.store.state.txs || []).some(tx => tx.status == 'unconfirmed' && Date.parse(tx.creation_ts) > recent);
       },
 
       /* refresh wallet summary txs and outputs */
       async startRefresh() {
 
-          let refresh = _ => this.refreshId = setTimeout(this.startRefresh, 1000*60)
+          //poll faster while a transaction is pending, so its status follows the listener and the chain
+          let refresh = _ => this.refreshId = setTimeout(this.startRefresh, this.hasPendingTx() ? 1000*15 : 1000*60)
+          const gen = this.refreshGen || 0;
           try {
             let refreshfromNode = this.store.state.nodeStatus.sync_status == 'synced' ?  true : false;
 
@@ -477,10 +487,14 @@
 
           }
           catch (e) {
-            clearTimeout(this.refreshId);
+            if(gen === (this.refreshGen || 0)){
+              clearTimeout(this.refreshId);
+            }
           }
           finally {
-            refresh()
+            if(gen === (this.refreshGen || 0)){
+              refresh()
+            }
           }
 
       },
