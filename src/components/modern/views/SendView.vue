@@ -128,22 +128,22 @@
         <h2 class="e-sum-title">{{ $t('msg.modern.send.summary') }}</h2>
         <div class="e-line">
           <span>{{ $t('msg.modern.send.amount') }}</span>
-          <span v-if="amountNum > 0" class="e-num" :class="{ 'e-risk': amountBad }"><MoneyText :value="amountNum" /></span>
+          <span v-if="amountNum > 0" class="e-num" :class="{ 'e-risk': amountBad }"><MoneyText :value="amountNum" :decimals="dec" /></span>
           <span v-else class="e-num e-dim">—</span>
         </div>
         <div class="e-line">
           <span>{{ $t('msg.modern.send.fee') }}</span>
-          <span v-if="feeNum > 0" class="e-num"><MoneyText :value="feeNum" /></span>
+          <span v-if="feeNum > 0" class="e-num"><MoneyText :value="feeNum" :decimals="dec" /></span>
           <span v-else class="e-num e-dim">—</span>
         </div>
         <div class="e-total">
           <span>{{ $t('msg.modern.send.total') }}</span>
-          <span v-if="summaryReady" class="e-num"><MoneyText :value="totalNum" /></span>
+          <span v-if="summaryReady" class="e-num"><MoneyText :value="totalNum" :decimals="dec" /></span>
           <span v-else class="e-num" :class="amountBad ? 'e-risk' : 'e-dim'">—</span>
         </div>
         <div class="e-line">
           <span>{{ $t('msg.modern.send.left') }}</span>
-          <span v-if="summaryReady" class="e-num e-dim"><MoneyText :value="leftNum" :updating="store.state.walletSync != 'synced'" /></span>
+          <span v-if="summaryReady" class="e-num e-dim"><MoneyText :value="leftNum" :decimals="dec" :updating="store.state.walletSync != 'synced'" /></span>
           <span v-else class="e-num e-dim">—</span>
         </div>
         <button
@@ -152,7 +152,7 @@
           class="e-btn e-btn-primary e-btn-block e-send-review"
           :disabled="!canSend"
         >{{ $t('msg.modern.send.review') }}</button>
-        <p class="e-help e-send-hint" :role="formHasErrors ? 'alert' : null">{{ hint }}</p>
+        <p class="e-help e-send-hint" role="status" aria-live="polite">{{ hint }}</p>
       </aside>
     </div>
   </div>
@@ -164,7 +164,7 @@
     :dismissible="!isLoadingSend"
   >
     <template v-if="rv">
-      <div class="e-rv-amount"><span class="e-num"><MoneyText :value="rv.amount" :mono="false" /></span> <span class="e-unit">EPIC</span></div>
+      <div class="e-rv-amount"><span class="e-num"><MoneyText :value="rv.amount" :decimals="rv.dec" :mono="false" /></span> <span class="e-unit">EPIC</span></div>
       <dl class="e-facts">
         <dt>{{ $t('msg.modern.send.to') }}</dt>
         <dd>
@@ -177,9 +177,9 @@
         <dt>{{ $t('msg.modern.send.via') }}</dt>
         <dd>{{ $t('msg.modern.send.via_' + rv.kind) }}</dd>
         <dt>{{ $t('msg.modern.send.fee') }}</dt>
-        <dd class="e-mono"><MoneyText v-if="rv.fee > 0" :value="rv.fee" unit /><template v-else>—</template></dd>
+        <dd class="e-mono"><MoneyText v-if="rv.fee > 0" :value="rv.fee" :decimals="rv.dec" unit /><template v-else>—</template></dd>
         <dt>{{ $t('msg.modern.send.total') }}</dt>
-        <dd class="e-mono"><b><MoneyText :value="rv.total" unit /></b></dd>
+        <dd class="e-mono"><b><MoneyText :value="rv.total" :decimals="rv.dec" unit /></b></dd>
         <template v-if="rv.message">
           <dt>{{ $t('msg.modern.send.message') }}</dt>
           <dd>{{ rv.message }}</dd>
@@ -192,13 +192,12 @@
       <p v-if="isLoadingSend" class="e-help e-send-sending" role="status"><span class="e-spinner" aria-hidden="true"></span>{{ $t('msg.modern.send.sending_status') }}</p>
     </template>
     <template #foot>
-      <button type="button" class="e-btn e-btn-ghost" :disabled="isLoadingSend" @click="reviewOpen = false">{{ $t('msg.modern.send.back') }}</button>
+      <button type="button" class="e-btn e-btn-ghost" autofocus :disabled="isLoadingSend" @click="reviewOpen = false">{{ $t('msg.modern.send.back') }}</button>
       <button
         type="button"
         class="e-btn e-btn-primary"
         :class="{ 'e-is-busy': isLoadingSend }"
         :aria-busy="isLoadingSend ? 'true' : null"
-        autofocus
         @click="confirmSend"
       ><EIcon name="send" />{{ isLoadingSend || !rv ? $t('msg.modern.send.sending') : $t('msg.modern.send.send_amount', { n: rvAmountText }) }}</button>
     </template>
@@ -217,6 +216,12 @@
   import { formatEpic, nodeSyncPercent } from '@/components/modern/format';
 
   const HEAD = 6;
+  /* how many decimals a typed amount or a number has, 4 to 8 */
+  function decimalsOf(v) {
+    const s = typeof v == 'number' ? v.toFixed(8).replace(/0+$/, '') : String(v || '').trim();
+    const m = s.match(/[.,](\d*)$/);
+    return Math.min(8, Math.max(4, m ? m[1].length : 0));
+  }
   const TAIL = 6;
 
   export default reskin(HttpSend, {
@@ -310,7 +315,9 @@
         const d = this.dandelionOn;
         return this.$t('msg.modern.send.' + (p && d ? 'adv_both' : p ? 'adv_proof' : d ? 'adv_dandelion' : 'adv_none'));
       },
-      rvAmountText() { return this.rv ? formatEpic(this.rv.amount, { locale: this.locale }) : ''; },
+      rvAmountText() { return this.rv ? formatEpic(this.rv.amount, { locale: this.locale, decimals: this.rv.dec }) : ''; },
+      /* decimals to show: as many as the amount or the fee has (EPIC has 8), at least 4 */
+      dec() { return Math.max(decimalsOf(this.amountField && this.amountField.input), decimalsOf(this.feeNum)); },
     },
     methods: {
       clearError(field, key) {
@@ -322,7 +329,7 @@
         if (i) i.focus();
       },
       /* "Review send": the same checks the Classic Send button runs, then the confirmation */
-      review() {
+      async review() {
         if (!this.canSend || this.isLoadingSend) return;
         this.resetFormErrors();
         const valid = [];
@@ -333,6 +340,9 @@
           if (this.withproof && this.proofAddressField.errors && this.proofAddressField.errors.proof_address) this.advOpen = true;
           return;
         }
+        //the fee estimate only follows keyup: ask again for exactly this amount
+        this.amountField.fee = 0;
+        try { await this.amountField.getFee(); } catch (e) { /* no fee shown then */ }
         const to = this.addressField.defaultValue;
         const kind = (this.epicboxSelected) ? 'epicbox' : /\.onion/i.test(to) ? 'tor' : 'http';
         const amount = Number(this.amountField.defaultValue);
@@ -352,6 +362,7 @@
           amount,
           fee,
           total: amount + fee,
+          dec: Math.max(decimalsOf(this.amountField.defaultValue), decimalsOf(fee)),
           message: this.message,
           proof: this.withproof,
         };
