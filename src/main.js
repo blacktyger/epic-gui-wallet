@@ -14,7 +14,7 @@ import App from './App.vue'
 import mitt from 'mitt';
 import moment from 'moment';
 import Toaster from "@meforma/vue-toaster";
-import { applyTheme, getUi, getScheme, UI_CLASSIC } from './shared/theme.js';
+import { applyTheme, applyScale, getUi, getScheme, getScale, UI_CLASSIC } from './shared/theme.js';
 
 
 
@@ -41,6 +41,7 @@ moment.updateLocale('de', {
 //stylesheet, before the first render
 const ui = getUi();
 applyTheme(ui, getScheme());
+applyScale(getScale(), ui);
 const uiStyles = ui === UI_CLASSIC
   ? import(/* webpackChunkName: "ui-classic" */ './ui/classic.js')
   : import(/* webpackChunkName: "ui-modern" */ './ui/modern.js');

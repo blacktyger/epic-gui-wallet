@@ -39,6 +39,17 @@
             <p class="help" v-if="uiRestartNeeded">{{ $t("msg.modern.interface_restart") }}
               <a @click="restartUi">{{ $t("msg.modern.restart_now") }}</a></p>
           </div>
+          <div class="field">
+            <label class="label" for="settingsScale">{{ $t("msg.modern.scale") }}</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select id="settingsScale" :value="scaleSelected" @change="saveInterfaceScale(Number($event.target.value))">
+                  <option v-for="s in scales" :key="s" :value="s">{{ s }}%</option>
+                </select>
+              </div>
+            </div>
+            <p class="help">{{ $t("msg.modern.scale_hint") }}</p>
+          </div>
           <div class="field"></div>
           <div class="field">
             <label class="label">{{ $t("msg.settings.epicbox_domain") }}</label>
@@ -91,7 +102,7 @@ import { ref, onUnmounted } from 'vue';
 import { useStore } from '@/store';
 import NodeserverField from "@/components/form/nodeserverField";
 import useFormValidation from "@/modules/useFormValidation";
-import { getUi, getScheme, saveUi, saveScheme } from '@/shared/theme';
+import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } from '@/shared/theme';
 
   export default {
     name: "settings",
@@ -130,7 +141,7 @@ import { getUi, getScheme, saveUi, saveScheme } from '@/shared/theme';
     },
     data() {
       //the interface (Modern / Classic) and the Modern colour scheme, app-wide (shared/theme.js)
-      return { uiSelected: getUi(), uiSaved: getUi(), schemeSelected: getScheme() };
+      return { uiSelected: getUi(), uiSaved: getUi(), schemeSelected: getScheme(), scaleSelected: getScale(), scales: SCALES };
     },
     computed: {
       //the saved interface differs from the one running: it applies after a restart
@@ -177,6 +188,13 @@ import { getUi, getScheme, saveUi, saveScheme } from '@/shared/theme';
       //lock the wallet and open the window again with the saved interface
       restartUi(){
         this.emitter.emit('app.reloadUi');
+      },
+      //text and control size, applied at once (shared/theme.js)
+      saveInterfaceScale(scale){
+        this.scaleSelected = scale;
+        if(!saveScale(scale, this.configService)){
+          this.$toast.error(this.$t("msg.settings.error_save"));
+        }
       },
       saveColourScheme(scheme){
         this.schemeSelected = scheme;

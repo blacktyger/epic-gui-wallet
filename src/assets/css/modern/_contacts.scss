@@ -22,7 +22,7 @@
 .e-con-facts dt { color: var(--dim); font-size: var(--fs-sm); margin-bottom: 6px; }
 .e-con-facts dd { margin: 0; }
 .e-con-facts dd.e-addr { padding: var(--sp-2) var(--sp-1) var(--sp-2) var(--sp-4); }
-.e-con-facts dd.e-addr code { font-size: 13px; }
+.e-con-facts dd.e-addr code { font-size: 0.8125rem; }
 .e-con-yes { display: flex; align-items: center; gap: var(--sp-2); }
 .e-con-note { color: var(--text); max-width: 60ch; }
 

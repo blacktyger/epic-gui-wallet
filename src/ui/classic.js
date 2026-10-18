@@ -2,3 +2,5 @@
  * Loaded by main.js only when the Classic interface is chosen (shared/theme.js). */
 import '../assets/css/epiccashApp.scss';
 import '../assets/css/animate.css';
+//only active at an interface scale other than 100%
+import '../assets/css/classic-scale.scss';
