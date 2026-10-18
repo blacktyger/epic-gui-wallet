@@ -28,7 +28,7 @@
                       <mdicon size=20 v-if="!store.state.hideValues" name="eye-outline" />
                       <mdicon size=20 v-else name="eye-off-outline" />
                     </span>
-                    {{ $t("msg.info.total") }}: <span v-bind:class="{'amount-hidden': store.state.hideValues }" style="color: #d19944;">{{ $filters.currencyFormat(store.state.summary.total, locale) }} EPIC</span>&nbsp;<span v-bind:class="{'is-hidden': store.state.hideValues }" class="is-size-7">&#x2248; ${{ $filters.currencyFormat(usdPrice, locale) }}</span>
+                    {{ $t("msg.info.total") }}: <span v-bind:class="{'amount-hidden': store.state.hideValues }" style="color: #d19944;">{{ $filters.currencyFormat(store.state.summary.total, locale) }} EPIC</span>&nbsp;<span v-if="configService.defaultAccountNetwork == 'mainnet'" v-bind:class="{'is-hidden': store.state.hideValues }" class="is-size-7">&#x2248; ${{ $filters.currencyFormat(usdPrice, locale) }}</span>
 
                   </h3>
 
@@ -85,7 +85,8 @@ export default {
   watch: {
       'store.state.summary.total': async function (newVal) {
 
-        if(newVal){
+        //no fiat value for test networks
+        if(newVal && this.configService.defaultAccountNetwork == 'mainnet'){
 
           let geckoPrice = await window.config.getPrice();
           if(geckoPrice.length >= 1){

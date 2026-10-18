@@ -92,6 +92,7 @@ class ConfigService {
     this.configFile = '';
     this.apiSecretPath = '';
     this.ownerApisecret = '';
+    this.walletListenerPort = 3415;
   }
 
   checkServerTomlFile(defaultAccountWalletdir){
@@ -293,6 +294,10 @@ class ConfigService {
 
         //rewrite some toml properties to work with owner_api lifecycle and foreign receive
         let tomlContent = window.nodeFs.readFileSync(tomlFile, {encoding:'utf8', flag:'r'});
+
+        //the listener port depends on the network (3415 mainnet, 13415 floonet)
+        const listenPort = tomlContent.match(/^api_listen_port\s*=\s*(\d+)/m);
+        this.walletListenerPort = listenPort ? parseInt(listenPort[1]) : (this.defaultAccountNetwork == 'floonet' ? 13415 : 3415);
 
         const re = /^owner_api_include_foreign(\s)*=(\s)*false/gm;
         if(tomlContent.search(re) != -1){
