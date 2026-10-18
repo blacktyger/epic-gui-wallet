@@ -280,6 +280,7 @@ const messages = {
       node_offline: 'Node is offline',
       external_node_online: 'External Node is online',
       external_node_offline: 'External Node is offline',
+      epicbox_wait_timeout: 'Epicbox not started: node not synced. Start it from the Receive page.',
       node_unreachable: 'node unreachable',
       background_process: 'Please close all processes before continuing.',
       walletonline: 'Your wallet is online',

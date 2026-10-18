@@ -132,6 +132,8 @@
 
 
 
+        }else{
+          this.$toast.error(this.t("msg.app.epicbox_wait_timeout"));
         }
 
 
@@ -292,14 +294,16 @@
     },
     methods: {
 
-      waitForNodesynced (variable) {
-        function waitFor(result) {
-          if (result != null) {
-            return result;
+      waitForNodesynced (variable, timeoutMs = 10*60*1000) {
+        const started = Date.now();
+        function waitFor() {
+          if (window[variable] === true) {
+            return Promise.resolve(true);
           }
-          return new Promise((resolve) => setTimeout(resolve, 100))
-            .then(() => Promise.resolve(window[variable]))
-            .then((res) => waitFor(res));
+          if (Date.now() - started > timeoutMs) {
+            return Promise.resolve(false);
+          }
+          return new Promise((resolve) => setTimeout(resolve, 500)).then(() => waitFor());
         }
         return waitFor();
       },
