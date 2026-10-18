@@ -88,12 +88,16 @@
 
                 <td>
 
-                  <span style="width:100%;" v-if="tx.status=='confirmed' && tx.tx_type=='TxSent'" class="tag is-danger is-normal">{{ $t("msg.sent_confirmed") }}</span>
-                  <span style="width:100%;" v-if="tx.status=='confirmed' && tx.tx_type=='TxReceived'" class="tag is-success is-normal">{{ $t("msg.received_confirmed") }}</span>
+                  <template v-if="txState(tx).state=='confirming'">
+                    <span style="width:100%;" class="tag is-warning is-normal">({{txState(tx).confirmations}}/{{minConfirmations}}) {{ $t("msg.unconfirmed") }}</span>
+                  </template>
+                  <template v-else>
+                    <span style="width:100%;" v-if="tx.status=='confirmed' && tx.tx_type=='TxSent'" class="tag is-danger is-normal">{{ $t("msg.sent_confirmed") }}</span>
+                    <span style="width:100%;" v-if="tx.status=='confirmed' && tx.tx_type=='TxReceived'" class="tag is-success is-normal">{{ $t("msg.received_confirmed") }}</span>
+                  </template>
                   <span style="width:100%;white-space: break-spaces;height: auto;text-align: center;" v-if="tx.status=='unconfirmed' && (tx.tx_type=='TxSent' || tx.tx_type=='TxSentCreated')" class="tag is-warning is-normal is-size-7">{{ $t("msg.sent_unconfirmed") }}</span>
                   <span style="width:100%;white-space: break-spaces;height: auto;text-align: center;" v-if="tx.status=='unconfirmed' && tx.tx_type=='TxSentMempool'" class="tag is-warning is-normal is-size-7">{{ $t("msg.received_mempool") }}</span>
-
-
+                  <span style="width:100%;white-space: break-spaces;height: auto;text-align: center;" v-if="tx.status=='unconfirmed' && tx.tx_type=='TxReceived'" class="tag is-warning is-normal is-size-7">{{ $t("msg.received_unconfirmed") }}</span>
 
                   <span style="width:100%;" v-if="tx.status=='cancelled'" class="tag is-warning is-normal">{{ $t("msg.txs.canceled") }}</span>
 
@@ -240,6 +244,7 @@
 
   import { ref, computed, onUnmounted } from 'vue';
   import { useStore } from '@/store'
+  import { MIN_CONFIRMATIONS, txHeights, txConfirmationState } from '@/shared/confirmations';
 
 
 
@@ -257,6 +262,8 @@
       const count_per_page = ref(10);
 
       const total_txs = computed(() => store.state.txs)
+      //the height each tx was mined at, from the outputs it created (same list as the Coins tab)
+      const heights = computed(() => txHeights(store.state.commits))
 
 
       const keyword =  ref("");
@@ -283,11 +290,14 @@
         isRefresh,
         count_per_page,
         locale,
-        isLoading
+        isLoading,
+        heights,
+        minConfirmations: MIN_CONFIRMATIONS
       }
     },
     watch: {
         total_txs: function (newVal) {
+          this.isRefresh = false;
           if(newVal){
 
             if (newVal.length % this.count_per_page == 0){
@@ -338,32 +348,15 @@
         this.txDetail = this.detailToggle ? tx.id : -1;
 
       },
-      async getTxs() {
+      txState(tx){
+        return txConfirmationState(tx, this.heights, this.store.getters.tipHeight);
+      },
 
+      /* the full refresh in App.vue: summary (the tip), txs and outputs together, so all views agree */
+      getTxs() {
         this.isRefresh = true;
-        let txs = await this.$walletService.getTransactions(true, null, null);
-        this.isRefresh = false;
-
-        if(txs && txs.result && txs.result.Ok){
-          let data = txs.result.Ok.txs.reverse()
-          console.log("reload txs ",data);
-          this.store.dispatch('processTxs', {data: data, table:this.$addressTransactionsService})
-
-          if(this.currentFilter == ''){
-            this.current_txs = this.total_txs.slice(0, this.count_per_page)
-            if (this.total_txs.length % this.count_per_page == 0){
-              this.pages_count = parseInt(this.total_txs.length/this.count_per_page)
-            }else{
-              this.pages_count = parseInt(this.total_txs.length/this.count_per_page) + 1
-            }
-          }else{
-              this.current_txs = this.filter(this.currentFilter, 0, false);
-          }
-
-        }else{
-
-          this.$toast.error(txs ? txs.error : this.$t("msg.app.wallet_api_unreachable"));
-        }
+        this.emitter.emit('app.update');
+        setTimeout(() => { this.isRefresh = false; }, 15000);
       },
 
       next(){

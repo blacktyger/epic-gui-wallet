@@ -101,6 +101,7 @@
 const fs = window.nodeFs;
 import { ref } from 'vue';
 import { useStore } from '@/store';
+import { MIN_CONFIRMATIONS } from '@/shared/confirmations';
 import AmountField from "@/components/form/amountField";
 import ProofAddressField from "@/components/form/proofAddressField";
 import AddressField from "@/components/form/addressField";
@@ -249,7 +250,7 @@ export default {
         let tx_data = {
           "src_acct_name": null,
           "amount": this.amountField.defaultValue * 100000000,
-          "minimum_confirmations": 3,
+          "minimum_confirmations": MIN_CONFIRMATIONS,
           "max_outputs": 500,
           "num_change_outputs": 1,
           "selection_strategy_is_use_all": false,
@@ -343,7 +344,7 @@ export default {
           "src_acct_name": null,
           "amount": this.amountField.defaultValue * 100000000,
           "message": this.message,
-          "minimum_confirmations": 3,
+          "minimum_confirmations": MIN_CONFIRMATIONS,
           "max_outputs": 500,
           "num_change_outputs": 1,
           "selection_strategy_is_use_all": false,

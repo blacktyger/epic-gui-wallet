@@ -80,8 +80,9 @@
                       </td>
                       <td><span v-bind:class="{'amount-hidden': store.state.hideValues }" >{{ ct.value/100000000 }}</span></td>
                       <td>
-                        <span v-if="ct.status=='Unspent'" class="tag is-success is-normal">{{ $t("msg.commit.unspent") }}</span>
-                        <span v-if="ct.status=='toUnspent'" class="tag is-warning is-normal">({{ct.confirmed_count+'/10'}}) {{ $t("msg.unconfirmed") }} </span>
+                        <span v-if="coinState(ct).state=='confirming'" class="tag is-warning is-normal">({{coinState(ct).confirmations}}/{{minConfirmations}}) {{ $t("msg.unconfirmed") }} </span>
+                        <span v-else-if="coinState(ct).state=='immature'" class="tag is-warning is-normal">{{ $t("msg.info.immature") }}</span>
+                        <span v-else-if="ct.status=='Unspent'" class="tag is-success is-normal">{{ $t("msg.commit.unspent") }}</span>
                         <span v-if="ct.status=='Unconfirmed'" class="tag is-warning is-normal">{{ $t("msg.info.unfinalization") }}</span>
                         <span v-if="ct.status=='Locked'" class="tag is-danger is-normal">{{ $t("msg.locked") }}</span>
                         <span v-if="ct.status=='Spent'" class="tag is-warning is-normal">{{ $t("msg.commit.spent") }}</span>
@@ -149,6 +150,7 @@
 
   import { ref, computed } from 'vue';
   import { useStore } from '@/store'
+  import { MIN_CONFIRMATIONS, outputConfirmationState } from '@/shared/confirmations';
 
   export default {
     name: 'commit',
@@ -191,17 +193,25 @@
         current_page_index,
         searched,
         keyword,
-        locale
+        locale,
+        minConfirmations: MIN_CONFIRMATIONS
       }
     },
     watch: {
         total_commits: function (newVal) {
+          this.isRefresh = false;
           if(newVal){
-            this.current_commits = newVal.slice(0, this.count_per_page);
-            if (newVal.length % this.count_per_page == 0){
-              this.pages_count = parseInt(newVal.length/this.count_per_page)
+            let s = (this.current_page_index-1)*this.count_per_page
+            if(this.currentFilter == ''){
+              this.current_commits = newVal.slice(s, s+this.count_per_page);
+              if (newVal.length % this.count_per_page == 0){
+                this.pages_count = parseInt(newVal.length/this.count_per_page)
+              }else{
+                this.pages_count = parseInt(newVal.length/this.count_per_page) + 1
+              }
             }else{
-              this.pages_count = parseInt(newVal.length/this.count_per_page) + 1
+              //filter() sets the page count of the filtered list
+              this.current_commits = this.filter(this.currentFilter, s, false);
             }
           }
         },
@@ -227,7 +237,13 @@
       }
     },
 
+    beforeUnmount() {
+      clearTimeout(this.refreshTimer);
+    },
     methods: {
+      coinState(ct){
+        return outputConfirmationState(ct, this.store.getters.tipHeight);
+      },
       mouseover(index){
         if(this.copied===-1){
           this.showCopy = index
@@ -245,28 +261,12 @@
         this.showCopy = -1
       },
 
-      async getCommits() {
+      /* the full refresh in App.vue: summary (the tip), txs and outputs together, so all views agree */
+      getCommits() {
           this.isRefresh = true;
-          let commits = await this.$walletService.getCommits(false, true, null);
-          this.isRefresh = false;
-
-          if(commits && commits.result && commits.result.Ok){
-            //this.total_commits =
-            let data = commits.result.Ok[1].reverse();
-            this.store.dispatch('processCommits', data)
-
-            this.current_commits = this.total_commits.slice(0, this.count_per_page)
-
-            if (this.total_commits.length%this.count_per_page ==0){
-              this.pages_count = parseInt(this.total_commits.length/this.count_per_page)
-            }else{
-              this.pages_count = parseInt(this.total_commits.length/this.count_per_page) + 1
-            }
-          }else{
-            let resp = commits.error
-            window.debug ? console.log('commits error', commits.error) : null;
-          }
-
+          this.emitter.emit('app.update');
+          clearTimeout(this.refreshTimer);
+          this.refreshTimer = setTimeout(() => { this.isRefresh = false; }, 15000);
       },
 
 

@@ -30,6 +30,7 @@
 <script>
 
   import mixin from './mixin.js';
+  import { MIN_CONFIRMATIONS, outputConfirmationState } from '@/shared/confirmations';
   import { useI18n } from 'vue-i18n/index';
   import { ref, onUnmounted } from 'vue';
   import { useStore } from '@/store';
@@ -163,9 +164,10 @@
 
           }, 3000);
 
-          setTimeout(async() => {
+          clearTimeout(this.restartRefreshId);
+          this.restartRefreshId = setTimeout(() => {
 
-            this.startRefresh();
+            this.requestRefresh();
 
           }, 30000);
 
@@ -182,8 +184,7 @@
       })
 
       this.emitter.on('app.update', () => {
-        this.stopRefresh();
-        this.startRefresh();
+        this.requestRefresh();
       });
 
       this.emitter.on('app.logout', async () => {
@@ -193,6 +194,7 @@
         this.store.commit('user', {});
         this.store.commit('txs', []);
         this.store.commit('commits', []);
+        this.store.commit('walletTip', 0);
         this.store.commit('summary', {
           spendable: 0,
           total: 0,
@@ -386,7 +388,12 @@
 
             }
           }
+          //a new block: refresh the wallet now, so confirmations follow the tip
+          const lastTip = this.store.state.nodeStatus && this.store.state.nodeStatus.tip ? this.store.state.nodeStatus.tip.height : 0;
           this.store.commit('nodeStatus', respNode);
+          if(this.loggedIn && lastTip > 0 && respNode.tip && respNode.tip.height > lastTip){
+            this.requestRefresh();
+          }
         }else{
           //only toast on the transition to failed, keep polling
           if(!this.nodeStatusFailed){
@@ -402,16 +409,28 @@
         }
 
       },
+      /* run a wallet refresh now; one already running is followed by another */
+      requestRefresh(){
+        if(this.refreshing){
+          this.refreshAgain = true;
+          return;
+        }
+        this.stopRefresh();
+        this.startRefresh();
+      },
       stopRefresh(){
         //invalidate a refresh that is still running, so it does not schedule another one
         this.refreshGen = (this.refreshGen || 0) + 1;
+        this.refreshAgain = false;
         clearTimeout(this.refreshId);
+        clearTimeout(this.restartRefreshId);
       },
 
-      /* a transaction is still on its way (sent, received or in the mempool) */
+      /* a transaction is still on its way (sent, received or in the mempool), or a coin is still confirming */
       hasPendingTx(){
         const recent = Date.now() - 1000*60*60;
-        return (this.store.state.txs || []).some(tx => tx.status == 'unconfirmed' && Date.parse(tx.creation_ts) > recent);
+        return (this.store.state.txs || []).some(tx => tx.status == 'unconfirmed' && Date.parse(tx.creation_ts) > recent)
+          || (this.store.state.commits || []).some(c => outputConfirmationState(c, this.store.getters.tipHeight).state == 'confirming');
       },
 
       /* refresh wallet summary txs and outputs */
@@ -420,13 +439,15 @@
           //poll faster while a transaction is pending, so its status follows the listener and the chain
           let refresh = _ => this.refreshId = setTimeout(this.startRefresh, this.hasPendingTx() ? 1000*15 : 1000*60)
           const gen = this.refreshGen || 0;
+          this.refreshing = true;
+          this.refreshAgain = false;
           try {
             let refreshfromNode = this.store.state.nodeStatus.sync_status == 'synced' ?  true : false;
 
             //skip txs and outputs while the wallet api is down
-            if(await this.getSummaryinfo(refreshfromNode)){
-              await this.getTxs(refreshfromNode);
-              await this.getCommits(refreshfromNode);
+            if(await this.getSummaryinfo(refreshfromNode, gen)){
+              await this.getTxs(refreshfromNode, gen);
+              await this.getCommits(refreshfromNode, gen);
             }
 
 
@@ -437,7 +458,10 @@
             }
           }
           finally {
-            if(gen === (this.refreshGen || 0)){
+            this.refreshing = false;
+            if(this.refreshAgain){
+              this.requestRefresh();
+            }else if(gen === (this.refreshGen || 0)){
               refresh()
             }
           }
@@ -448,7 +472,8 @@
       async startRefreshNode() {
 
 
-          let refresh = _ => this.startRefreshNodeId = setTimeout(this.startRefreshNode, 1000*30)
+          //often enough to see each new block soon, which triggers a wallet refresh
+          let refresh = _ => this.startRefreshNodeId = setTimeout(this.startRefreshNode, 1000*10)
           const gen = this.nodeRefreshGen || 0;
 
           try {
@@ -471,11 +496,21 @@
         clearTimeout(this.startRefreshNodeId);
       },
 
-      async getSummaryinfo(refreshfromNode) {
+      /* a refresh that was stopped while it waited (logout, restart) does not write its results */
+      isStale(gen){
+        return gen !== undefined && gen !== (this.refreshGen || 0);
+      },
 
-          let summary = await this.$walletService.getSummaryInfo(3, refreshfromNode);
+      async getSummaryinfo(refreshfromNode, gen) {
+
+          let summary = await this.$walletService.getSummaryInfo(MIN_CONFIRMATIONS, refreshfromNode);
+          if(this.isStale(gen)){
+            return false;
+          }
           if(summary && summary.result && summary.result.Ok){
             let data = summary.result.Ok
+            //confirmations are counted from the height this balance was worked out at
+            this.store.commit('walletTip', data[1]['last_confirmed_height']);
             this.store.commit('summary', {
               spendable: data[1]['amount_currently_spendable']/100000000,
               total: data[1]['total']/100000000,
@@ -508,9 +543,12 @@
           return false;
       },
 
-      async getTxs(refreshfromNode) {
+      async getTxs(refreshfromNode, gen) {
 
         let txs = await this.$walletService.getTransactions(refreshfromNode, null, null);
+        if(this.isStale(gen)){
+          return;
+        }
 
         if(txs && txs.result && txs.result.Ok){
           let data = txs.result.Ok.txs.reverse()
@@ -527,9 +565,12 @@
 
       },
 
-      async getCommits(refreshfromNode) {
+      async getCommits(refreshfromNode, gen) {
 
           let commits = await this.$walletService.getCommits(false, refreshfromNode, null);
+          if(this.isStale(gen)){
+            return;
+          }
 
           if(commits && commits.result && commits.result.Ok){
             //this.total_commits =

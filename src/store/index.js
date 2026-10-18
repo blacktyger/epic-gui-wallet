@@ -69,6 +69,8 @@ export const store = createStore({
     updates: [],
     txs: [],
     commits: [],
+    //the height the wallet counted its balance at (summary last_confirmed_height)
+    walletTip: 0,
     summary: {
       spendable: 0,
       total: 0,
@@ -167,6 +169,10 @@ rproofs_total: 64579
       if (payload) {
         state.summary = payload;
       }
+    },
+
+    walletTip(state, payload) {
+      state.walletTip = Number(payload) || 0;
     },
 
     commits(state, payload) {
@@ -291,6 +297,15 @@ rproofs_total: 64579
 
 
   },
+  getters: {
+    /* the tip confirmations are counted from: the newer of the wallet's own (last_confirmed_height
+       of the latest refresh) and the node's, so the count follows each new block; a new node tip
+       also triggers a wallet refresh (App.vue nodeStatus) */
+    tipHeight(state){
+      const node = state.nodeStatus && state.nodeStatus.tip ? Number(state.nodeStatus.tip.height) || 0 : 0;
+      return Math.max(state.walletTip || 0, node);
+    },
+  },
   actions: {
 
     async processTxs({ commit, state }, payload) {
@@ -326,20 +341,8 @@ rproofs_total: 64579
 
     processCommits({ commit, state }, cts){
 
-      let currentHeight = state.nodeStatus.tip ? state.nodeStatus.tip.height : 0;
-
-      let cts_processed = cts.map(function(ct){
-        let c = ct['output']
-
-
-        if(currentHeight > 0 && c.status == "Unspent" && (Number(c.height)+10) > currentHeight){
-
-          c.status = 'toUnspent';
-          c.confirmed_count = currentHeight-Number(c.height);
-        }
-
-        return c
-      })
+      //confirmations are worked out by the views from getters.tipHeight, so they follow each new block
+      let cts_processed = cts.map(ct => ct['output'])
 
       state.debug ? console.log('processCommits', cts_processed) : null;
       commit('commits', cts_processed);
