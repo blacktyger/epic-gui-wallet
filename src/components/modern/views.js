@@ -31,7 +31,7 @@ export const MODERN_VIEWS = {
   create: { component: CreateView, layout: 'bare', titleKey: 'msg.modern.title_create' },
   restore: { component: RestoreView, layout: 'bare', titleKey: 'msg.modern.title_restore' },
   setupwizard: { component: SetupView, layout: 'bare', titleKey: 'msg.modern.title_setup' },
-  dashboard: { component: OverviewView, layout: 'app', titleKey: 'msg.modern.overview' },
+  dashboard: { component: OverviewView, layout: 'app', titleKey: 'msg.modern.nav_overview' },
   activity: { component: ActivityView, layout: 'app', titleKey: 'msg.modern.activity' },
   httpSend: { component: SendView, layout: 'app', titleKey: 'msg.menu.send' },
   httpReceive: { component: ReceiveView, layout: 'app', titleKey: 'msg.menu.receive' },

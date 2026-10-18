@@ -16,7 +16,7 @@ export default {
   wallet_version: 'Wallet {v}',
   needs_action: '{n} needs your action | {n} need your action',
   lock: 'Lock wallet',
-  overview: 'Overview',
+  nav_overview: 'Overview',
   activity: 'Activity',
   contacts: 'Contacts',
   hidden_amount: 'Hidden amount',

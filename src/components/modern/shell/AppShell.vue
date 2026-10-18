@@ -79,7 +79,7 @@
       },
       nav() {
         return [
-          { to: '/dashboard', icon: 'home', label: this.$t('msg.modern.overview') },
+          { to: '/dashboard', icon: 'home', label: this.$t('msg.modern.nav_overview') },
           { to: '/activity', icon: 'activity', label: this.$t('msg.modern.activity'), count: this.pendingFiles },
           { to: '/httpSend', icon: 'send', label: this.$t('msg.menu.send') },
           { to: '/httpReceive', icon: 'receive', label: this.$t('msg.menu.receive') },
