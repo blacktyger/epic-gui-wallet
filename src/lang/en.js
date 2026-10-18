@@ -290,6 +290,14 @@ const messages = {
       noTx:'No transactions',
       cancelSuccess:'This transaction canceled',
     },
+    confirmations:{
+      of: '{0} of {1} confirmations',
+      confirming: 'Confirming',
+      confirmed: 'Confirmed',
+      confirmed_count: 'Confirmed ({0} confirmations)',
+      confirmed_spendable_count: 'Confirmed, spendable ({0} confirmations)',
+      waiting: 'Waiting to be mined',
+    },
     fileSend:{
       sendAmount: 'Amount to send',
       createTxFile: 'Create transaction',

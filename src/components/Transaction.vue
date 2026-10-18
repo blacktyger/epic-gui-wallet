@@ -88,20 +88,16 @@
 
                 <td>
 
-                  <template v-if="txState(tx).state=='confirming'">
-                    <span style="width:100%;" class="tag is-warning is-normal">({{txState(tx).confirmations}}/{{minConfirmations}}) {{ $t("msg.unconfirmed") }}</span>
-                  </template>
-                  <template v-else>
-                    <span style="width:100%;" v-if="tx.status=='confirmed' && tx.tx_type=='TxSent'" class="tag is-danger is-normal">{{ $t("msg.sent_confirmed") }}</span>
-                    <span style="width:100%;" v-if="tx.status=='confirmed' && tx.tx_type=='TxReceived'" class="tag is-success is-normal">{{ $t("msg.received_confirmed") }}</span>
-                  </template>
-                  <span style="width:100%;white-space: break-spaces;height: auto;text-align: center;" v-if="tx.status=='unconfirmed' && (tx.tx_type=='TxSent' || tx.tx_type=='TxSentCreated')" class="tag is-warning is-normal is-size-7">{{ $t("msg.sent_unconfirmed") }}</span>
-                  <span style="width:100%;white-space: break-spaces;height: auto;text-align: center;" v-if="tx.status=='unconfirmed' && tx.tx_type=='TxSentMempool'" class="tag is-warning is-normal is-size-7">{{ $t("msg.received_mempool") }}</span>
-                  <span style="width:100%;white-space: break-spaces;height: auto;text-align: center;" v-if="tx.status=='unconfirmed' && tx.tx_type=='TxReceived'" class="tag is-warning is-normal is-size-7">{{ $t("msg.received_unconfirmed") }}</span>
+                  <div class="tx-status">
+                    <confirmation-ring v-if="['waiting','confirming','confirmed'].includes(txState(tx).state)" :state="txState(tx).state" :confirmations="txState(tx).confirmations" :spendable="tx.tx_type!='TxSent'" :waiting-label="waitingText(tx)" />
 
-                  <span style="width:100%;" v-if="tx.status=='cancelled'" class="tag is-warning is-normal">{{ $t("msg.txs.canceled") }}</span>
-
-
+                    <span v-if="txState(tx).state=='confirming'" class="tag is-warning is-normal">{{ $t("msg.confirmations.confirming") }}</span>
+                    <span v-else-if="txState(tx).state=='immature'" class="tag is-warning is-normal">{{ $t("msg.info.immature") }}</span>
+                    <span v-else-if="txState(tx).state=='confirmed' && tx.tx_type=='TxSent'" class="tag is-danger is-normal">{{ $t("msg.sent_confirmed") }}</span>
+                    <span v-else-if="txState(tx).state=='confirmed'" class="tag is-success is-normal">{{ $t("msg.received_confirmed") }}</span>
+                    <span v-else-if="txState(tx).state=='waiting'" class="tag is-warning is-normal is-size-7 is-wrapping">{{ waitingText(tx) }}</span>
+                    <span v-else class="tag is-warning is-normal">{{ $t("msg.txs.canceled") }}</span>
+                  </div>
                 </td>
 
 
@@ -244,12 +240,16 @@
 
   import { ref, computed, onUnmounted } from 'vue';
   import { useStore } from '@/store'
-  import { MIN_CONFIRMATIONS, txHeights, txConfirmationState } from '@/shared/confirmations';
+  import { txHeights, txConfirmationState } from '@/shared/confirmations';
+  import ConfirmationRing from '@/components/layout/ConfirmationRing.vue';
 
 
 
   export default {
     name: 'transaction',
+    components: {
+      ConfirmationRing
+    },
     setup(){
 
 
@@ -291,8 +291,7 @@
         count_per_page,
         locale,
         isLoading,
-        heights,
-        minConfirmations: MIN_CONFIRMATIONS
+        heights
       }
     },
     watch: {
@@ -332,6 +331,9 @@
 
 
     },
+    beforeUnmount() {
+      clearTimeout(this.refreshTimer);
+    },
     methods: {
       copy(text){
         window.clipboard.writeText(text);
@@ -348,6 +350,16 @@
         this.txDetail = this.detailToggle ? tx.id : -1;
 
       },
+      /* what an unconfirmed tx waits for */
+      waitingText(tx){
+        if(tx.tx_type=='TxReceived'){
+          return this.$t("msg.received_unconfirmed");
+        }
+        if(tx.tx_type=='TxSentMempool'){
+          return this.$t("msg.received_mempool");
+        }
+        return this.$t("msg.sent_unconfirmed");
+      },
       txState(tx){
         return txConfirmationState(tx, this.heights, this.store.getters.tipHeight);
       },
@@ -356,7 +368,8 @@
       getTxs() {
         this.isRefresh = true;
         this.emitter.emit('app.update');
-        setTimeout(() => { this.isRefresh = false; }, 15000);
+        clearTimeout(this.refreshTimer);
+        this.refreshTimer = setTimeout(() => { this.isRefresh = false; }, 15000);
       },
 
       next(){
@@ -467,3 +480,20 @@
     }
   }
 </script>
+
+<style scoped>
+  .tx-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tx-status .tag {
+    flex: 1;
+    min-width: 0;
+  }
+  .tx-status .tag.is-wrapping {
+    white-space: break-spaces;
+    height: auto;
+    text-align: center;
+  }
+</style>

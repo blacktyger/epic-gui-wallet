@@ -55,7 +55,7 @@
             </thead>
             <tbody v-if="current_commits.length">
 
-              <tr v-for="(ct, index) in current_commits" :key="ct.id" @mouseover="(event)=>mouseover(index)" @mouseleave="mouseLeave" style="width:46px;" >
+              <tr v-for="(ct, index) in current_commits" :key="ct.commit" @mouseover="(event)=>mouseover(index)" @mouseleave="mouseLeave" style="width:46px;" >
                       <td >
 
                           <span title="copy to clipboard" v-if="showCopy===index" @click="copy(index)">
@@ -80,12 +80,15 @@
                       </td>
                       <td><span v-bind:class="{'amount-hidden': store.state.hideValues }" >{{ ct.value/100000000 }}</span></td>
                       <td>
-                        <span v-if="coinState(ct).state=='confirming'" class="tag is-warning is-normal">({{coinState(ct).confirmations}}/{{minConfirmations}}) {{ $t("msg.unconfirmed") }} </span>
-                        <span v-else-if="coinState(ct).state=='immature'" class="tag is-warning is-normal">{{ $t("msg.info.immature") }}</span>
-                        <span v-else-if="ct.status=='Unspent'" class="tag is-success is-normal">{{ $t("msg.commit.unspent") }}</span>
-                        <span v-if="ct.status=='Unconfirmed'" class="tag is-warning is-normal">{{ $t("msg.info.unfinalization") }}</span>
-                        <span v-if="ct.status=='Locked'" class="tag is-danger is-normal">{{ $t("msg.locked") }}</span>
-                        <span v-if="ct.status=='Spent'" class="tag is-warning is-normal">{{ $t("msg.commit.spent") }}</span>
+                        <div class="coin-status">
+                          <confirmation-ring v-if="ringState(ct)" :state="ringState(ct)" :confirmations="coinState(ct).confirmations" />
+                          <span v-if="coinState(ct).state=='confirming'" class="tag is-warning is-normal">{{ $t("msg.confirmations.confirming") }}</span>
+                          <span v-else-if="coinState(ct).state=='immature'" class="tag is-warning is-normal">{{ $t("msg.info.immature") }}</span>
+                          <span v-else-if="coinState(ct).state=='confirmed'" class="tag is-success is-normal">{{ $t("msg.commit.unspent") }}</span>
+                          <span v-else-if="coinState(ct).state=='waiting'" class="tag is-warning is-normal">{{ $t("msg.info.unfinalization") }}</span>
+                          <span v-else-if="ct.status=='Locked'" class="tag is-danger is-normal">{{ $t("msg.locked") }}</span>
+                          <span v-else-if="ct.status=='Spent'" class="tag is-warning is-normal">{{ $t("msg.commit.spent") }}</span>
+                        </div>
                       </td>
 
               </tr>
@@ -150,12 +153,13 @@
 
   import { ref, computed } from 'vue';
   import { useStore } from '@/store'
-  import { MIN_CONFIRMATIONS, outputConfirmationState } from '@/shared/confirmations';
+  import { outputConfirmationState } from '@/shared/confirmations';
+  import ConfirmationRing from '@/components/layout/ConfirmationRing.vue';
 
   export default {
     name: 'commit',
     components: {
-
+      ConfirmationRing
     },
     props:{
 
@@ -193,8 +197,7 @@
         current_page_index,
         searched,
         keyword,
-        locale,
-        minConfirmations: MIN_CONFIRMATIONS
+        locale
       }
     },
     watch: {
@@ -243,6 +246,11 @@
     methods: {
       coinState(ct){
         return outputConfirmationState(ct, this.store.getters.tipHeight);
+      },
+      /* the ring of a coin, or null for immature, locked and spent coins */
+      ringState(ct){
+        const s = this.coinState(ct).state;
+        return ['waiting', 'confirming', 'confirmed'].includes(s) ? s : null;
       },
       mouseover(index){
         if(this.copied===-1){
@@ -369,3 +377,11 @@
     }
   }
 </script>
+
+<style scoped>
+  .coin-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+</style>
