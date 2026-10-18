@@ -91,3 +91,52 @@
 .e-stg-panes .e-choice .e-card { align-content: start; }
 .e-stg-savebar > span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .e-stg-sb-detail { display: none; } @media (min-width: 1280px) { .e-stg-sb-detail { display: inline; } }
+
+/* Sub-navigation: the router marks the open page with aria-current="page" */
+.e-stg-nav a[aria-current='page'] { background: var(--s3); color: var(--text); }
+.e-stg-nav a[aria-current='page'] .e-icon { color: var(--accent-text); }
+.e-stg-lede { color: var(--dim); font-size: var(--fs-sm); max-width: 60ch; }
+.e-stg-inline.e-top { align-items: flex-start; }
+.e-stg-inline > .e-grow { min-width: 0; }
+.e-stg-inline .e-btn { flex: none; }
+.e-stg-savebar > .e-btn { flex: none; }
+.e-stg-savebar > span { flex: 1; }
+.e-set-row .e-stg-why { margin-top: var(--sp-2); }
+.e-stg-set-notice { margin-top: var(--sp-2); }
+.e-stg-panes .e-notice { margin-top: var(--sp-2); }
+.e-set-row .e-ctl .e-btn { text-decoration: none; }
+
+/* Recovery phrase on its own page */
+.e-stg-panes .e-seed-wrap { max-width: 640px; }
+.e-stg-panes .e-seed { margin: 0; padding: 0; }
+.e-stg-panes .e-seed li { min-height: 40px; }
+.e-stg-qr { display: flex; justify-content: center; margin-top: var(--sp-4); }
+.e-stg-qr canvas { max-width: 100%; border-radius: var(--r-sm); }
+
+/* Update log */
+.e-stg-upd-state { display: flex !important; align-items: center; gap: var(--sp-2); }
+.e-stg-upd-state.e-is-bad { color: var(--risk); }
+.e-stg-upd-text { font-size: 12.5px; overflow-wrap: anywhere; white-space: pre-wrap; max-width: none !important; }
+.e-stg-credits { margin-top: var(--sp-6); }
+
+/* Help topics: Help.vue toggles message-body / is-hidden on the DOM */
+.e-stg-search { margin-bottom: var(--sp-4); max-width: 480px; }
+.e-stg-search .e-input { padding-right: 48px; }
+.e-stg-faq .e-stg-topic { border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--s1); }
+.e-stg-topic-head { position: relative; display: flex; align-items: center; gap: var(--sp-2); padding: 0 var(--sp-4); min-height: 44px; }
+.e-stg-topic-head p { color: var(--text); font-weight: 500; }
+.e-stg-topic-btn { background: none; border: 0; padding: 0; color: var(--dim); display: grid; place-items: center; }
+.e-stg-topic-btn::after { content: ''; position: absolute; inset: 0; border-radius: var(--r-sm); }
+.e-stg-topic-btn:focus-visible { outline: none; }
+.e-stg-topic-btn:focus-visible::after { outline: 2px solid var(--accent); outline-offset: -2px; }
+.e-stg-topic-btn .e-icon { transition: transform var(--dur) var(--ease); }
+.e-stg-topic-btn[aria-expanded='true'] .e-icon { transform: rotate(90deg); }
+.e-stg-topic-head:hover { background: var(--hover); border-radius: var(--r-sm); }
+.e-stg-topic-body { padding: 0 var(--sp-4) var(--sp-4) calc(var(--sp-4) + 24px); color: var(--dim); max-width: 72ch; }
+.e-stg-faq .is-hidden { display: none !important; }
+.e-stg-faq .has-background-warning { background: var(--accent); color: var(--accent-ink); border-radius: 2px; }
+
+/* First scan dialog */
+.e-stg-scanout { margin: 0; font-size: 12px; line-height: 1.7; color: var(--dim); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 280px; overflow: auto; background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-sm); padding: var(--sp-3); }
+.e-stg-line { display: block; margin-bottom: var(--sp-1); }
+.e-stg-line:last-child { margin-bottom: 0; }
