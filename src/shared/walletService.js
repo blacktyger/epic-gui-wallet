@@ -560,7 +560,8 @@ class WalletService {
 
         let args = [
           ...(network != 'mainnet' ? ['--' + network] : []),
-          //'--pass', password,
+          //epic-wallet 4.x: pass the password as an argument, like the other wallet commands
+          '--pass', password,
           '-c', this.configService.platform == "win" ? addQuotations(userhomedir) : userhomedir,
           'init'
         ];
@@ -572,7 +573,8 @@ class WalletService {
 
         let args = [
           ...(network != 'mainnet' ? ['--' + network] : []),
-          //'--pass', password,
+          //epic-wallet 4.x: pass the password as an argument, like the other wallet commands
+          '--pass', password,
           '-c', this.configService.platform == "win" ? addQuotations(userhomedir) : userhomedir,
           'init', '-r'
         ];

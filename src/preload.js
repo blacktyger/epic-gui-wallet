@@ -52,6 +52,17 @@ const fork = require('child_process').fork;
 const exec = require('child_process').exec;
 const execFile = require('child_process').execFile;
 const validChannels = ['firstscan-stdout', 'scan-stdout', 'scan-finish', 'scan-error', 'walletExisted', 'walletCreated', 'walletCreateFailed', 'nodeBackground', 'epicboxBackground'];
+
+//extract the recovery phrase from epic-wallet init / init -r stdout (4.1 mixes log lines into stdout)
+function parseRecoveryPhrase(stdout){
+  const m = stdout.match(/Your recovery phrase is:\s*([\s\S]*?)\s*Please back-up these words/);
+  if(!m){
+    return '';
+  }
+  const words = m[1].split(/\s+/).filter(w => /^[a-z]+$/.test(w));
+  return (words.length == 12 || words.length == 24) ? words.join(' ') : '';
+}
+
 contextBridge.exposeInMainWorld('nodeChildProcess', {
 
     async kill(pid){
@@ -101,7 +112,6 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
           let newSeedData = '';
           let errorData = '';
-          let recordData = false;
 
           createProcess.stdout.setEncoding('utf8');
           createProcess.stdout.on('data', (data) => {
@@ -111,12 +121,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
             if(data.includes('Password:')){
               createProcess.stdin.write( password+"\n");
             }
-            //start recording data
-            if(data.includes('Please back-up these words in a non-digital format.') || recordData){
-              recordData = true;
-              newSeedData += data;
-            }
-
+            newSeedData += data;
 
           });
 
@@ -132,19 +137,12 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
               resolve({success: false, msg: errorData});
             }else if(newSeedData != ''){
 
-              let wordSeed = newSeedData;
-
-              //TODO replace with a preg match replace
-              wordSeed = wordSeed.replace("Your recovery phrase is:", "");
-              wordSeed = wordSeed.replace("Please back-up these words in a non-digital format.", "");
-              wordSeed = wordSeed.replace("Command 'init' completed successfully", "");
-              wordSeed = wordSeed.replace(/(\r\n|\n|\r)/gm, "");
-              wordSeed = wordSeed.replace("wallet.seed", "wallet.seed ==   ");
-              let wordSeedWithLog = wordSeed;
-              let wordSeedWithoutLog = wordSeedWithLog.substring(wordSeedWithLog.indexOf("==") +1);
-              wordSeedWithoutLog = wordSeedWithoutLog.trim();
-              wordSeedWithoutLog = wordSeedWithoutLog.replace("= ", "").trim();
-              resolve({success: true, msg: wordSeedWithoutLog});
+              let phrase = parseRecoveryPhrase(newSeedData);
+              if(phrase){
+                resolve({success: true, msg: phrase});
+              }else{
+                resolve({success: false, msg: 'could not read the recovery phrase from epic-wallet output'});
+              }
             }else{
               resolve({success: false, msg: 'unknow error'})
             }
@@ -395,7 +393,6 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
           let newSeedData = '';
           let errorData = '';
-          let recordData = false;
 
           recover.stdout.setEncoding('utf8');
           recover.stdout.on('data', (data) => {
@@ -407,15 +404,9 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
             if(data.includes('Please enter your recovery phrase')){
               recover.stdin.write(seeds+"\n");
-            }else{
-
-              //start recording data
-              if(data.includes('Your recovery phrase is:') || recordData){
-                recordData = true;
-                newSeedData += data;
-              }
-
             }
+
+            newSeedData += data;
 
           });
 
@@ -444,19 +435,13 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
               resolve({success: false, msg: errorData});
 
             }else if(newSeedData != ''){
-              let wordSeed = newSeedData;
 
-              //TODO replace with a preg match replace
-              wordSeed = wordSeed.replace("Your recovery phrase is:", "");
-              wordSeed = wordSeed.replace("Please back-up these words in a non-digital format.", "");
-              wordSeed = wordSeed.replace("Command 'init' completed successfully", "");
-              wordSeed = wordSeed.replace(/(\r\n|\n|\r)/gm, "");
-              wordSeed = wordSeed.replace("wallet.seed", "wallet.seed ==   ");
-              let wordSeedWithLog = wordSeed;
-              let wordSeedWithoutLog = wordSeedWithLog.substring(wordSeedWithLog.indexOf("==") +1);
-              wordSeedWithoutLog = wordSeedWithoutLog.trim();
-              wordSeedWithoutLog = wordSeedWithoutLog.replace("= ", "").trim();
-              resolve({success: true, msg: wordSeedWithoutLog});
+              let phrase = parseRecoveryPhrase(newSeedData);
+              if(phrase){
+                resolve({success: true, msg: phrase});
+              }else{
+                resolve({success: false, msg: 'could not read the recovery phrase from epic-wallet output'});
+              }
             }else{
               resolve({success: false, msg: 'unknow error'})
             }
