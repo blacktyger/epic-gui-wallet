@@ -5,6 +5,17 @@
  */
 
 module.exports = {
+  css: {
+    loaderOptions: {
+      sass: {
+        sassOptions: {
+          //Bulma 0.9 and our styles still use @import and global functions; moving to @use needs Bulma 1.0
+          quietDeps: true,
+          silenceDeprecations: ['import', 'global-builtin'],
+        },
+      },
+    },
+  },
   pluginOptions: {
     electronBuilder: {
       nodeIntegration: false,

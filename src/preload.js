@@ -31,7 +31,7 @@ const resourcePath =
 let logFile = `${moment(new Date()).format('YYYY_MM_D')}.log`
 let logPath = join(logDir, logFile);
 let processes = {};
-log.transports.file.file = logPath
+log.transports.file.resolvePath = () => logPath
 log.transports.file.format = '{y}-{m}-{d} {h}:{i}:{s}:{ms} [{level}] {text}';
 log.transports.file.maxSize = 5 * 1024 * 1024
 log.transports.file.level = 'debug';
