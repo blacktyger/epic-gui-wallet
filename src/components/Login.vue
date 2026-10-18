@@ -65,6 +65,7 @@ import AccountField from "@/components/form/accountField";
 import useFormValidation from "@/modules/useFormValidation";
 import { useRouter } from '@/router';
 import { useStore } from '@/store';
+import { i18n } from '@/i18n';
 
 export default {
   name: "login",
@@ -112,7 +113,8 @@ export default {
     },
     async login(){
 
-
+      //drop a wait for the Setup Assistant from an earlier attempt
+      this.emitter.off('setupwizard.saved');
 
       this.resetFormErrors();
       let isFormAllValid = [];
@@ -135,28 +137,46 @@ export default {
         if(user.length && action != 'settings'){
           this.store.commit('user', user[0]);
         }else{
+          //first login: open the wallet once the Setup Assistant has saved the settings
+          const password = this.passwordField.defaultValue;
+          this.emitter.off('setupwizard.saved');
+          this.emitter.on('setupwizard.saved', async () => {
+            this.emitter.off('setupwizard.saved');
+            await this.startWallet(password, false);
+          });
           this.router.push('/setupwizard');
           return;
         }
        
+        await this.startWallet(this.passwordField.defaultValue, processKilled);
+
+      }else{
+        return;
+      }
+
+    },
+
+    /* start the node and the wallet api, then log in */
+    async startWallet(password, processKilled){
+
        if(processKilled) {
          await new Promise(resolve => setTimeout(resolve, 5000));
        }
        await this.emitter.emit('app.nodeStart');
        
-        let canLogin = await this.$walletService.start(this.passwordField.defaultValue, this.configService.config['firstTime']);
+        let canLogin = await this.$walletService.start(password, this.configService.config['firstTime']);
         
         if(canLogin.success){
 
           //load user account settings first
           
-          window.debug ? console.log('LOGIN USER:', user) : null;
+          window.debug ? console.log('LOGIN USER:', this.store.state.user) : null;
           if(this.configService.config['walletlisten_on_startup']){
-            const isListen = await this.$walletService.startListen(this.passwordField.defaultValue, true, 'http');
+            const isListen = await this.$walletService.startListen(password, true, 'http');
             //start epicbox, will be executed when node has synced status
             if(this.configService.config['epicbox_domain'] != undefined && this.configService.config['epicbox_domain'] != '' ){
               
-              await this.emitter.emit('app.startEpicbox', this.passwordField.defaultValue);
+              await this.emitter.emit('app.startEpicbox', password);
              
             }
 
@@ -169,10 +189,10 @@ export default {
             }*/
 
             if(isListen && isListen.tor){
-              this.$toast.success(this.$t("msg.login.tor_started"));
+              this.$toast.success(i18n.global.t("msg.login.tor_started"));
               this.store.commit('torService', true);
             }else{
-              this.$toast.error(this.$t("msg.login.error_tor_started"));
+              this.$toast.error(i18n.global.t("msg.login.error_tor_started"));
               this.store.commit('torService', false);
             }
 
@@ -189,15 +209,14 @@ export default {
           this.isLoading = true;
           this.$walletService.stopWallet();
           this.$toast.error(canLogin.msg.message ? canLogin.msg.message : canLogin.msg);
+          //back to the login form after the Setup Assistant
+          if(this.router.currentRoute.value.path != '/login'){
+            this.router.push('/login');
+          }
 
         }
 
         this.isLoading = false;
-
-      }else{
-        return;
-      }
-
     },
 
   }

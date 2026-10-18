@@ -166,7 +166,7 @@
                       <p>&nbsp;</p>
                       <div class="buttons is-centered">
                         <button class="button is-primary" @click="prevStep('step3')" ><mdicon name="arrow-left-circle-outline" />&nbsp;{{ $t("msg.setupwizard.previous_step") }}</button>
-                        <button class="button is-primary" @click="save" >{{ $t("msg.setupwizard.save_and_finish") }}</button>
+                        <button class="button is-primary" :class="{'is-loading': isSaving}" :disabled="isSaving" @click="save" >{{ $t("msg.setupwizard.save_and_finish") }}</button>
                       </div>
 
 
@@ -240,6 +240,7 @@
       const textField = ref('');
       const advancedSettings = ref(false);
       const fromRoute = route.params.from ? route.params.from : 'login';
+      const isSaving = ref(false);
 
 
       return{
@@ -262,6 +263,7 @@
         textField,
         moveback,
         fromRoute,
+        isSaving,
         domain,
         epicboxDomain
 
@@ -387,6 +389,13 @@
           this.configService.checkTomlFile();
           this.store.commit('user', user[0]);
 
+          const loginWaits = this.emitter.all.get('setupwizard.saved');
+          if(this.fromRoute != 'navbar' && loginWaits && loginWaits.length){
+            //first login: the login page starts the node and the wallet api
+            this.isSaving = true;
+            this.emitter.emit('setupwizard.saved');
+            return;
+          }
 
           console.log('start node before wallet listener');
           await this.emitter.emit('app.nodeStart');
