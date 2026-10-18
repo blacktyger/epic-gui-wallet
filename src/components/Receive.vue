@@ -93,7 +93,7 @@ export default {
 
         try{
 
-          content = fs.readFileSync(fn.path, {
+          content = fs.readFileSync(window.nodeWebUtils.getPathForFile(fn), {
             encoding: "utf8",
             flag: "r"
           });

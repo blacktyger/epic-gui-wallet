@@ -1,5 +1,5 @@
 // src/preload.js
-import { contextBridge, ipcRenderer, clipboard, shell} from 'electron'
+import { contextBridge, ipcRenderer, shell, webUtils } from 'electron'
 import os from 'os'
 import { join } from 'path'
 import path from 'path';
@@ -510,7 +510,13 @@ contextBridge.exposeInMainWorld('nodeSpawn', require('child_process').spawn);
 contextBridge.exposeInMainWorld('nodeExec', require('child_process').exec);
 contextBridge.exposeInMainWorld('nodeExecSync', require('child_process').execSync);
 contextBridge.exposeInMainWorld('nodeExecFile', require('child_process').execFile);
-contextBridge.exposeInMainWorld('clipboard', clipboard);
+contextBridge.exposeInMainWorld('clipboard', {
+  writeText: (text) => ipcRenderer.invoke('clipboard-write-text', text),
+});
+//File.path was removed in Electron 32
+contextBridge.exposeInMainWorld('nodeWebUtils', {
+  getPathForFile: (file) => webUtils.getPathForFile(file),
+});
 contextBridge.exposeInMainWorld('log', log);
 contextBridge.exposeInMainWorld('debug', debug);
 contextBridge.exposeInMainWorld('nodeFs', fs);

@@ -1,10 +1,9 @@
 'use strict'
 
-import { app, protocol, BrowserWindow, ipcMain, dialog, Menu, shell, remote } from 'electron'
+import { app, protocol, net, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard } from 'electron'
 const contextMenu = require('electron-context-menu');
 import { exec } from 'child_process'
-
-import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
+import { pathToFileURL } from 'url'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 
 
@@ -77,6 +76,21 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 
+//serve the app files on app:// (replaces the plugin's createProtocol, which uses the deprecated registerBufferProtocol)
+function createProtocol(scheme){
+  protocol.handle(scheme, (req) => {
+    let reqPath = path.normalize(new URL(req.url).pathname);
+    if(reqPath === '/' || reqPath === '\\'){
+      reqPath = '/index.html';
+    }
+    const filePath = path.join(__dirname, reqPath);
+    if(!filePath.startsWith(__dirname + path.sep)){
+      return new Response(null, {status: 404});
+    }
+    return net.fetch(pathToFileURL(filePath).toString());
+  });
+}
+
 async function createWindow() {
   // Create the browser window.
 
@@ -92,6 +106,8 @@ async function createWindow() {
       // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
       nodeIntegration: false,
       contextIsolation: true,
+      //the preload script uses Node.js (child processes, fs); renderers are sandboxed by default since Electron 20
+      sandbox: false,
       //enableRemoteModule: true,
       preload: path.join(__dirname, 'preload.js'),
       webSecurity: false
@@ -536,13 +552,18 @@ ipcMain.handle('version', () => {
   if (process.env.NODE_ENV === 'development') {
      currentVersion = require('../package.json').version;
    } else {
-     currentVersion = remote.app.getVersion();
+     currentVersion = app.getVersion();
    }
    return currentVersion;
 
 });
 
 
+
+//the clipboard module is not available in renderer processes since Electron 44
+ipcMain.handle('clipboard-write-text', (event, text) => {
+  return clipboard.writeText(String(text));
+});
 
 ipcMain.handle('resize', (event, width, height) => {
 
