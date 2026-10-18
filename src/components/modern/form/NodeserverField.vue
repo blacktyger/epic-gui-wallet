@@ -31,15 +31,24 @@
     </div>
   <p v-if="errors.nodeaddress" :id="uid + '-e'" class="e-error-msg" role="alert"><EIcon name="alertc" /><span>{{ errors.nodeaddress }}</span></p>
   </div>
+  <!-- live public nodes from status.btlabs.uk (logic in the Classic base): picking one only fills the address; hidden when unavailable -->
+  <NodeDirectory
+    v-if="select == 'external' && !directoryFailed"
+    :address="String(input || '')"
+    :chain="directoryChain"
+    :disabled="checking"
+    @pick="pickPublicNode"
+  />
 </template>
 
 <script>
   import Base from '@/components/form/nodeserverField.vue';
   import EIcon from '@/components/modern/ui/EIcon.vue';
+  import NodeDirectory from '@/components/modern/form/NodeDirectory.vue';
   import { reskin } from '@/components/modern/reskin';
   let seq = 0;
   export default reskin(Base, {
-    components: { EIcon },
+    components: { EIcon, NodeDirectory },
     data() { return { uid: 'e-nodeserverField-' + (++seq) }; },
   });
 </script>

@@ -1,0 +1,53 @@
+/* Public nodes from status.btlabs.uk, under the external node address (modern/form/NodeDirectory.vue).
+ * A list of rows like the status board, then a compact status of the node picked. */
+.e-nodedir { margin-top: var(--sp-5); animation: e-fade var(--dur) var(--ease); }
+.e-nodedir-head { display: flex; align-items: baseline; gap: var(--sp-2); margin-bottom: 6px; }
+.e-nodedir-src { color: var(--faint); font-size: var(--fs-xs); }
+
+.e-nodedir-list { border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--s1); overflow: hidden; }
+.e-nodedir-row {
+  position: relative; display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: var(--sp-3); align-items: center;
+  min-height: 48px; padding: 6px var(--sp-4); cursor: pointer;
+  border-top: 1px solid var(--line);
+  transition: background var(--dur-fast) var(--ease);
+}
+.e-nodedir-row:first-child { border-top: 0; }
+.e-nodedir-row input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.e-nodedir-row:hover { background: var(--hover); }
+.e-nodedir-row.e-is-on { background: var(--accent-faint); box-shadow: inset 2px 0 0 var(--accent); }
+.e-nodedir-row:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+.e-nodedir-row:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+
+.e-nodedir-name { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
+.e-nodedir-name b { flex-shrink: 0; max-width: 100%; font-weight: 500; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e-nodedir-row.e-is-on .e-nodedir-name b { color: var(--accent-text); }
+.e-nodedir-name small { color: var(--dim); font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e-nodedir-meta { display: flex; align-items: center; gap: var(--sp-3); }
+.e-nodedir-lat { color: var(--dim); font-size: var(--fs-sm); min-width: 6ch; text-align: right; }
+
+.e-nodedir-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.e-nodedir-dot.e-ok { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+.e-nodedir-dot.e-warn { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); }
+
+/* the picked node: a strip of stats, label above value, like the board's columns */
+.e-nodedir-sum { margin-top: var(--sp-3); padding: var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--s1); }
+.e-nodedir-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: var(--sp-3) var(--sp-5); margin: 0; }
+.e-nodedir-stats > div { min-width: 0; }
+.e-nodedir-stats dt { color: var(--faint); font-size: var(--fs-xs); font-weight: 600; margin-bottom: 2px; }
+.e-nodedir-stats dd { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px var(--sp-2); font-size: var(--fs-md); }
+.e-nodedir-stats dd .e-nodedir-dot { align-self: center; }
+.e-nodedir-stats dd small { color: var(--dim); font-size: var(--fs-xs); }
+.e-nodedir-stats dd small.e-ok { color: var(--ok); }
+.e-nodedir-stats dd small.e-warn { color: var(--warn); }
+.e-nodedir-stats dd.e-nodedir-loc { flex-wrap: nowrap; align-items: baseline; }
+.e-nodedir-flag { flex: none; font-size: 15px; line-height: 1; }
+.e-nodedir-foot {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4);
+  margin-top: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid var(--line);
+  color: var(--faint); font-size: var(--fs-xs);
+}
+.e-nodedir-foot .e-link-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-sm); }
+
+@media (prefers-reduced-motion: reduce) {
+  .e-nodedir { animation: none; }
+}

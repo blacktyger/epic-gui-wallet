@@ -4,6 +4,7 @@ export default {
   source: 'live from status.btlabs.uk',
   pick: 'Pick a public node…',
   custom: 'Your own address (typed above)',
+  state: 'State',
   online: 'Online',
   degraded: 'Degraded',
   waiting_peers: 'Waiting for peers',
