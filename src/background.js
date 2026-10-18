@@ -1,7 +1,7 @@
 'use strict'
 
 import { app, protocol, net, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard } from 'electron'
-const contextMenu = require('electron-context-menu');
+import contextMenu from 'electron-context-menu'
 import { exec } from 'child_process'
 import { pathToFileURL } from 'url'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'

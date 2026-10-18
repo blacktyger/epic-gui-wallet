@@ -18,7 +18,7 @@
         <ul class="menu-list">
           <li>
             <router-link class="has-icon" to="/dashboard">
-              <span class="icon"><mdicon name="desktop-mac" /></span>
+              <span class="icon"><mdicon name="monitor" /></span>
               <span class="menu-item-label">{{ $t("msg.menu.dashboard") }}</span>
             </router-link>
 
