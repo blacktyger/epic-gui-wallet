@@ -35,14 +35,14 @@
           <h2 id="e-rcv-addr-t">{{ $t('msg.modern.send.rcv_addr_title') }}</h2>
           <p class="e-dim">{{ $t('msg.modern.send.rcv_addr_text') }}</p>
           <div class="e-addr e-lg e-rcv-addr" :class="{ 'e-is-off': !listening }">
-            <code v-if="epicboxAddress" translate="no"><span :class="{ 'e-hl': listening }">{{ epicHead }}</span>{{ epicMid }}<span :class="{ 'e-hl': listening }">{{ epicTail }}</span>{{ epicDomain }}</code>
+            <code v-if="epicShown" translate="no"><span :class="{ 'e-hl': listening }">{{ epicHead }}</span>{{ epicMid }}<span :class="{ 'e-hl': listening }">{{ epicTail }}</span>{{ epicDomain }}</code>
             <code v-else-if="store.state.user.epicbox_domain != ''">{{ $t('msg.httpReceive.epicbox_not_available') }}</code>
             <code v-else>{{ $t('msg.httpReceive.epicbox_off') }}</code>
           </div>
-          <p v-if="epicboxAddress && listening" class="e-small e-faint">{{ $t('msg.modern.send.rcv_addr_check') }}</p>
+          <p v-if="epicShown && listening" class="e-small e-faint">{{ $t('msg.modern.send.rcv_addr_check') }}</p>
           <div class="e-rcv-hero-actions">
-            <button type="button" class="e-btn" :class="{ 'e-btn-primary': listening }" :disabled="!epicboxAddress" @click="copy(epicboxAddress)"><EIcon name="copy" />{{ $t('msg.modern.send.rcv_copy_addr') }}</button>
-            <button v-if="epicboxAddress && addressTypeHeader != 'epicbox'" type="button" class="e-btn e-btn-ghost" @click="showQr(epicboxAddress, 'epicbox')"><EIcon name="qr" />{{ $t('msg.modern.send.rcv_show_qr') }}</button>
+            <button type="button" class="e-btn" :class="{ 'e-btn-primary': listening }" :disabled="!epicShown" @click="copy(epicboxAddress)"><EIcon name="copy" />{{ $t('msg.modern.send.rcv_copy_addr') }}</button>
+            <button v-if="epicShown && addressTypeHeader != 'epicbox'" type="button" class="e-btn e-btn-ghost" @click="showQr(epicboxAddress, 'epicbox')"><EIcon name="qr" />{{ $t('msg.modern.send.rcv_show_qr') }}</button>
             <p class="e-rcv-status" role="status">
               <template v-if="!listening"><EIcon name="minusc" size="sm" class="e-faint" />{{ $t('msg.modern.send.rcv_not_listening') }}</template>
               <template v-else-if="store.state.walletEpicboxService"><EIcon name="okc" size="sm" class="e-ok" />{{ $t('msg.modern.send.rcv_listening_via', { domain: epicDomainName }) }}</template>
@@ -165,12 +165,14 @@
     mounted() { this.tagInputs(); },
     updated() { this.tagInputs(); },
     watch: {
-      epicboxAddress(v) {
-        if (v && !this.qrChosen) this.qrcode(v, 'epicbox');
+      epicShown(v) {
+        if (v && !this.qrChosen) this.qrcode(this.epicboxAddress, 'epicbox');
       },
     },
     computed: {
       listening() { return !!this.store.state.walletListenerService; },
+      //Classic shows the Epicbox address only while Epicbox is connected
+      epicShown() { return !!(this.store.state.walletEpicboxService && this.epicboxAddress); },
       port() { return this.configService.walletListenerPort; },
       //the Epic address split for reading out: first five and last four characters of the key
       epicKey() { return String(this.epicboxAddress || '').split('@')[0]; },
