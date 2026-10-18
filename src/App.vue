@@ -30,7 +30,7 @@
 <script>
 
   import mixin from './mixin.js';
-  import { useI18n } from 'vue-i18n/index';
+  import { useI18n } from 'vue-i18n';
   import { ref, onUnmounted } from 'vue';
   import { useStore } from '@/store';
   import { useRouter } from '@/router';
