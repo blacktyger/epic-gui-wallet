@@ -152,3 +152,6 @@ html[data-ui='modern'][data-theme='light'] .e-stg-btl-logo .e-btl-dark { display
 html[data-ui='modern'][data-theme='light'] .e-stg-btl-logo .e-btl-light { display: block; }
 .e-stg-credit-row .e-small { margin-top: 4px; }
 .e-set-row .e-stg-why.e-stg-why-top { margin: 2px 0 4px !important; }
+/* the save bar's text wraps at large interface scales instead of being cut */
+.e-stg-savebar > span { white-space: normal; overflow: visible; text-overflow: clip; }
+.e-stg-savebar { flex-wrap: wrap; }
