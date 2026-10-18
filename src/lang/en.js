@@ -280,6 +280,7 @@ const messages = {
       node_offline: 'Node is offline',
       external_node_online: 'External Node is online',
       external_node_offline: 'External Node is offline',
+      node_unreachable: 'node unreachable',
       background_process: 'Please close all processes before continuing.',
       walletonline: 'Your wallet is online',
       walletoffline: 'Your wallet is offline.',

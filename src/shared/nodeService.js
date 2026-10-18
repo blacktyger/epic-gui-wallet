@@ -120,12 +120,21 @@ class NodeService {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+    let headers = { 'Content-Type': 'application/json' };
+    //the node secret belongs to the local node only
+    let isLocalNode = false;
+    try{
+      isLocalNode = ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(baseURL).hostname);
+    }catch(e){
+      //invalid address: send no credentials
+    }
+    if(isLocalNode){
+      headers['Authorization'] = 'Basic ' + btoa('epic:' + password);
+    }
+
     let response = await fetch(baseURL +'/v1/status', {
       method:'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + btoa('epic:' + password)
-      },
+      headers: headers,
       signal: controller.signal
     }).then(function(res){
       if (!res.ok) { throw Error(res) }
@@ -134,6 +143,7 @@ class NodeService {
       window.log ? console.log('NodeService.fetch', error) : null;
       return false;
     });
+    clearTimeout(timeoutId);
 
     /* check if node status is ok or need a restart because is stalled */
     if(internal){

@@ -369,6 +369,11 @@
 
       async nodeStart(){
 
+        this.stopRefreshNode();
+        this.nodeStatusFailed = false;
+        window.nodeSynced = null;
+        this.store.commit('nodeStatus', {});
+
         //start internal server only if its setup else just check if external node is running
         if(this.store.state.user.nodeInternal){
 
@@ -383,7 +388,7 @@
               this.$toast.success(this.t("msg.app.node_started"));
               //start the status check for the node
               //give the node some time before api status is called
-              setTimeout(this.startRefreshNode, 10000);
+              this.startRefreshNodeId = setTimeout(this.startRefreshNode, 10000);
             }else{
               this.$toast.error(this.t("msg.app.node_not_started"));
             }
@@ -398,9 +403,12 @@
             this.store.commit('nodeStatus', respNode);
             //start the status check for the node
             //give the node some time before api status is called
-            setTimeout(this.startRefreshNode, 10000);
+            this.startRefreshNodeId = setTimeout(this.startRefreshNode, 10000);
           }else{
             this.$toast.error(this.t("msg.app.external_node_offline"));
+            this.nodeStatusFailed = true;
+            this.store.commit('nodeStatus', {error: true});
+            this.startRefreshNodeId = setTimeout(this.startRefreshNode, 10000);
           }
 
         }
@@ -412,6 +420,7 @@
 
         let respNode = await this.$nodeService.getNodeStatus(this.store.state.user.nodeInternal);
         if(respNode){
+          this.nodeStatusFailed = false;
 
           window.nodeSynced = respNode.tip && respNode.tip.height > 0 && respNode.sync_status === 'no_sync';
 
@@ -429,12 +438,17 @@
           }
           this.store.commit('nodeStatus', respNode);
         }else{
-          if(this.store.state.user.nodeInternal){
-            this.$toast.error(this.t("msg.app.node_offline"));
-          }else{
-            this.$toast.error(this.t("msg.app.external_node_offline"));
+          //only toast on the transition to failed, keep polling
+          if(!this.nodeStatusFailed){
+            if(this.store.state.user.nodeInternal){
+              this.$toast.error(this.t("msg.app.node_offline"));
+            }else{
+              this.$toast.error(this.t("msg.app.external_node_offline"));
+            }
           }
-          this.stopRefreshNode();
+          this.nodeStatusFailed = true;
+          window.nodeSynced = false;
+          this.store.commit('nodeStatus', {error: true});
         }
 
       },
@@ -469,6 +483,7 @@
 
 
           let refresh = _ => this.startRefreshNodeId = setTimeout(this.startRefreshNode, 1000*30)
+          const gen = this.nodeRefreshGen || 0;
 
           try {
             await this.nodeStatus();
@@ -478,11 +493,15 @@
             clearTimeout(this.startRefreshNodeId);
           }
           finally {
-            refresh()
+            if(gen === (this.nodeRefreshGen || 0)){
+              refresh()
+            }
           }
 
       },
       stopRefreshNode(){
+        //invalidate a poll that is still running, so it does not schedule another one
+        this.nodeRefreshGen = (this.nodeRefreshGen || 0) + 1;
         clearTimeout(this.startRefreshNodeId);
       },
 

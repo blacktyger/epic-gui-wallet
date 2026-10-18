@@ -140,6 +140,7 @@ export const store = createStore({
               payload.sync_status = 'synced'
             break;
           }
+        }
 /*
 sync_info:
 rproofs: 19000
@@ -158,7 +159,6 @@ rproofs_total: 64579
           }
         }
         state.nodeStatus = payload;
-      }
     },
     nodeType(state, payload){
       state.nodeType = payload;
