@@ -15,47 +15,57 @@
                   <div id="restoreMnemonicWords" class="card-content">
                     <h2 class="title" style="text-align: center;">{{ $t('msg.restore.title') }} {{ $t('msg.step_of', [1,3]) }}</h2>
 
-                    <div class="field has-addons-fullwidth" style="margin-bottom: 24px;">
+                    <!-- paste the whole phrase (box or first word) or type word by word -->
+                    <p class="has-text-weight-semibold has-text-warning" style="margin-bottom: 16px; text-align: center; color: #d19944!important;">
+                      {{ $t('msg.restore.paste_info') }}
+                    </p>
+                    <div class="field">
+                      <label class="label" for="restorePhrase">{{ $t('msg.restore.phrase') }}</label>
                       <div class="control">
-                        <input @keyup="keyEvent" v-on:keyup.enter="add" v-model="search" :placeholder="$t('msg.restore.search_placeholder')" type="text" class="input" style="width: 100%;">
-
-                      </div>
-                    </div>
-                    <p class="animated bounce has-text-weight-semibold has-text-warning" style="animation-iteration-count: 2; margin-bottom: 24px; text-align: center; color: #d19944!important;">
-                      {{ $t('msg.restore.addSeedsInfo') }}
-                    </p>
-                    <div style="margin-bottom:20px;">
-                      <div class="tags" style="justify-content: center;">
-
-                        <span class="tag is-light is-medium is-rounded is-link" v-for="word in wordList" :key="word.id">
-                          <a style="color: rgb(0, 0, 0);" @click="add(word)" >{{ word }}</a>
-                        </span>
-                        <p v-if="wordList.length == 0">
-                          ...
-                        </p>
+                        <textarea id="restorePhrase" class="textarea" rows="3" v-model="phrase" @input="phraseInput"
+                          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                          :placeholder="$t('msg.restore.phrase_placeholder')"></textarea>
                       </div>
                     </div>
 
-                    <div class="buttons is-centered">
-                      <button class="button is-primary" @click="reset"><mdicon name="edo-variant" /> {{ $t("msg.reset") }}</button>
-                      <button class="button is-primary" @click="addall"><mdicon name="plus-box-multiple-outline" />{{ $t("msg.addall") }}</button>
-
-
-
+                    <div class="field is-horizontal restore-length">
+                      <div class="field-label is-normal">
+                        <label class="label" for="restoreLength">{{ $t('msg.restore.phrase_length') }}</label>
+                      </div>
+                      <div class="field-body">
+                        <div class="select is-small">
+                          <select id="restoreLength" v-model.number="length" @change="lengthChanged">
+                            <option v-for="n in validLengths" :key="n" :value="n">{{ $t('msg.restore.n_words', [n]) }}</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
-                    <p class="has-text-weight-semibold has-text-warning" style="margin-bottom: 24px; text-align: center; color: #d19944!important;">
-                      {{ $t('msg.restore.yourSeedsInfo') }} (<span v-bind:class="{'has-text-danger':seeds.length>total}" >{{seeds.length}}</span>/{{total}})
+
+                    <datalist id="bip39-words">
+                      <option v-for="w in mnemonicWords" :key="w" :value="w"></option>
+                    </datalist>
+                    <ol class="restore-words">
+                      <li v-for="(word, index) in slots" :key="index">
+                        <label class="restore-word-number" :for="'restoreWord' + index">{{ index + 1 }}</label>
+                        <input :id="'restoreWord' + index" class="input is-small" :class="{'is-danger': isInvalid(word)}"
+                          :aria-invalid="isInvalid(word)" :aria-label="$t('msg.restore.word_n', [index + 1])"
+                          type="text" list="bip39-words" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                          :value="word" @input="wordInput(index, $event)" @paste="wordPaste(index, $event)" @keydown.space.prevent="focusWord(index + 1)" />
+                      </li>
+                    </ol>
+
+                    <p class="restore-count" role="status" aria-live="polite">
+                      <span :class="{'has-text-danger': filled > length}">{{ $t('msg.restore.word_count', [filled, length]) }}</span>
+                      <span v-if="invalidCount" class="has-text-danger">&nbsp;· {{ $t('msg.restore.invalid_words', [invalidCount]) }}</span>
+                      <span v-else-if="filled > 0 && !validLengths.includes(filled) && filled == slots.length" class="has-text-danger">&nbsp;· {{ $t('msg.restore.bad_length') }}</span>
                     </p>
-                    <div class="tags" style="justify-content: center;">
-                      <span style="color:#000000" class="tag is-light is-medium is-rounded is-link" v-for="seed in seeds" :key="seed">{{seed}}</span>
 
-                    </div>
                     <div class="buttons is-centered">
                       <router-link class="button is-primary" :to="{name: fromRoute}">
                         <mdicon name="arrow-left-bold-hexagon-outline" />
                         {{ $t("msg.back") }}
                       </router-link>
-                      <button :disabled="seeds.length<=0" class="button is-primary" @click="delete_"><mdicon name="delete" />{{ $t('msg.delete') }}</button>
+                      <button :disabled="filled == 0" class="button is-primary" @click="clearup"><mdicon name="delete" />{{ $t('msg.reset') }}</button>
 
                       <button :disabled="!enoughSeeds" class="button is-primary" @click="page='addPassword'">
                         <mdicon name="arrow-right-bold-hexagon-outline" />{{ $t('msg.restore.added') }}
@@ -201,16 +211,18 @@
     setup(){
       const router = useRouter();
       const route = useRoute();
-      const wordList = ref([]);
-      const seeds = ref([]);
-      const enoughSeeds = ref(false);
-      const total = ref(24);
+      //recovery phrase lengths epic-wallet accepts (BIP39)
+      const validLengths = [12, 15, 18, 21, 24];
+      const length = ref(24);
+      //one entry per word field, '' when empty
+      const slots = ref(Array(24).fill(''));
+      //the phrase box; kept in step with the word fields
+      const phrase = ref('');
       const page = ref('addSeeds');//ref('addSeeds');//
       const accountField = ref();
       const passwordField = ref('');
       const passwordField2 = ref('');
       const walletdirField = ref('');
-      const search = ref('');
       const networkField = ref('');
       const { resetFormErrors } = useFormValidation();
       const advancedSettings = ref(false);
@@ -220,12 +232,11 @@
 
       return{
         router,
-        wordList,
-        seeds,
-        enoughSeeds,
-        total,
+        validLengths,
+        length,
+        slots,
+        phrase,
         page,
-        search,
         accountField,
         passwordField,
         passwordField2,
@@ -236,21 +247,23 @@
         fromRoute
       }
     },
-    watch: {
-
-        seeds: {
-          deep: true,
-          immediate:true,
-          handler(newVal, oldVal){
-
-            if(newVal.length == this.total){
-              this.enoughSeeds = true
-            }else{
-              this.enoughSeeds = false
-            }
-
-          }
-        }
+    computed: {
+      wordSet(){
+        return new Set(this.mnemonicWords);
+      },
+      //the words entered, in order
+      seeds(){
+        return this.slots.filter(w => w != '');
+      },
+      filled(){
+        return this.seeds.length;
+      },
+      invalidCount(){
+        return this.seeds.filter(w => !this.wordSet.has(w)).length;
+      },
+      enoughSeeds(){
+        return this.validLengths.includes(this.length) && this.filled == this.length && this.invalidCount == 0;
+      },
     },
 
     methods: {
@@ -259,33 +272,66 @@
         this.advancedSettings = !this.advancedSettings;
       },
 
-      keyEvent(key){
-        let value = key.target.value;
-        let valueChunks = value.split(" ").map(item => item.trim());
-        this.wordList = [];
-
-        valueChunks.forEach(element => {
-
-          if(element.length >= 2) {
-            let filtered = this.mnemonicWords.filter(function (str) { return new RegExp('^' + element).test(str); });
-
-            //if user paste more than one word then find only exact matches
-            if(valueChunks.length >= 2){
-              filtered = this.mnemonicWords.filter(function (str) { return new RegExp('^' + element + '$').test(str); });
-            }
-
-            //merge arrays
-            this.wordList = [...this.wordList, ...filtered];
-
-          }
-        });
-
-
+      /* split pasted or typed text into words: any whitespace, newlines too; numbering like "1. word" is dropped */
+      splitWords(text){
+        return text.toLowerCase().split(/\s+/).map(w => w.replace(/^\d+[.):]?$/, '').replace(/[^a-z]/g, '')).filter(w => w != '');
+      },
+      isInvalid(word){
+        return word != '' && !this.wordSet.has(word);
+      },
+      /* fields for the phrase length, or for more words when more were entered */
+      setSlots(words){
+        if(this.validLengths.includes(words.length)){
+          this.length = words.length;
+        }
+        const count = Math.max(this.length, words.length);
+        this.slots = Array.from({length: count}, (_, i) => words[i] || '');
+      },
+      phraseInput(){
+        this.setSlots(this.splitWords(this.phrase));
+      },
+      lengthChanged(){
+        this.setSlots(this.seeds);
+        this.phrase = this.seeds.join(' ');
+      },
+      wordInput(index, event){
+        const words = this.splitWords(event.target.value);
+        if(words.length > 1){
+          //several words typed or dropped into one field: fill from here on
+          this.fillFrom(index, words);
+          return;
+        }
+        const slots = [...this.slots];
+        slots[index] = words[0] || '';
+        //keep the field showing what was typed (lower case, letters only)
+        event.target.value = slots[index];
+        this.slots = slots;
+        this.phrase = this.seeds.join(' ');
+      },
+      wordPaste(index, event){
+        const text = (event.clipboardData || window.clipboardData).getData('text');
+        const words = this.splitWords(text);
+        if(words.length > 1){
+          event.preventDefault();
+          this.fillFrom(index, words);
+        }
+      },
+      fillFrom(index, words){
+        const before = this.slots.slice(0, index).filter(w => w != '');
+        const all = [...before, ...words];
+        this.setSlots(all);
+        this.phrase = all.join(' ');
+        this.$nextTick(() => this.focusWord(Math.min(all.length, this.slots.length - 1)));
+      },
+      focusWord(index){
+        const el = document.getElementById('restoreWord' + index);
+        if(el){
+          el.focus();
+        }
       },
       clearup(){
-        this.enoughSeeds = false;
-        this.seeds = [];
-        this.search = '';
+        this.phrase = '';
+        this.slots = Array(this.length).fill('');
       },
 
       async initR(){
@@ -326,6 +372,8 @@
               let action = await this.configService.startCheck(this.accountField.defaultValue);
               if(action === 'settings'){
                 //this.newseeds = recovered.msg.split(' ');
+                //the phrase is not needed any more: drop it from the form
+                this.clearup();
                 this.page = 'restored'
               }else{
                 this.$toast.error(this.$t('msg.restore.recover_fail', [action]), {duration:false});
@@ -342,29 +390,6 @@
 
 
       },
-      add(word){
-        this.seeds.push(word)
-
-        if(this.seeds.length == this.total){
-            this.enoughSeeds = true
-        }else{
-            this.enoughSeeds = false
-        }
-
-      },
-      delete_(){
-        if(this.seeds.length > 0){
-          this.seeds.pop();
-        }
-
-      },
-      addall(){
-        //copy array without vue reference object
-        this.seeds = Array.from(this.wordList);
-      },
-      reset(){
-        this.clearup()
-      },
       toLogin(recovered){
         this.page = 'addSeeds';
         this.clearup();
@@ -373,3 +398,42 @@
     }
   }
 </script>
+
+<style scoped>
+  .restore-length {
+    margin-top: 0.75rem;
+  }
+  .restore-words {
+    list-style: none;
+    margin: 0.75rem 0 0.5rem;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+    gap: 0.5rem 0.75rem;
+  }
+  .restore-words li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  /* a word not in the list: red also while focused (the dark theme's focus border would hide is-danger) */
+  .restore-words input[aria-invalid="true"],
+  .restore-words input[aria-invalid="true"]:focus {
+    border-color: #f14668 !important;
+    color: #f14668;
+    box-shadow: 0 0 0 0.125em rgba(241, 70, 104, 0.25);
+  }
+  .restore-word-number {
+    width: 1.6rem;
+    text-align: right;
+    font-size: 0.8rem;
+    opacity: 0.7;
+    font-variant-numeric: tabular-nums;
+    flex: none;
+  }
+  .restore-count {
+    text-align: center;
+    margin: 0.75rem 0 1rem;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
