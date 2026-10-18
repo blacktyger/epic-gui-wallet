@@ -1,7 +1,6 @@
 //strings of the public node list from status.btlabs.uk (msg.nodedir.*), shared by both interfaces
 export default {
   title: 'Public nodes',
-  source: 'live from status.btlabs.uk',
   pick: 'Pick a public node…',
   custom: 'Your own address (typed above)',
   state: 'State',

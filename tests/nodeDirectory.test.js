@@ -186,6 +186,25 @@ test('loadDirectory keeps the good entries of a mixed list', async () => {
   assert.deepEqual(res.nodes.map((n) => n.endpoint), ['https://node.example.org']);
 });
 
+test('the official Epic Cash node comes first, matched by host or operator, unless it is down', () => {
+  const others = [
+    node({ id: 'fast', endpoint: 'https://fast.org', latency_ms: 5, operator: 'btlabs' }),
+    node({ id: 'mid', endpoint: 'https://mid.org', latency_ms: 100, operator: 'x' }),
+  ];
+  // by host (with a port), even when it is slower, behind and degraded
+  let d = parseDirectory(doc([...others, node({ id: 'node.epiccash.com', endpoint: 'https://node.epiccash.com:3413', operator: null, latency_ms: 900, tip_lag: 4, state: 'degraded' })]), 'mainnet');
+  assert.deepEqual(d.nodes.map((n) => n.id), ['node.epiccash.com', 'fast', 'mid']);
+  // by operator name, whatever the host and letter case
+  d = parseDirectory(doc([...others, node({ id: 'epic-mirror', endpoint: 'https://mirror.epic.example', operator: ' EPIC cash ', latency_ms: 900 })]), 'mainnet');
+  assert.deepEqual(d.nodes.map((n) => n.id), ['epic-mirror', 'fast', 'mid']);
+  // down: not listed at all
+  d = parseDirectory(doc([...others, node({ id: 'node.epiccash.com', endpoint: 'https://node.epiccash.com:3413', state: 'down' })]), 'mainnet');
+  assert.deepEqual(d.nodes.map((n) => n.id), ['fast', 'mid']);
+  // a look-alike host is not official
+  d = parseDirectory(doc([...others, node({ id: 'fake', endpoint: 'https://node.epiccash.com.evil.org', operator: 'Not Epic', latency_ms: 900 })]), 'mainnet');
+  assert.equal(d.nodes[0].id, 'fast');
+});
+
 test('the live sample shape parses', () => {
   const d = parseDirectory(doc([node({ id: 'node.btlabs.uk', endpoint: 'https://node.btlabs.uk' })]), 'mainnet');
   assert.equal(d.tipHeight, 100);

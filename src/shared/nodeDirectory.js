@@ -101,12 +101,24 @@ function parseNode(raw) {
   };
 }
 
-/* Online first, then at the tip, then not waiting for peers, then lowest latency, highest uptime. */
+/* The official Epic Cash node: by its host, or by the operator name the site gives it. */
+const OFFICIAL_HOST = 'node.epiccash.com';
+const OFFICIAL_OPERATOR = 'epic cash';
+export function isOfficialEpicNode(n) {
+  if (!n) return false;
+  const host = typeof n.host === 'string' ? n.host.toLowerCase().replace(/:\d+$/, '') : '';
+  const op = typeof n.operator === 'string' ? n.operator.trim().toLowerCase() : '';
+  return host === OFFICIAL_HOST || op === OFFICIAL_OPERATOR;
+}
+
+/* The official Epic Cash node first (down nodes are never listed), then: online, at the tip, not
+ * waiting for peers, lowest latency, highest uptime. */
 export function compareNodes(a, b) {
   const lag = (n) => (n.tipLag === 0 ? 0 : n.tipLag === null ? 2 : 1);
   const lat = (n) => (n.latencyMs === null ? Infinity : n.latencyMs);
   const up = (n) => (n.uptime24h === null ? -1 : n.uptime24h);
-  return (STATES[a.state] - STATES[b.state])
+  return (Number(isOfficialEpicNode(b)) - Number(isOfficialEpicNode(a)))
+    || (STATES[a.state] - STATES[b.state])
     || (lag(a) - lag(b))
     || (Number(a.awaitingPeers) - Number(b.awaitingPeers))
     || (lat(a) - lat(b))
