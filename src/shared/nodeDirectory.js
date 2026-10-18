@@ -10,7 +10,7 @@
  *    is a plain GET from the main process: no CORS, no cookies, no wallet data;
  *  - the renderer calls loadDirectory(window.api, chain), which asks the main process over IPC.
  *
- * No Electron or DOM imports, so it runs under `node --test` as is (tests/nodeDirectory.test.mjs).
+ * No Electron or DOM imports, so it runs under `node --test` as is (tests/nodeDirectory.test.js).
  */
 
 export const STATUS_SITE = 'https://status.btlabs.uk';
@@ -194,9 +194,6 @@ export function createDirectory({ fetch: fetchFn, now = () => Date.now(), timeou
       const p = fetchDirectory(fetchFn, chain, { timeoutMs })
         .catch(() => null)
         .then((data) => {
-          //a failure does not throw away a good result that is still fresh enough to show
-          const prev = cache.get(chain);
-          if (!data && prev && prev.data && now() - prev.at < ttlMs) return prev.data;
           cache.set(chain, { at: now(), data });
           return data;
         })

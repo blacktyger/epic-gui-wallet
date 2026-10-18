@@ -44,7 +44,6 @@
   import { ref, computed } from "vue";
   import useFormValidation from "@/modules/useFormValidation";
   import NodeDirectory from "@/components/form/NodeDirectory.vue";
-  import { loadDirectory } from "@/shared/nodeDirectory";
 
   export default {
     components: { NodeDirectory },
@@ -89,15 +88,14 @@
         return (this.configService && this.configService.defaultAccountNetwork) || 'mainnet';
       }
     },
-    mounted() {
-      //warm the main process cache, so the list is there by the time "external" is picked
-      loadDirectory(window.api, this.directoryChain);
-    },
     //the public node list is optional: if it fails in any way, drop it and keep the field working
+    //(the error may come from the list or anything inside it; ModernNodeDirectory is the same list reskinned)
     errorCaptured(err, instance) {
-      if(instance && instance.$options && instance.$options.name === 'NodeDirectory'){
-        this.directoryFailed = true;
-        return false;
+      for(let i = instance; i && i !== this; i = i.$parent){
+        if(/NodeDirectory$/.test((i.$options && i.$options.name) || '')){
+          this.directoryFailed = true;
+          return false;
+        }
       }
     },
     watch: {

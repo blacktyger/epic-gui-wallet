@@ -114,6 +114,14 @@ test('cache: a failure is remembered briefly, and concurrent calls share one req
   assert.equal(calls, 2);
 });
 
+test('cache: after the TTL a failure replaces the old result (nothing stale is shown)', async () => {
+  let t = 0, ok = true;
+  const dir = createDirectory({ fetch: async () => (ok ? response(JSON.stringify(doc())) : response('', { status: 503 })), now: () => t, ttlMs: 1000 });
+  assert.ok(await dir.get('mainnet'));
+  ok = false; t = 1500;
+  assert.equal(await dir.get('mainnet'), null);
+});
+
 test('cache: get() never rejects, even when fetch throws synchronously', async () => {
   const dir = createDirectory({ fetch: () => { throw new Error('boom'); } });
   assert.equal(await dir.get('mainnet'), null);
@@ -158,6 +166,24 @@ test('sorted: online, at tip, not waiting for peers, lowest latency, then highes
     node({ id: 'down', endpoint: 'https://down.org', state: 'down' }),
   ]), 'mainnet');
   assert.deepEqual(d.nodes.map((n) => n.id), ['fast-higher', 'fast-lower', 'slow', 'waiting', 'behind', 'degraded']);
+});
+
+test('control and bidi characters are stripped from text; a bad id falls back to the host', () => {
+  const d = parseDirectory(doc([node({ id: 'bad id <x>', operator: 'Evil\u202eCorp\u0007', location: { provider: '\u2066Host\u2069' } })]), 'mainnet');
+  assert.equal(d.nodes[0].operator, 'EvilCorp');
+  assert.equal(d.nodes[0].provider, 'Host');
+  assert.equal(d.nodes[0].id, 'node.example.org');
+});
+
+test('a floonet document is not taken for mainnet', () => {
+  assert.equal(parseDirectory(doc([node()], { network: { chain: 'floonet' } }), 'mainnet'), null);
+  assert.ok(parseDirectory(doc([node()], { network: { chain: 'floonet' } }), 'floonet'));
+});
+
+test('loadDirectory keeps the good entries of a mixed list', async () => {
+  const good = parseDirectory(doc(), 'mainnet').nodes[0];
+  const res = await loadDirectory({ nodeDirectory: async () => ({ nodes: [good, null, { endpoint: 'https://x.org/path' }, { endpoint: 7 }] }) }, 'mainnet');
+  assert.deepEqual(res.nodes.map((n) => n.endpoint), ['https://node.example.org']);
 });
 
 test('the live sample shape parses', () => {

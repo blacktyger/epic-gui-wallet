@@ -10,7 +10,7 @@
         </select>
       </div>
     </div>
-    <div v-if="selected" class="node-directory-summary" :aria-label="$t('msg.nodedir.summary', { host: selected.host })" role="group">
+    <div v-if="selected" class="node-directory-summary" :aria-label="$t('msg.nodedir.summary', { host: selected.host })" role="group" aria-live="polite">
       <div class="tags">
         <span class="tag is-normal" :class="stateClass(selected)">{{ stateText(selected) }}</span>
         <span v-if="selected.tipLag !== null" class="tag is-normal" :class="selected.tipLag === 0 ? 'is-success' : 'is-warning'">{{ lagText(selected) }}</span>
@@ -20,7 +20,8 @@
       </p>
       <p class="help">
         {{ $t('msg.nodedir.latency_note') }}
-        <a :href="pageUrl(selected)" @click.prevent="openPage(selected)">{{ $t('msg.nodedir.more') }}&nbsp;<mdicon name="open-in-new" size="12" /></a>
+        <!-- a button, not an <a href>: a middle- or shift-click on a link would open the page in an app window -->
+        <button type="button" class="node-directory-link" @click="openPage(selected)">{{ $t('msg.nodedir.more') }}&nbsp;<mdicon name="open-in-new" size="12" aria-hidden="true" /><span class="is-sr-only"> {{ $t('msg.nodedir.opens_browser') }}</span></button>
       </p>
     </div>
   </div>
@@ -67,7 +68,9 @@
     methods: {
       async load() {
         const chain = this.chain;
-        const dir = await loadDirectory(window.api, chain);
+        //shown only if it arrives soon after the field: a list that turns up seconds later would push the form
+        //down under the user's pointer. The main process still caches a late answer for the next time.
+        const dir = await loadDirectory(window.api, chain, 2500);
         if (!this.gone && chain === this.chain) this.dir = dir;
       },
       pick(el) {
@@ -108,11 +111,8 @@
         if (up.length) out.push(t('uptime') + ' ' + up.join(', '));
         return out;
       },
-      pageUrl(n) {
-        return nodePageUrl(this.chain, n.id);
-      },
       openPage(n) {
-        try { window.openlink.open(this.pageUrl(n)); } catch (e) { /* nothing to show */ }
+        try { window.openlink.open(nodePageUrl(this.chain, n.id)); } catch (e) { /* nothing to show */ }
       },
     },
   };
@@ -124,4 +124,5 @@
   .node-directory-summary .tags { margin-bottom: 0.25rem; }
   .node-directory-summary .tags .tag { margin-bottom: 0.25rem; }
   .node-directory-summary .help { margin-top: 0.125rem; overflow-wrap: anywhere; }
+  .node-directory-link { background: none; border: 0; padding: 0; font: inherit; color: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
 </style>

@@ -21,5 +21,6 @@ export default {
   uptime_30d: '{p} (30 d)',
   latency_note: 'Latency is measured by status.btlabs.uk, not from this computer.',
   more: 'More on status.btlabs.uk',
+  opens_browser: '(opens in your browser)',
   summary: 'Status of {host}',
 }
