@@ -549,6 +549,33 @@ class WalletService {
       return true;
     }
 
+    /* logout: stop the listener (keeping a background Epicbox listener when asked), its Tor, the
+       owner API and, unless it runs in the background, the built-in node, with ONE process scan.
+       stopListen + stopWallet + nodeService.stopNode scan four times, and each scan starts
+       PowerShell on Windows (about a second each), which made locking and switching the
+       interface feel stuck. Same processes as those three calls, killed in parallel. */
+    async stopAll(epicbox_background, node_background){
+
+      const all = await window.nodeFindProcess('name', /epic-wallet.*(owner_api|listen)|epic.*server.*run|tor[\\/]listener[\\/]torrc/);
+      const kill = [];
+      for(let process of all){
+        const cmd = process.cmd || '';
+        if(/epic-wallet/.test(cmd) && cmd.includes('owner_api')){
+          kill.push(process);
+        }else if(/epic-wallet/.test(cmd) && cmd.includes('listen')){
+          if(!(epicbox_background && cmd.includes('epicbox'))) kill.push(process);
+        }else if(/tor[\\/]listener[\\/]torrc/.test(cmd)){
+          kill.push(process);
+        }else if(!node_background && /epic.*server.*run/.test(cmd)){
+          kill.push(process);
+        }
+      }
+      const unique = kill.filter((p, i) => kill.findIndex(q => q.pid == p.pid) == i);
+      this.debug ? console.log('WalletService.stopAll', unique.map(p => p.pid)) : null;
+      await Promise.all(unique.map(p => window.nodeChildProcess.kill(p.pid)));
+      return true;
+    }
+
     async stopWallet(){
 
       let killPids = [];
