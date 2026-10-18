@@ -24,6 +24,8 @@ const messages = {
 
     locked: 'Locked',
     send: 'Send',
+    node_not_synced: 'Node not synced',
+    node_not_synced_hint: 'Sending is possible once the node has synced.',
     send_proof: 'send proof',
     dandelion: 'Dandelion++',
     dandelion_hint: 'Broadcasting transactions via Dandelion++',

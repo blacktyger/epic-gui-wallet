@@ -72,17 +72,18 @@
 
             <div class="field is-grouped">
               <div class="control">
-                <button class="button is-primary" :class="{ 'button__loader': isLoadingSend }" @click="send">
+                <button class="button is-primary" :class="{ 'button__loader': isLoadingSend }" :disabled="!nodeSynced" @click="send">
                   <span class="button__text">{{ $t("msg.send") }}</span>
                 </button>
 
               </div>
               <div class="control">
-                <button class="button is-primary" :class="{ 'button__loader': isLoadingSendFile }" @click="sendFile">
+                <button class="button is-primary" :class="{ 'button__loader': isLoadingSendFile }" :disabled="!nodeSynced" @click="sendFile">
                   <span class="button__text">{{ $t("msg.createofflinetx") }}</span>
                 </button>
               </div>
             </div>
+            <p v-if="!nodeSynced" class="help is-danger" role="status">{{ $t("msg.node_not_synced") }}. {{ $t("msg.node_not_synced_hint") }}</p>
 
           </div>
 
@@ -163,6 +164,13 @@ export default {
     }
 
   },
+  computed: {
+    /* sending needs a synced node; unknown or unreachable counts as not synced */
+    nodeSynced(){
+      const s = this.store.state.nodeStatus;
+      return !!(s && !s.error && s.sync_status === 'synced' && s.tip && s.tip.height > 0);
+    },
+  },
   methods: {
 
     addProof(){
@@ -218,6 +226,7 @@ export default {
 
     async sendFile(){
 
+      if(!this.nodeSynced) return;
       this.resetFormErrors();
       let isFormAllValid = [];
 
@@ -303,6 +312,7 @@ export default {
 
     async send(){
 
+      if(!this.nodeSynced) return;
       this.resetFormErrors();
       let isFormAllValid = [];
 
