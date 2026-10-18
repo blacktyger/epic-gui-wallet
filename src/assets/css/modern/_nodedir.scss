@@ -19,7 +19,7 @@
 .e-nodedir-row:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
 
 .e-nodedir-name { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
-.e-nodedir-name b { flex-shrink: 0; max-width: 100%; font-weight: 500; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e-nodedir-name b { flex-shrink: 0; max-width: 100%; font-weight: 500; font-size: 0.8125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .e-nodedir-row.e-is-on .e-nodedir-name b { color: var(--accent-text); }
 .e-nodedir-name small { color: var(--dim); font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .e-nodedir-meta { display: flex; align-items: center; gap: var(--sp-3); }
@@ -40,7 +40,7 @@
 .e-nodedir-stats dd small.e-ok { color: var(--ok); }
 .e-nodedir-stats dd small.e-warn { color: var(--warn); }
 .e-nodedir-stats dd.e-nodedir-loc { flex-wrap: nowrap; align-items: baseline; }
-.e-nodedir-flag { flex: none; font-size: 15px; line-height: 1; }
+.e-nodedir-flag { flex: none; font-size: 0.9375rem; line-height: 1; }
 .e-nodedir-foot {
   display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4);
   margin-top: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid var(--line);
