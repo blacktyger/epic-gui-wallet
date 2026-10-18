@@ -1,5 +1,6 @@
 import { createStore } from 'vuex';
 import axios from 'axios';
+import { getUi, getScheme } from '@/shared/theme';
 
 export const store = createStore({
   state: {
@@ -42,6 +43,11 @@ export const store = createStore({
 
     /* Dark mode (available with AppLightDark.vue only) */
     isDarkModeActive: true,
+
+    /* interface (shared/theme.js): 'modern' | 'classic', fixed until the window reloads, and the
+       modern colour scheme */
+    ui: getUi(),
+    scheme: getScheme(),
 
 
     /* which service are running */
@@ -302,6 +308,11 @@ rproofs_total: 64579
 
       document.documentElement.classList[setIsWide ? 'remove' : 'add']('has-aside-left')
       document.documentElement.classList[setIsWide ? 'add' : 'remove']('has-aside-hidden-layout', 'has-aside-expanded')
+    },
+
+    /* the modern colour scheme, saved and applied by shared/theme.js saveScheme() */
+    scheme (state, payload) {
+      state.scheme = payload;
     },
 
     /* Dark Mode */

@@ -103,6 +103,8 @@ async function createWindow() {
     minWidth: 1044,
     maxWidth: 1600,
     title: "Epiccash Wallet",//fix in index.html
+    //the window colour before the first paint, the same near-black in both interfaces
+    backgroundColor: '#08080a',
     webPreferences: {
       icon: path.join(__dirname, '../public/favicon.ico'),
       // Use pluginOptions.nodeIntegration, leave this alone
@@ -533,6 +535,14 @@ ipcMain.handle('show-open-dialog', async (event, title, message, defaultPath) =>
 ipcMain.handle('locale', async() => {
   return await app.getLocale();
 });
+//after switching between the Modern and Classic interface: start the renderer again at index.html
+//(a reload of the current history-mode path would not resolve under app://)
+ipcMain.handle('reload-ui', () => {
+  if (!win) return;
+  if (process.env.WEBPACK_DEV_SERVER_URL) win.loadURL(process.env.WEBPACK_DEV_SERVER_URL);
+  else win.loadURL('app://./index.html');
+});
+
 ipcMain.handle('version', () => {
   let currentVersion = '';
   if (process.env.NODE_ENV === 'development') {

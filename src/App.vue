@@ -1,28 +1,43 @@
 <template>
 
-  <router-view name="navBar" />
-  <router-view name="asideMenu" />
-  <router-view name="headerbar" />
+  <!-- Classic interface (Bulma), unchanged -->
+  <template v-if="isClassic">
+    <router-view name="navBar" />
+    <router-view name="asideMenu" />
+    <router-view name="headerbar" />
 
-  <router-view v-slot="{ Component }">
-      <component :is="Component" :key="$route.fullPath" />
-  </router-view>
-  <aside-right />
+    <router-view v-slot="{ Component }">
+        <component :is="Component" :key="$route.fullPath" />
+    </router-view>
+    <aside-right />
 
-  <modal-node-box
-    :is-active="isNodeModalActive"
-    @confirm="nodesyncedConfirm"
-    @cancel="nodesyncedCancel"
+    <modal-node-box
+      :is-active="isNodeModalActive"
+      @confirm="nodesyncedConfirm"
+      @cancel="nodesyncedCancel"
 
-  />
+    />
 
-  <modal-kill-box/>
+    <modal-kill-box/>
 
-  <modal-firstsync-box
-    :is-active="isFirstscanModalActive"
-    @confirm="firstscanConfirm"
-    @cancel="firstscanCancel"
-    :output-data="scanoutput"
+    <modal-firstsync-box
+      :is-active="isFirstscanModalActive"
+      @confirm="firstscanConfirm"
+      @cancel="firstscanCancel"
+      :output-data="scanoutput"
+    />
+  </template>
+
+  <!-- Modern interface (6.1 redesign): same routes, same logic, its own views (components/modern) -->
+  <ModernApp
+    v-else
+    :is-node-modal-active="isNodeModalActive"
+    :is-firstscan-modal-active="isFirstscanModalActive"
+    :scanoutput="scanoutput"
+    @nodesynced-confirm="nodesyncedConfirm"
+    @nodesynced-cancel="nodesyncedCancel"
+    @firstscan-confirm="firstscanConfirm"
+    @firstscan-cancel="firstscanCancel"
   />
 
 </template>
@@ -35,10 +50,12 @@
   import { ref, onUnmounted } from 'vue';
   import { useStore } from '@/store';
   import { useRouter } from '@/router';
+  import { reloadUi } from '@/shared/theme';
   import AsideRight from '@/components/layout/AsideRight.vue'
   import ModalNodeBox from '@/components/layout/NodesyncedModalBox.vue'
   import ModalFirstsyncBox from '@/components/layout/FirstsyncModalBox.vue'
   import ModalKillBox from '@/components/layout/KillProcessModalBox.vue'
+  import ModernApp from '@/components/modern/ModernApp.vue'
 
   window.nodeSynced = null;
 
@@ -50,7 +67,13 @@
       AsideRight,
       ModalNodeBox,
       ModalFirstsyncBox,
-      ModalKillBox
+      ModalKillBox,
+      ModernApp,
+    },
+    computed: {
+      isClassic(){
+        return this.store.state.ui === 'classic';
+      },
     },
 
     setup() {
@@ -67,7 +90,8 @@
       let startRefreshNodeId = 0;
       let refreshId = 0;
 
-      store.commit('darkModeToggle', true);
+      //Classic's dark skin; the modern UI has its own (shared/theme.js)
+      store.commit('darkModeToggle', store.state.ui === 'classic');
       router.push('/');
 
       /* is this called ever ? */
@@ -223,44 +247,13 @@
         this.requestRefresh();
       });
 
-      this.emitter.on('app.logout', async () => {
+      this.emitter.on('app.logout', () => this.logoutApp());
 
-        this.stopRefreshNode();
-        this.stopRefresh();
-        this.loginSession = (this.loginSession || 0) + 1;
-        this.store.commit('user', {});
-        this.store.commit('txs', []);
-        this.store.commit('commits', []);
-        this.store.commit('walletTip', 0);
-        this.store.commit('walletSync', '');
-        this.store.commit('listenerStarting', false);
-        this.store.commit('summary', {
-          spendable: 0,
-          total: 0,
-          unconfirmed: 0,
-          unfinalization: 0,
-          immature: 0,
-          locked: 0,
-        });
-
-        await this.$walletService.stopListen(this.configService.config.epicbox_background);
-        this.store.commit('walletEpicboxService', false);
-
-        await this.$walletService.stopWallet();
-
-        if(this.configService.config && this.configService.config.node_background == false)
-          await this.$nodeService.stopNode();
-
-
-        this.$walletService.logoutClient();
-        this.loggedIn = false;
-        this.walletApiFailed = false;
-        this.configService.resetConfig();
-
-        this.store.dispatch('toggleFullPage', true);
-        this.store.commit('asideStateToggle', false);
-        this.$router.push('/login');
-
+      /* switch between the Modern and Classic interface: log out cleanly, then start the
+         renderer again with the other stylesheet (shared/theme.js) */
+      this.emitter.on('app.reloadUi', async () => {
+        await this.logoutApp();
+        reloadUi();
       });
 
       this.emitter.on('app.accountLoggedIn', async () => {
@@ -320,6 +313,40 @@
 
     },
     methods: {
+
+      async logoutApp(){
+        this.stopRefreshNode();
+        this.stopRefresh();
+        this.loginSession = (this.loginSession || 0) + 1;
+        this.store.commit('user', {});
+        this.store.commit('txs', []);
+        this.store.commit('commits', []);
+        this.store.commit('walletTip', 0);
+        this.store.commit('walletSync', '');
+        this.store.commit('listenerStarting', false);
+        this.store.commit('summary', {
+          spendable: 0,
+          total: 0,
+          unconfirmed: 0,
+          unfinalization: 0,
+          immature: 0,
+          locked: 0,
+        });
+        await this.$walletService.stopListen(this.configService.config.epicbox_background);
+        this.store.commit('walletEpicboxService', false);
+        await this.$walletService.stopWallet();
+        if(this.configService.config && this.configService.config.node_background == false)
+          await this.$nodeService.stopNode();
+
+        this.$walletService.logoutClient();
+        this.loggedIn = false;
+        this.walletApiFailed = false;
+        this.configService.resetConfig();
+
+        this.store.dispatch('toggleFullPage', true);
+        this.store.commit('asideStateToggle', false);
+        this.$router.push('/login');
+      },
 
       waitForNodesynced (variable, timeoutMs = 10*60*1000) {
         const started = Date.now();

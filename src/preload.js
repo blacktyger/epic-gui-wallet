@@ -608,6 +608,10 @@ contextBridge.exposeInMainWorld('api', {
     epicboxbackground:(epicboxbackground) => {
       ipcRenderer.send('epicboxBackground', epicboxbackground);
     },
+    //reload the renderer at index.html, after switching between the Modern and Classic interface
+    reloadUi: () => {
+      ipcRenderer.invoke('reload-ui');
+    },
     
 
 });

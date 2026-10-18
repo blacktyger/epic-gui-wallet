@@ -14,11 +14,10 @@ import App from './App.vue'
 import mitt from 'mitt';
 import moment from 'moment';
 import Toaster from "@meforma/vue-toaster";
+import { applyTheme, getUi, getScheme, UI_CLASSIC } from './shared/theme.js';
 
 
 
-import './assets/css/epiccashApp.scss';
-import './assets/css/animate.css';
 
 import mdiVue from 'mdi-vue/v3';
 import * as mdijs from '@mdi/js';
@@ -37,6 +36,14 @@ moment.updateLocale('de', {
 });
 
 
+
+//the interface (Modern or Classic): data-ui / data-theme on <html> and only that interface's
+//stylesheet, before the first render
+const ui = getUi();
+applyTheme(ui, getScheme());
+const uiStyles = ui === UI_CLASSIC
+  ? import(/* webpackChunkName: "ui-classic" */ './ui/classic.js')
+  : import(/* webpackChunkName: "ui-modern" */ './ui/modern.js');
 
 const emitter = mitt();
 const app = createApp(App);
@@ -118,4 +125,4 @@ app.config.globalProperties.$filters = {
 
 }
 
-app.mount('#app');
+uiStyles.finally(() => app.mount('#app'));
