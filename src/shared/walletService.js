@@ -439,7 +439,7 @@ class WalletService {
         let pWalletList = await window.nodeFindProcess('name', /.*?epic-wallet.*(listen)/);
 
         for(let process of pWalletList) {
-          if(process.cmd.includes('listen')){
+          if(process.cmd.includes('listen') && !process.cmd.includes('epicbox')){
             walletIsListen.push(process);
           }
         }
@@ -481,7 +481,7 @@ class WalletService {
       let pWalletList = await window.nodeFindProcess('name', /.*?epic-wallet.*(listen)/);
 
       for(let process of pWalletList) {
-        if(process.cmd.includes('listen')){
+        if(process.cmd.includes('listen') && !process.cmd.includes('epicbox')){
           walletIsListen.push(process);
         }
       }
