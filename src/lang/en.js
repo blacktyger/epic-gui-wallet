@@ -105,7 +105,9 @@ const messages = {
       fatal_create: 'Fatal: created fail on action "{0}"',
       fatal_update: 'Fatal: App config not updated.',
       stage_create: 'Creating the wallet and its recovery phrase',
-      stage_save: 'Saving the account'
+      stage_save: 'Saving the account',
+      backupWarning: 'Write these words down on paper, in this order, and keep them somewhere safe and offline. They are the only way to restore this wallet if this computer or its files are lost. Anyone who has them can take your funds: never share them, and do not keep them as a photo, screenshot or file.',
+      writtenDown: "I've written it down, continue"
     },
     setupwizard:{
       setup_assistant: 'Setup Assistant',

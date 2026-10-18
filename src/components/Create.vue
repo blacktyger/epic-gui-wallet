@@ -13,20 +13,24 @@
                   </header>
                   <div id="restoreMnemonicWords" class="card-content">
                     <h2 class="title" style="text-align: center;">{{ $t('msg.create.seedPhrase') }}</h2>
-                    <p class="has-text-weight-semibold has-text-warning" style="color: #d19944!important;margin-bottom: 24px;">
+                    <p class="has-text-weight-semibold has-text-warning" style="color: #d19944!important;margin-bottom: 12px;">
                       {{ $t('msg.create.backupNote') }}
                     </p>
-                    <div class="tags" style="justify-content: center;">
-                      <span style="color:#000000" class="mnemonic-word tag is-light is-medium is-rounded is-link" v-for="seed in newseeds" :key="seed">{{seed}}<span class="space"> </span></span>
-                    </div>
+                    <article class="message is-warning">
+                      <div class="message-body">{{ $t('msg.create.backupWarning') }}</div>
+                    </article>
+                    <!-- numbered, so the words are written down in order (a phrase can repeat a word) -->
+                    <ol class="tags" style="justify-content: center; list-style: none; margin-left: 0;">
+                      <li style="color:#000000" class="mnemonic-word tag is-light is-medium is-rounded is-link" v-for="(seed, index) in newseeds" :key="index"><small style="opacity:0.6;">{{ index + 1 }}.&nbsp;</small>{{seed}}<span class="space"> </span></li>
+                    </ol>
 
                     <div style="text-align: center;">
                       <canvas id="qrcodeCanvas" ></canvas>
                     </div>
                     <p>&nbsp;</p>
                     <div class="buttons is-centered">
-                      <router-link class="button is-outlined is-primary" to="/login">
-                        {{ $t("msg.login_") }}
+                      <router-link class="button is-primary" to="/login">
+                        {{ $t("msg.create.writtenDown") }}
                       </router-link>
                     </div>
                   </div>
