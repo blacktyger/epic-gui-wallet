@@ -477,12 +477,16 @@
           this.refreshAgain = false;
           try {
             let refreshfromNode = this.store.state.nodeStatus.sync_status == 'synced' ?  true : false;
+            const started = performance.now();
 
             //skip txs and outputs while the wallet api is down
             if(await this.getSummaryinfo(refreshfromNode, gen)){
-              await this.getTxs(refreshfromNode, gen);
-              await this.getCommits(refreshfromNode, gen);
+              //the summary call has just refreshed the wallet from the node (all three run the same
+              //update), so txs and outputs read that state instead of asking the node twice more
+              await this.getTxs(false, gen);
+              await this.getCommits(false, gen);
             }
+            window.debug ? console.log('[refresh] ' + (refreshfromNode ? 'from node' : 'local') + ' +' + Math.round(performance.now() - started) + ' ms') : null;
 
 
           }
