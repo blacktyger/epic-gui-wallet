@@ -188,13 +188,8 @@ export default {
               this.store.commit('walletListenerService', false);
             }*/
 
-            if(isListen && isListen.tor){
-              this.$toast.success(i18n.global.t("msg.login.tor_started"));
-              this.store.commit('torService', true);
-            }else{
-              this.$toast.error(i18n.global.t("msg.login.error_tor_started"));
-              this.store.commit('torService', false);
-            }
+            //Tor state only, no toast: Tor is not configurable and fails to bootstrap on most setups
+            this.store.commit('torService', !!(isListen && isListen.tor));
 
           }
 
