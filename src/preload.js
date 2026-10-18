@@ -608,6 +608,8 @@ contextBridge.exposeInMainWorld('api', {
     epicboxbackground:(epicboxbackground) => {
       ipcRenderer.send('epicboxBackground', epicboxbackground);
     },
+    //live public nodes from status.btlabs.uk, fetched by the main process (null when unavailable)
+    nodeDirectory: (chain) => ipcRenderer.invoke('node-directory', chain),
     
 
 });
