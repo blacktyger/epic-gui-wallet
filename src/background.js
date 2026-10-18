@@ -12,6 +12,9 @@ const path = require('path')
 const ps = require('ps-node');
 const findProcess = require('find-process');
 const log = require('electron-log');
+const { migrateFromEpicWallet } = require('./userDataMigration');
+//before any window or session touches userData: bring over the 5.x profile (address book, settings)
+migrateFromEpicWallet(app, log);
 const {autoUpdater} = require("electron-updater");
 autoUpdater.channel = "latest";
 //setting the channel turns on downgrades: an older release would be offered as an update
