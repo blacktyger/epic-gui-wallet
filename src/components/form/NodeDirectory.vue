@@ -1,7 +1,7 @@
 <template>
   <!-- Public nodes from status.btlabs.uk. Renders nothing until the list has arrived, and nothing at all when it can't be had. -->
   <div v-if="nodes.length" class="field node-directory">
-    <label class="label" :for="uid">{{ $t('msg.nodedir.title') }} <span class="node-directory-source">{{ $t('msg.nodedir.source') }}</span></label>
+    <label class="label" :for="uid">{{ $t('msg.nodedir.title') }}</label>
     <div class="control">
       <div class="select is-fullwidth">
         <select :id="uid" :value="selected ? selected.endpoint : ''" :disabled="disabled" @change="pick($event.target)">
@@ -119,7 +119,6 @@
 </script>
 
 <style scoped>
-  .node-directory-source { font-weight: normal; font-size: 0.75rem; opacity: 0.7; margin-left: 0.25rem; }
   .node-directory-summary { margin-top: 0.5rem; }
   .node-directory-summary .tags { margin-bottom: 0.25rem; }
   .node-directory-summary .tags .tag { margin-bottom: 0.25rem; }
