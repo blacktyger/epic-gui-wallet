@@ -148,6 +148,20 @@ const routes = [
     }
   },
   {
+    //the Modern interface's Activity page (transactions and coins); Classic shows them on the dashboard
+    meta: {
+      title: 'Activity'
+    },
+    path: '/activity',
+    name: 'activity',
+    components: {
+      default: Dashboard,
+      navBar: NavBar,
+      asideMenu: AsideMenu,
+      headerbar: HeaderBar,
+    }
+  },
+  {
     meta: {
       title: 'Send'
     },

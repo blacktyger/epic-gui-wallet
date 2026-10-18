@@ -1,3 +1,4 @@
+import modern from './modern/en';
 const messages = {
   msg: {
 
@@ -433,7 +434,9 @@ const messages = {
       exist: 'The account "{0}" already exists',
       notexist: 'The account "{0}" does not exist',
       not_epic_node: 'Not an Epic node: {0}'
-    }
+    },
+    //the Modern interface (6.1 redesign), see lang/modern/
+    modern,
   }
 }
 export default messages
