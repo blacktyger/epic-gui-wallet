@@ -39,10 +39,9 @@ class ConfigService {
       this.epicBinPath = path.join(this.binariesPath, this.epicWalletBinary);
       this.epicNodeBinPath = path.join(this.binariesPath, this.epicNodeBinary);
 
-      if(this.platform === 'win'){
-        this.epicBinPath = '"' + path.resolve(this.epicBinPath) + '"';
-        this.epicNodeBinPath = '"' + path.resolve(this.epicNodeBinPath) + '"';
-      }
+      //no quotes: the binaries are started without a shell (shared/spawnCommand.js)
+      this.epicBinPath = path.resolve(this.epicBinPath);
+      this.epicNodeBinPath = path.resolve(this.epicNodeBinPath);
 
       this.epicPath = this.epicBinPath;
       this.epicNodePath = this.epicNodeBinPath;

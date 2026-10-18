@@ -3,10 +3,6 @@ require('promise.prototype.finally').shim();
 const log = window.log;
 console.log = log.log;
 
-function addQuotations(s){
-    return '"' + s +'"'
-}
-
 class NodeService {
 
   constructor(emitter, configService) {
@@ -64,7 +60,7 @@ class NodeService {
 
       let args = [
         ...(this.configService.defaultAccountNetwork != 'mainnet' ? ['--' + this.configService.defaultAccountNetwork] : []),
-        ...(this.configService.nodeTOMLPath != '' ? ['server', '--config_file', (this.configService.platform == "win" ? addQuotations(this.configService.nodeTOMLPath) : this.configService.nodeTOMLPath), 'run'] : ['server', 'run']),
+        ...(this.configService.nodeTOMLPath != '' ? ['server', '--config_file', this.configService.nodeTOMLPath, 'run'] : ['server', 'run']),
 
       ];
 

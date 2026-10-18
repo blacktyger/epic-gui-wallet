@@ -121,7 +121,14 @@ function hasArg(cmd, value) {
   return (' ' + cmd + ' ').includes(' ' + value + ' ');
 }
 
-/* Windows: spawn(..., {shell: true}) runs `cmd.exe /d /s /c "<command>"`; the command inside */
+/* a cmd.exe process (find-process entry) */
+function isCmdExe(p) {
+  const c = String(p.cmd || '').trim();
+  const first = c.startsWith('"') ? c.slice(1, c.indexOf('"', 1)) : c.split(/\s+/)[0];
+  return /^cmd(\.exe)?$/i.test(baseName(p.name || '')) || /^cmd(\.exe)?$/i.test(baseName(first));
+}
+
+/* Windows: 6.0.0 spawned with {shell: true}, which runs `cmd.exe /d /s /c "<command>"`; the command inside */
 function unwrapCmdExe(c) {
   const m = c.match(/^("[^"]*"|\S+)\s+((?:\/[a-z]\s+)*)\/c\s+([\s\S]*)$/i);
   if (!m || !/^cmd(\.exe)?$/i.test(baseName(m[1]))) return c;
@@ -197,8 +204,9 @@ export function torrcPaths(dir, win) {
  *   roles:   which recorded roles to return (default all)
  *   dir:     only wallet/node processes of this dir; network: only nodes of this network
  *   tor:     also return our Tor processes (torrc in a dir of a recorded http listener or in torDirs)
- * A recorded pid matches the process with that pid, or its direct child: on Windows the app spawns
- * through cmd.exe, so the recorded pid is the shell and epic-wallet.exe is its child.
+ * A recorded pid matches the process with that pid. The app starts the binaries without a shell, so
+ * that is epic-wallet.exe / epic.exe itself; only a cmd.exe wrapper recorded by 6.0.0 (shell: true)
+ * or adopted from it also matches its direct epic child.
  * Returns {owned: [{pid, ppid, role, dir, entryPid, name}], live: entries that still run}. No
  * command line: it may hold a password (with spaces, past what redaction can see), and owned is logged.
  */
@@ -212,7 +220,9 @@ export function findOwned(entries, procs, opts = {}) {
   const seen = new Set();
 
   for (const entry of recorded) {
-    const matches = list.filter(p => (p.pid == entry.pid || p.ppid == entry.pid) && cmdMatchesEntry(entry, p.cmd, win));
+    const self = list.find(p => p.pid == entry.pid);
+    const wrapper = win && !!self && isCmdExe(self);
+    const matches = list.filter(p => (p.pid == entry.pid || (wrapper && p.ppid == entry.pid)) && cmdMatchesEntry(entry, p.cmd, win));
     if (!matches.length) continue;
     live.push(entry);
     if (!roles.includes(entry.role)) continue;

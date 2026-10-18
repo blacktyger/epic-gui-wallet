@@ -12,10 +12,6 @@ const ownerApiPort = 3420;
 const jsonRPCUrl = 'http://127.0.0.1:3420/v3/owner'
 const jsonRPCForeignUrl = 'http://127.0.0.1:3420/v2/foreign'
 
-function addQuotations(s){
-    return '"' + s +'"'
-}
-
 class WalletService {
 
     constructor(emitter, configService) {
@@ -363,7 +359,7 @@ class WalletService {
           let args = [
             ...(this.configService.defaultAccountNetwork != 'mainnet' ? ['--' + this.configService.defaultAccountNetwork] : []),
             '--offline_mode',
-            '-c',this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
+            '-c',this.configService.defaultAccountWalletdir,
             '--pass', password,
             'owner_api'
           ];
@@ -417,8 +413,8 @@ class WalletService {
           let args = [
             ...(this.configService.defaultAccountNetwork != 'mainnet' ? ['--' + this.configService.defaultAccountNetwork] : []),
             '--pass', password,
-            '-t', this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
-            '-c', this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
+            '-t', this.configService.defaultAccountWalletdir,
+            '-c', this.configService.defaultAccountWalletdir,
             'listen',
             '--method',
             'epicbox',
@@ -459,8 +455,8 @@ class WalletService {
           let args = [
             ...(this.configService.defaultAccountNetwork != 'mainnet' ? ['--' + this.configService.defaultAccountNetwork] : []),
             '--pass', password,
-            '-t', this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
-            '-c', this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
+            '-t', this.configService.defaultAccountWalletdir,
+            '-c', this.configService.defaultAccountWalletdir,
             'listen',
             //the GUI only listens via http (Epicbox has its own startEpicbox); method is kept for callers
             '--method', 'http'
@@ -514,7 +510,7 @@ class WalletService {
           ...(network != 'mainnet' ? ['--' + network] : []),
           //epic-wallet 4.x: pass the password as an argument, like the other wallet commands
           '--pass', password,
-          '-c', this.configService.platform == "win" ? addQuotations(userhomedir) : userhomedir,
+          '-c', userhomedir,
           'init'
         ];
         return await window.nodeChildProcess.execNew(this.configService.epicPath, args, this.configService.platform, password);
@@ -527,7 +523,7 @@ class WalletService {
           ...(network != 'mainnet' ? ['--' + network] : []),
           //epic-wallet 4.x: pass the password as an argument, like the other wallet commands
           '--pass', password,
-          '-c', this.configService.platform == "win" ? addQuotations(userhomedir) : userhomedir,
+          '-c', userhomedir,
           'init', '-r'
         ];
 
@@ -538,7 +534,7 @@ class WalletService {
 
         let args = [
           '--pass', password,
-          '-t', this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
+          '-t', this.configService.defaultAccountWalletdir,
           'scan', '-s', 0,
           ...(delete_unconfirmed ? ['--delete_unconfirmed'] : []),
         ];

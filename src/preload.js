@@ -6,6 +6,7 @@ import path from 'path';
 import * as secp256k1 from "@noble/secp256k1";
 import isPortReachable from 'is-port-reachable';
 import { createProcessRegistry, createPidCheck, describeSpawn, redactArgs } from './shared/processOwnership';
+import { spawnCommand, plainBin } from './shared/spawnCommand';
 
 const moment = require('moment');
 const base32 = require('rfc-3548-b32');
@@ -67,7 +68,7 @@ function parseRecoveryPhrase(stdout){
 function killPid(pid){
   return new Promise(function(resolve) {
     if (process.platform === 'win32') {
-      //the tree: the app spawns through cmd.exe, epic-wallet.exe and its tor.exe are children
+      //the tree: epic-wallet.exe and its tor.exe (and a cmd.exe wrapper started by 6.0.0)
       exec(`taskkill /pid ${Number(pid)} /f /t`, function( err ) {
         resolve(!err);
       });
@@ -96,7 +97,14 @@ const ownProcesses = createProcessRegistry({
 //the children this window started that still run: pid → {role, dir}
 const liveChildren = new Map();
 
+/* start an epic binary without a shell (shared/spawnCommand.js) */
+function spawnEpic(cmd, args){
+  const c = spawnCommand(cmd, args);
+  return spawn(c.cmd, c.args, c.options);
+}
+
 function track(child, cmd, args){
+  cmd = plainBin(cmd);
   debug ? console.log('spawn', cmd, redactArgs(args).join(' ')) : null;
   if(child.pid){
     const entry = ownProcesses.record(child.pid, cmd, args);
@@ -173,7 +181,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
       return new Promise(function(resolve, reject) {
 
-          let createProcess = spawn(cmd, args, {shell: platform == 'win' ? true : false});
+          let createProcess = spawnEpic(cmd, args);
 
           let newSeedData = '';
           let errorData = '';
@@ -221,7 +229,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
       return new Promise(function(resolve, reject) {
 
 
-          let scanProcess = track(spawn(cmd, args, {shell: platform == 'win' ? true : false}), cmd, args);
+          let scanProcess = track(spawnEpic(cmd, args), cmd, args);
 
           //scan process is self closing
           scanProcess.stdout.setEncoding('utf8');
@@ -265,7 +273,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
 
 
-          let node_server = track(spawn(cmd, args, {shell: platform == 'win' ? true : false}), cmd, args);
+          let node_server = track(spawnEpic(cmd, args), cmd, args);
 
           node_server.stdout.setEncoding('utf8');
           node_server.stdout.on('data', (data) => {
@@ -294,7 +302,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
       return new Promise(function(resolve, reject) {
 
-          let ownerAPI = track(spawn(cmd, args, {shell: platform == 'win' ? true : false}), cmd, args);
+          let ownerAPI = track(spawnEpic(cmd, args), cmd, args);
 
 
           ownerAPI.stdout.setEncoding('utf8');
@@ -340,7 +348,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
       return new Promise(function(resolve, reject) {
 
-          let listenProcess = track(spawn(cmd, args, {shell: platform == 'win' ? true : false}), cmd, args);
+          let listenProcess = track(spawnEpic(cmd, args), cmd, args);
           let isTorBooted = false;
           listenProcess.stdout.setEncoding('utf8');
           listenProcess.stdout.on('data', (data) => {
@@ -393,7 +401,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
       return new Promise(function(resolve, reject) {
 
-          let listenProcess = track(spawn(cmd, args, {shell: platform == 'win' ? true : false}), cmd, args);
+          let listenProcess = track(spawnEpic(cmd, args), cmd, args);
           listenProcess.stdout.setEncoding('utf8');
           listenProcess.stdout.on('data', (data) => {
 
@@ -428,7 +436,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
       return new Promise(function(resolve, reject) {
 
-          let recover = spawn(cmd, args, {shell: platform == 'win' ? true : false});
+          let recover = spawnEpic(cmd, args);
 
 
           let newSeedData = '';
@@ -685,3 +693,4 @@ contextBridge.exposeInMainWorld('api', {
     
 
 });
+
