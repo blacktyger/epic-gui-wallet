@@ -3,7 +3,6 @@
   <section v-if="nodes.length" class="e-nodedir" :aria-labelledby="uid + '-h'">
     <div class="e-nodedir-head">
       <span :id="uid + '-h'" class="e-label">{{ $t('msg.nodedir.title') }}</span>
-      <span class="e-nodedir-src">{{ $t('msg.nodedir.source') }}</span>
     </div>
     <div class="e-nodedir-list" role="radiogroup" :aria-labelledby="uid + '-h'">
       <label v-for="n in nodes" :key="n.endpoint" class="e-nodedir-row" :class="{ 'e-is-on': selected && selected.endpoint === n.endpoint }">

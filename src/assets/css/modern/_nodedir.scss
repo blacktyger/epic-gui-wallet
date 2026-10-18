@@ -2,7 +2,6 @@
  * A list of rows like the status board, then a compact status of the node picked. */
 .e-nodedir { margin-top: var(--sp-5); animation: e-fade var(--dur) var(--ease); }
 .e-nodedir-head { display: flex; align-items: baseline; gap: var(--sp-2); margin-bottom: 6px; }
-.e-nodedir-src { color: var(--faint); font-size: var(--fs-xs); }
 
 .e-nodedir-list { border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--s1); overflow: hidden; }
 .e-nodedir-row {
