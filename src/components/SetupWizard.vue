@@ -201,28 +201,12 @@
       TextField,
       //videoPlay,
     },
-    watch: {
-        'ngrok': function (newVal) {
-
-          if(newVal !== ''){
-            this.ngrok_force_start = false
-          }
-        },
-        'ngrok_force_start': function (newVal) {
-
-          if(newVal){
-            this.ngrok = '';
-          }
-        },
-    },
     setup(){
       const store = useStore();
       const router = useRouter();
       const route = useRoute();
       const check_node_api_http_addr = ref('');
       const network = ref('');
-      const ngrok = ref('');
-      const ngrok_force_start = ref(false);
 
       const locale = ref('en');
       const localeSelected = ref('en');
@@ -238,7 +222,6 @@
       const { resetFormErrors } = useFormValidation();
       const nodeserverField = ref('');
       const textField = ref('');
-      const advancedSettings = ref(false);
       const fromRoute = route.params.from ? route.params.from : 'login';
       const isSaving = ref(false);
 
@@ -257,9 +240,6 @@
         resetFormErrors,
         name,
         keybase,
-        ngrok,
-        ngrok_force_start,
-        advancedSettings,
         textField,
         moveback,
         fromRoute,
@@ -289,10 +269,6 @@
 
     },
     methods: {
-      toggleAdvancedSettings(){
-
-        this.advancedSettings = !this.advancedSettings;
-      },
       validateStep(step){
         this.resetFormErrors();
         let isFormAllValid = [];
@@ -355,8 +331,7 @@
               account: this.configService.configAccount,
               name: this.textField.defaultValue,
               keybase: this.keybase,
-              ngrok: '', //this.ngrok,
-              ngrok_force_start: false,//this.ngrok_force_start,
+              ngrok: '', //column is NOT NULL in the user table
               language: this.localeSelected,
               nodeInternal: this.nodeserverField.nodeInternal,
               email: '',

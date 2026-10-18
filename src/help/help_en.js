@@ -16,7 +16,6 @@ const messages = [
   {
     title: 'Receive coins',
     text: `To receive coins, your wallet must be in listen mode.<br/><br/>
-    Every time you start/restart the listener your ngrok address will change so copy each time.<br/><br/>
     The wallet’s default settings activate the listen/receive mode by default.<br/><br/>
     This feature can be changed in Settings.<br/>
     <br/>
@@ -57,8 +56,7 @@ const messages = [
     title: 'Wallet listener',
     text: `The wallet listener must be running to receive coins from other wallets.<br/>
     <br/>
-    The listener can be started or stopped on the Receive Page.<br/><br/>
-     Your ngrok address will change each time you start the listener.`
+    The listener can be started or stopped on the Receive Page.<br/>`
   },
   {
     title: 'Account',
@@ -78,11 +76,6 @@ const messages = [
     <br/>
     You can choose between the built-in node server and an external node server.<br/><br/>
     If you change this value, please restart your wallet.<br/>`
-  },
-  {
-    title: 'Your Ngrok Authtoken',
-    text: `The ngrok auth-token is required for the ngrok service to find your Wallet PC.<br/><br/>
-    If you dont want to use the ngrok service, then leave the "Ngrok Authtoken" field empty.<br/>`
   },
   {
     title: 'Import offline transaction',
@@ -110,12 +103,6 @@ const messages = [
     title: 'Tor',
     text: `You can send and receive transactions via a tor address by default.<br/><br/>
     You will find your tor address on the "Receive" page.<br/>`
-  },
-  {
-    title: 'Ngrok',
-    text: `ngrok is a service that provides a public address that is linked to your wallet's
-           private IP address behind your router.<br/><br/> You share the ngrok address with wallet senders
-           or use it in the Receive Address on exchanges.<br/>`
   },
   {
     title: 'Network node',

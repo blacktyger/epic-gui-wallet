@@ -64,7 +64,6 @@
 
 
       let startRefreshNodeId = 0;
-      let startRefreshNgrokId = 0;
       let refreshId = 0;
 
       store.commit('darkModeToggle', true);
@@ -74,7 +73,6 @@
       onUnmounted (_ => {
 
         clearTimeout(startRefreshNodeId);
-        clearTimeout(startRefreshNgrokId);
         clearTimeout(refreshId);
       })
 
@@ -179,23 +177,6 @@
       });
 
 
-      this.emitter.on('app.startRefreshNgrokStatus', () => {
-        this.stopRefreshNgrok();
-        this.startRefreshNgrok();
-      });
-
-      this.emitter.on('app.stopRefreshNgrokStatus', () => {
-        this.stopRefreshNgrok();
-      });
-
-      this.emitter.on('app.ngrokStart', async () => {
-         await this.ngrokStart();
-      });
-
-      this.emitter.on('app.ngrokStop', async () => {
-         await this.ngrokStop();
-      });
-
       this.emitter.on('app.selectLocale', (locale) => {
         this.locale = locale;
       })
@@ -208,7 +189,6 @@
       this.emitter.on('app.logout', async () => {
 
         this.stopRefreshNode();
-        this.stopRefreshNgrok();
         this.stopRefresh();
         this.store.commit('user', {});
         this.store.commit('txs', []);
@@ -226,7 +206,6 @@
         this.store.commit('walletEpicboxService', false);
 
         await this.$walletService.stopWallet();
-        await this.$ngrokService.stopNgrok();
 
         if(this.configService.config && this.configService.config.node_background == false)
           await this.$nodeService.stopNode();
@@ -254,8 +233,6 @@
         this.store.dispatch('toggleFullPage', false);
         this.store.commit('asideStateToggle');
         this.$router.push('/dashboard');
-
-        this.emitter.emit('app.ngrokStart');
 
 
         //start refresh outputs summary etc
@@ -328,49 +305,6 @@
       },
       firstscanCancel(){
         this.isFirstscanModalActive = false
-      },
-
-      async ngrokStop(){
-        this.stopRefreshNgrok();
-        let respNgrok = await this.$ngrokService.stopNgrok();
-        if(respNgrok){
-          //this.$toast.success(this.t("msg.app.ngrok_service_stopped"));
-          this.store.commit('ngrokService', false);
-          this.store.commit('ngrokTunnels', {});
-        }
-      },
-
-      async ngrokStart(){
-
-        if(this.store.state.user.ngrok != '' || this.store.state.user.ngrok_force_start){
-
-          let ngrokService = await this.$ngrokService.internalStart(this.store.state.user.ngrok == '' ? '' : this.store.state.user.ngrok);
-
-
-          if(ngrokService.success){
-            let respNgrok = await this.$ngrokService.openTunnel();
-            if(respNgrok){
-              this.$toast.success(this.t("msg.app.ngrok_service_started"));
-              this.store.commit('ngrokService', true);
-              this.store.commit('ngrokTunnels', respNgrok);
-              this.emitter.emit('app.startRefreshNgrokStatus');
-            }else{
-              this.$toast.error(this.t("msg.app.ngrok_service_error"));
-              this.store.commit('ngrokService', false);
-              this.store.commit('ngrokTunnels', {});
-            }
-          }else{
-            this.$toast.error(this.t("msg.app.ngrok_service_error"));
-            this.store.commit('updates', {
-                  "status": "is-danger",
-                  "text":   "Ngrok: " + ngrokService.msg,
-                  "icon":   "information"
-            });
-            this.store.commit('ngrokService', false);
-            this.store.commit('ngrokTunnels', {});
-          }
-        }
-
       },
 
       async nodeStart(){
@@ -525,60 +459,6 @@
         //invalidate a poll that is still running, so it does not schedule another one
         this.nodeRefreshGen = (this.nodeRefreshGen || 0) + 1;
         clearTimeout(this.startRefreshNodeId);
-      },
-
-      /* refresh ngrok status */
-      async startRefreshNgrok() {
-          let refresh = _ => this.startRefreshNgrokId = setTimeout(this.startRefreshNgrok, 1000*30)
-
-          try {
-            let ngrokStatus = await this.$ngrokService.checkStatus();
-
-            if(ngrokStatus){
-
-              this.store.commit('ngrokTunnels', await this.$ngrokService.openTunnel());
-              this.store.commit('ngrokService', true);
-
-              if(this.store.state.user.ngrok_force_start){
-
-                let timeFormat = this.$filters.timeFormat(this.$ngrokService.getTunnelLifetime());
-
-
-                if(timeFormat.length && timeFormat[0] <= 0 && timeFormat[1] <= 0){
-
-                  let restart = await this.$ngrokService.ngrokRestart();
-                  if(restart){
-                    this.$toast.warning(this.t("msg.app.ngrok_address_changed"), {duration:false});
-                    this.store.commit('ngrokTunnels', await this.$ngrokService.openTunnel());
-                    timeFormat = this.$filters.timeFormat(this.$ngrokService.getTunnelLifetime());
-                    this.store.commit('ngrokTunnelLifetime', timeFormat);
-
-                  }else{
-                    this.store.commit('ngrokService', false);
-                    this.store.commit('ngrokTunnelLifetime', [0,0]);
-                    this.store.commit('ngrokTunnels', {});
-                  }
-                }else{
-                  this.store.commit('ngrokTunnelLifetime', timeFormat);
-                }
-              }
-
-            }else{
-              this.store.commit('ngrokService', false);
-              this.store.commit('ngrokTunnelLifetime', [0,0]);
-              this.store.commit('ngrokTunnels', {});
-            }
-          }
-          catch (e) {
-            clearTimeout(this.startRefreshNgrokId);
-          }
-          finally {
-            refresh()
-          }
-
-      },
-      stopRefreshNgrok(){
-        clearTimeout(this.startRefreshNgrokId);
       },
 
       async getSummaryinfo(refreshfromNode) {

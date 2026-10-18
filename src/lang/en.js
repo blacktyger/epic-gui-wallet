@@ -57,7 +57,6 @@ const messages = {
     page_of: 'Page {0} of {1}',
     only_letter: 'Only lower case letters from a-z,',
     custom_settings: 'Custom settings',
-    advanced_settings: 'Advanced Settings',
     step_of: 'Step {0}/{1}',
     close_all_process: 'Terminate all processes',
 
@@ -121,21 +120,11 @@ const messages = {
       If you are not sure which one to use, then leave the settings as they are.<br/>`,
       previous_step: 'Previous step',
       receive_transactions: 'NEW Feature* Epic Address',
-      receive_transactions_txt: `To receive transactions from other wallets, your wallet must be accessible over the Internet.<br/>
-      <br/>
-      If you are not familiar with router settings and port forwarding, we recommend using the ngrok service.<br/>
-      Once ngrok has been activated, your wallet will be accessible via a temporary ngrok address.<br/>
-      <br/>
-      <br/>
-      Leave the fields below blank if you don’t want to use the ngrok service.`,
-      authtoken: 'Your ngrok Authtoken',
-      howto: 'How to get your Authtoken from ngrok',
       values_correct: 'Are these values correct?',
       save_and_finish: 'Save and finish',
       name: 'Name',
       keybase_account: 'Keybase Account',
       language: 'Language',
-      ngrok_authtoken: 'ngrok Auth-Token',
       db_fatal: 'DB Fatal: can not insert DB',
       errors_save: 'Error saving user settings: {0}',
       epicbox_domain: 'Epicbox Web Address',
@@ -273,10 +262,6 @@ const messages = {
       updateMsg: 'Found new version of EPIC wallet. Please update Right NOW.',
       yes: 'yes',
       no: 'no',
-      ngrok_service_started: 'Ngrok service started',
-      ngrok_address_changed: 'Your ngrok address has changed',
-      ngrok_service_stopped: 'Ngrok service stopped',
-      ngrok_service_error: 'Error starting Ngrok service',
       error_setup_internal_node: 'Can not setup internal node server',
       node_started: 'Node started',
       node_restarting: 'Node is restarting',
@@ -357,9 +342,7 @@ const messages = {
       start: 'Start',
       error: 'No password.',
       ip: 'your public ip',
-      current_ngrok_address: 'Current Ngrok Address',
       local_address: 'Local address',
-      session_end: 'You are using ngrok without an account. Your session will end in {0} hour, {1} minutes',
       tor_onion_address: 'Tor onion Address',
       proof_address: 'Proof Address',
       epicbox_address: 'Your public Epic address',
@@ -394,12 +377,6 @@ const messages = {
       network: 'Network',
       wallet_listener: 'Wallet listener',
       auto_start: 'automatically start wallet listener and Epicbox after login',
-      authtoken: 'Your ngrok Authtoken',
-      ngrok_force_start: 'use ngrok without Authtoken',
-      ngrok_hint: 'The ngrok address is active for 2 hours then gets renewed.',
-      ngrok_account_hint: 'To receive your ngrok authentication token, please create a new account at https://ngrok.com',
-      authtoken_hint: 'With a ngrok Authtoken, your address is active as long as the wallet is in listening mode',
-      howto: 'How to get your Authtoken from ngrok',
       settings_saved: 'Settings saved',
       error_save: 'Error saving settings',
       epicbox_domain: 'Epicbox Domain',

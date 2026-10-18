@@ -36,15 +36,12 @@ class ConfigService {
       this.binariesPath = path.join(window.config.getResourcePath(), 'bin', this.platform);   
       this.epicWalletBinary = this.platform === 'win' ? 'epic-wallet.exe' : 'epic-wallet';
       this.epicNodeBinary = this.platform === 'win' ? 'epic.exe' : 'epic';
-      this.ngrokBinary = this.platform === 'win' ? 'ngrok.exe' : 'ngrok';
       this.epicBinPath = path.join(this.binariesPath, this.epicWalletBinary);
       this.epicNodeBinPath = path.join(this.binariesPath, this.epicNodeBinary);
-      this.ngrokBinPath = path.join(this.binariesPath, this.ngrokBinary);
 
       if(this.platform === 'win'){
         this.epicBinPath = '"' + path.resolve(this.epicBinPath) + '"';
         this.epicNodeBinPath = '"' + path.resolve(this.epicNodeBinPath) + '"';
-        this.ngrokBinPath = '"' + path.resolve(this.ngrokBinPath) + '"';
       }
 
       this.epicPath = this.epicBinPath;
@@ -66,7 +63,6 @@ class ConfigService {
       this.nodeFoundationName = 'foundation.json';
       this.tomlNetworkname = '';
 
-      this.ngrokApiAddress = 'http://127.0.0.1:4040';
       this.nodeFallBack = 'https://node.epiccash.com:3413';
       this.epicboxDomain = 'epicbox.epiccash.com';
 

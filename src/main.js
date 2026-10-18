@@ -5,7 +5,6 @@ import router from './router'
 import { i18n } from './i18n';
 import walletService from './shared/walletService.js';
 import nodeService from './shared/nodeService.js';
-import ngrokService from './shared/ngrokService.js';
 import configService from './shared/configService.js';
 import userService from './shared/userService.js';
 import addressbookService from './shared/addressbookService.js';
@@ -58,7 +57,6 @@ let config = new configService(emitter);
 app.config.globalProperties.emitter = emitter;
 app.config.globalProperties.$walletService = new walletService(emitter, config);
 app.config.globalProperties.$nodeService = new nodeService(emitter, config);
-app.config.globalProperties.$ngrokService = new ngrokService(emitter, config);
 app.config.globalProperties.$userService =  new userService();
 app.config.globalProperties.$addressBookService =  new addressbookService();
 app.config.globalProperties.$addressTransactionsService =  new addressTransactionsService();
@@ -87,27 +85,6 @@ app.config.globalProperties.$filters = {
      }else{
        return '-'
      }
-  },
-
-  /* used for ngrok tunnle lifetime only */
-  timeFormat(endtime){
-    if(endtime != undefined){
-      //return moment().format("HH:mm");
-
-      let a = moment();
-      let b = moment(endtime);
-      let duration = moment.duration(b.diff(a));
-      let hours = parseInt(duration.asHours());
-      let minutes = parseInt(duration.asMinutes()) % 60;
-
-      hours = hours < 0 ? 0 : hours;
-      minutes = minutes < 0 ? 0 : minutes;
-
-
-      return [hours, minutes];
-    }else{
-      return [0, 0];
-    }
   },
 
   truncate(text, length) {

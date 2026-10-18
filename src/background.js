@@ -162,17 +162,11 @@ async function createWindow() {
                           }
 
 
-                          let pNgrokList = await findProcess('name', /.*?ngrok.*(start)/);
                           let pWalletTorList = await findProcess('name', /tor/);
 
 
                           for(let process of pEpicnodeList) {
                             if(process.cmd.includes('server')){
-                              killPids.push(process);
-                            }
-                          }
-                          for(let process of pNgrokList) {
-                            if(process.cmd.includes('ngrok')){
                               killPids.push(process);
                             }
                           }
@@ -266,16 +260,10 @@ async function createWindow() {
                           pEpicnodeList = await findProcess('name', /.*?epic.*server.*run/);
                         }
 
-                        let pNgrokList = await findProcess('name', /.*?ngrok.*(start)/);
                         let pWalletTorList = await findProcess('name', /tor/);
 
                         for(let process of pEpicnodeList) {
                           if(process.cmd.includes('server')){
-                            killPids.push(process);
-                          }
-                        }
-                        for(let process of pNgrokList) {
-                          if(process.cmd.includes('ngrok')){
                             killPids.push(process);
                           }
                         }
@@ -370,15 +358,9 @@ app.on('window-all-closed', async() => {
       pEpicnodeList = await findProcess('name', /.*?epic.*server.*run/);
     }
 
-    let pNgrokList = await findProcess('name', /.*?ngrok.*(start)/);
 
     for(let process of pEpicnodeList) {
       if(process.cmd.includes('server')){
-        killPids.push(process);
-      }
-    }
-    for(let process of pNgrokList) {
-      if(process.cmd.includes('ngrok')){
         killPids.push(process);
       }
     }
