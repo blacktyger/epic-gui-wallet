@@ -105,8 +105,6 @@ const messages = {
       account_information: 'اطلاعات حساب',
       your_name:'نام شما',
       name_only_internal: 'نام فقط در داخل کیف شما استفاده می شود',
-      keybase: 'Keybase',
-      enter_keybase: 'اگر یک حساب اپلیکیشنِ چتِ کیبیس دارید، می توانید آن را در اینجا وارد کنید.',
       next_step: 'مرحله بعد',
       network_node: 'نودِ شبکه',
       network_node_txt: `کیف پول شما به یک نودِ شبکه برای ارسال و دریافت تراکنش ها نیاز دارد<br/>
@@ -135,7 +133,6 @@ const messages = {
       values_correct: 'آیا این مقادیر صحیح است؟',
       save_and_finish: 'ذخیره و پایان',
       name: 'نام',
-      keybase_account: 'Keybase Account',
       language: 'زبان',
       ngrok_authtoken: '  اِنگِروک آت توکنِ ngrok Auth-Token',
       db_fatal: ' مهلک: دی بی را نمی توان وارد کرد DB ',
@@ -207,7 +204,6 @@ const messages = {
     },
     account: {
       account: 'حساب',
-      keybase: 'Keybase',
       your_name: 'نام شما',
       settings_saved: 'تنظیمات حساب ذخیره شد',
       error_save: 'خطا در ذخیره حساب'
@@ -217,7 +213,6 @@ const messages = {
       country: 'کشور',
       city: 'شهر',
       tor_onion_address: ' Tor آدرس شبکه پیازی',
-      keybase_account: 'Keybase جساب',
       external_one: 'آدرس خارجی 1',
       external_two: 'آدرس خارجی 2',
       proof_address: 'آدرس اثبات یا گواهی',

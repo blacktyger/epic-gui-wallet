@@ -107,8 +107,6 @@ const messages = {
       account_information: 'Informace o účtu',
       your_name:'Vaše jméno',
       name_only_internal: 'Jméno je použito pouze interně',
-      keybase: 'Keybase',
-      enter_keybase: 'Pokud máte Keybase účet, můžete jej zadat zde',
       next_step: 'Další krok',
       network_node: 'Network node',
       network_node_txt: `Vaše peněženka vyžaduje network node k odeslání a příjímání transakcí.<br/>
@@ -129,7 +127,6 @@ const messages = {
       values_correct: 'Jsou tyto hodnoty správné?',
       save_and_finish: 'Uložit a ukončit',
       name: 'Název',
-      keybase_account: 'Keybase účet',
       language: 'Jazyk',
       ngrok_authtoken: 'ngrok Auth-Token',
       db_fatal: 'DB Fatal: nelze vložit DB',
@@ -201,7 +198,6 @@ const messages = {
     },
     account: {
       account: 'Účet',
-      keybase: 'Keybase účet',
       your_name: 'Vaše jméno',
       settings_saved: 'Nastavení účtu uloženo',
       error_save: 'Při ukládání účtu došlo k chybě'
@@ -211,7 +207,6 @@ const messages = {
       country: 'Země',
       city: 'Město',
       tor_onion_address: 'Tor-Onion adresa',
-      keybase_account: 'Keybase účet',
       external_one: 'Externí adresa 1',
       external_two: 'Externí adresa 2',
       proof_address: 'Proof adresa',

@@ -410,6 +410,12 @@ span.amount-hidden:after {
   font-size: 1.6rem;
   line-height:2.3rem;
 }
+/* a balance not yet checked against the node (after login, or while the node syncs) */
+span.is-updating {
+  /* 0.85 keeps the gold total above 4.5:1 on the dark header (#1b1b1b-#242424); the status line says why */
+  opacity: 0.85;
+  transition: opacity 0.3s ease;
+}
 
 .c-toast{
   width: 260px;

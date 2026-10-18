@@ -328,18 +328,22 @@ class WalletService {
     }
 
 
-    /* start a epic wallet in owner_api mode */
-    async start(password, emitOutput){
+    /* start a epic wallet in owner_api mode
+       knownNotRunning: the caller just scanned the processes (killEpicProcess) and no owner_api is left,
+       so skip another scan (each one spawns ps, or powershell on Windows: ~1 s there) */
+    async start(password, emitOutput, knownNotRunning = false, onStage = () => {}){
 
         let pWalletList = [];
         let walletProcess = [];
         this.client = undefined;
         this.shared_key = undefined;
 
-        pWalletList = await window.nodeFindProcess('name', /.*?epic-wallet.*(owner_api)/);
-        for(let process of pWalletList) {
-          if(process.cmd.includes('owner_api')){
-            walletProcess.push(process);
+        if(!knownNotRunning){
+          pWalletList = await window.nodeFindProcess('name', /.*?epic-wallet.*(owner_api)/);
+          for(let process of pWalletList) {
+            if(process.cmd.includes('owner_api')){
+              walletProcess.push(process);
+            }
           }
         }
 
@@ -364,6 +368,7 @@ class WalletService {
           }
         }
 
+        onStage('unlock');
         let userTopDir = await this.jsonRPC('set_top_level_directory', {dir: this.configService.defaultAccountWalletdir}, false)
 
         if(userTopDir.result){
@@ -455,10 +460,11 @@ class WalletService {
             '-t', this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
             '-c', this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
             'listen',
-            '--method', (method == 'http' ? 'http' : 'keybase')
+            //the GUI only listens via http (Epicbox has its own startEpicbox); method is kept for callers
+            '--method', 'http'
           ];
 
-          if(tor == false || method == 'keybase'){
+          if(tor == false){
             args.push('--no_tor');
           }
 
@@ -467,6 +473,8 @@ class WalletService {
           if(walletListenId && walletListenId.msg > 0){
               this.walletIsListen = true;
               torBooted = walletListenId.tor;
+              //the listener started here (none when one was already running)
+              return {success:true, tor: torBooted, pid: walletListenId.msg};
           }else{
             return {success:false, tor: torBooted};
           }

@@ -72,16 +72,6 @@
                         </div>
 
                         <div class="field">
-                          <label class="label">{{ $t("msg.setupwizard.keybase") }}</label>
-                          <div class="control">
-                            <input class="input" type="keybase" required v-model="keybase" />
-                            <p class="help">
-                               {{ $t("msg.setupwizard.enter_keybase") }}
-                             </p>
-                          </div>
-                        </div>
-
-                        <div class="field">
                           <label class="label">{{ $t("msg.lang.lang") }}</label>
                           <div class="control">
                             <div class="select is-fullwidth">
@@ -154,7 +144,6 @@
                       <h2 class="title is-4" style="color: #d19944!important;margin-bottom: 24px;">{{ $t("msg.setupwizard.values_correct") }}</h2>
                       <p>
                         {{ $t("msg.setupwizard.name") }}: {{this.textField.defaultValue}}<br/>
-                        <span v-if="keybase">{{ $t("msg.setupwizard.keybase_account") }}: {{keybase}}<br/></span>
                         {{ $t("msg.setupwizard.language") }}: {{localeSelected}}<br/>
                         {{ $t("msg.setupwizard.network_node") }}: {{this.nodeserverField.nodeInternal ? 'internal' : this.nodeserverField.defaultValue}}<br/>
 
@@ -168,6 +157,7 @@
                         <button class="button is-primary" @click="prevStep('step3')" ><mdicon name="arrow-left-circle-outline" />&nbsp;{{ $t("msg.setupwizard.previous_step") }}</button>
                         <button class="button is-primary" :class="{'is-loading': isSaving}" :disabled="isSaving" @click="save" >{{ $t("msg.setupwizard.save_and_finish") }}</button>
                       </div>
+                      <StartupProgress v-if="isSaving && store.state.loginStage" :stages="openStages" :current="store.state.loginStage" />
 
 
                     </div><!-- end step 3 -->
@@ -184,9 +174,11 @@
 </template>
 <script>
 
-  import { ref, reactive, onUnmounted } from 'vue';
+  import { ref, reactive, onUnmounted, computed } from 'vue';
+  import { useI18n } from 'vue-i18n';
   import NodeserverField from "@/components/form/nodeserverField";
   import TextField from "@/components/form/textField";
+  import StartupProgress from "@/components/layout/StartupProgress.vue";
   import useFormValidation from "@/modules/useFormValidation";
   import { useRouter } from '@/router';
   import { useRoute } from 'vue-router';
@@ -199,6 +191,7 @@
     components: {
       NodeserverField,
       TextField,
+      StartupProgress,
       //videoPlay,
     },
     setup(){
@@ -215,7 +208,6 @@
       const step = ref('step1');
       const moveback = ref(false);
       const name = ref('');
-      const keybase = ref('');
       const domain = ref('');
       const epicboxDomain = ref('');
 
@@ -225,6 +217,12 @@
       const fromRoute = route.params.from ? route.params.from : 'login';
       const isSaving = ref(false);
       const isExistingSetup = ref(false);
+      const { t } = useI18n();
+      //first login: after saving, the login page opens the wallet (loginStage in the store)
+      const openStages = computed(() => [
+        {key: 'wallet', label: t('msg.login.stage_wallet')},
+        {key: 'unlock', label: t('msg.login.stage_unlock')},
+      ]);
 
 
       return{
@@ -240,12 +238,12 @@
         nodeserverField,
         resetFormErrors,
         name,
-        keybase,
         textField,
         moveback,
         fromRoute,
         isSaving,
         isExistingSetup,
+        openStages,
         domain,
         epicboxDomain
 
@@ -277,7 +275,6 @@
 
       if(user && user[0]){
         this.textField.input = user[0].name ? user[0].name : '';
-        this.keybase = user[0].keybase ? user[0].keybase : '';
       }
 
     },
@@ -326,6 +323,11 @@
         this.emitter.emit('app.accountLoggedIn');
       },
       async save(){
+        //a second click while saving would save twice and log in twice
+        if(this.isSaving){
+          return;
+        }
+        this.isSaving = true;
         try{
 
           let user = await this.$userService.getUser(this.configService.configAccount);
@@ -335,7 +337,6 @@
             await this.$userService.updateUserByAccount(this.configService.configAccount, {
               account: this.configService.configAccount,
               name: this.textField.defaultValue,
-              keybase: this.keybase,
               language: this.localeSelected,
               nodeInternal: this.nodeserverField.nodeInternal,
               epicbox_domain: this.epicboxDomain.defaultValue,
@@ -347,7 +348,6 @@
             let inserted = await this.$userService.addUser({
               account: this.configService.configAccount,
               name: this.textField.defaultValue,
-              keybase: this.keybase,
               ngrok: '', //column is NOT NULL in the user table
               language: this.localeSelected,
               nodeInternal: this.nodeserverField.nodeInternal,
@@ -358,6 +358,7 @@
               user = inserted;
             }else{
               this.$toast.error(this.$t("msg.setupwizard.db_fatal"));
+              this.isSaving = false;
               return;
             }
 
@@ -386,8 +387,7 @@
 
           const loginWaits = this.emitter.all.get('setupwizard.saved');
           if(this.fromRoute != 'navbar' && loginWaits && loginWaits.length){
-            //first login: the login page starts the node and the wallet api
-            this.isSaving = true;
+            //first login: the login page starts the node and the wallet api (isSaving stays on)
             this.emitter.emit('setupwizard.saved');
             return;
           }
@@ -395,10 +395,12 @@
           console.log('start node before wallet listener');
           await this.emitter.emit('app.nodeStart');
 
+          this.isSaving = false;
           this.emitter.emit('app.accountLoggedIn');
 
 
         }catch(e){
+          this.isSaving = false;
           this.$toast.error(this.$t("msg.setupwizard.errors_save", [e.message]));
           return
         }

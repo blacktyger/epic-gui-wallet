@@ -10,7 +10,7 @@
                   <div class="is-widget-label">
                     <h3 class="subtitle is-spaced is-6">{{ $t("msg.info.spendable") }}:</h3>
                     <h2 class="title is-4">
-                      <span v-bind:class="{'amount-hidden': store.state.hideValues }" >{{summary.spendable}}</span>
+                      <span v-bind:class="{'amount-hidden': store.state.hideValues, 'is-updating': updating }" :aria-busy="store.state.walletSync == 'loading'" >{{summary.spendable}}</span>
                     </h2>
                   </div>
                 </div>
@@ -26,7 +26,7 @@
                   <div class="is-widget-label">
                     <h3 class="subtitle is-spaced is-6">{{ $t("msg.unconfirmed") }}:</h3>
                     <h2 class="title is-4">
-                      <span v-bind:class="{'amount-hidden': store.state.hideValues }" >{{summary.unconfirmed}}</span>
+                      <span v-bind:class="{'amount-hidden': store.state.hideValues, 'is-updating': updating }" :aria-busy="store.state.walletSync == 'loading'" >{{summary.unconfirmed}}</span>
                     </h2>
                   </div>
                 </div>
@@ -42,7 +42,7 @@
                   <div class="is-widget-label">
                     <h3 class="subtitle is-spaced is-6">{{ $t("msg.info.unfinalization") }}:</h3>
                     <h2 class="title is-4">
-                      <span v-bind:class="{'amount-hidden': store.state.hideValues }" >{{summary.unfinalization}}</span>
+                      <span v-bind:class="{'amount-hidden': store.state.hideValues, 'is-updating': updating }" :aria-busy="store.state.walletSync == 'loading'" >{{summary.unfinalization}}</span>
                     </h2>
                   </div>
                 </div>
@@ -58,7 +58,7 @@
                   <div class="is-widget-label">
                     <h3 class="subtitle is-spaced is-6">{{ $t("msg.info.immature") }}:</h3>
                     <h2 class="title is-4">
-                      <span v-bind:class="{'amount-hidden': store.state.hideValues }" >{{summary.immature}}</span>
+                      <span v-bind:class="{'amount-hidden': store.state.hideValues, 'is-updating': updating }" :aria-busy="store.state.walletSync == 'loading'" >{{summary.immature}}</span>
                     </h2>
                   </div>
                 </div>
@@ -74,7 +74,7 @@
                   <div class="is-widget-label">
                     <h3 class="subtitle is-spaced is-6">{{ $t("msg.locked") }}:</h3>
                     <h2 class="title is-4">
-                      <span v-bind:class="{'amount-hidden': store.state.hideValues }" >{{summary.locked}}</span>
+                      <span v-bind:class="{'amount-hidden': store.state.hideValues, 'is-updating': updating }" :aria-busy="store.state.walletSync == 'loading'" >{{summary.locked}}</span>
                     </h2>
                   </div>
                 </div>
@@ -98,10 +98,13 @@
 
       const store = useStore();
       const summary = computed(() => store.state.summary)
+      //not yet checked against the node (see WalletSyncStatus in the header)
+      const updating = computed(() => store.state.walletSync != 'synced')
 
       return {
         store,
         summary,
+        updating,
       }
 
     },

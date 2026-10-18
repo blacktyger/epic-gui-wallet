@@ -106,8 +106,6 @@ const messages = {
       account_information: 'Информация за Акаунта',
       your_name:'Вашето Име',
       name_only_internal: 'Името се използва само вътрешно',
-      keybase: 'Keybase',
-      enter_keybase: 'Ако имате Keybase акаунт, можете да го въведете тук.',
       next_step: 'Следваща стъпка',
       network_node: 'Мрежов възел',
       network_node_txt: `Портфейлът се нуждае от мрежов възел (сървър), за да изпраща и получава транзакции.<br/>
@@ -128,7 +126,6 @@ const messages = {
       values_correct: 'Верни ли са тези стойности?',
       save_and_finish: 'Запазване и завършване',
       name: 'Име',
-      keybase_account: 'Keybase Акаунт',
       language: 'Език',
       ngrok_authtoken: 'ngrok Auth-Token',
       db_fatal: 'DB Fatal: can not insert DB',
@@ -199,7 +196,6 @@ const messages = {
     },
     account: {
       account: 'Акаунт',
-      keybase: 'Keybase',
       your_name: 'Вашето Име',
       settings_saved: 'Настройки на акаунта запазени',
       error_save: 'Грешка при запазване на акаунта'
@@ -209,7 +205,6 @@ const messages = {
       country: 'Държава',
       city: 'Град',
       tor_onion_address: 'Tor-Onion Адрес',
-      keybase_account: 'Keybase Акаунт',
       external_one: 'Външен Адрес 1',
       external_two: 'Външен Адрес 2',
       proof_address: 'Доказателствен Адрес',

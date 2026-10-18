@@ -28,11 +28,10 @@
                       <mdicon size=20 v-if="!store.state.hideValues" name="eye-outline" />
                       <mdicon size=20 v-else name="eye-off-outline" />
                     </span>
-                    {{ $t("msg.info.total") }}: <span v-bind:class="{'amount-hidden': store.state.hideValues }" style="color: #d19944;">{{ $filters.currencyFormat(store.state.summary.total, locale) }} EPIC</span>&nbsp;<span v-if="configService.defaultAccountNetwork == 'mainnet'" v-bind:class="{'is-hidden': store.state.hideValues }" class="is-size-7">&#x2248; ${{ $filters.currencyFormat(usdPrice, locale) }}</span>
+                    {{ $t("msg.info.total") }}: <span v-bind:class="{'amount-hidden': store.state.hideValues, 'is-updating': store.state.walletSync != 'synced' }" :aria-busy="store.state.walletSync == 'loading'" style="color: #d19944;">{{ $filters.currencyFormat(store.state.summary.total, locale) }} EPIC</span>&nbsp;<span v-if="configService.defaultAccountNetwork == 'mainnet'" v-bind:class="{'is-hidden': store.state.hideValues }" class="is-size-7">&#x2248; ${{ $filters.currencyFormat(usdPrice, locale) }}</span>
 
                   </h3>
-
-
+                  <WalletSyncStatus />
 
                 </div>
               </div>
@@ -79,9 +78,13 @@
 import { computed, ref } from 'vue';
 import { useStore } from '@/store';
 import { useRoute } from 'vue-router';
+import WalletSyncStatus from '@/components/layout/WalletSyncStatus.vue';
 
 export default {
   name: "headerbar",
+  components: {
+    WalletSyncStatus,
+  },
   watch: {
       'store.state.summary.total': async function (newVal) {
 

@@ -71,6 +71,13 @@ export const store = createStore({
     commits: [],
     //the height the wallet counted its balance at (summary last_confirmed_height)
     walletTip: 0,
+    //balance and txs since login: '' (logged out), 'loading' (not read yet), 'local' (read from the
+    //wallet, not yet checked against the node), 'synced' (refreshed from the node), 'error'
+    walletSync: '',
+    //the HTTP listener is being started after login
+    listenerStarting: false,
+    //the step of opening the wallet running now (see StartupProgress), '' when idle
+    loginStage: '',
     summary: {
       spendable: 0,
       total: 0,
@@ -173,6 +180,18 @@ rproofs_total: 64579
 
     walletTip(state, payload) {
       state.walletTip = Number(payload) || 0;
+    },
+
+    walletSync(state, payload) {
+      state.walletSync = payload;
+    },
+
+    listenerStarting(state, payload) {
+      state.listenerStarting = !!payload;
+    },
+
+    loginStage(state, payload) {
+      state.loginStage = payload || '';
     },
 
     commits(state, payload) {

@@ -13,20 +13,24 @@
                   </header>
                   <div id="restoreMnemonicWords" class="card-content">
                     <h2 class="title" style="text-align: center;">{{ $t('msg.create.seedPhrase') }}</h2>
-                    <p class="has-text-weight-semibold has-text-warning" style="color: #d19944!important;margin-bottom: 24px;">
+                    <p class="has-text-weight-semibold has-text-warning" style="color: #d19944!important;margin-bottom: 12px;">
                       {{ $t('msg.create.backupNote') }}
                     </p>
-                    <div class="tags" style="justify-content: center;">
-                      <span style="color:#000000" class="mnemonic-word tag is-light is-medium is-rounded is-link" v-for="seed in newseeds" :key="seed">{{seed}}<span class="space"> </span></span>
-                    </div>
+                    <article class="message is-warning">
+                      <div class="message-body">{{ $t('msg.create.backupWarning') }}</div>
+                    </article>
+                    <!-- numbered, so the words are written down in order (a phrase can repeat a word) -->
+                    <ol class="tags" style="justify-content: center; list-style: none; margin-left: 0;">
+                      <li style="color:#000000" class="mnemonic-word tag is-light is-medium is-rounded is-link" v-for="(seed, index) in newseeds" :key="index"><small style="opacity:0.6;">{{ index + 1 }}.&nbsp;</small>{{seed}}<span class="space"> </span></li>
+                    </ol>
 
                     <div style="text-align: center;">
                       <canvas id="qrcodeCanvas" ></canvas>
                     </div>
                     <p>&nbsp;</p>
                     <div class="buttons is-centered">
-                      <router-link class="button is-outlined is-primary" to="/login">
-                        {{ $t("msg.login_") }}
+                      <router-link class="button is-primary" to="/login">
+                        {{ $t("msg.create.writtenDown") }}
                       </router-link>
                     </div>
                   </div>
@@ -102,10 +106,11 @@
                         <mdicon name="arrow-left-bold-hexagon-outline" />
                         {{ $t("msg.back") }}
                       </router-link>
-                      <button class="button is-primary" :class="{ 'button__loader': isLoading }" @click="create" >
+                      <button class="button is-primary" :class="{ 'button__loader': isLoading }" :aria-disabled="isLoading" @click="create" >
                         <span class="button__text">{{ $t('msg.create.newWallet') }}</span>
                       </button>
                     </div>
+                    <StartupProgress v-if="isLoading && createStage" :stages="createStages" :current="createStage" />
 
                   </div>
                 </div>
@@ -120,13 +125,15 @@
 
 <script>
 
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from '@/router';
 import { useRoute } from 'vue-router';
 import AccountField from "@/components/form/accountField";
 import PasswordField from "@/components/form/passwordField";
 import WalletdirField from "@/components/form/walletdirField";
 import NetworkField from "@/components/form/networkField";
+import StartupProgress from "@/components/layout/StartupProgress.vue";
 import useFormValidation from "@/modules/useFormValidation";
 
 export default {
@@ -137,6 +144,7 @@ export default {
     AccountField,
     WalletdirField,
     NetworkField,
+    StartupProgress,
   },
   watch: {
     qrText: function (val) {
@@ -159,6 +167,12 @@ export default {
     const qrText = ref('');
     const fromRoute = route.params.from ? route.params.from : 'login';
     const vueCanvas = ref(null);
+    const { t } = useI18n();
+    const createStage = ref('');
+    const createStages = computed(() => [
+      {key: 'create', label: t('msg.create.stage_create')},
+      {key: 'save', label: t('msg.create.stage_save')},
+    ]);
 
 
 
@@ -175,7 +189,9 @@ export default {
       fromRoute,
       isLoading,
       qrText,
-      newseeds
+      newseeds,
+      createStage,
+      createStages
 
 
     }
@@ -196,6 +212,10 @@ export default {
 
     async create(){
 
+      //running already (aria-disabled keeps the focus on the button, so guard here)
+      if(this.isLoading){
+        return;
+      }
 
       this.resetFormErrors();
 
@@ -221,35 +241,43 @@ export default {
         }
 
         let walletRecoverDir = window.nodePath.join(userhomedir, this.networkField.shortName);
-        let created = await this.$walletService.new(this.passwordField.defaultValue, this.networkField.defaultValue, walletRecoverDir);
-        if(created && !created.success){
-          this.$toast.error(created.msg, {duration:false});
-        }else{
-          //save new account settings and run a check against recoverd wallet
-          if(await this.configService.updateAppConfig('account_dirs', {
-              account: this.accountField.defaultValue,
-              userhomedir: userhomedir,
-              network: this.networkField.defaultValue,
-              isdefault: this.accountField.defaultValue == 'default' ? true : false
-            })){
-            let action = await this.configService.startCheck(this.accountField.defaultValue);
-            if(action === 'settings'){
-              this.newseeds = created.msg.split(' ');
-              this.qrText = created.msg;
-              this.page = 'created'
+        const started = performance.now();
+        this.createStage = 'create';
+        try{
+          let created = await this.$walletService.new(this.passwordField.defaultValue, this.networkField.defaultValue, walletRecoverDir);
+          console.log('[create] wallet created +' + Math.round(performance.now() - started) + ' ms');
+          if(created && !created.success){
+            this.$toast.error(created.msg, {duration:false});
+          }else{
+            this.createStage = 'save';
+            //save new account settings and run a check against recoverd wallet
+            if(await this.configService.updateAppConfig('account_dirs', {
+                account: this.accountField.defaultValue,
+                userhomedir: userhomedir,
+                network: this.networkField.defaultValue,
+                isdefault: this.accountField.defaultValue == 'default' ? true : false
+              })){
+              let action = await this.configService.startCheck(this.accountField.defaultValue);
+              if(action === 'settings'){
+                console.log('[create] account saved +' + Math.round(performance.now() - started) + ' ms');
+                this.newseeds = created.msg.split(' ');
+                this.qrText = created.msg;
+                this.page = 'created'
+
+              }else{
+                this.$toast.error(this.$t('msg.create.fatal_create', [action]), {duration:false});
+              }
 
             }else{
-              this.$toast.error(this.$t('msg.create.fatal_create', [action]), {duration:false});
+              this.$toast.error(this.$t('msg.create.fatal_update'), {duration:false});
             }
-
-          }else{
-            this.$toast.error(this.$t('msg.create.fatal_update'), {duration:false});
           }
+        }catch(e){
+          this.$toast.error(e && e.message ? e.message : String(e), {duration:false});
+        }finally{
+          this.createStage = '';
+          this.isLoading = false;
         }
-
-        this.isLoading = false;
-
-
 
       }else{
         return;

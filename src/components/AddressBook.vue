@@ -81,13 +81,6 @@
 
             <div class="field">
               <div class="control">
-                <label>{{ $t("msg.addressbook.keybase_account") }}</label>
-                <input class="input" type="text" v-model="keybase" >
-              </div>
-            </div>
-
-            <div class="field">
-              <div class="control">
                 <label>{{ $t("msg.addressbook.external_one") }}</label>
                 <input class="input" type="text" v-model="externalOne" >
               </div>
@@ -152,7 +145,6 @@
             <p class="block" v-if="country"><label class="label">{{ $t("msg.addressbook.country") }}</label>{{country}}</p>
             <p class="block" v-if="city"><label class="label">{{ $t("msg.addressbook.city") }}</label> {{city}}</p>
             <p class="block" v-if="onion"><label class="label">{{ $t("msg.addressbook.tor_onion_address") }}</label><span>{{onion}}</span>&nbsp;<mdicon @click="copy(onion)" name="content-copy" size=16 /></p>
-            <p class="block" v-if="keybase"><label class="label">{{ $t("msg.addressbook.keybase_account") }}</label> {{keybase}}&nbsp;<mdicon @click="copy(keybase)" name="content-copy" size=16 /></p>
             <p class="block" v-if="externalOne"><label class="label">{{ $t("msg.addressbook.external_one") }}</label> {{externalOne}}&nbsp;<mdicon @click="copy(externalOne)" name="content-copy" size=16 /></p>
             <p class="block" v-if="externalTwo"><label class="label">{{ $t("msg.addressbook.external_two") }}</label> {{externalTwo}}&nbsp;<mdicon @click="copy(externalTwo)" name="content-copy" size=16 /></p>
 
@@ -204,7 +196,6 @@ export default {
     const city = ref('');
 
     const onion = ref('');
-    const keybase = ref('');
     const alwaysproof = ref(false);
     const proofaddr = ref('');
     const addressList = ref([]);
@@ -235,7 +226,6 @@ export default {
       country,
       city,
       onion,
-      keybase,
       alwaysproof,
       proofaddr,
       externalOne,
@@ -306,7 +296,6 @@ export default {
       this.country = addressItem.country;
       this.city = addressItem.city;
       this.onion = addressItem.onion;
-      this.keybase = addressItem.keybase;
       this.alwaysproof = addressItem.alwaysproof;
       this.proofaddr = addressItem.proofaddr;
       this.externalOne = addressItem.externalOne;
@@ -333,7 +322,6 @@ export default {
       this.country = '';
       this.city = '';
       this.onion = '';
-      this.keybase = '';
       this.alwaysproof = false;
       this.proofaddr = '';
       this.addressLoaded = false;
@@ -370,7 +358,6 @@ export default {
         country: this.country,
         city: this.city,
         onion: this.onion,
-        keybase: this.keybase,
         alwaysproof: this.alwaysproof,
         proofaddr: this.proofaddr,
         externalOne: this.externalOne,
@@ -393,7 +380,6 @@ export default {
         country: this.country,
         city: this.city,
         onion: this.onion,
-        keybase: this.keybase,
         alwaysproof: this.alwaysproof,
         proofaddr: this.proofaddr,
         externalOne: this.externalOne,

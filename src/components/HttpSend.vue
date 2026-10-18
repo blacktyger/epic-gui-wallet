@@ -28,9 +28,6 @@
                     <a v-if="address.onion" @click="fillAddressField(address, 'onion')" class="dropdown-item" data-address-id="{{address.id}}">
                       {{ address.name }} - TOR <span class="paste-address">{{ address.onion }}</span>
                     </a>
-                    <a v-if="address.keybase" @click="fillAddressField(address, 'keybase')" class="dropdown-item" data-address-id="{{address.id}}">
-                      {{ address.name }} - KEYBASE <span class="paste-address">{{ address.keybase }}</span>
-                    </a>
 
                     <a v-if="address.externalOne" @click="fillAddressField(address, 'externalOne')" class="dropdown-item" data-address-id="{{address.id}}">
                       {{ address.name }} - EPICBOX <span class="paste-address">{{ address.externalOne }}</span>
@@ -199,9 +196,6 @@ export default {
           this.addressField.setValue(address.onion.trim());
           this.method = 'http';
 
-        }else if(type == 'keybase'){
-          this.addressField.setValue(address.keybase.trim());
-          this.method = 'keybase';
         }else if(type == 'externalOne'){
           this.addressField.setValue(address.externalOne.trim());
           this.method = 'epicbox';
@@ -226,7 +220,9 @@ export default {
 
         if(value != ''){
 
-          this.foundAddress = await this.$addressBookService.findAddress(value);
+          let found = await this.$addressBookService.findAddress(value);
+          //only entries with an address that can be sent to (onion, Epicbox or HTTP)
+          this.foundAddress = found.filter(a => a.onion || a.externalOne || a.externalTwo);
         }else{
           this.foundAddress = [];
         }

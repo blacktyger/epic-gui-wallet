@@ -27,7 +27,7 @@
 
                   <div class="field is-grouped" style="justify-content: center;display: flex;flex-wrap: wrap;flex-direction: row;">
                     <div class="control" style="margin-top:12px;">
-                      <button type="submit" class="button is-primary" :class="{ 'button__loader': isLoading }" @click.prevent="login">
+                      <button type="submit" class="button is-primary" :class="{ 'button__loader': isLoading }" :aria-disabled="isLoading" @click.prevent="login">
                         <span class="button__text">{{ $t("msg.login_") }}</span>
                       </button>
                     </div>
@@ -43,6 +43,7 @@
                     </div>
                   </div>
                 </form>
+                <StartupProgress v-if="isLoading && store.state.loginStage" :stages="stages" :current="store.state.loginStage" />
               </div>
             </div>
           </div>
@@ -59,9 +60,10 @@
 <script>
 
 
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import PasswordField from "@/components/form/passwordField";
 import AccountField from "@/components/form/accountField";
+import StartupProgress from "@/components/layout/StartupProgress.vue";
 import useFormValidation from "@/modules/useFormValidation";
 import { useRouter } from '@/router';
 import { useStore } from '@/store';
@@ -72,6 +74,7 @@ export default {
   components: {
     PasswordField,
     AccountField,
+    StartupProgress,
   },
   setup() {
 
@@ -80,7 +83,19 @@ export default {
     const passwordField = ref('');
     const accountField = ref();
     const isLoading = ref(false);
+    //old wallet processes were found and are being closed: show that step too
+    const closingProcesses = ref(false);
     const { resetFormErrors } = useFormValidation();
+    const t = i18n.global.t;
+
+    //what has to happen before the dashboard; the node, listeners and balance refresh follow in the background
+    const stages = computed(() => [
+      {key: 'check', label: t('msg.login.stage_check')},
+      {key: 'processes', label: t('msg.login.stage_processes')},
+      ...(closingProcesses.value ? [{key: 'closing', label: t('msg.login.stage_closing')}] : []),
+      {key: 'wallet', label: t('msg.login.stage_wallet')},
+      {key: 'unlock', label: t('msg.login.stage_unlock')},
+    ]);
 
     return {
       store,
@@ -88,6 +103,8 @@ export default {
       passwordField,
       accountField,
       isLoading,
+      closingProcesses,
+      stages,
       resetFormErrors,
     }
   },
@@ -113,6 +130,11 @@ export default {
     },
     async login(){
 
+      //running already (aria-disabled keeps the focus on the button, so guard here)
+      if(this.isLoading){
+        return;
+      }
+
       //drop a wait for the Setup Assistant from an earlier attempt
       this.emitter.off('setupwizard.saved');
 
@@ -126,29 +148,17 @@ export default {
       if(!isFormAllValid.includes(false)){
 
         this.isLoading = true;
-        let istrue = false;
-        //first check config and setup
-        let action = await this.configService.startCheck(this.accountField.defaultValue);
-
-        //App has started - first close running wallet and node server process
-        let processKilled = await this.configService.killEpicProcess();
-        let user = await this.$userService.getUser(this.accountField.defaultValue);
-        
-        if(user.length && action != 'settings'){
-          this.store.commit('user', user[0]);
-        }else{
-          //first login: open the wallet once the Setup Assistant has saved the settings
-          const password = this.passwordField.defaultValue;
-          this.emitter.off('setupwizard.saved');
-          this.emitter.on('setupwizard.saved', async () => {
-            this.emitter.off('setupwizard.saved');
-            await this.startWallet(password, false);
-          });
-          this.router.push('/setupwizard');
-          return;
+        this.closingProcesses = false;
+        try{
+          await this.openWallet();
+        }catch(e){
+          //e.g. the process scan failed: never leave the form locked
+          console.log('[login] failed: ' + (e && e.message ? e.message : e));
+          this.$toast.error(e && e.message ? e.message : String(e));
+          this.isLoading = false;
+        }finally{
+          this.store.commit('loginStage', '');
         }
-       
-        await this.startWallet(this.passwordField.defaultValue, processKilled);
 
       }else{
         return;
@@ -156,48 +166,83 @@ export default {
 
     },
 
-    /* start the node and the wallet api, then log in */
-    async startWallet(password, processKilled){
+    /* check the settings, close leftover processes, then open the wallet (or the Setup Assistant on a first login) */
+    async openWallet(){
+        const started = performance.now();
+        const lap = (step) => console.log('[login] ' + step + ' +' + Math.round(performance.now() - started) + ' ms');
 
-       if(processKilled) {
-         await new Promise(resolve => setTimeout(resolve, 5000));
-       }
-       await this.emitter.emit('app.nodeStart');
-       
-        let canLogin = await this.$walletService.start(password, this.configService.config['firstTime']);
+        //first check config and setup
+        this.store.commit('loginStage', 'check');
+        let action = await this.configService.startCheck(this.accountField.defaultValue);
+        lap('config checked');
+
+        //App has started - first close running wallet and node server process
+        this.store.commit('loginStage', 'processes');
+        let processKilled = await this.configService.killEpicProcess();
+        lap('process scan');
+        //no owner_api is left, so walletService.start can skip its own scan: nothing was found, or
+        //everything found was killed and its ports are free; otherwise (kept or not killed) it scans again
+        let knownNotRunning = processKilled === null;
+        if(processKilled){
+          //wait until the closed processes released their ports, not a fixed 5 s
+          this.closingProcesses = true;
+          this.store.commit('loginStage', 'closing');
+          const portsFree = await this.configService.waitForKilledPorts();
+          knownNotRunning = this.configService.allKilled && portsFree;
+          lap('old processes closed');
+        }
+        let user = await this.$userService.getUser(this.accountField.defaultValue);
         
+        if(user.length && action != 'settings'){
+          this.store.commit('user', user[0]);
+        }else{
+          //first login: open the wallet once the Setup Assistant has saved the settings
+          const password = this.passwordField.defaultValue;
+          this.store.commit('loginStage', '');
+          this.emitter.off('setupwizard.saved');
+          //the scan above still holds: the Setup Assistant starts no wallet process
+          this.emitter.on('setupwizard.saved', async () => {
+            this.emitter.off('setupwizard.saved');
+            try{
+              await this.startWallet(password, knownNotRunning);
+            }catch(e){
+              this.store.commit('loginStage', '');
+              this.$toast.error(e && e.message ? e.message : String(e));
+              this.router.push('/login');
+            }
+          });
+          this.router.push('/setupwizard');
+          return;
+        }
+
+        await this.startWallet(this.passwordField.defaultValue, knownNotRunning, lap);
+    },
+
+    /* start the node and the wallet api, then log in.
+       Only opening the wallet is waited for: the node check, the listeners and the first balance
+       refresh run after the dashboard is shown, with their status there (App.vue). */
+    async startWallet(password, knownNotRunning, lap = () => {}){
+
+        //the node starts (or is checked) alongside, it is not waited for
+        this.emitter.emit('app.nodeStart');
+
+        this.store.commit('loginStage', 'wallet');
+        let canLogin = await this.$walletService.start(password, this.configService.config['firstTime'], knownNotRunning, (stage) => {
+          this.store.commit('loginStage', stage);
+          lap('wallet service started');
+        });
+        lap('wallet opened');
+        this.store.commit('loginStage', '');
+
         if(canLogin.success){
 
-          //load user account settings first
-          
-          window.debug ? console.log('LOGIN USER:', this.store.state.user) : null;
-          if(this.configService.config['walletlisten_on_startup']){
-            const isListen = await this.$walletService.startListen(password, true, 'http');
-            //start epicbox, will be executed when node has synced status
-            if(this.configService.config['epicbox_domain'] != undefined && this.configService.config['epicbox_domain'] != '' ){
-              
-              await this.emitter.emit('app.startEpicbox', password);
-             
-            }
-
-            //the wallet listener started
-            /*if(isListen && isListen.success){
-              this.$toast.success(this.$t("msg.login.listener_started"));
-            }else{
-              this.$toast.error(this.$t("msg.login.error_listener_started"));
-              this.store.commit('walletListenerService', false);
-            }*/
-
-            //Tor state only, no toast: Tor is not configurable and fails to bootstrap on most setups
-            this.store.commit('torService', !!(isListen && isListen.tor));
-
-          }
-
-
-
+          //a plain copy: a reactive object can't be passed to the logger
+          window.debug ? console.log('LOGIN USER:', JSON.stringify(this.store.state.user)) : null;
 
           this.isLoading = false;
           this.emitter.emit('app.accountLoggedIn');
+          //HTTP listener, then Epicbox once the node has synced
+          this.emitter.emit('app.startListeners', password);
 
         }else{
           //console.log(canLogin);
