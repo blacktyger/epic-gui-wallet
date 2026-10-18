@@ -43,6 +43,7 @@
                     </div>
                   </div>
                 </form>
+                <StartupProgress v-if="isLoading && store.state.loginStage" :stages="stages" :current="store.state.loginStage" />
               </div>
             </div>
           </div>
@@ -59,9 +60,10 @@
 <script>
 
 
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import PasswordField from "@/components/form/passwordField";
 import AccountField from "@/components/form/accountField";
+import StartupProgress from "@/components/layout/StartupProgress.vue";
 import useFormValidation from "@/modules/useFormValidation";
 import { useRouter } from '@/router';
 import { useStore } from '@/store';
@@ -72,6 +74,7 @@ export default {
   components: {
     PasswordField,
     AccountField,
+    StartupProgress,
   },
   setup() {
 
@@ -80,7 +83,19 @@ export default {
     const passwordField = ref('');
     const accountField = ref();
     const isLoading = ref(false);
+    //old wallet processes were found and are being closed: show that step too
+    const closingProcesses = ref(false);
     const { resetFormErrors } = useFormValidation();
+    const t = i18n.global.t;
+
+    //what has to happen before the dashboard; the node, listeners and balance refresh follow in the background
+    const stages = computed(() => [
+      {key: 'check', label: t('msg.login.stage_check')},
+      {key: 'processes', label: t('msg.login.stage_processes')},
+      ...(closingProcesses.value ? [{key: 'closing', label: t('msg.login.stage_closing')}] : []),
+      {key: 'wallet', label: t('msg.login.stage_wallet')},
+      {key: 'unlock', label: t('msg.login.stage_unlock')},
+    ]);
 
     return {
       store,
@@ -88,6 +103,8 @@ export default {
       passwordField,
       accountField,
       isLoading,
+      closingProcesses,
+      stages,
       resetFormErrors,
     }
   },
@@ -126,18 +143,23 @@ export default {
       if(!isFormAllValid.includes(false)){
 
         this.isLoading = true;
+        this.closingProcesses = false;
         const started = performance.now();
         const lap = (step) => console.log('[login] ' + step + ' +' + Math.round(performance.now() - started) + ' ms');
 
         //first check config and setup
+        this.store.commit('loginStage', 'check');
         let action = await this.configService.startCheck(this.accountField.defaultValue);
         lap('config checked');
 
         //App has started - first close running wallet and node server process
+        this.store.commit('loginStage', 'processes');
         let processKilled = await this.configService.killEpicProcess();
         lap('process scan');
         if(processKilled){
           //wait until the closed processes released their ports, not a fixed 5 s
+          this.closingProcesses = true;
+          this.store.commit('loginStage', 'closing');
           await this.configService.waitForKilledPorts();
           lap('old processes closed');
         }
@@ -148,6 +170,7 @@ export default {
         }else{
           //first login: open the wallet once the Setup Assistant has saved the settings
           const password = this.passwordField.defaultValue;
+          this.store.commit('loginStage', '');
           this.emitter.off('setupwizard.saved');
           //the scan above still holds: the Setup Assistant starts no wallet process
           const knownNotRunning = processKilled !== false;
@@ -176,10 +199,13 @@ export default {
         //the node starts (or is checked) alongside, it is not waited for
         this.emitter.emit('app.nodeStart');
 
-        let canLogin = await this.$walletService.start(password, this.configService.config['firstTime'], knownNotRunning, () => {
+        this.store.commit('loginStage', 'wallet');
+        let canLogin = await this.$walletService.start(password, this.configService.config['firstTime'], knownNotRunning, (stage) => {
+          this.store.commit('loginStage', stage);
           lap('wallet service started');
         });
         lap('wallet opened');
+        this.store.commit('loginStage', '');
 
         if(canLogin.success){
 

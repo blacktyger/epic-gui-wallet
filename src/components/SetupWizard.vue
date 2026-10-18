@@ -157,6 +157,7 @@
                         <button class="button is-primary" @click="prevStep('step3')" ><mdicon name="arrow-left-circle-outline" />&nbsp;{{ $t("msg.setupwizard.previous_step") }}</button>
                         <button class="button is-primary" :class="{'is-loading': isSaving}" :disabled="isSaving" @click="save" >{{ $t("msg.setupwizard.save_and_finish") }}</button>
                       </div>
+                      <StartupProgress v-if="isSaving && store.state.loginStage" :stages="openStages" :current="store.state.loginStage" />
 
 
                     </div><!-- end step 3 -->
@@ -173,9 +174,11 @@
 </template>
 <script>
 
-  import { ref, reactive, onUnmounted } from 'vue';
+  import { ref, reactive, onUnmounted, computed } from 'vue';
+  import { useI18n } from 'vue-i18n';
   import NodeserverField from "@/components/form/nodeserverField";
   import TextField from "@/components/form/textField";
+  import StartupProgress from "@/components/layout/StartupProgress.vue";
   import useFormValidation from "@/modules/useFormValidation";
   import { useRouter } from '@/router';
   import { useRoute } from 'vue-router';
@@ -188,6 +191,7 @@
     components: {
       NodeserverField,
       TextField,
+      StartupProgress,
       //videoPlay,
     },
     setup(){
@@ -213,6 +217,12 @@
       const fromRoute = route.params.from ? route.params.from : 'login';
       const isSaving = ref(false);
       const isExistingSetup = ref(false);
+      const { t } = useI18n();
+      //first login: after saving, the login page opens the wallet (loginStage in the store)
+      const openStages = computed(() => [
+        {key: 'wallet', label: t('msg.login.stage_wallet')},
+        {key: 'unlock', label: t('msg.login.stage_unlock')},
+      ]);
 
 
       return{
@@ -233,6 +243,7 @@
         fromRoute,
         isSaving,
         isExistingSetup,
+        openStages,
         domain,
         epicboxDomain
 

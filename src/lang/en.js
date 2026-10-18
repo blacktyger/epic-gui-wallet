@@ -103,7 +103,9 @@ const messages = {
       newWallet: 'Create new wallet',
       backupNote: 'Important！Please backup your seed phrase to restore your wallet',
       fatal_create: 'Fatal: created fail on action "{0}"',
-      fatal_update: 'Fatal: App config not updated.'
+      fatal_update: 'Fatal: App config not updated.',
+      stage_create: 'Creating the wallet and its recovery phrase',
+      stage_save: 'Saving the account'
     },
     setupwizard:{
       setup_assistant: 'Setup Assistant',
@@ -218,6 +220,11 @@ const messages = {
       error_tor_started: 'Tor not started',
       epicbox_started: 'Epicbox started',
       error_epicbox_started: 'Error starting Epicbox',
+      stage_check: 'Checking wallet files',
+      stage_processes: 'Looking for wallet processes still running',
+      stage_closing: 'Closing the old wallet processes',
+      stage_wallet: 'Starting the wallet service',
+      stage_unlock: 'Unlocking the wallet',
     },
     seed:{
       errorGetMnemonic: 'Error getting Mnemonic. Is password correct?',
@@ -271,6 +278,11 @@ const messages = {
       background_process: 'Please close all processes before continuing.',
       walletonline: 'Your wallet is online',
       walletoffline: 'Your wallet is offline.',
+    },
+    progress: {
+      done: 'done',
+      active: 'in progress',
+      pending: 'waiting',
     },
     info: {
       spendable: 'Spendable',
