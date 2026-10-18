@@ -5,6 +5,7 @@ import contextMenu from 'electron-context-menu'
 import { exec } from 'child_process'
 import { pathToFileURL } from 'url'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
+import { createDirectory } from './shared/nodeDirectory'
 
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -555,6 +556,17 @@ ipcMain.handle('version', () => {
 });
 
 
+
+//public node list from status.btlabs.uk (shared/nodeDirectory.js): a plain GET of public data from
+//the main process, short timeout, short cache; always resolves, to the list or null
+const nodeDirectory = createDirectory({ fetch: (url, opts) => net.fetch(url, opts), timeoutMs: 4000 });
+ipcMain.handle('node-directory', async (event, chain) => {
+  try {
+    return await nodeDirectory.get(String(chain));
+  } catch (e) {
+    return null;
+  }
+});
 
 //the clipboard module is not available in renderer processes since Electron 44
 ipcMain.handle('clipboard-write-text', (event, text) => {

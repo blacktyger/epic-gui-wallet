@@ -619,6 +619,8 @@ contextBridge.exposeInMainWorld('api', {
     reloadUi: () => {
       ipcRenderer.invoke('reload-ui');
     },
+    //live public nodes from status.btlabs.uk, fetched by the main process (null when unavailable)
+    nodeDirectory: (chain) => ipcRenderer.invoke('node-directory', chain),
     
 
 });

@@ -26,6 +26,14 @@
          </div>
     </div>
   </div>
+  <!-- live public nodes from status.btlabs.uk: picking one only fills the address; hidden when unavailable -->
+  <NodeDirectory
+    v-if="select == 'external' && !directoryFailed"
+    :address="String(input || '')"
+    :chain="directoryChain"
+    :disabled="checking"
+    @pick="pickPublicNode"
+  />
 
 
 
@@ -35,8 +43,10 @@
 
   import { ref, computed } from "vue";
   import useFormValidation from "@/modules/useFormValidation";
+  import NodeDirectory from "@/components/form/NodeDirectory.vue";
 
   export default {
+    components: { NodeDirectory },
     setup() {
 
       let input = ref('');
@@ -70,6 +80,24 @@
 
       return { input, select, nodeInternal, errors, defaultValue, validInput, checking: ref(false) };
     },
+    data() {
+      return { directoryFailed: false };
+    },
+    computed: {
+      directoryChain(){
+        return (this.configService && this.configService.defaultAccountNetwork) || 'mainnet';
+      }
+    },
+    //the public node list is optional: if it fails in any way, drop it and keep the field working
+    //(the error may come from the list or anything inside it; ModernNodeDirectory is the same list reskinned)
+    errorCaptured(err, instance) {
+      for(let i = instance; i && i !== this; i = i.$parent){
+        if(/NodeDirectory$/.test((i.$options && i.$options.name) || '')){
+          this.directoryFailed = true;
+          return false;
+        }
+      }
+    },
     watch: {
       //prefill the default node when external is picked and the address is empty
       select(value){
@@ -92,6 +120,12 @@
           this.errors.nodeaddress = this.$t("msg.validators.not_epic_node", [this.defaultValue + ' (' + check.reason + ')']);
         }
         return check.ok;
+      },
+
+      /* a public node from the list: fill the address, as if typed; saving stays the user's action */
+      pickPublicNode(endpoint){
+        this.input = endpoint;
+        this.errors.nodeaddress = null;
       },
 
       async nodeserverFieldChanged(){

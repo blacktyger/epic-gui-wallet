@@ -1,6 +1,10 @@
 import modern from './modern/en';
+import nodedir from './nodedir';
+
 const messages = {
   msg: {
+    //public node list from status.btlabs.uk, see lang/nodedir.js
+    nodedir,
 
     title: '',
     password: 'Password',
