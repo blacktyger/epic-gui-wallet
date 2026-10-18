@@ -40,6 +40,9 @@
     @firstscan-cancel="firstscanCancel"
   />
 
+  <!-- switching between the BT Labs Theme and Classic: shown before and after the reload -->
+  <RestartOverlay v-if="restart.target" :target="restart.target" :stage="restart.stage" />
+
 </template>
 
 <script>
@@ -50,12 +53,13 @@
   import { ref, onUnmounted } from 'vue';
   import { useStore } from '@/store';
   import { useRouter } from '@/router';
-  import { reloadUi } from '@/shared/theme';
+  import { reloadUi, getUi, markRestart, takeRestart } from '@/shared/theme';
   import AsideRight from '@/components/layout/AsideRight.vue'
   import ModalNodeBox from '@/components/layout/NodesyncedModalBox.vue'
   import ModalFirstsyncBox from '@/components/layout/FirstsyncModalBox.vue'
   import ModalKillBox from '@/components/layout/KillProcessModalBox.vue'
   import ModernApp from '@/components/modern/ModernApp.vue'
+  import RestartOverlay from '@/components/RestartOverlay.vue'
 
   window.nodeSynced = null;
 
@@ -69,6 +73,11 @@
       ModalFirstsyncBox,
       ModalKillBox,
       ModernApp,
+      RestartOverlay,
+    },
+    data() {
+      //the interface switch in progress (RestartOverlay): target 'modern' | 'classic', stage lock | reload | done
+      return { restart: { target: '', stage: '' } };
     },
     computed: {
       isClassic(){
@@ -252,12 +261,31 @@
       /* switch between the Modern and Classic interface: log out cleanly, then start the
          renderer again with the other stylesheet (shared/theme.js) */
       this.emitter.on('app.reloadUi', async () => {
+        if (this.restart.target) return;
+        //the overlay is painted before anything slow starts, so the window never looks stuck
+        this.restart = { target: getUi(), stage: 'lock' };
+        await this.$nextTick();
+        await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 30)));
+        const started = performance.now();
         try {
           await this.logoutApp();
         } finally {
+          this.restart.stage = 'reload';
+          markRestart(this.restart.target);
+          console.log('[switch] locked +' + Math.round(performance.now() - started) + ' ms, reloading');
+          //one frame for the "Restarting in" step to show, then the window starts again
+          await new Promise((resolve) => setTimeout(resolve, 120));
           reloadUi();
         }
       });
+
+      //the window just restarted into this interface: finish the overlay it began
+      const restarted = takeRestart();
+      if (restarted) {
+        this.restart = { target: restarted, stage: 'reload' };
+        setTimeout(() => { this.restart.stage = 'done'; }, 350);
+        setTimeout(() => { this.restart = { target: '', stage: '' }; }, 800);
+      }
 
       this.emitter.on('app.accountLoggedIn', async () => {
 
@@ -335,11 +363,12 @@
           immature: 0,
           locked: 0,
         });
-        await this.$walletService.stopListen(this.configService.config.epicbox_background);
+        //one process scan for listener, Tor, wallet and node (walletService.stopAll)
+        const started = performance.now();
+        const cfg = this.configService.config || {};
+        await this.$walletService.stopAll(cfg.epicbox_background, cfg.node_background != false);
         this.store.commit('walletEpicboxService', false);
-        await this.$walletService.stopWallet();
-        if(this.configService.config && this.configService.config.node_background == false)
-          await this.$nodeService.stopNode();
+        console.log('[logout] processes stopped +' + Math.round(performance.now() - started) + ' ms');
 
         this.$walletService.logoutClient();
         this.loggedIn = false;

@@ -18,6 +18,10 @@ export const UI_MODERN = 'modern';
 export const UI_CLASSIC = 'classic';
 export const UIS = [UI_MODERN, UI_CLASSIC];
 export const SCHEMES = ['dark', 'light', 'system'];
+/* interface scale, percent of the base text size; both interfaces size their text in rem */
+export const SCALES = [90, 100, 110, 125, 150];
+/* the BT Labs Theme's base text is a little larger than Classic's 16 px root (17 px) */
+const MODERN_BASE = 1.0625;
 
 function appConfigFile() {
   return path.join(window.config.getUserHomedir(), '.epic', 'epic_3-0-0_config.json');
@@ -76,6 +80,29 @@ export function getScheme() {
   return SCHEMES.includes(v) ? v : 'dark';
 }
 
+export function getScale() {
+  const v = Number(readAppConfig().scale);
+  return SCALES.includes(v) ? v : 100;
+}
+
+/* the root font size for an interface and scale: everything in rem follows it */
+export function applyScale(scale, ui) {
+  const html = document.documentElement;
+  const u = ui || html.dataset.ui || UI_MODERN;
+  const pct = (SCALES.includes(scale) ? scale : 100) * (u === UI_MODERN ? MODERN_BASE : 1);
+  html.style.fontSize = Math.round(pct * 100) / 100 + '%';
+  html.dataset.scale = String(scale);
+}
+
+/* saves and applies the interface scale at once */
+export function saveScale(scale, configService) {
+  const v = Number(scale);
+  if (!SCALES.includes(v)) return false;
+  const ok = writeAppSetting('scale', v, configService);
+  applyScale(v);
+  return ok;
+}
+
 export function resolvedScheme(scheme) {
   if (scheme !== 'system') return scheme;
   return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
@@ -111,6 +138,29 @@ export function noticeSeen(key) {
 
 export function markNoticeSeen(key, configService) {
   const n = Object.assign({}, readAppConfig().ui_notices, { [key]: true });
+  return writeAppSetting('ui_notices', n, configService);
+}
+
+/* a restart into another interface in progress: remembered over the reload (sessionStorage
+   survives loadURL in the same window) so the new interface can finish the overlay */
+const RESTART_KEY = 'epic.uiRestart';
+export function markRestart(ui) {
+  try { window.sessionStorage.setItem(RESTART_KEY, ui); } catch (e) { /* the overlay just ends */ }
+}
+export function takeRestart() {
+  try {
+    const v = window.sessionStorage.getItem(RESTART_KEY);
+    window.sessionStorage.removeItem(RESTART_KEY);
+    return v;
+  } catch (e) {
+    return null;
+  }
+}
+
+/* forget a one-time notice, so it shows again (Settings › Show the tour again) */
+export function resetNotice(key, configService) {
+  const n = Object.assign({}, readAppConfig().ui_notices);
+  delete n[key];
   return writeAppSetting('ui_notices', n, configService);
 }
 
