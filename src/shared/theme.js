@@ -23,21 +23,37 @@ function appConfigFile() {
   return path.join(window.config.getUserHomedir(), '.epic', 'epic_3-0-0_config.json');
 }
 
-function readAppConfig() {
+/* the app config as an object; {} when the file doesn't exist yet; null when it exists but can't be
+   read or parsed (then nothing is written, so a hand-edited file with a typo never loses its
+   account list) */
+function loadAppConfig() {
+  const file = appConfigFile();
   try {
-    const file = appConfigFile();
     if (!fs.existsSync(file)) return {};
-    return JSON.parse(fs.readFileSync(file, { encoding: 'utf8', flag: 'r' })) || {};
   } catch (e) {
-    return {};
+    return null;
   }
+  try {
+    const cfg = JSON.parse(fs.readFileSync(file, { encoding: 'utf8', flag: 'r' }));
+    return cfg && typeof cfg === 'object' && !Array.isArray(cfg) ? cfg : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function readAppConfig() {
+  return loadAppConfig() || {};
 }
 
 /* read-modify-write, so keys written by configService (account_dirs) are kept; the in-memory copy
    configService holds is updated too, or its next updateAppConfig() would write the old value back */
 function writeAppSetting(key, value, configService) {
   const file = appConfigFile();
-  const cfg = readAppConfig();
+  const cfg = loadAppConfig();
+  if (!cfg) {
+    console.error('theme: the app config file could not be read, not saving', key);
+    return false;
+  }
   if (!cfg.account_dirs) cfg.account_dirs = [];
   cfg[key] = value;
   try {
