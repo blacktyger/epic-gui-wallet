@@ -58,7 +58,7 @@
     "update-electron-app": "^2.0.1",
     "url-join": "^4.0.1",
     "urllib": "^2.38.0",
-    "vue": "^3.0.0",
+    "vue": "^3.5.44",
     "vue-chartjs": "^3.5.1",
     "vue-i18n": "9.1.9",
     "vue-router": "^4.0.13",
@@ -71,7 +71,7 @@
     "@vue/cli-plugin-babel": "~5.0.1",
     "@vue/cli-plugin-eslint": "~5.0.1 ",
     "@vue/cli-service": "~5.0.1",
-    "@vue/compiler-sfc": "^3.0.0",
+    "@vue/compiler-sfc": "^3.5.44",
     "electron": "^44.9.0",
     "electron-devtools-installer": "^3.1.0",
     "electron-installer-dmg": "^4.0.0",
@@ -83,7 +83,8 @@
   "overrides": {
     "vue-cli-plugin-electron-builder": {
       "electron-builder": "^26.15.3"
-    }
+    },
+    "cssnano": "^7.1.2"
   },
   "eslintConfig": {
     "root": true,
