@@ -251,7 +251,7 @@ export default {
 
         }else if(isListen.success == false){
 
-          this.$toast.error(this.$t("msg.login.error_listener_started"));
+          this.$toast.error(isListen.portInUse ? this.$t("msg.login.port_in_use", [isListen.portInUse]) : this.$t("msg.login.error_listener_started"));
           this.store.commit('walletListenerService', false);
         }
 

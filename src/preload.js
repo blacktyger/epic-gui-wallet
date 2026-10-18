@@ -5,6 +5,7 @@ import { join } from 'path'
 import path from 'path';
 import * as secp256k1 from "@noble/secp256k1";
 import isPortReachable from 'is-port-reachable';
+import { createProcessRegistry, redactArgs } from './shared/processOwnership';
 
 const moment = require('moment');
 const base32 = require('rfc-3548-b32');
@@ -63,35 +64,61 @@ function parseRecoveryPhrase(stdout){
   return (words.length == 12 || words.length == 24) ? words.join(' ') : '';
 }
 
+function killPid(pid){
+  return new Promise(function(resolve) {
+    if (process.platform === 'win32') {
+      //the tree: the app spawns through cmd.exe, epic-wallet.exe and its tor.exe are children
+      exec(`taskkill /pid ${Number(pid)} /f /t`, function( err ) {
+        resolve(!err);
+      });
+    }else{
+      //check if 3 seconds for node server is to short and makes problems
+      ps.kill(pid, {timeout: 3},function( err ) {
+        resolve(!err);
+      });
+    }
+  });
+}
+
+//the processes this app started (see shared/processOwnership.js): only these are ever stopped or reused
+const ownProcesses = createProcessRegistry({
+  fs,
+  file: path.join(ewalletPath, 'gui_processes.json'),
+  findProcess: require('find-process'),
+  kill: killPid,
+  win: process.platform === 'win32',
+});
+
+function track(child, cmd, args){
+  debug ? console.log('spawn', cmd, redactArgs(args).join(' ')) : null;
+  if(child.pid){
+    ownProcesses.record(child.pid, cmd, args);
+    child.on('exit', () => ownProcesses.forget(child.pid));
+  }
+  return child;
+}
+
 contextBridge.exposeInMainWorld('nodeChildProcess', {
 
+    /* stop a process by pid, only if the app started it; resolves false if it was not stopped */
     async kill(pid){
-      return new Promise(function(resolve, reject) {
-        let iskilled;
-        if (process.platform === 'win32') {
-            exec(`taskkill /pid ${pid} /f /t`, function( err ) {
-               if (err) {
-                 resolve(false);
-               }
-               else {
-
-                 resolve(true);
-               }
-           });
-
-        }else{
-          //check if 3 seconds for node server is to short and makes problems
-          ps.kill(pid, {timeout: 3},function( err ) {
-              if (err) {
-                resolve(false);
-              }
-              else {
-
-                resolve(true);
-              }
-          });
-        }
-      });
+      const [stopped] = await ownProcesses.stopPids([pid]);
+      return stopped;
+    },
+    /* our running processes of these roles (owner_api, listen, epicbox, scan, node), commands redacted;
+       opts: {dir, network, tor, torDirs} */
+    async ownedProcesses(roles, opts){
+      return ownProcesses.list(roles, opts);
+    },
+    /* stop our running processes of these roles; resolves the stopped processes and whether all are gone */
+    async stopOwned(roles, opts){
+      const owned = await ownProcesses.list(roles, opts);
+      const results = await ownProcesses.stop(owned);
+      return {stopped: owned, allKilled: results.every(r => r)};
+    },
+    /* stop these pids, if they are (still) ours: one boolean per pid */
+    async stopPids(pids){
+      return ownProcesses.stopPids(pids);
     },
     async spawn(cmd, args){
       const child = await spawn(cmd, args);
@@ -156,7 +183,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
       return new Promise(function(resolve, reject) {
 
 
-          let scanProcess = spawn(cmd, args, {shell: platform == 'win' ? true : false});
+          let scanProcess = track(spawn(cmd, args, {shell: platform == 'win' ? true : false}), cmd, args);
 
           //scan process is self closing
           scanProcess.stdout.setEncoding('utf8');
@@ -200,7 +227,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
 
 
-          let node_server = spawn(cmd, args, {shell: platform == 'win' ? true : false});
+          let node_server = track(spawn(cmd, args, {shell: platform == 'win' ? true : false}), cmd, args);
 
           node_server.stdout.setEncoding('utf8');
           node_server.stdout.on('data', (data) => {
@@ -229,7 +256,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
       return new Promise(function(resolve, reject) {
 
-          let ownerAPI = spawn(cmd, args, {shell: platform == 'win' ? true : false});
+          let ownerAPI = track(spawn(cmd, args, {shell: platform == 'win' ? true : false}), cmd, args);
 
 
           ownerAPI.stdout.setEncoding('utf8');
@@ -275,7 +302,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
       return new Promise(function(resolve, reject) {
 
-          let listenProcess = spawn(cmd, args, {shell: platform == 'win' ? true : false});
+          let listenProcess = track(spawn(cmd, args, {shell: platform == 'win' ? true : false}), cmd, args);
           let isTorBooted = false;
           listenProcess.stdout.setEncoding('utf8');
           listenProcess.stdout.on('data', (data) => {
@@ -320,7 +347,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
       return new Promise(function(resolve, reject) {
 
-          let listenProcess = spawn(cmd, args, {shell: platform == 'win' ? true : false});
+          let listenProcess = track(spawn(cmd, args, {shell: platform == 'win' ? true : false}), cmd, args);
           listenProcess.stdout.setEncoding('utf8');
           listenProcess.stdout.on('data', (data) => {
 

@@ -222,6 +222,7 @@ const messages = {
     login: {
       listener_started: 'Wallet listener started',
       error_listener_started: 'Error starting wallet listener',
+      port_in_use: 'Port {0} is used by another program (e.g. your own epic-wallet). Stop it, then try again.',
       tor_started: 'Tor started',
       error_tor_started: 'Tor not started',
       epicbox_started: 'Epicbox started',
@@ -283,6 +284,7 @@ const messages = {
       node_started: 'Node started',
       node_restarting: 'Node is restarting',
       node_not_started: 'Node not started',
+      node_port_in_use: 'Node not started: port {0} is used by another program (e.g. your own epic node). Stop it, or use it as an external node in Settings.',
       node_offline: 'Node is offline',
       external_node_online: 'External Node is online',
       external_node_offline: 'External Node is offline',

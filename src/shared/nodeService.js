@@ -34,66 +34,34 @@ class NodeService {
     if(this.restartSuccess){
       this.debug ? console.log('NodeService.restartNode') : null;
       this.restartSuccess = false;
-      let killPromise = [];
-      let killProcess = false;
-      let killPids = [];
-
-      let pEpicnodeList = await window.nodeFindProcess('name', /.*?epic.*server.*run/);
-      for(let process of pEpicnodeList) {
-        if(process.cmd.includes('server')){
-          killPids.push(process);
-        }
-      }
-
-      if(killPids.length){
-
-        for(let process of killPids) {
-          this.debug ? console.log('NodeService.kill', process) : null;
-          killPromise.push(window.nodeChildProcess.kill(process.pid))
-        }
-        await Promise.all(killPromise);
-
-      }
+      await this.stopNode();
       this.restartSuccess = await this.internalNodeStart();
       return this.restartSuccess;
     }
 
   }
+  /* stop the node this app started (never a node someone else runs) */
   async stopNode(){
 
-      let killPromise = [];
-      let killProcess = false;
-      let killPids = [];
-      let pEpicnodeList = await window.nodeFindProcess('name', /.*?epic.*server.*run/);
-      for(let process of pEpicnodeList) {
-        if(process.cmd.includes('server')){
-          killPids.push(process);
-        }
-      }
-      if(killPids.length){
-
-        for(let process of killPids) {
-          this.debug ? console.log('NodeService.kill', process) : null;
-          killPromise.push(window.nodeChildProcess.kill(process.pid))
-        }
-        await Promise.all(killPromise);
-
-      }
-
+      const res = await window.nodeChildProcess.stopOwned(['node']);
+      this.debug ? console.log('NodeService.stopNode', JSON.stringify(res.stopped)) : null;
   }
 
 
   async internalNodeStart(){
 
-    let internalNodeProcess = [];
-    let pEpicnodeList = await window.nodeFindProcess('name', /.*?epic.*server.*run/);
-    for(let process of pEpicnodeList) {
-      if(process.cmd.includes('server')){
-        internalNodeProcess.push(process);
-      }
-    }
+    //our node of this network may still run (node_background)
+    this.portInUse = 0;
+    let internalNodeProcess = await window.nodeChildProcess.ownedProcesses(['node'], {network: this.configService.defaultAccountNetwork});
 
     if(!internalNodeProcess.length){
+      //another node (e.g. the user's own) holds the api port: leave it alone, say so
+      const port = this.configService.getNodeApiPort();
+      if(await window.config.isPortReachable('127.0.0.1', port)){
+        this.portInUse = port;
+        return false;
+      }
+
       let args = [
         ...(this.configService.defaultAccountNetwork != 'mainnet' ? ['--' + this.configService.defaultAccountNetwork] : []),
         ...(this.configService.nodeTOMLPath != '' ? ['server', '--config_file', (this.configService.platform == "win" ? addQuotations(this.configService.nodeTOMLPath) : this.configService.nodeTOMLPath), 'run'] : ['server', 'run']),
