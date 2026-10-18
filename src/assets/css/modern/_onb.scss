@@ -205,3 +205,5 @@
 /* Headings that take the focus when a step opens (tabindex -1): no ring on a non-interactive target */
 .e-onb-main h1[tabindex='-1']:focus,
 .e-auth-title h1[tabindex='-1']:focus { outline: none; }
+/* word inputs use a <datalist>: Chromium's dropdown arrow would eat the word's room */
+.e-onb-word .e-input::-webkit-calendar-picker-indicator { display: none !important; }

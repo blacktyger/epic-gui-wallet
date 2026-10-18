@@ -43,3 +43,14 @@ dialog.e-drawer { margin: 0 0 0 auto; height: 100vh; max-height: 100vh; max-widt
 dialog.e-dialog::backdrop,
 dialog.e-drawer::backdrop { background: var(--scrim); }
 [dir='rtl'] dialog.e-drawer { margin: 0 auto 0 0; }
+
+/* headings and regions that receive focus from script (tabindex="-1") to announce a new step
+   get no ring: they are not controls */
+html[data-ui='modern'] h1[tabindex='-1']:focus-visible,
+html[data-ui='modern'] h2[tabindex='-1']:focus-visible,
+html[data-ui='modern'] main[tabindex='-1']:focus-visible,
+html[data-ui='modern'] section[tabindex='-1']:focus-visible,
+html[data-ui='modern'] div[tabindex='-1']:focus-visible { outline: none; }
+/* .e-drawer sets display:flex, which would show a closed <dialog> */
+dialog.e-drawer:not([open]),
+dialog.e-dialog:not([open]) { display: none; }
