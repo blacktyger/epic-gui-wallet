@@ -49,6 +49,7 @@
 
   import mixin from './mixin.js';
   import { MIN_CONFIRMATIONS, outputConfirmationState } from '@/shared/confirmations';
+  import { walletSyncAfterSummary, needsNodeRefresh, nextRefreshDelay } from '@/shared/walletSync';
   import { useI18n } from 'vue-i18n';
   import { ref, onUnmounted } from 'vue';
   import { useStore } from '@/store';
@@ -498,7 +499,7 @@
           this.store.commit('nodeStatus', respNode);
           if(this.loggedIn && lastTip > 0 && respNode.tip && respNode.tip.height > lastTip){
             this.requestRefresh();
-          }else if(this.loggedIn && this.store.state.walletSync == 'local' && this.store.state.nodeStatus.sync_status == 'synced'
+          }else if(this.loggedIn && needsNodeRefresh(this.store.state.walletSync, this.store.state.nodeStatus)
                    && respNode.tip && respNode.tip.height != this.localRefreshTip){
             //the balance was read without the node: refresh it as soon as the node is there,
             //once per tip, so a wallet that can't use the node is not refreshed on every poll
@@ -547,8 +548,14 @@
       /* refresh wallet summary txs and outputs */
       async startRefresh() {
 
-          //poll faster while a transaction is pending, so its status follows the listener and the chain
-          let refresh = _ => this.refreshId = setTimeout(this.startRefresh, this.hasPendingTx() ? 1000*15 : 1000*60)
+          //poll faster while a transaction is pending, so its status follows the listener and the chain,
+          //and retry soon a refresh that did not reach the wallet or the node, until it does
+          let refresh = _ => this.refreshId = setTimeout(this.startRefresh, nextRefreshDelay({
+            walletSync: this.store.state.walletSync,
+            node: this.store.state.nodeStatus,
+            failed: this.walletApiFailed || this.refreshFailed,
+            pendingTx: this.hasPendingTx(),
+          }))
           const gen = this.refreshGen || 0;
           this.refreshing = true;
           this.refreshAgain = false;
@@ -557,7 +564,9 @@
             const started = performance.now();
 
             //skip txs and outputs while the wallet api is down
+            this.refreshFailed = true;
             if(await this.getSummaryinfo(refreshfromNode, gen)){
+              this.refreshFailed = false;
               //the summary call has just refreshed the wallet from the node (all three run the same
               //update), so txs and outputs read that state instead of asking the node twice more
               await this.getTxs(false, gen);
@@ -568,6 +577,7 @@
 
           }
           catch (e) {
+            console.log('[refresh] failed: ' + (e && e.message ? e.message : String(e)));
             if(gen === (this.refreshGen || 0)){
               clearTimeout(this.refreshId);
             }
@@ -625,7 +635,14 @@
           if(summary && summary.result && summary.result.Ok){
             let data = summary.result.Ok
             //data[0]: the wallet was refreshed from the node; else this is the wallet's last known state
-            this.store.commit('walletSync', data[0] ? 'synced' : 'local');
+            const sync = walletSyncAfterSummary(this.store.state.walletSync, data[0], refreshfromNode, this.store.state.nodeStatus);
+            if(refreshfromNode && !data[0]){
+              //the wallet says no more than that: its own log has the reason
+              console.log('[refresh] the wallet could not update from the node ' + (this.configService.walletNodeAddr || this.configService.config['check_node_api_http_addr']) + ', showing its last known balance');
+            }else if(sync == 'synced' && this.store.state.walletSync == 'local'){
+              console.log('[refresh] the wallet updated from the node again');
+            }
+            this.store.commit('walletSync', sync);
             //confirmations are counted from the height this balance was worked out at
             this.store.commit('walletTip', data[1]['last_confirmed_height']);
             this.store.commit('summary', {
@@ -639,6 +656,7 @@
             this.walletApiFailed = false;
             return true;
           }else if(!summary){
+            console.log('[refresh] wallet API: ' + (this.$walletService.lastError || 'no answer'));
             //only report the transition to failed, keep polling
             if(!this.walletApiFailed){
               this.$toast.error(this.t("msg.app.wallet_api_unreachable"));
@@ -653,6 +671,7 @@
               this.store.commit('walletSync', 'error');
             }
           }else{
+            console.log('[refresh] wallet API error: ' + (summary.error ? summary.error.message : JSON.stringify(summary.result)));
             if(this.store.state.walletSync == 'loading'){
               this.store.commit('walletSync', 'error');
             }
@@ -678,9 +697,12 @@
           this.store.dispatch('processTxs', {data: data, table: this.$addressTransactionsService})
 
         }else{
+          //false: no answer from the wallet (e.g. it timed out)
+          const reason = txs && txs.error ? txs.error.message : (this.$walletService.lastError || 'no answer');
+          console.log('[refresh] txs: ' + reason);
           this.store.commit('updates', {
                 "status": "is-danger",
-                "text":   "Txs: " + txs.error.message,
+                "text":   "Txs: " + reason,
                 "icon":   "information"
           });
 
@@ -701,10 +723,11 @@
             this.store.dispatch('processCommits', data)
 
           }else{
-
+            const reason = commits && commits.error ? commits.error.message : (this.$walletService.lastError || 'no answer');
+            console.log('[refresh] outputs: ' + reason);
             this.store.commit('updates', {
                   "status": "is-danger",
-                  "text": "Commits: " +  commits.error.message,
+                  "text": "Commits: " + reason,
                   "icon":   "information"
             });
 
