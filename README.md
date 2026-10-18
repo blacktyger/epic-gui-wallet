@@ -1,8 +1,9 @@
 # Epic Graphical UI Wallet
 
 ## Project setup
+Needs Node.js 22 and npm 10 (tested).
 ```
-npm install (sudo npm install -g electron --unsafe-perm=true --allow-root)
+npm install
 ```
 
 ### Compiles and hot-reloads for development
@@ -14,18 +15,16 @@ npm run electron:serve
 ```
 npm run electron:build
 ```
+Add `-- --linux dir` for an unpacked Linux build in `build/linux-unpacked`.
 
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
 
-### Customize epic-wallet version
-This project comes with a pre-built CLI epic-wallet, available in the relative path "resources/bin". If desired, you can compile and build an updated version of the [CLI epic-wallet project](https://github.com/EpicCash/epic-wallet) to replace the pre-built one.
+### Bundled epic and epic-wallet
+"resources/bin" contains pre-built epic node **4.1.0-1** and epic-wallet **4.1.0** for Linux and Windows. macOS (`mac`, `macsilicon`) still has older binaries, because 4.1.0 has no macOS release yet. To use another version, build the [CLI epic-wallet project](https://github.com/EpicCash/epic-wallet) and replace the pre-built one.
 
-# Required deps
-```
-NodeJs v17.9.0
-npm 8.5.5
-```
+### Node requirement
+Use an Epic node **4.1.0-1 or later**. Node 4.1.0 requires authentication on `GET /v1/status`, which the node panel and the Epicbox autostart need. With 4.1.0, the panel shows "node unreachable" and Epicbox must be started by hand on the Receive page.
 
 # Ubuntu
 ```
@@ -51,8 +50,8 @@ Or, alternatively:
 - Open the `epic-server.toml` file located at your Epic home path (e.g., "C:\\Users\\\<username>\\.epic\\<main\floo\user>" in Windows) and update the `api_secret_path` variable to point to the `.api_secret` file located at the custom wallet directory;
 - Restart the server;
 
-# Version 3.0.0
-created and developed by eccence.digital (https://epicfundme.com/135-eccence-digital)
+# Credits
+Created and developed by eccence.digital (https://epicfundme.com/135-eccence-digital)
 
 # Donations
 Vitex Wallet EPIC Address:
