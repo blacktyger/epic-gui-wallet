@@ -1,6 +1,7 @@
 <template>
   <!-- after login: is the balance shown already checked against the node, and what still runs in the background -->
-  <p v-if="notes.length" class="wallet-sync-status is-size-7" role="status" aria-live="polite">
+  <!-- always mounted: a live region that appears together with its text is often not announced -->
+  <p class="wallet-sync-status is-size-7" :class="{'is-empty': !notes.length}" role="status" aria-live="polite">
     <span v-for="note in notes" :key="note.key" class="wallet-sync-note">
       <span v-if="note.busy" class="wallet-sync-spinner" aria-hidden="true"></span>
       <mdicon v-else name="information-outline" size="14" aria-hidden="true" />
@@ -28,7 +29,10 @@
           list.push({key: 'balance', busy: true, text: node.sync_status == 'synced' ? t('msg.app.balance_updating') : t('msg.app.balance_loading')});
         }else if(sync == 'local'){
           //read from the wallet only: the node is unreachable or still syncing
-          list.push({key: 'balance', busy: !node.error, text: node.error ? t('msg.app.balance_node_unreachable') : t('msg.app.balance_waiting_node')});
+          //node synced but the wallet's refresh still failed: the wallet can't use the node (e.g. its api secret)
+          const text = node.error ? t('msg.app.balance_node_unreachable')
+            : (node.sync_status == 'synced' ? t('msg.app.balance_wallet_no_node') : t('msg.app.balance_waiting_node'));
+          list.push({key: 'balance', busy: !node.error && node.sync_status != 'synced', text: text});
         }else if(sync == 'error'){
           list.push({key: 'balance', busy: false, text: t('msg.app.wallet_api_unreachable')});
         }
@@ -52,6 +56,9 @@
     /* wrap the notes instead of widening the header, which would push the node panel off screen */
     max-width: 20rem;
     opacity: 0.85;
+  }
+  .wallet-sync-status.is-empty {
+    margin: 0;
   }
   .wallet-sync-note {
     display: inline-flex;

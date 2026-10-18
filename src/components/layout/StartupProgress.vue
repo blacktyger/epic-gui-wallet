@@ -1,6 +1,8 @@
 <template>
   <!-- the steps of a long action (open or create a wallet): done, running now, still to come -->
-  <div class="startup-progress" role="status" aria-live="polite">
+  <div class="startup-progress">
+    <!-- screen readers hear only the step that runs now; filled after mounting, so the first one is announced too -->
+    <p class="is-sr-only" role="status" aria-live="polite">{{ announced }}</p>
     <ol>
       <li v-for="(stage, index) in stages" :key="stage.key" :class="'is-' + stateOf(index)">
         <span class="startup-progress-icon" aria-hidden="true">
@@ -25,6 +27,23 @@
       stages: { type: Array, required: true },
       //key of the stage running now; stages before it are done
       current: { type: String, default: '' },
+    },
+    data(){
+      return { announced: '' };
+    },
+    computed: {
+      currentLabel(){
+        const stage = this.stages.find(s => s.key == this.current);
+        return stage ? stage.label : '';
+      }
+    },
+    watch: {
+      currentLabel(label){
+        this.announced = label;
+      }
+    },
+    mounted(){
+      setTimeout(() => { this.announced = this.currentLabel; }, 100);
     },
     methods: {
       stateOf(index){

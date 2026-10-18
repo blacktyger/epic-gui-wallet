@@ -102,7 +102,7 @@
                         <mdicon name="arrow-left-bold-hexagon-outline" />
                         {{ $t("msg.back") }}
                       </router-link>
-                      <button class="button is-primary" :class="{ 'button__loader': isLoading }" :disabled="isLoading" @click="create" >
+                      <button class="button is-primary" :class="{ 'button__loader': isLoading }" :aria-disabled="isLoading" @click="create" >
                         <span class="button__text">{{ $t('msg.create.newWallet') }}</span>
                       </button>
                     </div>
@@ -208,6 +208,10 @@ export default {
 
     async create(){
 
+      //running already (aria-disabled keeps the focus on the button, so guard here)
+      if(this.isLoading){
+        return;
+      }
 
       this.resetFormErrors();
 
@@ -235,39 +239,41 @@ export default {
         let walletRecoverDir = window.nodePath.join(userhomedir, this.networkField.shortName);
         const started = performance.now();
         this.createStage = 'create';
-        let created = await this.$walletService.new(this.passwordField.defaultValue, this.networkField.defaultValue, walletRecoverDir);
-        console.log('[create] wallet created +' + Math.round(performance.now() - started) + ' ms');
-        this.createStage = 'save';
-        if(created && !created.success){
-          this.$toast.error(created.msg, {duration:false});
-        }else{
-          //save new account settings and run a check against recoverd wallet
-          if(await this.configService.updateAppConfig('account_dirs', {
-              account: this.accountField.defaultValue,
-              userhomedir: userhomedir,
-              network: this.networkField.defaultValue,
-              isdefault: this.accountField.defaultValue == 'default' ? true : false
-            })){
-            let action = await this.configService.startCheck(this.accountField.defaultValue);
-            if(action === 'settings'){
-              this.newseeds = created.msg.split(' ');
-              this.qrText = created.msg;
-              this.page = 'created'
+        try{
+          let created = await this.$walletService.new(this.passwordField.defaultValue, this.networkField.defaultValue, walletRecoverDir);
+          console.log('[create] wallet created +' + Math.round(performance.now() - started) + ' ms');
+          if(created && !created.success){
+            this.$toast.error(created.msg, {duration:false});
+          }else{
+            this.createStage = 'save';
+            //save new account settings and run a check against recoverd wallet
+            if(await this.configService.updateAppConfig('account_dirs', {
+                account: this.accountField.defaultValue,
+                userhomedir: userhomedir,
+                network: this.networkField.defaultValue,
+                isdefault: this.accountField.defaultValue == 'default' ? true : false
+              })){
+              let action = await this.configService.startCheck(this.accountField.defaultValue);
+              if(action === 'settings'){
+                console.log('[create] account saved +' + Math.round(performance.now() - started) + ' ms');
+                this.newseeds = created.msg.split(' ');
+                this.qrText = created.msg;
+                this.page = 'created'
+
+              }else{
+                this.$toast.error(this.$t('msg.create.fatal_create', [action]), {duration:false});
+              }
 
             }else{
-              this.$toast.error(this.$t('msg.create.fatal_create', [action]), {duration:false});
+              this.$toast.error(this.$t('msg.create.fatal_update'), {duration:false});
             }
-
-          }else{
-            this.$toast.error(this.$t('msg.create.fatal_update'), {duration:false});
           }
+        }catch(e){
+          this.$toast.error(e && e.message ? e.message : String(e), {duration:false});
+        }finally{
+          this.createStage = '';
+          this.isLoading = false;
         }
-
-        console.log('[create] account saved +' + Math.round(performance.now() - started) + ' ms');
-        this.createStage = '';
-        this.isLoading = false;
-
-
 
       }else{
         return;

@@ -279,6 +279,7 @@ const messages = {
       balance_updating: 'Updating balance from the node…',
       balance_waiting_node: 'Last known balance, updates when the node has synced',
       balance_node_unreachable: 'Last known balance, the node is not reachable',
+      balance_wallet_no_node: 'Last known balance, the wallet could not update from the node',
       listener_starting: 'Starting wallet listener…',
       loading_wallet_data: 'Loading…',
       background_process: 'Please close all processes before continuing.',

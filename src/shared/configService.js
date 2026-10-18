@@ -482,7 +482,7 @@ epicbox_port = 443
 
     let pEpicnodeList = []
     if(this.config && !this.config.node_background)
-      pEpicnodeList = pAll.filter(p => /epic.*server.*run/.test(p.cmd) && !/epic-wallet/.test(p.cmd));
+      pEpicnodeList = pAll.filter(p => /epic.*server.*run/.test(p.cmd) && !pWalletList.includes(p));
 
     let pWalletTorList = pAll.filter(p => /tor[\\/]listener[\\/]torrc/.test(p.cmd));
 
@@ -517,6 +517,10 @@ epicbox_port = 443
       killPids.push(process);
     }
 
+    //a process can match two lists (e.g. a Tor path under an epic-wallet dir): list and kill it once
+    killPids = killPids.filter((p, i) => killPids.findIndex(q => q.pid == p.pid) == i);
+    this.allKilled = true;
+
     if(killPids.length){
       let confirmed = await new Promise((resolve) => {
 
@@ -526,7 +530,9 @@ epicbox_port = 443
               this.debug ? console.log('configService.kill', process) : null;
               killPromise.push(nodeChildProcess.kill(process.pid))
             }
-            await Promise.all(killPromise);
+            const killed = await Promise.all(killPromise);
+            //kill() resolves false when a process could not be killed (or did not exit in time)
+            this.allKilled = killed.every(k => k !== false);
             //the ports these processes held, to wait for before starting new ones
             this.killedPorts = [3420, this.walletListenerPort, ...(pEpicnodeList.length ? [this.getNodeApiPort()] : [])];
             resolve(true);

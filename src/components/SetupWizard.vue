@@ -323,6 +323,11 @@
         this.emitter.emit('app.accountLoggedIn');
       },
       async save(){
+        //a second click while saving would save twice and log in twice
+        if(this.isSaving){
+          return;
+        }
+        this.isSaving = true;
         try{
 
           let user = await this.$userService.getUser(this.configService.configAccount);
@@ -353,6 +358,7 @@
               user = inserted;
             }else{
               this.$toast.error(this.$t("msg.setupwizard.db_fatal"));
+              this.isSaving = false;
               return;
             }
 
@@ -381,8 +387,7 @@
 
           const loginWaits = this.emitter.all.get('setupwizard.saved');
           if(this.fromRoute != 'navbar' && loginWaits && loginWaits.length){
-            //first login: the login page starts the node and the wallet api
-            this.isSaving = true;
+            //first login: the login page starts the node and the wallet api (isSaving stays on)
             this.emitter.emit('setupwizard.saved');
             return;
           }
@@ -390,10 +395,12 @@
           console.log('start node before wallet listener');
           await this.emitter.emit('app.nodeStart');
 
+          this.isSaving = false;
           this.emitter.emit('app.accountLoggedIn');
 
 
         }catch(e){
+          this.isSaving = false;
           this.$toast.error(this.$t("msg.setupwizard.errors_save", [e.message]));
           return
         }

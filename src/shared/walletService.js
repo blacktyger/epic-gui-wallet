@@ -473,6 +473,8 @@ class WalletService {
           if(walletListenId && walletListenId.msg > 0){
               this.walletIsListen = true;
               torBooted = walletListenId.tor;
+              //the listener started here (none when one was already running)
+              return {success:true, tor: torBooted, pid: walletListenId.msg};
           }else{
             return {success:false, tor: torBooted};
           }

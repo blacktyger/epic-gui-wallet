@@ -113,9 +113,14 @@
       /* start epicbox and refresh outputs/summary if node is snyced */
       this.emitter.on('app.startEpicbox', async(res) => {
 
+        const session = this.loginSession;
         let confirmed = await this.waitForNodesynced('nodeSynced').then((res) => {
           return res;
         });
+        //logged out while waiting for the node: no Epicbox for that session
+        if(session !== this.loginSession){
+          return;
+        }
 
         if(confirmed){
           const isEpicbox = await this.$walletService.startEpicbox(res);
@@ -147,12 +152,18 @@
         const session = this.loginSession;
         this.store.commit('listenerStarting', true);
         const started = performance.now();
-        const isListen = await this.$walletService.startListen(password, true, 'http');
+        let isListen;
+        try{
+          isListen = await this.$walletService.startListen(password, true, 'http');
+        }finally{
+          this.store.commit('listenerStarting', false);
+        }
         console.log('[login] http listener ' + (isListen && isListen.success ? 'started' : 'not started') + ' +' + Math.round(performance.now() - started) + ' ms (background)');
-        this.store.commit('listenerStarting', false);
-        //logged out (or in again) meanwhile: this listener belongs to no session
+        //logged out meanwhile: this listener belongs to no session, stop just this one
         if(session !== this.loginSession){
-          await this.$walletService.stopListen(this.configService.config.epicbox_background);
+          if(isListen && isListen.pid){
+            await window.nodeChildProcess.kill(isListen.pid);
+          }
           return;
         }
         //Tor state only, no toast: Tor is not configurable and fails to bootstrap on most setups
@@ -259,10 +270,14 @@
 
         window.debug ? console.log('accountLoggedIn') : null;
 
+        //also emitted when leaving the Setup Assistant opened from the navbar: only a real login starts a session
+        if(!this.loggedIn){
+          this.loginSession = (this.loginSession || 0) + 1;
+          //balances and txs shown before the first refresh are marked as updating
+          this.store.commit('walletSync', 'loading');
+          this.localRefreshTip = 0;
+        }
         this.loggedIn = true;
-        this.loginSession = (this.loginSession || 0) + 1;
-        //balances and txs shown before the first refresh are marked as updating
-        this.store.commit('walletSync', 'loading');
         this.store.dispatch('toggleFullPage', false);
         this.store.commit('asideStateToggle');
         this.$router.push('/dashboard');
@@ -424,8 +439,11 @@
           this.store.commit('nodeStatus', respNode);
           if(this.loggedIn && lastTip > 0 && respNode.tip && respNode.tip.height > lastTip){
             this.requestRefresh();
-          }else if(this.loggedIn && this.store.state.walletSync == 'local' && this.store.state.nodeStatus.sync_status == 'synced'){
-            //the balance was read without the node: refresh it as soon as the node is there
+          }else if(this.loggedIn && this.store.state.walletSync == 'local' && this.store.state.nodeStatus.sync_status == 'synced'
+                   && respNode.tip && respNode.tip.height != this.localRefreshTip){
+            //the balance was read without the node: refresh it as soon as the node is there,
+            //once per tip, so a wallet that can't use the node is not refreshed on every poll
+            this.localRefreshTip = respNode.tip.height;
             this.requestRefresh();
           }
         }else{
@@ -576,9 +594,12 @@
               this.store.commit('walletSync', 'error');
             }
           }else{
+            if(this.store.state.walletSync == 'loading'){
+              this.store.commit('walletSync', 'error');
+            }
             this.store.commit('updates', {
                   "status": "is-danger",
-                  "text": "Summary: " + summary.error.message,
+                  "text": "Summary: " + (summary.error ? summary.error.message : JSON.stringify(summary.result)),
                   "icon":   "information"
             });
 

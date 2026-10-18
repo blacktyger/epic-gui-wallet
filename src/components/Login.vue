@@ -27,7 +27,7 @@
 
                   <div class="field is-grouped" style="justify-content: center;display: flex;flex-wrap: wrap;flex-direction: row;">
                     <div class="control" style="margin-top:12px;">
-                      <button type="submit" class="button is-primary" :class="{ 'button__loader': isLoading }" :disabled="isLoading" @click.prevent="login">
+                      <button type="submit" class="button is-primary" :class="{ 'button__loader': isLoading }" :aria-disabled="isLoading" @click.prevent="login">
                         <span class="button__text">{{ $t("msg.login_") }}</span>
                       </button>
                     </div>
@@ -130,6 +130,11 @@ export default {
     },
     async login(){
 
+      //running already (aria-disabled keeps the focus on the button, so guard here)
+      if(this.isLoading){
+        return;
+      }
+
       //drop a wait for the Setup Assistant from an earlier attempt
       this.emitter.off('setupwizard.saved');
 
@@ -144,6 +149,25 @@ export default {
 
         this.isLoading = true;
         this.closingProcesses = false;
+        try{
+          await this.openWallet();
+        }catch(e){
+          //e.g. the process scan failed: never leave the form locked
+          console.log('[login] failed: ' + (e && e.message ? e.message : e));
+          this.$toast.error(e && e.message ? e.message : String(e));
+          this.isLoading = false;
+        }finally{
+          this.store.commit('loginStage', '');
+        }
+
+      }else{
+        return;
+      }
+
+    },
+
+    /* check the settings, close leftover processes, then open the wallet (or the Setup Assistant on a first login) */
+    async openWallet(){
         const started = performance.now();
         const lap = (step) => console.log('[login] ' + step + ' +' + Math.round(performance.now() - started) + ' ms');
 
@@ -156,11 +180,15 @@ export default {
         this.store.commit('loginStage', 'processes');
         let processKilled = await this.configService.killEpicProcess();
         lap('process scan');
+        //no owner_api is left, so walletService.start can skip its own scan: nothing was found, or
+        //everything found was killed and its ports are free; otherwise (kept or not killed) it scans again
+        let knownNotRunning = processKilled === null;
         if(processKilled){
           //wait until the closed processes released their ports, not a fixed 5 s
           this.closingProcesses = true;
           this.store.commit('loginStage', 'closing');
-          await this.configService.waitForKilledPorts();
+          const portsFree = await this.configService.waitForKilledPorts();
+          knownNotRunning = this.configService.allKilled && portsFree;
           lap('old processes closed');
         }
         let user = await this.$userService.getUser(this.accountField.defaultValue);
@@ -173,22 +201,21 @@ export default {
           this.store.commit('loginStage', '');
           this.emitter.off('setupwizard.saved');
           //the scan above still holds: the Setup Assistant starts no wallet process
-          const knownNotRunning = processKilled !== false;
           this.emitter.on('setupwizard.saved', async () => {
             this.emitter.off('setupwizard.saved');
-            await this.startWallet(password, knownNotRunning);
+            try{
+              await this.startWallet(password, knownNotRunning);
+            }catch(e){
+              this.store.commit('loginStage', '');
+              this.$toast.error(e && e.message ? e.message : String(e));
+              this.router.push('/login');
+            }
           });
           this.router.push('/setupwizard');
           return;
         }
 
-        //the scan just ran: no owner_api is left, unless the user chose to keep the old processes
-        await this.startWallet(this.passwordField.defaultValue, processKilled !== false, lap);
-
-      }else{
-        return;
-      }
-
+        await this.startWallet(this.passwordField.defaultValue, knownNotRunning, lap);
     },
 
     /* start the node and the wallet api, then log in.
