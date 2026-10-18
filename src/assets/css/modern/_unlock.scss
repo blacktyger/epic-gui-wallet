@@ -30,3 +30,13 @@ pre.e-log { margin: 0; padding: var(--sp-3); border-radius: var(--r-xs); backgro
   .e-progress-card .e-stage { padding: 6px 0; }
   .e-progress-card .e-notice { padding: var(--sp-2) var(--sp-3); }
 }
+
+/* ---------------------------------------------------------------- Modern views (unlock group) */
+.e-unlock-go { margin-top: var(--sp-6); }
+.e-unlock-go[aria-disabled='true'] { opacity: 0.6; }
+.e-auth-card .e-field .e-error-msg { margin-top: 2px; }
+.e-unlock-fail-actions { justify-content: center; margin-top: var(--sp-5); }
+.e-progress-card .e-notice { margin-top: var(--sp-4); }
+.e-busy-note { margin-top: var(--sp-3); }
+.e-proc-list .e-faint { font-size: var(--fs-sm); }
+.e-btn[aria-disabled='true'] { cursor: progress; }

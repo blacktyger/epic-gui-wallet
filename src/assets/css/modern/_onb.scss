@@ -165,3 +165,43 @@
 .e-rs-empty .e-icon { color: var(--dim); flex: none; }
 .e-rs-h { display: flex; align-items: baseline; gap: var(--sp-3); margin: var(--sp-6) 0 var(--sp-3); font: 600 var(--fs-md) var(--font-ui); letter-spacing: 0; }
 .e-onb-words .e-input { height: 38px; }
+
+/* ---------------------------------------------------------------- Modern views (first-run group) */
+.e-onb-hero-error { justify-content: center; margin-top: var(--sp-3); }
+.e-onb-hero .e-auth-alt { margin-top: var(--sp-4); }
+.e-onb-main .e-field .e-error-msg { margin-top: 2px; }
+.e-onb-section .e-tech-body .e-field + .e-field { margin-top: var(--sp-4); }
+.e-onb-section .e-tech-body { padding-top: var(--sp-1); }
+.e-notice-actions { margin-top: var(--sp-3); }
+.e-setup-help { margin-top: var(--sp-3); }
+.e-setup-opening { margin-top: var(--sp-5); padding: var(--sp-3) var(--sp-5); }
+.e-setup-opening .e-rs-h { margin-top: var(--sp-2); }
+.e-onb-restored-actions { justify-content: center; margin-top: var(--sp-6); }
+.e-onb-restored-actions .e-btn { min-width: 200px; }
+
+/* Recovery phrase: the QR code kept from the Classic screen, behind the reveal */
+.e-onb-qr { margin-top: var(--sp-4); }
+.e-onb-qr-box { display: grid; place-items: center; margin-top: var(--sp-3); }
+.e-onb-qr-box canvas { max-width: 100%; padding: 14px; border-radius: var(--r-sm); background: #fff; box-shadow: 0 0 0 1px var(--line-strong); }
+
+/* Restore: phrase box header (label + live word count) and the length select */
+.e-rs-head { display: flex; align-items: baseline; gap: var(--sp-3); }
+.e-rs-count { margin-left: auto; color: var(--dim); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+.e-rs-count .e-ok { color: var(--ok); }
+.e-rs-count .e-risk { color: var(--risk); }
+.e-rs-box .e-textarea { padding-right: var(--sp-3); }
+.e-rs-length { flex-direction: row; align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); }
+.e-rs-length .e-select { width: auto; min-width: 140px; }
+.e-rs-never { margin-top: var(--sp-3); }
+.e-onb-word .e-input { padding-right: var(--sp-2); }
+.e-onb-word .e-input[aria-invalid='true'] { padding-right: 32px; }
+@media (max-height: 800px) {
+  .e-onb-hero .e-glyph-tile { width: 56px; height: 56px; }
+  .e-onb-hero .e-glyph-tile svg { width: 26px; height: 30px; }
+  .e-onb-hero h1 { margin-top: var(--sp-5); }
+  .e-onb-hero-actions { margin-top: var(--sp-6); }
+}
+
+/* Headings that take the focus when a step opens (tabindex -1): no ring on a non-interactive target */
+.e-onb-main h1[tabindex='-1']:focus,
+.e-auth-title h1[tabindex='-1']:focus { outline: none; }

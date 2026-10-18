@@ -1,9 +1,272 @@
 <template>
-  <!-- STUB: replaced by the Modern view; until then the Classic component renders here -->
-  <Base v-bind="$attrs" />
+  <div>
+    <!-- 1. the recovery phrase (mockup 15: paste, check, fix) -->
+    <OnboFrame
+      v-if="page === 'addSeeds'"
+      :side="$t('msg.modern.unlock.side_restore')"
+      :groups="groups('phrase')"
+      :title="$t('msg.modern.unlock.restore_title')"
+      :lead="$t('msg.modern.unlock.restore_lead')"
+      focus-heading
+    >
+      <div v-if="invalidCount" class="e-notice e-risk">
+        <EIcon name="alertc" />
+        <div>
+          <b>{{ $t('msg.modern.unlock.restore_bad_word', { n: firstInvalid + 1, word: slots[firstInvalid] }) }}</b>
+          <p>{{ $t('msg.modern.unlock.restore_bad_more') }}</p>
+        </div>
+      </div>
+      <div v-else-if="enoughSeeds" class="e-notice e-ok">
+        <EIcon name="check" />
+        <div><b>{{ $t('msg.modern.unlock.restore_ok_title', { n: length }) }}</b><p>{{ $t('msg.modern.unlock.restore_ok_hint') }}</p></div>
+      </div>
+
+      <div class="e-field e-rs-box">
+        <div class="e-rs-head">
+          <label class="e-label" for="restorePhrase">{{ $t('msg.restore.phrase') }}</label>
+          <p class="restore-count e-rs-count" role="status" aria-live="polite">
+            <span :class="{ 'e-risk': filled > length, 'e-ok': enoughSeeds }">{{ $t('msg.restore.word_count', [filled, length]) }}</span>
+            <span v-if="invalidCount" class="e-risk"> · {{ $t('msg.restore.invalid_words', [invalidCount]) }}</span>
+            <span v-else-if="filled > 0 && !validLengths.includes(filled) && filled == slots.length" class="e-risk"> · {{ $t('msg.restore.bad_length') }}</span>
+          </p>
+        </div>
+        <textarea
+          id="restorePhrase"
+          class="e-textarea e-mono"
+          rows="4"
+          v-model="phrase"
+          @input="phraseInput"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          translate="no"
+          aria-describedby="restorePhraseHelp"
+          :aria-invalid="invalidCount ? 'true' : null"
+          :placeholder="$t('msg.restore.phrase_placeholder')"
+        ></textarea>
+        <p id="restorePhraseHelp" class="e-help">{{ $t('msg.modern.unlock.restore_phrase_help') }}</p>
+      </div>
+
+      <div class="e-field e-rs-length">
+        <label class="e-label" for="restoreLength">{{ $t('msg.restore.phrase_length') }}</label>
+        <select id="restoreLength" class="e-select" v-model.number="length" @change="lengthChanged">
+          <option v-for="n in validLengths" :key="n" :value="n">{{ $t('msg.restore.n_words', [n]) }}</option>
+        </select>
+      </div>
+
+      <datalist id="bip39-words">
+        <option v-for="w in mnemonicWords" :key="w" :value="w"></option>
+      </datalist>
+
+      <div v-if="filled == 0" class="e-rs-empty">
+        <EIcon name="paste" />
+        <p>{{ $t('msg.modern.unlock.restore_empty') }}</p>
+      </div>
+      <template v-else>
+        <h2 class="e-rs-h">{{ $t('msg.modern.unlock.restore_check') }} <span class="e-faint e-small">{{ $t('msg.modern.unlock.restore_check_hint') }}</span></h2>
+        <ol class="e-onb-words" :aria-label="$t('msg.restore.title')">
+          <li v-for="(word, index) in slots" :key="index" class="e-onb-word">
+            <label :for="'restoreWord' + index"><span class="e-sr-only">{{ $t('msg.restore.word_n', ['']) }}</span>{{ index + 1 }}</label>
+            <input
+              :id="'restoreWord' + index"
+              class="e-input"
+              :aria-invalid="isInvalid(word) ? 'true' : null"
+              type="text"
+              list="bip39-words"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              translate="no"
+              :value="word"
+              @input="wordInput(index, $event)"
+              @paste="wordPaste(index, $event)"
+              @keydown.space.prevent="focusWord(index + 1)"
+            />
+            <EIcon v-if="isInvalid(word)" name="alertc" class="e-bad" />
+          </li>
+        </ol>
+        <p class="e-help e-onb-inline-help e-rs-never"><EIcon name="info" /><span>{{ $t('msg.modern.unlock.restore_never_leaves') }}</span></p>
+      </template>
+
+      <template #actions>
+        <router-link class="e-btn e-btn-ghost" :to="{ name: fromRoute }"><EIcon name="chevl" />{{ $t('msg.back') }}</router-link>
+        <button type="button" class="e-btn e-btn-ghost" :disabled="filled == 0" @click="clearup"><EIcon name="trash" />{{ $t('msg.reset') }}</button>
+        <span class="e-grow"></span>
+        <span class="e-hint">{{ hint }}</span>
+        <button type="button" class="e-btn e-btn-primary" :disabled="!enoughSeeds" @click="page = 'addPassword'">{{ $t('msg.modern.unlock.continue') }}<EIcon name="arrowr" /></button>
+      </template>
+    </OnboFrame>
+
+    <!-- 2. name and password. Stays mounted while the wallet is restored (the Classic logic reads its fields) -->
+    <OnboFrame
+      v-if="page === 'addPassword'"
+      v-show="!working"
+      :side="$t('msg.modern.unlock.side_restore')"
+      :groups="groups('account')"
+      :title="$t('msg.modern.unlock.restore_account_title')"
+      :lead="$t('msg.modern.unlock.restore_account_lead')"
+      :active="!working"
+      focus-heading
+    >
+      <div class="e-field">
+        <label class="e-label" data-field>{{ $t('msg.modern.unlock.wallet_name') }}</label>
+        <AccountField ref="accountField" placeholder="default" />
+        <p class="e-help">{{ $t('msg.modern.unlock.wallet_name_help') }}</p>
+      </div>
+      <div class="e-field">
+        <label class="e-label" data-field>{{ $t('msg.modern.unlock.password') }}</label>
+        <PasswordField ref="passwordField" required="true" name="password" />
+      </div>
+      <div class="e-field">
+        <label class="e-label" data-field>{{ $t('msg.modern.unlock.password_confirm') }}</label>
+        <PasswordField ref="passwordField2" required="true" :repeat="passwordField ? passwordField.input : null" name="password2" />
+      </div>
+      <div class="e-onb-section">
+        <details class="e-tech" :open="advancedSettings" @toggle="advancedSettings = $event.target.open">
+          <summary><EIcon name="chevr" />{{ $t('msg.modern.unlock.advanced') }}</summary>
+          <div class="e-tech-body">
+            <div class="e-field" role="group" aria-labelledby="e-restore-folder-l">
+              <span id="e-restore-folder-l" class="e-label">{{ $t('msg.modern.unlock.wallet_folder') }}</span>
+              <WalletdirField ref="walletdirField" />
+            </div>
+            <div class="e-field">
+              <label class="e-label" data-field>{{ $t('msg.modern.unlock.network') }}</label>
+              <NetworkField ref="networkField" />
+            </div>
+          </div>
+        </details>
+      </div>
+      <template #actions>
+        <button type="button" class="e-btn e-btn-ghost" @click="page = 'addSeeds'"><EIcon name="chevl" />{{ $t('msg.back') }}</button>
+        <span class="e-grow"></span>
+        <button type="button" class="e-btn e-btn-primary" @click="initR">{{ $t('msg.modern.unlock.restore_action') }}<EIcon name="arrowr" /></button>
+      </template>
+    </OnboFrame>
+
+    <!-- 3. the wallet is being restored, or it failed. The Classic screen has no steps here: the
+         whole recovery is the one running step -->
+    <div v-if="page === 'addPassword' && working" class="e-hero-screen">
+      <div class="e-onb-progress">
+        <BrandTile />
+        <div class="e-auth-title">
+          <h1 ref="progressHeading" tabindex="-1">{{ failure ? $t('msg.modern.unlock.restore_failed_title') : $t('msg.modern.unlock.restoring_title') }}</h1>
+        </div>
+        <div v-if="!failure" class="e-panel">
+          <StageList :stages="restoreStages" current="restore" :label="$t('msg.modern.unlock.progress')" />
+        </div>
+        <div v-if="failure" class="e-notice e-risk" role="alert">
+          <EIcon name="alertc" />
+          <div>
+            <b>{{ $t('msg.modern.unlock.restore_failed_title') }}</b>
+            <p>{{ failure.message }}</p>
+            <div class="e-row e-notice-actions">
+              <button type="button" class="e-btn e-btn-sm" @click="retry"><EIcon name="refresh" />{{ $t('msg.modern.unlock.try_again') }}</button>
+              <button type="button" class="e-btn e-btn-sm e-btn-ghost" @click="failure = null">{{ $t('msg.back') }}</button>
+            </div>
+          </div>
+        </div>
+        <p v-else class="e-reassure"><EIcon name="clock" /><span>{{ $t('msg.modern.unlock.restore_wait') }}</span></p>
+      </div>
+    </div>
+
+    <!-- 4. restored: the Classic flow goes on at the login -->
+    <div v-if="page === 'restored'" class="e-hero-screen">
+      <div class="e-onb-progress">
+        <BrandTile />
+        <div class="e-auth-title">
+          <h1 ref="restoredHeading" tabindex="-1">{{ $t('msg.modern.unlock.restored_title') }}</h1>
+          <p>{{ $t('msg.restore.wallet_recovered') }}</p>
+        </div>
+        <div class="e-panel">
+          <StageList :stages="restoreStages" complete :label="$t('msg.modern.unlock.progress')" />
+        </div>
+        <div class="e-row e-onb-restored-actions">
+          <router-link class="e-btn e-btn-primary e-btn-lg" to="/login"><EIcon name="lockopen" />{{ $t('msg.login_') }}</router-link>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
-  import Base from '@/components/Restore.vue';
-  export default { name: 'RestoreView', components: { Base }, inheritAttrs: false };
+  import Restore from '@/components/Restore.vue';
+  import { reskin } from '@/components/modern/reskin';
+  import EIcon from '@/components/modern/ui/EIcon.vue';
+  import StageList from '@/components/modern/ui/StageList.vue';
+  import AccountField from '@/components/modern/form/AccountField.vue';
+  import PasswordField from '@/components/modern/form/PasswordField.vue';
+  import WalletdirField from '@/components/modern/form/WalletdirField.vue';
+  import NetworkField from '@/components/modern/form/NetworkField.vue';
+  import BrandTile from '@/components/modern/onboarding/BrandTile.vue';
+  import OnboFrame from '@/components/modern/onboarding/OnboFrame.vue';
+  import { railGroups } from '@/components/modern/onboarding/rails';
+  import { captureToast, fieldLabels } from '@/components/modern/onboarding/helpers';
+
+  export default reskin(Restore, {
+    components: { EIcon, StageList, AccountField, PasswordField, WalletdirField, NetworkField, BrandTile, OnboFrame },
+    mixins: [fieldLabels],
+    data() {
+      return {
+        //the recovery is running
+        busy: false,
+        //it failed: {message}
+        failure: null,
+      };
+    },
+    computed: {
+      working() {
+        return !!(this.busy || this.failure);
+      },
+      //position of the first word that is not in the word list
+      firstInvalid() {
+        return this.slots.findIndex(w => this.isInvalid(w));
+      },
+      restoreStages() {
+        return [
+          { key: 'restore', label: this.$t('msg.modern.unlock.restore_stage_restore') },
+          { key: 'save', label: this.$t('msg.modern.unlock.restore_stage_save') },
+        ];
+      },
+      //what stops Continue, in a few words
+      hint() {
+        if (this.enoughSeeds) return '';
+        if (this.filled == 0) return this.$t('msg.modern.unlock.restore_hint_paste');
+        if (this.invalidCount) return this.$t('msg.modern.unlock.restore_hint_fix');
+        return this.$t('msg.restore.word_count', [this.filled, this.length]);
+      },
+    },
+    watch: {
+      working(now) {
+        if (now) this.$nextTick(() => this.focusEl(this.$refs.progressHeading));
+      },
+      page(p) {
+        if (p == 'restored') this.$nextTick(() => this.focusEl(this.$refs.restoredHeading));
+      },
+    },
+    methods: {
+      groups(current) {
+        return railGroups((...a) => this.$t(...a), 'restore', current);
+      },
+      //the Classic initR(), plus: the progress screen while it runs and the error it reports
+      async initR() {
+        this.failure = null;
+        this.busy = true;
+        try {
+          const message = await captureToast(this, () => Restore.methods.initR.call(this));
+          if (message) this.failure = { message };
+        } finally {
+          this.busy = false;
+        }
+      },
+      retry() {
+        this.failure = null;
+        this.initR();
+      },
+      focusEl(el) {
+        if (el && el.focus) el.focus({ preventScroll: true });
+      },
+    },
+  });
 </script>
