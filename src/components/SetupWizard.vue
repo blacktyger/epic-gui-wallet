@@ -224,6 +224,7 @@
       const textField = ref('');
       const fromRoute = route.params.from ? route.params.from : 'login';
       const isSaving = ref(false);
+      const isExistingSetup = ref(false);
 
 
       return{
@@ -244,6 +245,7 @@
         moveback,
         fromRoute,
         isSaving,
+        isExistingSetup,
         domain,
         epicboxDomain
 
@@ -259,8 +261,19 @@
       this.locale = this.configService.config['locale'];
       this.localeSelected = this.configService.config['locale'];
       this.langs = this.configService.langs;
-      this.epicboxDomain.input = this.configService.epicboxDomain;
 
+      //an existing setup opens with its saved values, a first run with the defaults
+      this.isExistingSetup = !!(user && user[0] && !this.configService.config['firstTime']);
+      if(this.isExistingSetup){
+        const config = this.configService.config;
+        this.epicboxDomain.input = config['epicbox_domain'] ? config['epicbox_domain'] : '';
+        this.nodeserverField.select = user[0].nodeInternal ? 'internal' : 'external';
+        if(!user[0].nodeInternal){
+          this.nodeserverField.input = config['check_node_api_http_addr'] ? config['check_node_api_http_addr'] : '';
+        }
+      }else{
+        this.epicboxDomain.input = this.configService.epicboxDomain;
+      }
 
       if(user && user[0]){
         this.textField.input = user[0].name ? user[0].name : '';
@@ -327,6 +340,7 @@
               nodeInternal: this.nodeserverField.nodeInternal,
               epicbox_domain: this.epicboxDomain.defaultValue,
             });
+            user = await this.$userService.getUser(this.configService.configAccount);
 
           }else{
 
@@ -356,9 +370,12 @@
             check_node_api_http_addr: this.nodeserverField.defaultValue,
             locale: this.localeSelected,
             firstTime: false,
-            walletlisten_on_startup: true,
-            node_background: false,
-            epicbox_background: false,
+            //first run only: a re-run keeps the listener and background settings
+            ...(this.isExistingSetup ? {} : {
+              walletlisten_on_startup: true,
+              node_background: false,
+              epicbox_background: false,
+            }),
             nodesynced: false,
             epicbox_domain: this.epicboxDomain.defaultValue,
 

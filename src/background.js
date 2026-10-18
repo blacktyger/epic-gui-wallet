@@ -14,6 +14,9 @@ const findProcess = require('find-process');
 const log = require('electron-log');
 const {autoUpdater} = require("electron-updater");
 autoUpdater.channel = "latest";
+//setting the channel turns on downgrades: an older release would be offered as an update
+autoUpdater.allowDowngrade = false;
+autoUpdater.allowPrerelease = false;
 autoUpdater.autoDownload = false;
 let win;
 let noderuninbackground = false;
@@ -123,7 +126,8 @@ async function createWindow() {
     createProtocol('app')
     // Load the index.html when not in development
     win.loadURL('app://./index.html')
-    autoUpdater.checkForUpdates();
+    //a missing or unreadable feed means no update, without a notice
+    autoUpdater.checkForUpdates().catch((err) => log.info('update check failed: ' + (err && err.message)));
 
   }
 
@@ -398,13 +402,13 @@ app.on('window-all-closed', async() => {
 
   sendStatusToWindow('Checking for update...');
 })*/
-autoUpdater.on('update-available', (info, releaseNotes, releaseName) => {
+autoUpdater.on('update-available', (info) => {
 
   const dialogOpts = {
         type: 'info',
         buttons: ['Ok'],
         title: 'Update available.',
-        message: process.platform === 'win32' ? releaseNotes : releaseName,
+        message: 'Version ' + info.version,
         detail: 'A New Version is available for download.\nhttps://github.com/EpicCash/epic-gui-wallet/releases/latest'
   }
 
@@ -416,9 +420,9 @@ autoUpdater.on('update-not-available', (info) => {
   console.log("no update available");
   //sendStatusToWindow('Update not available.');
 })
-/*autoUpdater.on('error', (err) => {
-  sendStatusToWindow('Error in auto-updater. ' + err);
-})*/
+autoUpdater.on('error', (err) => {
+  log.info('update check error: ' + (err && err.message));
+});
 /*autoUpdater.on('download-progress', (progressObj) => {
   let log_message = "Download speed: " + progressObj.bytesPerSecond;
   log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
