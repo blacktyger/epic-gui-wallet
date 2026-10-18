@@ -139,6 +139,31 @@
 
       });
 
+      /* after login, in the background: the HTTP listener, then Epicbox (it waits for the node to sync) */
+      this.emitter.on('app.startListeners', async (password) => {
+        if(!this.configService.config['walletlisten_on_startup']){
+          return;
+        }
+        const session = this.loginSession;
+        this.store.commit('listenerStarting', true);
+        const started = performance.now();
+        const isListen = await this.$walletService.startListen(password, true, 'http');
+        console.log('[login] http listener ' + (isListen && isListen.success ? 'started' : 'not started') + ' +' + Math.round(performance.now() - started) + ' ms (background)');
+        this.store.commit('listenerStarting', false);
+        //logged out (or in again) meanwhile: this listener belongs to no session
+        if(session !== this.loginSession){
+          await this.$walletService.stopListen(this.configService.config.epicbox_background);
+          return;
+        }
+        //Tor state only, no toast: Tor is not configurable and fails to bootstrap on most setups
+        this.store.commit('torService', !!(isListen && isListen.tor));
+
+        //start epicbox, will be executed when node has synced status
+        if(this.configService.config['epicbox_domain'] != undefined && this.configService.config['epicbox_domain'] != '' ){
+          this.emitter.emit('app.startEpicbox', password);
+        }
+      });
+
       this.emitter.on('app.startRefreshNodeStatus', () => {
         this.stopRefreshNode();
         this.startRefreshNode();
@@ -191,10 +216,12 @@
 
         this.stopRefreshNode();
         this.stopRefresh();
+        this.loginSession = (this.loginSession || 0) + 1;
         this.store.commit('user', {});
         this.store.commit('txs', []);
         this.store.commit('commits', []);
         this.store.commit('walletTip', 0);
+        this.store.commit('listenerStarting', false);
         this.store.commit('summary', {
           spendable: 0,
           total: 0,
@@ -232,6 +259,7 @@
         window.debug ? console.log('accountLoggedIn') : null;
 
         this.loggedIn = true;
+        this.loginSession = (this.loginSession || 0) + 1;
         this.store.dispatch('toggleFullPage', false);
         this.store.commit('asideStateToggle');
         this.$router.push('/dashboard');

@@ -27,7 +27,7 @@
 
                   <div class="field is-grouped" style="justify-content: center;display: flex;flex-wrap: wrap;flex-direction: row;">
                     <div class="control" style="margin-top:12px;">
-                      <button type="submit" class="button is-primary" :class="{ 'button__loader': isLoading }" @click.prevent="login">
+                      <button type="submit" class="button is-primary" :class="{ 'button__loader': isLoading }" :disabled="isLoading" @click.prevent="login">
                         <span class="button__text">{{ $t("msg.login_") }}</span>
                       </button>
                     </div>
@@ -126,12 +126,21 @@ export default {
       if(!isFormAllValid.includes(false)){
 
         this.isLoading = true;
-        let istrue = false;
+        const started = performance.now();
+        const lap = (step) => console.log('[login] ' + step + ' +' + Math.round(performance.now() - started) + ' ms');
+
         //first check config and setup
         let action = await this.configService.startCheck(this.accountField.defaultValue);
+        lap('config checked');
 
         //App has started - first close running wallet and node server process
         let processKilled = await this.configService.killEpicProcess();
+        lap('process scan');
+        if(processKilled){
+          //wait until the closed processes released their ports, not a fixed 5 s
+          await this.configService.waitForKilledPorts();
+          lap('old processes closed');
+        }
         let user = await this.$userService.getUser(this.accountField.defaultValue);
         
         if(user.length && action != 'settings'){
@@ -140,15 +149,18 @@ export default {
           //first login: open the wallet once the Setup Assistant has saved the settings
           const password = this.passwordField.defaultValue;
           this.emitter.off('setupwizard.saved');
+          //the scan above still holds: the Setup Assistant starts no wallet process
+          const knownNotRunning = processKilled !== false;
           this.emitter.on('setupwizard.saved', async () => {
             this.emitter.off('setupwizard.saved');
-            await this.startWallet(password, false);
+            await this.startWallet(password, knownNotRunning);
           });
           this.router.push('/setupwizard');
           return;
         }
-       
-        await this.startWallet(this.passwordField.defaultValue, processKilled);
+
+        //the scan just ran: no owner_api is left, unless the user chose to keep the old processes
+        await this.startWallet(this.passwordField.defaultValue, processKilled !== false, lap);
 
       }else{
         return;
@@ -156,48 +168,28 @@ export default {
 
     },
 
-    /* start the node and the wallet api, then log in */
-    async startWallet(password, processKilled){
+    /* start the node and the wallet api, then log in.
+       Only opening the wallet is waited for: the node check, the listeners and the first balance
+       refresh run after the dashboard is shown, with their status there (App.vue). */
+    async startWallet(password, knownNotRunning, lap = () => {}){
 
-       if(processKilled) {
-         await new Promise(resolve => setTimeout(resolve, 5000));
-       }
-       await this.emitter.emit('app.nodeStart');
-       
-        let canLogin = await this.$walletService.start(password, this.configService.config['firstTime']);
-        
+        //the node starts (or is checked) alongside, it is not waited for
+        this.emitter.emit('app.nodeStart');
+
+        let canLogin = await this.$walletService.start(password, this.configService.config['firstTime'], knownNotRunning, () => {
+          lap('wallet service started');
+        });
+        lap('wallet opened');
+
         if(canLogin.success){
 
-          //load user account settings first
-          
-          window.debug ? console.log('LOGIN USER:', this.store.state.user) : null;
-          if(this.configService.config['walletlisten_on_startup']){
-            const isListen = await this.$walletService.startListen(password, true, 'http');
-            //start epicbox, will be executed when node has synced status
-            if(this.configService.config['epicbox_domain'] != undefined && this.configService.config['epicbox_domain'] != '' ){
-              
-              await this.emitter.emit('app.startEpicbox', password);
-             
-            }
-
-            //the wallet listener started
-            /*if(isListen && isListen.success){
-              this.$toast.success(this.$t("msg.login.listener_started"));
-            }else{
-              this.$toast.error(this.$t("msg.login.error_listener_started"));
-              this.store.commit('walletListenerService', false);
-            }*/
-
-            //Tor state only, no toast: Tor is not configurable and fails to bootstrap on most setups
-            this.store.commit('torService', !!(isListen && isListen.tor));
-
-          }
-
-
-
+          //a plain copy: a reactive object can't be passed to the logger
+          window.debug ? console.log('LOGIN USER:', JSON.stringify(this.store.state.user)) : null;
 
           this.isLoading = false;
           this.emitter.emit('app.accountLoggedIn');
+          //HTTP listener, then Epicbox once the node has synced
+          this.emitter.emit('app.startListeners', password);
 
         }else{
           //console.log(canLogin);

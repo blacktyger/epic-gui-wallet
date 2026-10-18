@@ -473,17 +473,18 @@ epicbox_port = 443
 
 
     let killPromise = [];
-    let killProcess = false;
     let killPids = [];
 
-    let pWalletList = await window.nodeFindProcess('name', /.*?epic-wallet.*(owner_api|listen|scan)/);
+    //one process scan for wallet, node and Tor: each scan spawns ps (powershell on Windows, ~1 s there)
+    let pAll = await window.nodeFindProcess('name', /epic-wallet.*(owner_api|listen|scan)|epic.*server.*run|listener[\\/]torrc/);
+
+    let pWalletList = pAll.filter(p => /epic-wallet.*(owner_api|listen|scan)/.test(p.cmd));
 
     let pEpicnodeList = []
     if(this.config && !this.config.node_background)
-      pEpicnodeList = await window.nodeFindProcess('name', /.*?epic.*server.*run/);
+      pEpicnodeList = pAll.filter(p => /epic.*server.*run/.test(p.cmd) && !/epic-wallet/.test(p.cmd));
 
-
-    let pWalletTorList = await window.nodeFindProcess('name', 'tor', true);
+    let pWalletTorList = pAll.filter(p => /tor[\\/]listener[\\/]torrc/.test(p.cmd));
 
     //this.config.epicbox_background === false
     console.log('this.config.epicbox_background', this.config.epicbox_background);
@@ -513,14 +514,10 @@ epicbox_port = 443
 
 
     for(let process of pWalletTorList) {
-
-      if(process.cmd.includes('tor/listener/torrc')){
-        killPids.push(process);
-      }
+      killPids.push(process);
     }
 
     if(killPids.length){
-      let close = false;
       let confirmed = await new Promise((resolve) => {
 
         this.emitter.emit('killEpicProcess', {pid: killPids, callback:async(confirmed)=>{
@@ -530,6 +527,8 @@ epicbox_port = 443
               killPromise.push(nodeChildProcess.kill(process.pid))
             }
             await Promise.all(killPromise);
+            //the ports these processes held, to wait for before starting new ones
+            this.killedPorts = [3420, this.walletListenerPort, ...(pEpicnodeList.length ? [this.getNodeApiPort()] : [])];
             resolve(true);
           }else{
             resolve(false);
@@ -543,6 +542,32 @@ epicbox_port = 443
     }
 
 
+  }
+
+  /* the api port of the built-in node for the current network */
+  getNodeApiPort(){
+    if(this.defaultAccountNetwork == 'floonet'){
+      return 13413;
+    }else if(this.defaultAccountNetwork == 'usernet'){
+      return 23413;
+    }
+    return 3413;
+  }
+
+  /* after killEpicProcess: wait until the killed processes released their ports (at most timeoutMs) */
+  async waitForKilledPorts(timeoutMs = 5000){
+    const ports = this.killedPorts || [];
+    this.killedPorts = [];
+    const started = Date.now();
+    for(const port of ports){
+      while(await window.config.isPortReachable('127.0.0.1', port)){
+        if(Date.now() - started > timeoutMs){
+          return false;
+        }
+        await delay(100);
+      }
+    }
+    return true;
   }
 
 

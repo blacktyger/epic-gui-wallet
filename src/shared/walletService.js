@@ -328,18 +328,22 @@ class WalletService {
     }
 
 
-    /* start a epic wallet in owner_api mode */
-    async start(password, emitOutput){
+    /* start a epic wallet in owner_api mode
+       knownNotRunning: the caller just scanned the processes (killEpicProcess) and no owner_api is left,
+       so skip another scan (each one spawns ps, or powershell on Windows: ~1 s there) */
+    async start(password, emitOutput, knownNotRunning = false, onStage = () => {}){
 
         let pWalletList = [];
         let walletProcess = [];
         this.client = undefined;
         this.shared_key = undefined;
 
-        pWalletList = await window.nodeFindProcess('name', /.*?epic-wallet.*(owner_api)/);
-        for(let process of pWalletList) {
-          if(process.cmd.includes('owner_api')){
-            walletProcess.push(process);
+        if(!knownNotRunning){
+          pWalletList = await window.nodeFindProcess('name', /.*?epic-wallet.*(owner_api)/);
+          for(let process of pWalletList) {
+            if(process.cmd.includes('owner_api')){
+              walletProcess.push(process);
+            }
           }
         }
 
@@ -364,6 +368,7 @@ class WalletService {
           }
         }
 
+        onStage('unlock');
         let userTopDir = await this.jsonRPC('set_top_level_directory', {dir: this.configService.defaultAccountWalletdir}, false)
 
         if(userTopDir.result){
