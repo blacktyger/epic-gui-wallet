@@ -76,7 +76,6 @@
     position: fixed; inset: 0; z-index: 2147483000; display: grid; place-items: center;
     background: var(--uir-bg); color: var(--uir-text);
     font: 400 0.875rem/1.5 system-ui, -apple-system, 'Segoe UI', Ubuntu, Cantarell, Roboto, sans-serif;
-    animation: uir-in 160ms ease-out;
   }
   html[data-ui='modern'][data-theme='light'] .uir {
     --uir-bg: #f7f7f8; --uir-card: #ffffff; --uir-line: #c9c9d0; --uir-text: #1c1e21; --uir-dim: #55555f;
@@ -99,9 +98,7 @@
   .uir-spin { width: 0.9rem; height: 0.9rem; border-radius: 50%; border: 2px solid var(--uir-gold); border-right-color: transparent; animation: uir-spin 0.8s linear infinite; }
   .uir-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   @keyframes uir-spin { to { transform: rotate(360deg); } }
-  @keyframes uir-in { from { opacity: 0; } }
   @media (prefers-reduced-motion: reduce) {
-    .uir { animation: none; }
     .uir-spin { animation: none; border-right-color: var(--uir-gold); border-style: dotted; }
   }
 </style>
