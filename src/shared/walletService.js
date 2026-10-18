@@ -60,10 +60,15 @@ class WalletService {
           params: params,
       }
 
-      let response = await this.client.post(url, body, headers).catch(function (error) {
+      let response = await this.client.post(url, body, headers).catch(error => {
             this.debug ? console.log('walletService.initSecure', error) : null;
             return false;
       });
+
+      //wallet api not reachable or refused the key exchange
+      if(!response || !response.data || !response.data.result || !response.data.result.Ok){
+        return undefined;
+      }
 
       let key = secp256k1.getSharedSecret(privateKey, response.data.result.Ok);
       return Buffer.from(key).toString('hex').substr(2, 64);
@@ -121,6 +126,11 @@ class WalletService {
 
 
         if(!isForeign){
+
+          //no shared key: the wallet api is down
+          if(this.shared_key == undefined){
+            return false;
+          }
 
           const aesCipher = window.nodeAes256gcm(this.shared_key);
           const nonce = new Buffer.from(crypto.randomBytes(12));

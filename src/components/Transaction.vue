@@ -362,7 +362,7 @@
 
         }else{
 
-          this.$toast.error(txs.error);
+          this.$toast.error(txs ? txs.error : this.$t("msg.app.wallet_api_unreachable"));
         }
       },
 

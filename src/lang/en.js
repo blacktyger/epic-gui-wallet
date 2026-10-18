@@ -282,6 +282,7 @@ const messages = {
       external_node_offline: 'External Node is offline',
       epicbox_wait_timeout: 'Epicbox not started: node not synced. Start it from the Receive page.',
       node_unreachable: 'node unreachable',
+      wallet_api_unreachable: 'Wallet API not reachable',
       background_process: 'Please close all processes before continuing.',
       walletonline: 'Your wallet is online',
       walletoffline: 'Your wallet is offline.',

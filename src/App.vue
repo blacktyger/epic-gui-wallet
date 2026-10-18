@@ -233,6 +233,7 @@
 
         this.$walletService.logoutClient();
         this.loggedIn = false;
+        this.walletApiFailed = false;
         this.configService.resetConfig();
 
         this.store.dispatch('toggleFullPage', true);
@@ -467,9 +468,11 @@
           try {
             let refreshfromNode = this.store.state.nodeStatus.sync_status == 'synced' ?  true : false;
 
-            await this.getSummaryinfo(refreshfromNode);
-            await this.getTxs(refreshfromNode);
-            await this.getCommits(refreshfromNode);
+            //skip txs and outputs while the wallet api is down
+            if(await this.getSummaryinfo(refreshfromNode)){
+              await this.getTxs(refreshfromNode);
+              await this.getCommits(refreshfromNode);
+            }
 
 
           }
@@ -576,6 +579,19 @@
               unfinalization: data[1]['amount_awaiting_finalization']/100000000,
               immature: data[1]['amount_immature']/100000000,
             });
+            this.walletApiFailed = false;
+            return true;
+          }else if(!summary){
+            //only report the transition to failed, keep polling
+            if(!this.walletApiFailed){
+              this.$toast.error(this.t("msg.app.wallet_api_unreachable"));
+              this.store.commit('updates', {
+                    "status": "is-danger",
+                    "text": "Summary: " + this.t("msg.app.wallet_api_unreachable"),
+                    "icon":   "information"
+              });
+            }
+            this.walletApiFailed = true;
           }else{
             this.store.commit('updates', {
                   "status": "is-danger",
@@ -584,6 +600,7 @@
             });
 
           }
+          return false;
       },
 
       async getTxs(refreshfromNode) {
