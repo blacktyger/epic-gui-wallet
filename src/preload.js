@@ -5,6 +5,8 @@ import { join } from 'path'
 import path from 'path';
 import * as secp256k1 from "@noble/secp256k1";
 import isPortReachable from 'is-port-reachable';
+import { createProcessRegistry, createPidCheck, describeSpawn, redactArgs } from './shared/processOwnership';
+import { spawnCommand, plainBin } from './shared/spawnCommand';
 
 const moment = require('moment');
 const base32 = require('rfc-3548-b32');
@@ -63,35 +65,106 @@ function parseRecoveryPhrase(stdout){
   return (words.length == 12 || words.length == 24) ? words.join(' ') : '';
 }
 
+function killPid(pid){
+  return new Promise(function(resolve) {
+    if (process.platform === 'win32') {
+      //the tree: epic-wallet.exe and its tor.exe (and a cmd.exe wrapper started by 6.0.0)
+      exec(`taskkill /pid ${Number(pid)} /f /t`, function( err ) {
+        resolve(!err);
+      });
+    }else{
+      //check if 3 seconds for node server is to short and makes problems
+      ps.kill(pid, {timeout: 3},function( err ) {
+        resolve(!err);
+      });
+    }
+  });
+}
+
+//the processes this app started (see shared/processOwnership.js): only these are ever stopped or reused
+const ownProcesses = createProcessRegistry({
+  fs,
+  file: path.join(ewalletPath, 'gui_processes.json'),
+  findProcess: require('find-process'),
+  kill: killPid,
+  win: process.platform === 'win32',
+  //a record missing from a scan is forgotten only once this says its pid is gone
+  pidAlive: createPidCheck({win: process.platform === 'win32', processKill: process.kill.bind(process), execFile}),
+  warn: (msg) => log.warn(msg),
+  selfPid: process.pid,
+});
+
+//the children this window started that still run: pid → {role, dir}
+const liveChildren = new Map();
+
+/* start an epic binary without a shell (shared/spawnCommand.js) */
+function spawnEpic(cmd, args){
+  const c = spawnCommand(cmd, args);
+  return spawn(c.cmd, c.args, c.options);
+}
+
+function track(child, cmd, args){
+  cmd = plainBin(cmd);
+  debug ? console.log('spawn', cmd, redactArgs(args).join(' ')) : null;
+  if(child.pid){
+    const entry = ownProcesses.record(child.pid, cmd, args);
+    if(entry){
+      liveChildren.set(child.pid, {role: entry.role, dir: entry.dir});
+    }
+    child.on('exit', () => {
+      liveChildren.delete(child.pid);
+      ownProcesses.forget(child.pid);
+    });
+  }
+  return child;
+}
+
+//the pid of a child of ours with this role and dir that still runs, else 0
+function liveChildOf(role, dir){
+  for(const [pid, c] of liveChildren){
+    if(c.role === role && c.dir === dir) return pid;
+  }
+  return 0;
+}
+
+//only the app's own binaries in resources/bin may be adopted
+const bundledBinDir = path.resolve(resourcePath, 'bin') + path.sep;
+function isBundled(bin){
+  const b = path.resolve(String(bin || '').replace(/"/g, ''));
+  return process.platform === 'win32' ? b.toLowerCase().startsWith(bundledBinDir.toLowerCase()) : b.startsWith(bundledBinDir);
+}
+
 contextBridge.exposeInMainWorld('nodeChildProcess', {
 
+    /* stop a process by pid, only if the app started it; resolves false if it was not stopped */
     async kill(pid){
-      return new Promise(function(resolve, reject) {
-        let iskilled;
-        if (process.platform === 'win32') {
-            exec(`taskkill /pid ${pid} /f /t`, function( err ) {
-               if (err) {
-                 resolve(false);
-               }
-               else {
-
-                 resolve(true);
-               }
-           });
-
-        }else{
-          //check if 3 seconds for node server is to short and makes problems
-          ps.kill(pid, {timeout: 3},function( err ) {
-              if (err) {
-                resolve(false);
-              }
-              else {
-
-                resolve(true);
-              }
-          });
-        }
-      });
+      const [stopped] = await ownProcesses.stopPids([pid]);
+      return stopped;
+    },
+    /* our running processes of these roles (owner_api, listen, epicbox, scan, node), commands redacted;
+       opts: {dir, network, tor, torDirs} */
+    async ownedProcesses(roles, opts){
+      return ownProcesses.list(roles, opts);
+    },
+    /* stop our running processes of these roles; resolves the stopped processes and whether all are gone */
+    async stopOwned(roles, opts){
+      const owned = await ownProcesses.list(roles, opts);
+      const results = await ownProcesses.stop(owned);
+      return {stopped: owned, allKilled: results.every(r => r)};
+    },
+    /* stop these pids, if they are (still) ours: one boolean per pid */
+    async stopPids(pids){
+      return ownProcesses.stopPids(pids);
+    },
+    /* first start of this version (no record file yet): record the previous version's processes
+       that run the bundled binaries on this account (opts: {walletBin, nodeBin, dir, nodeConfig, network});
+       resolves the adopted ones as {pid, role} */
+    async adopt(opts){
+      const o = Object.assign({}, opts);
+      if(!isBundled(o.walletBin)) delete o.walletBin;
+      if(!isBundled(o.nodeBin)) delete o.nodeBin;
+      const adopted = await ownProcesses.adopt(o);
+      return adopted.map(e => ({pid: e.pid, role: e.role}));
     },
     async spawn(cmd, args){
       const child = await spawn(cmd, args);
@@ -108,7 +181,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
       return new Promise(function(resolve, reject) {
 
-          let createProcess = spawn(cmd, args, {shell: platform == 'win' ? true : false});
+          let createProcess = spawnEpic(cmd, args);
 
           let newSeedData = '';
           let errorData = '';
@@ -156,7 +229,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
       return new Promise(function(resolve, reject) {
 
 
-          let scanProcess = spawn(cmd, args, {shell: platform == 'win' ? true : false});
+          let scanProcess = track(spawnEpic(cmd, args), cmd, args);
 
           //scan process is self closing
           scanProcess.stdout.setEncoding('utf8');
@@ -200,7 +273,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
 
 
-          let node_server = spawn(cmd, args, {shell: platform == 'win' ? true : false});
+          let node_server = track(spawnEpic(cmd, args), cmd, args);
 
           node_server.stdout.setEncoding('utf8');
           node_server.stdout.on('data', (data) => {
@@ -229,7 +302,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
       return new Promise(function(resolve, reject) {
 
-          let ownerAPI = spawn(cmd, args, {shell: platform == 'win' ? true : false});
+          let ownerAPI = track(spawnEpic(cmd, args), cmd, args);
 
 
           ownerAPI.stdout.setEncoding('utf8');
@@ -282,7 +355,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
       return new Promise(function(resolve, reject) {
 
-          let listenProcess = spawn(cmd, args, {shell: platform == 'win' ? true : false});
+          let listenProcess = track(spawnEpic(cmd, args), cmd, args);
           let isTorBooted = false;
           listenProcess.stdout.setEncoding('utf8');
           listenProcess.stdout.on('data', (data) => {
@@ -325,9 +398,17 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
     /* start wallet epicbox */
     async execEpicbox(cmd, args, platform, password){
 
+      //one Epicbox listener per wallet dir: a second one (a scan that missed ours, two starts at once) reuses it
+      const desc = describeSpawn(cmd, args);
+      const running = desc ? liveChildOf('epicbox', desc.dir) : 0;
+      if(running){
+        debug ? console.log('execEpicbox: already running', running) : null;
+        return {success: true, msg: running};
+      }
+
       return new Promise(function(resolve, reject) {
 
-          let listenProcess = spawn(cmd, args, {shell: platform == 'win' ? true : false});
+          let listenProcess = track(spawnEpic(cmd, args), cmd, args);
           listenProcess.stdout.setEncoding('utf8');
           listenProcess.stdout.on('data', (data) => {
 
@@ -362,7 +443,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
       return new Promise(function(resolve, reject) {
 
-          let recover = spawn(cmd, args, {shell: platform == 'win' ? true : false});
+          let recover = spawnEpic(cmd, args);
 
 
           let newSeedData = '';
@@ -460,7 +541,6 @@ const aes256gcm = (shared_secret) => {
 };
 
 //contextBridge.exposeInMainWorld('nodeFetch', useFetch);
-contextBridge.exposeInMainWorld('nodeFindProcess', require('find-process'));
 contextBridge.exposeInMainWorld('nodeCrypto', require('crypto'));
 contextBridge.exposeInMainWorld('nodeSecp256k1', secp256k1);
 contextBridge.exposeInMainWorld('nodeAes256gcm', aes256gcm);
@@ -624,3 +704,4 @@ contextBridge.exposeInMainWorld('api', {
     
 
 });
+

@@ -2,16 +2,19 @@
 
 import { app, protocol, net, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard } from 'electron'
 import contextMenu from 'electron-context-menu'
-import { exec } from 'child_process'
+import { exec, execFile } from 'child_process'
 import { pathToFileURL } from 'url'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 import { createDirectory } from './shared/nodeDirectory'
+import { createProcessRegistry, createPidCheck } from './shared/processOwnership'
 
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 const path = require('path')
 const ps = require('ps-node');
 const findProcess = require('find-process');
+const os = require('os');
+const fs = require('fs');
 const log = require('electron-log');
 const {autoUpdater} = require("electron-updater");
 autoUpdater.channel = "latest";
@@ -70,6 +73,34 @@ async function kill(pid){
   });
 }
 
+
+//the processes the app started, recorded by the preload (see shared/processOwnership.js)
+const ownProcesses = createProcessRegistry({
+  fs,
+  file: path.join(os.homedir(), '.epic', 'gui_processes.json'),
+  findProcess,
+  kill,
+  win: process.platform === 'win32',
+  //a record missing from a scan is forgotten only once this says its pid is gone
+  pidAlive: createPidCheck({win: process.platform === 'win32', processKill: process.kill.bind(process), execFile}),
+  warn: (msg) => log.warn(msg),
+  selfPid: process.pid,
+});
+
+/* on quit: stop the wallet, listener, scan, node and Tor processes the app started, except the
+   node and the Epicbox listener when they run in the background. Nothing the app did not start. */
+async function stopOwnProcesses(){
+  const roles = ['owner_api', 'listen', 'scan',
+    ...(epicboxruninbackground ? [] : ['epicbox']),
+    ...(noderuninbackground ? [] : ['node'])];
+  try{
+    const owned = await ownProcesses.list(roles, {tor: true});
+    const results = await ownProcesses.stop(owned);
+    log.info('quit: stopped ' + owned.map((p, i) => p.pid + ' ' + p.name + (results[i] ? '' : ' (failed)')).join(', '));
+  }catch(e){
+    log.info('quit: could not stop the app processes: ' + (e && e.message));
+  }
+}
 
 //[13088:0215/073859.040:ERROR:gpu_init.cc(454)] Passthrough is not supported, GL is disabled, ANGLE is
 app.disableHardwareAcceleration();
@@ -153,60 +184,7 @@ async function createWindow() {
                       label:'Quit',
                       accelerator: "CmdOrCtrl+Q",
                       async click() {
-                          let killPromise = [];
-                          let killProcess = false;
-                          let killPids = [];
-                          let pEpicnodeList = [];
-
-                          let pWalletList = await findProcess('name', /.*?epic-wallet.*(owner_api|listen|scan)/);
-                          if(epicboxruninbackground){
-
-                            for(let process of pWalletList) {
-
-                              if((process.cmd.includes('owner_api') || process.cmd.includes("listen") || process.cmd.includes('scan')) && !process.cmd.includes("epicbox")){
-                                console.log('process kill without epicbox background', process);
-                                killPids.push(process);
-                              }
-                            }
-
-                          }else{
-                            for(let process of pWalletList) {
-
-                              if(process.cmd.includes('owner_api') || process.cmd.includes("listen")  || process.cmd.includes('scan')){
-                                console.log('process kill all background', process);
-                                killPids.push(process);
-                              }
-                            }
-
-                          }
-
-                          if(noderuninbackground == false){
-                            pEpicnodeList = await findProcess('name', /.*?epic.*server.*run/);
-                          }
-
-
-                          let pWalletTorList = await findProcess('name', /tor/);
-
-
-                          for(let process of pEpicnodeList) {
-                            if(process.cmd.includes('server')){
-                              killPids.push(process);
-                            }
-                          }
-                          for(let process of pWalletTorList) {
-                            if(process.cmd.includes('tor/listener/torrc')){
-                              killPids.push(process);
-                            }
-                          }
-                          if(killPids.length){
-                            for(let process of killPids) {
-
-                              killPromise.push(kill(process.pid))
-                            }
-                            await Promise.all(killPromise);
-                          }
-
-
+                          await stopOwnProcesses();
                           app.quit()
                       }
                   },
@@ -252,56 +230,7 @@ async function createWindow() {
                       label:'Quit',
                       accelerator: "CmdOrCtrl+Q",
                       async click() {
-                        let killPromise = [];
-                        let killProcess = false;
-                        let killPids = [];
-                        let pEpicnodeList = [];
-
-                        let pWalletList = await findProcess('name', /.*?epic-wallet.*(owner_api|listen|scan)/);
-                        if(epicboxruninbackground){
-
-                          for(let process of pWalletList) {
-
-                            if((process.cmd.includes('owner_api') || process.cmd.includes("listen") || process.cmd.includes('scan')) && !process.cmd.includes("epicbox")){
-                              console.log('process kill without epicbox background', process);
-                              killPids.push(process);
-                            }
-                          }
-
-                        }else{
-                          for(let process of pWalletList) {
-
-                            if(process.cmd.includes('owner_api') || process.cmd.includes("listen")  || process.cmd.includes('scan')){
-                              console.log('process kill all background', process);
-                              killPids.push(process);
-                            }
-                          }
-
-                        }
-
-                        if(noderuninbackground == false){
-                          pEpicnodeList = await findProcess('name', /.*?epic.*server.*run/);
-                        }
-
-                        let pWalletTorList = await findProcess('name', /tor/);
-
-                        for(let process of pEpicnodeList) {
-                          if(process.cmd.includes('server')){
-                            killPids.push(process);
-                          }
-                        }
-                        for(let process of pWalletTorList) {
-                          if(process.cmd.includes('tor/listener/torrc')){
-                            killPids.push(process);
-                          }
-                        }
-                        if(killPids.length){
-                          for(let process of killPids) {
-
-                            killPromise.push(kill(process.pid))
-                          }
-                          await Promise.all(killPromise);
-                        }
+                        await stopOwnProcesses();
                         app.quit()
                       }
                   },
@@ -349,53 +278,7 @@ app.on('window-all-closed', async() => {
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== 'darwin') {
 
-    let killPromise = [];
-    let killProcess = false;
-    let killPids = [];
-    let pEpicnodeList = [];
-
-    let pWalletList = await findProcess('name', /.*?epic-wallet.*(owner_api|listen|scan)/);
-
-    if(epicboxruninbackground){
-
-      for(let process of pWalletList) {
-
-        if((process.cmd.includes('owner_api') || process.cmd.includes("listen") || process.cmd.includes('scan')) && !process.cmd.includes("epicbox")){
-          console.log('process kill without epicbox background', process);
-          killPids.push(process);
-        }
-      }
-
-    }else{
-      for(let process of pWalletList) {
-
-        if(process.cmd.includes('owner_api') || process.cmd.includes("listen")  || process.cmd.includes('scan')){
-          console.log('process kill all background', process);
-          killPids.push(process);
-        }
-      }
-
-    }
-
-    if(noderuninbackground == false){
-      pEpicnodeList = await findProcess('name', /.*?epic.*server.*run/);
-    }
-
-
-    for(let process of pEpicnodeList) {
-      if(process.cmd.includes('server')){
-        killPids.push(process);
-      }
-    }
-    if(killPids.length){
-      for(let process of killPids) {
-
-        killPromise.push(kill(process.pid))
-      }
-      await Promise.all(killPromise);
-    }
-
-
+    await stopOwnProcesses();
     app.quit()
   }
 

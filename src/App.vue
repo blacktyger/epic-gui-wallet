@@ -193,6 +193,9 @@
           this.store.commit('listenerStarting', false);
         }
         console.log('[login] http listener ' + (isListen && isListen.success ? 'started' : 'not started') + ' +' + Math.round(performance.now() - started) + ' ms (background)');
+        if(isListen && isListen.portInUse && session === this.loginSession){
+          this.$toast.error(this.t("msg.login.port_in_use", [isListen.portInUse]));
+        }
         //logged out meanwhile: this listener belongs to no session, stop just this one
         if(session !== this.loginSession){
           if(isListen && isListen.pid){
@@ -437,6 +440,8 @@
               //start the status check for the node
               //give the node some time before api status is called
               this.startRefreshNodeId = setTimeout(this.startRefreshNode, 10000);
+            }else if(this.$nodeService.portInUse){
+              this.$toast.error(this.t("msg.app.node_port_in_use", [this.$nodeService.portInUse]), {duration: false});
             }else{
               this.$toast.error(this.t("msg.app.node_not_started"));
             }

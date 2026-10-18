@@ -248,7 +248,8 @@ export default {
           //console.log(canLogin);
           this.isLoading = true;
           this.$walletService.stopWallet();
-          this.$toast.error(canLogin.msg.message ? canLogin.msg.message : canLogin.msg);
+          this.$toast.error(canLogin.portInUse ? this.$t('msg.login.port_in_use', [canLogin.portInUse])
+            : (canLogin.msg.message ? canLogin.msg.message : canLogin.msg));
           //back to the login form after the Setup Assistant
           if(this.router.currentRoute.value.path != '/login'){
             this.router.push('/login');

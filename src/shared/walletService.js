@@ -8,12 +8,9 @@ require('promise.prototype.finally').shim();
 
 const log = window.log;
 console.log = log.log;
+const ownerApiPort = 3420;
 const jsonRPCUrl = 'http://127.0.0.1:3420/v3/owner'
 const jsonRPCForeignUrl = 'http://127.0.0.1:3420/v2/foreign'
-
-function addQuotations(s){
-    return '"' + s +'"'
-}
 
 class WalletService {
 
@@ -344,28 +341,26 @@ class WalletService {
     async start(password, emitOutput, knownNotRunning = false, onStage = () => {}){
         this.lastStartFailure = '';
 
-        let pWalletList = [];
         let walletProcess = [];
         this.client = undefined;
         this.shared_key = undefined;
 
+        //only an owner_api this app started for this wallet is reused, never someone else's
         if(!knownNotRunning){
-          pWalletList = await window.nodeFindProcess('name', /.*?epic-wallet.*(owner_api)/);
-          for(let process of pWalletList) {
-            if(process.cmd.includes('owner_api')){
-              walletProcess.push(process);
-            }
-          }
+          walletProcess = await window.nodeChildProcess.ownedProcesses(['owner_api'], {dir: this.configService.defaultAccountWalletdir});
         }
 
-
-
         if(!walletProcess.length){
+
+          //another program (e.g. the user's own CLI wallet) holds the owner API port: say so, don't touch it
+          if(await window.config.isPortReachable('127.0.0.1', ownerApiPort)){
+            return {success:false, msg:'port ' + ownerApiPort + ' in use', portInUse: ownerApiPort};
+          }
 
           let args = [
             ...(this.configService.defaultAccountNetwork != 'mainnet' ? ['--' + this.configService.defaultAccountNetwork] : []),
             '--offline_mode',
-            '-c',this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
+            '-c',this.configService.defaultAccountWalletdir,
             '--pass', password,
             'owner_api'
           ];
@@ -410,14 +405,9 @@ class WalletService {
 
         let args = [];
         let torBooted = false;
-        let walletIsEpicbox = [];
-        let pWalletList = await window.nodeFindProcess('name', /.*?epic-wallet.*(listen)/);
-
-        for(let process of pWalletList) {
-          if(process.cmd.includes('epicbox')){
-            walletIsEpicbox.push(process);
-          }
-        }
+        //our Epicbox listener for this wallet may still run (epicbox_background, or the previous version's,
+        //adopted at login): reuse it. execEpicbox doesn't start a second one either while ours runs
+        let walletIsEpicbox = await window.nodeChildProcess.ownedProcesses(['epicbox'], {dir: this.configService.defaultAccountWalletdir});
 
         if(!walletIsEpicbox.length){
 
@@ -427,8 +417,8 @@ class WalletService {
           let args = [
             ...(this.configService.defaultAccountNetwork != 'mainnet' ? ['--' + this.configService.defaultAccountNetwork] : []),
             '--pass', password,
-            '-t', this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
-            '-c', this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
+            '-t', this.configService.defaultAccountWalletdir,
+            '-c', this.configService.defaultAccountWalletdir,
             'listen',
             '--method',
             'epicbox',
@@ -454,25 +444,23 @@ class WalletService {
 
         let args = [];
         let torBooted = false;
-        let walletIsListen = [];
-        let pWalletList = await window.nodeFindProcess('name', /.*?epic-wallet.*(listen)/);
-
-        for(let process of pWalletList) {
-          if(process.cmd.includes('listen') && !process.cmd.includes('epicbox')){
-            walletIsListen.push(process);
-          }
-        }
+        let walletIsListen = await window.nodeChildProcess.ownedProcesses(['listen'], {dir: this.configService.defaultAccountWalletdir});
 
         if(!walletIsListen.length){
 
+          //another program holds the listener port: say so, don't touch it
+          const port = this.configService.walletListenerPort;
+          if(await window.config.isPortReachable('127.0.0.1', port)){
+            return {success:false, tor: torBooted, portInUse: port};
+          }
 
           let walletListenId = 0;
 
           let args = [
             ...(this.configService.defaultAccountNetwork != 'mainnet' ? ['--' + this.configService.defaultAccountNetwork] : []),
             '--pass', password,
-            '-t', this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
-            '-c', this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
+            '-t', this.configService.defaultAccountWalletdir,
+            '-c', this.configService.defaultAccountWalletdir,
             'listen',
             //the GUI only listens via http (Epicbox has its own startEpicbox); method is kept for callers
             '--method', 'http'
@@ -499,119 +487,37 @@ class WalletService {
 
     async isListen(){
 
-      let walletIsListen = [];
-      let pWalletList = await window.nodeFindProcess('name', /.*?epic-wallet.*(listen)/);
-
-      for(let process of pWalletList) {
-        if(process.cmd.includes('listen') && !process.cmd.includes('epicbox')){
-          walletIsListen.push(process);
-        }
-      }
-
-      if(!walletIsListen.length){
-        return false;
-      }else{
-        return true;
-      }
+      let walletIsListen = await window.nodeChildProcess.ownedProcesses(['listen'], {dir: this.configService.defaultAccountWalletdir});
+      return walletIsListen.length > 0;
     }
 
+    /* stop our listeners and their Tor; the Epicbox listener stays with epicbox_background */
     async stopListen(epicbox_background){
 
-
-      let killPids = [];
-      let killPromise = [];
-      let killProcess = false;
-
-
-      let pWalletList = await window.nodeFindProcess('name', /.*?epic-wallet.*(listen)/);
-      let pWalletTorList = await window.nodeFindProcess('name', /tor/);
-
-
-      if(epicbox_background){
-        for(let process of pWalletList) {
-          if(process.cmd.includes('listen') && !process.cmd.includes('epicbox')){
-            console.log('process kill without epicbox walletService', process);
-            killPids.push(process);
-          }
-        }
-      }else{
-        for(let process of pWalletList) {
-          if(process.cmd.includes('listen')){
-            console.log('process kill all walletService', process);
-            killPids.push(process);
-          }
-        }
-      }
-
-
-      for(let process of pWalletTorList) {
-        if(process.cmd.includes('tor/listener/torrc')){
-          killPids.push(process);
-        }
-      }
-
-      if(killPids.length){
-
-        for(let process of killPids) {
-          this.debug ? console.log('WalletService.stopListen', process) : null;
-          killPromise.push(window.nodeChildProcess.kill(process.pid))
-        }
-        await Promise.all(killPromise);
-      }
-
-      this.debug ? console.log('WalletService.listener_stopped') : null;
+      const roles = epicbox_background ? ['listen'] : ['listen', 'epicbox'];
+      const res = await window.nodeChildProcess.stopOwned(roles, {tor: true, torDirs: [this.configService.defaultAccountWalletdir]});
+      this.debug ? console.log('WalletService.listener_stopped', JSON.stringify(res.stopped)) : null;
       return true;
     }
 
-    /* logout: stop the listener (keeping a background Epicbox listener when asked), its Tor, the
-       owner API and, unless it runs in the background, the built-in node, with ONE process scan.
-       stopListen + stopWallet + nodeService.stopNode scan four times, and each scan starts
-       PowerShell on Windows (about a second each), which made locking and switching the
-       interface feel stuck. Same processes as those three calls, killed in parallel. */
+    /* logout: stop our listener (keeping a background Epicbox listener when asked), its Tor, our
+       owner API and, unless it runs in the background, our built-in node, in one call (one
+       process scan). Only processes the app started (shared/processOwnership.js). Lock and the
+       interface switch used to run stopListen + stopWallet + nodeService.stopNode one after
+       another, and each scan starts PowerShell on Windows. */
     async stopAll(epicbox_background, node_background){
 
-      const all = await window.nodeFindProcess('name', /epic-wallet.*(owner_api|listen)|epic.*server.*run|tor[\\/]listener[\\/]torrc/);
-      const kill = [];
-      for(let process of all){
-        const cmd = process.cmd || '';
-        if(/epic-wallet/.test(cmd) && cmd.includes('owner_api')){
-          kill.push(process);
-        }else if(/epic-wallet/.test(cmd) && cmd.includes('listen')){
-          if(!(epicbox_background && cmd.includes('epicbox'))) kill.push(process);
-        }else if(/tor[\\/]listener[\\/]torrc/.test(cmd)){
-          kill.push(process);
-        }else if(!node_background && /epic.*server.*run/.test(cmd)){
-          kill.push(process);
-        }
-      }
-      const unique = kill.filter((p, i) => kill.findIndex(q => q.pid == p.pid) == i);
-      this.debug ? console.log('WalletService.stopAll', unique.map(p => p.pid)) : null;
-      await Promise.all(unique.map(p => window.nodeChildProcess.kill(p.pid)));
+      const roles = ['owner_api', 'listen', ...(epicbox_background ? [] : ['epicbox']), ...(node_background ? [] : ['node'])];
+      const res = await window.nodeChildProcess.stopOwned(roles, {tor: true, torDirs: [this.configService.defaultAccountWalletdir]});
+      this.debug ? console.log('WalletService.stopAll', JSON.stringify(res.stopped)) : null;
       return true;
     }
 
+    /* stop our owner_api */
     async stopWallet(){
 
-      let killPids = [];
-      let killPromise = [];
-      let killProcess = false;
-      let pWalletList = await window.nodeFindProcess('name', /.*?epic-wallet.*(owner_api)/);
-
-      for(let process of pWalletList) {
-        if(process.cmd.includes('owner_api')){
-          killPids.push(process);
-        }
-      }
-
-      if(killPids.length){
-
-        for(let process of killPids) {
-          this.debug ? console.log('WalletService.stopWallet', process) : null;
-          killPromise.push(window.nodeChildProcess.kill(process.pid))
-        }
-        await Promise.all(killPromise);
-      }
-
+      const res = await window.nodeChildProcess.stopOwned(['owner_api']);
+      this.debug ? console.log('WalletService.stopWallet', JSON.stringify(res.stopped)) : null;
       return true;
     }
 
@@ -621,7 +527,7 @@ class WalletService {
           ...(network != 'mainnet' ? ['--' + network] : []),
           //epic-wallet 4.x: pass the password as an argument, like the other wallet commands
           '--pass', password,
-          '-c', this.configService.platform == "win" ? addQuotations(userhomedir) : userhomedir,
+          '-c', userhomedir,
           'init'
         ];
         return await window.nodeChildProcess.execNew(this.configService.epicPath, args, this.configService.platform, password);
@@ -634,7 +540,7 @@ class WalletService {
           ...(network != 'mainnet' ? ['--' + network] : []),
           //epic-wallet 4.x: pass the password as an argument, like the other wallet commands
           '--pass', password,
-          '-c', this.configService.platform == "win" ? addQuotations(userhomedir) : userhomedir,
+          '-c', userhomedir,
           'init', '-r'
         ];
 
@@ -645,7 +551,7 @@ class WalletService {
 
         let args = [
           '--pass', password,
-          '-t', this.configService.platform == "win" ? addQuotations(this.configService.defaultAccountWalletdir) : this.configService.defaultAccountWalletdir,
+          '-t', this.configService.defaultAccountWalletdir,
           'scan', '-s', 0,
           ...(delete_unconfirmed ? ['--delete_unconfirmed'] : []),
         ];
@@ -655,27 +561,10 @@ class WalletService {
 
     async stopCheck(){
 
-        let killPids = [];
-        let killPromise = [];
-        let walletCheckProcessList = await window.nodeFindProcess('name', /.*?epic-wallet.*(scan)/);
-
-        for(let process of walletCheckProcessList) {
-          if(process.cmd.includes('scan')){
-            killPids.push(process);
-          }
-        }
-
-        if(killPids.length){
-          for(let process of killPids) {
-            this.debug ? console.log('WalletService.stopCheck', process) : null;
-            killPromise.push(window.nodeChildProcess.kill(process.pid))
-          }
-        }
-
-        await Promise.all(killPromise);
+        const res = await window.nodeChildProcess.stopOwned(['scan']);
+        this.debug ? console.log('WalletService.stopCheck', JSON.stringify(res.stopped)) : null;
 
     }
-
 
 }
 

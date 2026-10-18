@@ -39,10 +39,9 @@ class ConfigService {
       this.epicBinPath = path.join(this.binariesPath, this.epicWalletBinary);
       this.epicNodeBinPath = path.join(this.binariesPath, this.epicNodeBinary);
 
-      if(this.platform === 'win'){
-        this.epicBinPath = '"' + path.resolve(this.epicBinPath) + '"';
-        this.epicNodeBinPath = '"' + path.resolve(this.epicNodeBinPath) + '"';
-      }
+      //no quotes: the binaries are started without a shell (shared/spawnCommand.js)
+      this.epicBinPath = path.resolve(this.epicBinPath);
+      this.epicNodeBinPath = path.resolve(this.epicNodeBinPath);
 
       this.epicPath = this.epicBinPath;
       this.epicNodePath = this.epicNodeBinPath;
@@ -468,75 +467,45 @@ epicbox_port = 443
   }
 
   /*
-   * find running epic-wallet and epic node
-   * process and close them if user confirms via prompt
+   * find epic-wallet, node and Tor processes this app started earlier (a crash, an old session,
+   * a background node or Epicbox listener) and close them if user confirms via prompt.
+   * Processes the app did not start (e.g. the user's own CLI wallet or node) are never listed.
    */
   async killEpicProcess(){
 
+    //the node and the Epicbox listener stay if the user runs them in the background
+    const roles = ['owner_api', 'listen', 'scan',
+      ...(this.config && this.config.epicbox_background ? [] : ['epicbox']),
+      ...(this.config && !this.config.node_background ? ['node'] : [])];
 
-    let killPromise = [];
-    let killPids = [];
+    //after an update the previous version's node or Epicbox listener may still run, unrecorded:
+    //adopt them once (only the bundled binaries on this account), so they are reused, not doubled
+    const adopted = await nodeChildProcess.adopt({
+      walletBin: this.epicPath, nodeBin: this.epicNodePath, dir: this.defaultAccountWalletdir,
+      nodeConfig: path.join(this.defaultAccountWalletdir, this.nodeTOMLName), network: this.defaultAccountNetwork,
+    }).catch(() => []);
+    adopted.length ? console.log('configService.killEpicProcess adopted', JSON.stringify(adopted)) : null;
 
     //one process scan for wallet, node and Tor: each scan spawns ps (powershell on Windows, ~1 s there)
-    let pAll = await window.nodeFindProcess('name', /epic-wallet.*(owner_api|listen|scan)|epic.*server.*run|listener[\\/]torrc/);
-
-    let pWalletList = pAll.filter(p => /epic-wallet.*(owner_api|listen|scan)/.test(p.cmd));
-
-    let pEpicnodeList = []
-    if(this.config && !this.config.node_background)
-      pEpicnodeList = pAll.filter(p => /epic.*server.*run/.test(p.cmd) && !pWalletList.includes(p));
-
-    let pWalletTorList = pAll.filter(p => /tor[\\/]listener[\\/]torrc/.test(p.cmd));
-
-    //this.config.epicbox_background === false
-    console.log('this.config.epicbox_background', this.config.epicbox_background);
-    if(this.config && this.config.epicbox_background){
-      for(let process of pWalletList) {
-        if((process.cmd.includes('owner_api') || process.cmd.includes("listen") || process.cmd.includes('scan')) && !process.cmd.includes("epicbox")){
-            console.log('process kill without epicbox configService', process);
-            killPids.push(process);
-        }
-      }
-
-    }else{
-      for(let process of pWalletList) {
-        if(process.cmd.includes('owner_api') || process.cmd.includes("listen")  || process.cmd.includes('scan')){
-          console.log('process kill all configService', process);
-          killPids.push(process);
-        }
-      }
-    }
-
-
-    for(let process of pEpicnodeList) {
-      if(process.cmd.includes('server')){
-        killPids.push(process);
-      }
-    }
-
-
-    for(let process of pWalletTorList) {
-      killPids.push(process);
-    }
-
-    //a process can match two lists (e.g. a Tor path under an epic-wallet dir): list and kill it once
-    killPids = killPids.filter((p, i) => killPids.findIndex(q => q.pid == p.pid) == i);
+    let killPids = await nodeChildProcess.ownedProcesses(roles, {tor: true, torDirs: [this.defaultAccountWalletdir]});
     this.allKilled = true;
 
     if(killPids.length){
+      this.debug ? console.log('configService.killEpicProcess', JSON.stringify(killPids)) : null;
       let confirmed = await new Promise((resolve) => {
 
         this.emitter.emit('killEpicProcess', {pid: killPids, callback:async(confirmed)=>{
           if(confirmed){
-            for(let process of killPids) {
-              this.debug ? console.log('configService.kill', process) : null;
-              killPromise.push(nodeChildProcess.kill(process.pid))
-            }
-            const killed = await Promise.all(killPromise);
-            //kill() resolves false when a process could not be killed (or did not exit in time)
+            const killed = await nodeChildProcess.stopPids(killPids.map(p => p.pid));
+            //false when a process could not be killed (or did not exit in time)
             this.allKilled = killed.every(k => k !== false);
             //the ports these processes held, to wait for before starting new ones
-            this.killedPorts = [3420, this.walletListenerPort, ...(pEpicnodeList.length ? [this.getNodeApiPort()] : [])];
+            const has = (role) => killPids.some(p => p.role == role);
+            this.killedPorts = [
+              ...(has('owner_api') ? [3420] : []),
+              ...(has('listen') ? [this.walletListenerPort] : []),
+              ...(has('node') ? [this.getNodeApiPort()] : []),
+            ];
             resolve(true);
           }else{
             resolve(false);
