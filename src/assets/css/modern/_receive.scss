@@ -60,3 +60,21 @@
 .e-rcv-facts dd .e-mono { font-size: 12px; }
 .e-rcv-note { grid-template-columns: 20px 1fr; margin-top: var(--sp-5); color: var(--dim); font-size: var(--fs-sm); }
 .e-rcv-row .e-icon-btn:disabled { opacity: 0.4; background: transparent; }
+
+/* Vue port additions: the QR is a canvas the Classic code draws into */
+.e-rcv-qrbox { flex: none; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); max-width: 216px; }
+.e-rcv-qr-cap { text-align: center; }
+.e-rcv-qr canvas { max-width: 100%; max-height: 100%; object-fit: contain; image-rendering: pixelated; }
+.e-rcv-qr-empty { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); text-align: center; color: var(--accent-ink); font-size: var(--fs-sm); }
+.e-rcv-qr.e-is-off canvas { opacity: 0.12; }
+[data-theme='dark'] .e-rcv-qr.e-is-off canvas { filter: invert(1); opacity: 0.1; }
+.e-rcv-start-form .e-btn { align-self: stretch; }
+.e-rcv-row .e-ctl { align-self: start; }
+.e-rcv-line code { display: block; }
+.e-rcv-check b { font-weight: 600; }
+.e-set-row .e-btn { text-decoration: none; }
+.e-file-note { margin: 0 0 var(--sp-5); color: var(--dim); font-size: var(--fs-sm); }
+.e-file-drop { min-height: 240px; cursor: pointer; }
+.e-file-drop .e-btn { margin-top: var(--sp-2); }
+.e-file-sending { display: flex; align-items: center; gap: var(--sp-2); margin: 0 0 var(--sp-4); color: var(--dim); }
+.e-file-actions { justify-content: center; margin-top: var(--sp-5); }

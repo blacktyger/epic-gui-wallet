@@ -19,3 +19,29 @@
 
 .e-summary-card .e-line:has(+ .e-total) { border-bottom: 0; }
 .e-addr-check .e-hl { color: var(--text); background: var(--accent-soft); border-radius: 3px; padding: 0 2px; }
+
+/* Vue port additions */
+.e-send-notice { margin-bottom: var(--sp-5); max-width: 1040px; }
+.e-send-form { min-width: 0; }
+.e-send-addr { position: relative; }
+.e-send-addr .e-input { padding-left: 40px; padding-right: 88px; }
+.e-send-lead { position: absolute; left: 12px; top: 0; height: var(--ctl); display: flex; align-items: center; color: var(--faint); pointer-events: none; }
+.e-send-trail { position: absolute; right: 4px; top: 0; height: var(--ctl); display: flex; align-items: center; gap: 2px; }
+.e-send-trail a.e-icon-btn { text-decoration: none; }
+.e-found { list-style: none; margin: 0; padding: var(--sp-1); border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--s2); }
+.e-found-item { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: var(--sp-3); width: 100%; min-height: 40px; padding: var(--sp-1) var(--sp-3); border: 0; border-radius: var(--r-xs); background: none; color: var(--text); text-align: left; }
+.e-found-item:hover { background: var(--s3); }
+.e-found-item .e-mono { font-size: 12px; }
+.e-send-adv { margin-top: var(--sp-5); }
+.e-send-adv-state { font-weight: 400; margin-left: auto; }
+.e-send-proof { margin: var(--sp-1) 0 var(--sp-3); }
+.e-send-review { margin-top: var(--sp-5); }
+.e-send-hint { margin-top: var(--sp-3); }
+.e-send-sending { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-4); }
+.e-rv-amount .e-money .e-frac { color: inherit; }
+.e-sum-title + .e-line { padding-top: var(--sp-2); }
+.e-summary-card .e-line .e-num .e-money,
+.e-summary-card .e-line .e-num .e-money span,
+.e-summary-card .e-total .e-num .e-money,
+.e-summary-card .e-total .e-num .e-money span { color: inherit; }
+.e-summary-card .e-num.e-dim { color: var(--dim); }
