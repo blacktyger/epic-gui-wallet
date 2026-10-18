@@ -405,7 +405,8 @@ class WalletService {
 
         let args = [];
         let torBooted = false;
-        //our Epicbox listener for this wallet may still run (epicbox_background)
+        //our Epicbox listener for this wallet may still run (epicbox_background, or the previous version's,
+        //adopted at login): reuse it. execEpicbox doesn't start a second one either while ours runs
         let walletIsEpicbox = await window.nodeChildProcess.ownedProcesses(['epicbox'], {dir: this.configService.defaultAccountWalletdir});
 
         if(!walletIsEpicbox.length){

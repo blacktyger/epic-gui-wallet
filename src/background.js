@@ -2,11 +2,11 @@
 
 import { app, protocol, net, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard } from 'electron'
 import contextMenu from 'electron-context-menu'
-import { exec } from 'child_process'
+import { exec, execFile } from 'child_process'
 import { pathToFileURL } from 'url'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 import { createDirectory } from './shared/nodeDirectory'
-import { createProcessRegistry } from './shared/processOwnership'
+import { createProcessRegistry, createPidCheck } from './shared/processOwnership'
 
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -81,6 +81,10 @@ const ownProcesses = createProcessRegistry({
   findProcess,
   kill,
   win: process.platform === 'win32',
+  //a record missing from a scan is forgotten only once this says its pid is gone
+  pidAlive: createPidCheck({win: process.platform === 'win32', processKill: process.kill.bind(process), execFile}),
+  warn: (msg) => log.warn(msg),
+  selfPid: process.pid,
 });
 
 /* on quit: stop the wallet, listener, scan, node and Tor processes the app started, except the

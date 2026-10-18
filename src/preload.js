@@ -5,7 +5,7 @@ import { join } from 'path'
 import path from 'path';
 import * as secp256k1 from "@noble/secp256k1";
 import isPortReachable from 'is-port-reachable';
-import { createProcessRegistry, redactArgs } from './shared/processOwnership';
+import { createProcessRegistry, createPidCheck, describeSpawn, redactArgs } from './shared/processOwnership';
 
 const moment = require('moment');
 const base32 = require('rfc-3548-b32');
@@ -87,15 +87,43 @@ const ownProcesses = createProcessRegistry({
   findProcess: require('find-process'),
   kill: killPid,
   win: process.platform === 'win32',
+  //a record missing from a scan is forgotten only once this says its pid is gone
+  pidAlive: createPidCheck({win: process.platform === 'win32', processKill: process.kill.bind(process), execFile}),
+  warn: (msg) => log.warn(msg),
+  selfPid: process.pid,
 });
+
+//the children this window started that still run: pid → {role, dir}
+const liveChildren = new Map();
 
 function track(child, cmd, args){
   debug ? console.log('spawn', cmd, redactArgs(args).join(' ')) : null;
   if(child.pid){
-    ownProcesses.record(child.pid, cmd, args);
-    child.on('exit', () => ownProcesses.forget(child.pid));
+    const entry = ownProcesses.record(child.pid, cmd, args);
+    if(entry){
+      liveChildren.set(child.pid, {role: entry.role, dir: entry.dir});
+    }
+    child.on('exit', () => {
+      liveChildren.delete(child.pid);
+      ownProcesses.forget(child.pid);
+    });
   }
   return child;
+}
+
+//the pid of a child of ours with this role and dir that still runs, else 0
+function liveChildOf(role, dir){
+  for(const [pid, c] of liveChildren){
+    if(c.role === role && c.dir === dir) return pid;
+  }
+  return 0;
+}
+
+//only the app's own binaries in resources/bin may be adopted
+const bundledBinDir = path.resolve(resourcePath, 'bin') + path.sep;
+function isBundled(bin){
+  const b = path.resolve(String(bin || '').replace(/"/g, ''));
+  return process.platform === 'win32' ? b.toLowerCase().startsWith(bundledBinDir.toLowerCase()) : b.startsWith(bundledBinDir);
 }
 
 contextBridge.exposeInMainWorld('nodeChildProcess', {
@@ -119,6 +147,16 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
     /* stop these pids, if they are (still) ours: one boolean per pid */
     async stopPids(pids){
       return ownProcesses.stopPids(pids);
+    },
+    /* first start of this version (no record file yet): record the previous version's processes
+       that run the bundled binaries on this account (opts: {walletBin, nodeBin, dir, nodeConfig, network});
+       resolves the adopted ones as {pid, role} */
+    async adopt(opts){
+      const o = Object.assign({}, opts);
+      if(!isBundled(o.walletBin)) delete o.walletBin;
+      if(!isBundled(o.nodeBin)) delete o.nodeBin;
+      const adopted = await ownProcesses.adopt(o);
+      return adopted.map(e => ({pid: e.pid, role: e.role}));
     },
     async spawn(cmd, args){
       const child = await spawn(cmd, args);
@@ -345,6 +383,14 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
     /* start wallet epicbox */
     async execEpicbox(cmd, args, platform, password){
 
+      //one Epicbox listener per wallet dir: a second one (a scan that missed ours, two starts at once) reuses it
+      const desc = describeSpawn(cmd, args);
+      const running = desc ? liveChildOf('epicbox', desc.dir) : 0;
+      if(running){
+        debug ? console.log('execEpicbox: already running', running) : null;
+        return {success: true, msg: running};
+      }
+
       return new Promise(function(resolve, reject) {
 
           let listenProcess = track(spawn(cmd, args, {shell: platform == 'win' ? true : false}), cmd, args);
@@ -480,7 +526,6 @@ const aes256gcm = (shared_secret) => {
 };
 
 //contextBridge.exposeInMainWorld('nodeFetch', useFetch);
-contextBridge.exposeInMainWorld('nodeFindProcess', require('find-process'));
 contextBridge.exposeInMainWorld('nodeCrypto', require('crypto'));
 contextBridge.exposeInMainWorld('nodeSecp256k1', secp256k1);
 contextBridge.exposeInMainWorld('nodeAes256gcm', aes256gcm);

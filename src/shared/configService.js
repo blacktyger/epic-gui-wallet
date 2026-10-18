@@ -479,6 +479,14 @@ epicbox_port = 443
       ...(this.config && this.config.epicbox_background ? [] : ['epicbox']),
       ...(this.config && !this.config.node_background ? ['node'] : [])];
 
+    //after an update the previous version's node or Epicbox listener may still run, unrecorded:
+    //adopt them once (only the bundled binaries on this account), so they are reused, not doubled
+    const adopted = await nodeChildProcess.adopt({
+      walletBin: this.epicPath, nodeBin: this.epicNodePath, dir: this.defaultAccountWalletdir,
+      nodeConfig: path.join(this.defaultAccountWalletdir, this.nodeTOMLName), network: this.defaultAccountNetwork,
+    }).catch(() => []);
+    adopted.length ? console.log('configService.killEpicProcess adopted', JSON.stringify(adopted)) : null;
+
     //one process scan for wallet, node and Tor: each scan spawns ps (powershell on Windows, ~1 s there)
     let killPids = await nodeChildProcess.ownedProcesses(roles, {tor: true, torDirs: [this.defaultAccountWalletdir]});
     this.allKilled = true;
