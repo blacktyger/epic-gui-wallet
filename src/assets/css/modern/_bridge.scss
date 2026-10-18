@@ -1,0 +1,45 @@
+/* What the modern UI needs to undo from the Classic stylesheet, which stays loaded.
+ * Bulma's generic rules style bare html/body, and the JustBoil layout pads <body> for its
+ * navbar and aside through classes on <html> (has-aside-left, has-navbar-fixed-top, ...). */
+html[data-ui='modern'] {
+  background: var(--bg);
+  overflow-y: auto;
+}
+html[data-ui='modern'] body,
+html[data-ui='modern'] nav.navbar {
+  padding: 0 !important;
+}
+
+/* Toasts: @meforma/vue-toaster stays; restyled like the prototype's .toast */
+html[data-ui='modern'] .c-toast-container { padding: var(--sp-6); }
+html[data-ui='modern'] .c-toast {
+  width: auto;
+  min-width: 300px;
+  max-width: 380px;
+  min-height: 0;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--line-strong);
+  border-inline-start: 3px solid var(--line-field);
+  border-radius: var(--r-sm);
+  background: var(--s4);
+  color: var(--text);
+  box-shadow: var(--shadow-pop);
+  font: 400 var(--fs-md)/1.45 var(--font-ui);
+}
+html[data-ui='modern'] .c-toast--success { border-inline-start-color: var(--ok); }
+html[data-ui='modern'] .c-toast--error { border-inline-start-color: var(--risk); }
+html[data-ui='modern'] .c-toast--warning { border-inline-start-color: var(--warn); }
+html[data-ui='modern'] .c-toast--info,
+html[data-ui='modern'] .c-toast--default { border-inline-start-color: var(--accent); }
+
+/* amounts not yet confirmed by the node (feat/qol "updating" state) */
+.e-updating { opacity: 0.55; transition: opacity var(--dur) var(--ease); }
+
+/* native <dialog> (EDialog): drop the UA box, keep the prototype's look */
+dialog.e-dialog,
+dialog.e-drawer { padding: 0; color: var(--text); }
+dialog.e-dialog { margin: auto; }
+dialog.e-drawer { margin: 0 0 0 auto; height: 100vh; max-height: 100vh; max-width: 100vw; border-top: 0; border-bottom: 0; border-right: 0; }
+dialog.e-dialog::backdrop,
+dialog.e-drawer::backdrop { background: var(--scrim); }
+[dir='rtl'] dialog.e-drawer { margin: 0 auto 0 0; }

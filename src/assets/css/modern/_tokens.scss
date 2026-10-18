@@ -1,0 +1,186 @@
+/* Epic GUI wallet: design tokens.
+ *
+ * The Epic Cash "Protocol scope" system (epiccash.com palette, devhub, Wallet for Epic) carried
+ * to the desktop wallet. Instrument, not dashboard: near-black with real elevation steps,
+ * hairlines instead of shadows, Montserrat for display only, JetBrains Mono for data only,
+ * gold as a signal. Values are the same as Wallet for Epic's Protocol look, with three desktop
+ * changes, each marked "desktop:" below.
+ *
+ * In the Vue app this file becomes src/assets/css/_tokens.scss (CSS custom properties, not Sass
+ * variables, so the light/dark switch is one attribute on <html>). */
+
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('~@/assets/fonts/montserrat-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('~@/assets/fonts/montserrat-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F,
+    U+20A0-20AB, U+20AD-20C0, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('~@/assets/fonts/JetBrainsMono-Regular.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('~@/assets/fonts/JetBrainsMono-Medium.ttf') format('truetype');
+}
+
+html[data-ui='modern'] {
+  color-scheme: dark;
+
+  /* Elevation: four steps, lighter as it lifts. */
+  --bg: #08080a;          /* window */
+  --s1: #0d0d10;          /* sidebar, panels, lists */
+  --s2: #131318;          /* fields, segmented controls */
+  --s3: #1a1a21;          /* hover, selected row, pressed */
+  --s4: #22222b;          /* dialogs, popovers */
+
+  --line: #24242a;        /* hairlines between rows */
+  --line-strong: #33333d; /* enclosures: panels, dialogs */
+  --line-field: #62626d;  /* desktop: field and checkbox edges, 3.3:1 on --bg (WCAG 1.4.11) */
+
+  --text: #fff9f9;        /* warm off-white, epiccash.com body text */
+  --dim: #a4a4ad;         /* secondary, 7.0:1 on --s3 */
+  --faint: #8a8a94;       /* desktop: was #70707a (4.1:1). Now 5.1:1 on --s3, 4.6:1 on dialogs (--s4) */
+
+  --accent: #f6d471;      /* gold: primary fill, focus, current position */
+  --accent-deep: #c98a3e; /* corner ticks, the far end of the brand gradient */
+  --accent-ink: #08080a;  /* text on gold, 13.9:1 */
+  --accent-text: #f6d471; /* gold as text */
+  --accent-soft: rgba(246, 212, 113, 0.14);
+  --accent-faint: rgba(246, 212, 113, 0.06);
+  --tick: #c98a3e;
+
+  --ok: #8ad98a;
+  --ok-soft: rgba(138, 217, 138, 0.12);
+  --warn: #f0c274;
+  --warn-soft: rgba(240, 194, 116, 0.12);
+  --risk: #f08a8a;
+  --risk-soft: rgba(240, 138, 138, 0.12);
+
+  --hover: rgba(255, 249, 249, 0.05);
+  --press: rgba(255, 249, 249, 0.09);
+  --grid: rgba(255, 249, 249, 0.035);
+  --scrim: rgba(5, 5, 6, 0.72);
+  --selection: rgba(246, 212, 113, 0.28);
+  --glow: rgba(246, 212, 113, 0.32);
+  --shadow-pop: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+html[data-ui='modern'][data-theme='light'] {
+  color-scheme: light;
+
+  /* Light goes darker as it lifts. */
+  --bg: #f7f7f8;
+  --s1: #ffffff;
+  --s2: #ffffff;
+  --s3: #eeeef0;
+  --s4: #ffffff;
+
+  --line: #e0e0e4;
+  --line-strong: #c9c9d0;
+  --line-field: #868690; /* 3.4:1 on --bg */
+
+  --text: #1c1e21;
+  --dim: #55555f;
+  --faint: #6b6b75; /* desktop: was #767680 (3.9:1 on --s3). Now 4.6:1 */
+
+  /* Gold becomes the devhub's AA brown, fill and text alike. Ticks turn charcoal. */
+  --accent: #8f5e1f;
+  --accent-deep: #8f5e1f;
+  --accent-ink: #ffffff; /* 5.5:1 */
+  --accent-text: #815525; /* the devhub's primary-dark: 4.8:1 even on a gold tint over --s3 */
+  --accent-soft: rgba(143, 94, 31, 0.12);
+  --accent-faint: rgba(143, 94, 31, 0.05);
+  --tick: #1c1e21;
+
+  --ok: #1f7a3a;
+  --ok-soft: rgba(31, 122, 58, 0.1);
+  --warn: #815525;
+  --warn-soft: rgba(143, 94, 31, 0.1);
+  --risk: #b3261e;
+  --risk-soft: rgba(179, 38, 30, 0.08);
+
+  --hover: rgba(0, 0, 0, 0.04);
+  --press: rgba(0, 0, 0, 0.07);
+  --grid: rgba(28, 30, 33, 0.05);
+  --scrim: rgba(28, 30, 33, 0.4);
+  --selection: rgba(143, 94, 31, 0.2);
+  --glow: rgba(143, 94, 31, 0.16);
+  --shadow-pop: 0 12px 32px -8px rgba(28, 30, 33, 0.22), 0 2px 6px rgba(28, 30, 33, 0.08);
+}
+
+html[data-ui='modern'] {
+  /* Type. Montserrat for display only (balance, titles, section heads); the platform face for
+   * everything a person reads or clicks; JetBrains Mono for data: amounts in lists, addresses,
+   * slate IDs, heights, commitments. Its slashed zero and distinct l/1/I matter when someone
+   * checks a 52-character Epicbox address. */
+  --font-display: 'Montserrat', system-ui, sans-serif;
+  --font-ui: system-ui, -apple-system, 'Segoe UI', 'Ubuntu', 'Cantarell', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Fixed scale for a product UI, about 1.2 per step. 14 px is the body size. */
+  --fs-xs: 0.75rem;     /* 12: captions, timestamps */
+  --fs-sm: 0.8125rem;   /* 13: secondary, table meta */
+  --fs-md: 0.875rem;    /* 14: body, controls */
+  --fs-lg: 1rem;        /* 16: field values that matter, lead text */
+  --fs-h3: 1.125rem;    /* 18: section heads */
+  --fs-h2: 1.375rem;    /* 22: page titles */
+  --fs-h1: 1.75rem;     /* 28: unlock, onboarding */
+  --fs-display: 2.75rem;/* 44: the balance */
+  --track-display: -0.022em;
+
+  /* Space, 4 px base. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* Radii: 4 tags, 8 controls and panels, 14 dialogs. */
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-lg: 14px;
+
+  /* desktop: controls are 44 high (Wallet for Epic: 48), one size for buttons and fields. */
+  --ctl: 44px;
+  --ctl-sm: 36px;
+
+  --sidebar: 224px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 320ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui='modern'] {
+    --dur-fast: 0ms;
+    --dur: 0ms;
+    --dur-slow: 0ms;
+  }
+}

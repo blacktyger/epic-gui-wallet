@@ -1,0 +1,32 @@
+/* Ported from ~/code/epic-gui-wallet-design/site by port.py: classes prefixed e-, bare
+ * element rules scoped to the modern UI. Edit here, not in the prototype. */
+/* Unlock and unlock progress */
+.e-acct-pick {
+  display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: 56px; padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm); border: 1px solid var(--line-field); background: var(--s2); text-align: left;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.e-acct-pick:hover { border-color: var(--dim); }
+.e-acct-pick b { display: block; font-weight: 600; }
+.e-acct-pick small { display: block; color: var(--faint); font-size: var(--fs-sm); }
+.e-glyph-sq { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: var(--r-sm); border: 1px solid var(--line-strong); color: var(--dim); }
+.e-glyph-sq.e-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: var(--warn-soft); }
+.e-glyph-sq.e-ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); background: var(--ok-soft); }
+.e-glyph-sq.e-risk { color: var(--risk); border-color: color-mix(in srgb, var(--risk) 45%, transparent); background: var(--risk-soft); }
+.e-proc-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--r-sm); }
+.e-proc-list li { display: grid; grid-template-columns: 16px 1fr auto; gap: var(--sp-3); align-items: center; padding: 10px var(--sp-4); border-bottom: 1px solid var(--line); font-size: var(--fs-md); }
+.e-proc-list li:last-child { border-bottom: 0; }
+.e-proc-list .e-icon { color: var(--dim); }
+.e-progress-card { padding: var(--sp-5) var(--sp-6); }
+.e-next-up { display: flex; gap: var(--sp-2); align-items: flex-start; margin-top: var(--sp-3); padding-top: var(--sp-4); border-top: 1px solid var(--line); color: var(--faint); font-size: var(--fs-sm); }
+.e-next-up .e-icon { margin-top: 2px; flex: none; }
+pre.e-log { margin: 0; padding: var(--sp-3); border-radius: var(--r-xs); background: var(--bg); border: 1px solid var(--line); font: 400 12px/1.6 var(--font-mono); color: var(--dim); white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-height: 800px) {
+  .e-hero-screen { padding: var(--sp-5) var(--sp-8); }
+  .e-hero-screen .e-glyph-tile { width: 56px; height: 56px; }
+  .e-hero-screen .e-glyph-tile svg { width: 26px; height: 30px; }
+  .e-hero-screen .e-auth-title { margin: var(--sp-3) 0 var(--sp-4); }
+  .e-progress-card { padding: var(--sp-3) var(--sp-5); }
+  .e-progress-card .e-stage { padding: 6px 0; }
+  .e-progress-card .e-notice { padding: var(--sp-2) var(--sp-3); }
+}

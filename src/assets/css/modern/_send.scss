@@ -1,0 +1,21 @@
+/* Ported from ~/code/epic-gui-wallet-design/site by port.py: classes prefixed e-, bare
+ * element rules scoped to the modern UI. Edit here, not in the prototype. */
+/* Send */
+.e-send-grid { display: grid; grid-template-columns: minmax(0, 1fr) 272px; gap: var(--sp-8); align-items: start; max-width: 1040px; }
+@media (min-width: 1280px) { .e-send-grid { grid-template-columns: minmax(0, 560px) 320px; } }
+.e-resolved { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 2px; font-size: var(--fs-sm); color: var(--dim); }
+.e-resolved b { color: var(--text); font-weight: 600; }
+.e-avatar.e-sm { width: 24px; height: 24px; font-size: 10px; border-radius: 6px; }
+.e-set-row.e-flat { padding: var(--sp-3) 0; border: 0; gap: var(--sp-4); }
+.e-sum-title { font: 600 var(--fs-md) var(--font-ui); letter-spacing: 0; margin-bottom: 6px; }
+.e-rv-amount { font: 600 32px/1.1 var(--font-display); letter-spacing: -0.03em; margin-bottom: var(--sp-5); font-variant-numeric: tabular-nums; }
+.e-rv-amount .e-num { font-family: var(--font-display); }
+.e-rv-amount .e-unit { font: 500 14px var(--font-mono); color: var(--dim); letter-spacing: 0.02em; }
+.e-sent { text-align: center; padding: var(--sp-8) var(--sp-6) var(--sp-6); }
+.e-sent h2 { font-size: var(--fs-h3); margin: var(--sp-4) 0 var(--sp-3); }
+.e-sent .e-rv-amount { margin-bottom: var(--sp-3); }
+.e-sent p { max-width: 40ch; margin: 0 auto; }
+.e-glyph-sq.e-lg { width: 56px; height: 56px; margin: 0 auto; }
+
+.e-summary-card .e-line:has(+ .e-total) { border-bottom: 0; }
+.e-addr-check .e-hl { color: var(--text); background: var(--accent-soft); border-radius: 3px; padding: 0 2px; }

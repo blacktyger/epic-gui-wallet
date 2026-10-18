@@ -1,0 +1,21 @@
+/* Ported from ~/code/epic-gui-wallet-design/site by port.py: classes prefixed e-, bare
+ * element rules scoped to the modern UI. Edit here, not in the prototype. */
+/* Overview */
+.e-ov-cols { display: grid; grid-template-columns: minmax(0, 1fr) 264px; gap: var(--sp-6); }
+@media (min-width: 1280px) { .e-ov-cols { grid-template-columns: minmax(0, 1fr) 320px; } }
+.e-ov-status { padding: var(--sp-2) 0; }
+.e-ov-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-5); }
+.e-ov-row b { display: block; font-weight: 600; }
+.e-ov-row small { display: block; color: var(--dim); font-size: var(--fs-sm); }
+.e-ov-addr { display: flex; flex-direction: column; gap: 6px; padding: var(--sp-3) var(--sp-5) var(--sp-4); border-top: 1px solid var(--line); margin-top: var(--sp-2); }
+.e-ov-addr .e-addr { padding: 6px 4px 6px 10px; }
+.e-ov-addr .e-addr code { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Background steps after unlock: the slow work keeps going, and says where it is. */
+.e-bgsteps { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); align-items: center; margin-bottom: var(--sp-4); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--s1); font-size: var(--fs-sm); color: var(--faint); }
+.e-bgstep { display: inline-flex; align-items: center; gap: 6px; }
+.e-bgstep.e-is-done { color: var(--dim); }
+.e-bgstep.e-is-done .e-icon { color: var(--ok); }
+.e-bgstep.e-is-now { color: var(--text); font-weight: 500; }
+.e-bgstep .e-spinner { width: 12px; height: 12px; }
+.e-ov-upgrade { margin-bottom: var(--sp-4); }
