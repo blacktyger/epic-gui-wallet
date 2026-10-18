@@ -25,6 +25,20 @@
               </div>
             </div>
           </div>
+          <div class="field">
+            <label class="label" for="settingsInterface">{{ $t("msg.modern.interface") }}</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select id="settingsInterface" v-model="uiSelected" @change="saveInterface">
+                  <option value="modern">{{ $t("msg.modern.interface_modern") }}</option>
+                  <option value="classic">{{ $t("msg.modern.interface_classic") }}</option>
+                </select>
+              </div>
+            </div>
+            <p class="help">{{ $t("msg.modern.interface_hint") }}</p>
+            <p class="help" v-if="uiRestartNeeded">{{ $t("msg.modern.interface_restart") }}
+              <a @click="restartUi">{{ $t("msg.modern.restart_now") }}</a></p>
+          </div>
           <div class="field"></div>
           <div class="field">
             <label class="label">{{ $t("msg.settings.epicbox_domain") }}</label>
@@ -77,6 +91,7 @@ import { ref, onUnmounted } from 'vue';
 import { useStore } from '@/store';
 import NodeserverField from "@/components/form/nodeserverField";
 import useFormValidation from "@/modules/useFormValidation";
+import { getUi, getScheme, saveUi, saveScheme } from '@/shared/theme';
 
   export default {
     name: "settings",
@@ -113,6 +128,16 @@ import useFormValidation from "@/modules/useFormValidation";
         nodeInternal
       }
     },
+    data() {
+      //the interface (Modern / Classic) and the Modern colour scheme, app-wide (shared/theme.js)
+      return { uiSelected: getUi(), uiSaved: getUi(), schemeSelected: getScheme() };
+    },
+    computed: {
+      //the saved interface differs from the one running: it applies after a restart
+      uiRestartNeeded() {
+        return this.uiSaved !== this.store.state.ui;
+      },
+    },
     async created() {
 
       this.emitter.on('settings.nodeserverFieldChanged', () => {
@@ -142,6 +167,22 @@ import useFormValidation from "@/modules/useFormValidation";
     },
 
     methods: {
+      saveInterface(){
+        if(saveUi(this.uiSelected, this.configService)){
+          this.uiSaved = this.uiSelected;
+        }else{
+          this.$toast.error(this.$t("msg.settings.error_save"));
+        }
+      },
+      //lock the wallet and open the window again with the saved interface
+      restartUi(){
+        this.emitter.emit('app.reloadUi');
+      },
+      saveColourScheme(scheme){
+        this.schemeSelected = scheme;
+        saveScheme(scheme, this.configService);
+        this.store.commit('scheme', scheme);
+      },
       changeNodeBackgroundSetting(){
         console.log('changeNodeBackgroundSetting', this.nodeserverField.select);
         if(this.nodeserverField.select == 'external'){

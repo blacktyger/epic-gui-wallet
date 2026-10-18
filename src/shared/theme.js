@@ -86,6 +86,18 @@ export function saveScheme(scheme, configService) {
   return ok;
 }
 
+/* one-time notices of the Modern interface (e.g. 'upgraded', the "this is the new look" note on
+   Overview), remembered in the app config as ui_notices: { key: true } */
+export function noticeSeen(key) {
+  const n = readAppConfig().ui_notices;
+  return !!(n && n[key]);
+}
+
+export function markNoticeSeen(key, configService) {
+  const n = Object.assign({}, readAppConfig().ui_notices, { [key]: true });
+  return writeAppSetting('ui_notices', n, configService);
+}
+
 /* reload the renderer at index.html (a history-mode reload of the current path would 404 under
    app://). The caller logs out first, so no wallet process is left behind. */
 export function reloadUi() {
