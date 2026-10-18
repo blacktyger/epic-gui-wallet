@@ -244,6 +244,10 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
               resolve(ownerAPI.pid);
             }
             
+            //epic-wallet 4.1 with a wrong password: "Lifecycle Error: Error opening wallet (is password correct?)"
+            if(data.includes('is password correct')){
+              resolve(-1);
+            }
             if(data.includes('Error opening wallet')){
               resolve(0);
             }
@@ -258,7 +262,10 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
             if(emitOutput){
               ipcRenderer.send('firstscan-stdout', data);
             }
-            if(data.includes('Address already in use')){
+            if(data.includes('is password correct')){
+              //wrong password (see stdout above); still a failed start for the caller
+              resolve(-1);
+            }else if(data.includes('Address already in use')){
               //we have unknow process id
               resolve(0);
             }else{

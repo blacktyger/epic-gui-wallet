@@ -117,9 +117,20 @@
         this.unlockError = '';
         this.failure = null;
         this.lastStage = '';
-        const message = await captureToast(this, () => Login.methods.login.call(this));
+        //the unlock screen shows every failure itself: no toast on top
+        const message = await captureToast(this, () => Login.methods.login.call(this), { swallow: true });
         if (!message) return;
-        if (!this.lastStage || this.lastStage == 'unlock') {
+        //a wrong password (the wallet said so while starting, or open_wallet refused it): straight back
+        //to the password field, selected so it can be typed over
+        if (this.$walletService.lastStartFailure == 'password' || this.lastStage == 'unlock') {
+          this.unlockError = this.$t('msg.modern.unlock.wrong_password');
+          this.$nextTick(() => {
+            const input = this.passwordInput();
+            if (input) { input.focus({ preventScroll: true }); input.select(); }
+          });
+          return;
+        }
+        if (!this.lastStage) {
           this.unlockError = message;
         } else {
           this.failure = { stage: this.lastStage, message };

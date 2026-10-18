@@ -31,6 +31,7 @@ export default {
   unlock_failed_title: 'Couldn’t unlock',
   unlock_failed_lead: 'The wallet did not open. The reason is below.',
   unlock_failed_heading: 'The wallet did not open',
+  wrong_password: 'Wrong password. That password didn’t open this wallet. Check Caps Lock and the keyboard layout.',
   try_again: 'Try again',
   this_wallet: 'this wallet',
 

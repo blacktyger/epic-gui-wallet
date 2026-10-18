@@ -332,6 +332,7 @@ class WalletService {
        knownNotRunning: the caller just scanned the processes (killEpicProcess) and no owner_api is left,
        so skip another scan (each one spawns ps, or powershell on Windows: ~1 s there) */
     async start(password, emitOutput, knownNotRunning = false, onStage = () => {}){
+        this.lastStartFailure = '';
 
         let pWalletList = [];
         let walletProcess = [];
@@ -364,6 +365,9 @@ class WalletService {
           if(walletOpenId > 0){
             this.walletProcess = true;
           }else{
+            //-1: the wallet said the password is wrong; anything else: the service didn't start.
+            //Read by the BT Labs Theme unlock screen; the result is the same as before.
+            this.lastStartFailure = walletOpenId === -1 ? 'password' : 'service';
             return {success:false, msg:'Error opening wallet (is password correct?)'};
           }
         }

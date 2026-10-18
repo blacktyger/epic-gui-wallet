@@ -8,7 +8,7 @@
  * error message it showed, or ''. The toast still appears, exactly as in the Classic interface;
  * the Modern screen shows the same message beside the form or the progress.
  */
-export async function captureToast(vm, fn) {
+export async function captureToast(vm, fn, { swallow = false } = {}) {
   const toast = vm.$toast;
   const original = toast.error;
   let message = '';
@@ -17,7 +17,8 @@ export async function captureToast(vm, fn) {
       const first = args[0];
       message = typeof first == 'string' ? first : (first && first.message) || String(first);
     }
-    return original.apply(this, args);
+    //swallow: the screen shows the message itself, a toast would say it twice
+    return swallow ? undefined : original.apply(this, args);
   };
   try {
     await fn();
