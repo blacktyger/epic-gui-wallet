@@ -72,7 +72,7 @@
 
             <div class="field is-grouped">
               <div class="control">
-                <button class="button is-primary" :class="{ 'button__loader': isLoadingSend }" :disabled="!nodeSynced" @click="send">
+                <button class="button is-primary" :class="{ 'button__loader': isLoadingSend }" :disabled="!nodeSynced || (epicboxSelected && !epicboxConnected)" @click="send">
                   <span class="button__text">{{ $t("msg.send") }}</span>
                 </button>
 
@@ -83,6 +83,7 @@
                 </button>
               </div>
             </div>
+            <p v-if="nodeSynced && epicboxSelected && !epicboxConnected" class="help is-danger" role="status">{{ $t("msg.epicbox_not_connected") }}. {{ $t("msg.epicbox_not_connected_hint") }}</p>
             <p v-if="!nodeSynced" class="help is-danger" role="status">{{ $t("msg.node_not_synced") }}. {{ $t("msg.node_not_synced_hint") }}</p>
 
           </div>
@@ -169,6 +170,14 @@ export default {
     nodeSynced(){
       const s = this.store.state.nodeStatus;
       return !!(s && !s.error && s.sync_status === 'synced' && s.tip && s.tip.height > 0);
+    },
+    /* the address (or chosen address book entry) means sending via Epicbox */
+    epicboxSelected(){
+      const v = (this.addressField && this.addressField.input) || '';
+      return this.method == 'epicbox' || v.includes('@') || v.startsWith('es') || v.startsWith('epicbox');
+    },
+    epicboxConnected(){
+      return !!this.store.state.walletEpicboxService;
     },
   },
   methods: {
@@ -312,7 +321,7 @@ export default {
 
     async send(){
 
-      if(!this.nodeSynced) return;
+      if(!this.nodeSynced || (this.epicboxSelected && !this.epicboxConnected)) return;
       this.resetFormErrors();
       let isFormAllValid = [];
 

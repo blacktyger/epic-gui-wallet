@@ -223,6 +223,7 @@
         });
 
         await this.$walletService.stopListen(this.configService.config.epicbox_background);
+        this.store.commit('walletEpicboxService', false);
 
         await this.$walletService.stopWallet();
         await this.$ngrokService.stopNgrok();

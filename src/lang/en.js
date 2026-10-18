@@ -25,6 +25,8 @@ const messages = {
     locked: 'Locked',
     send: 'Send',
     node_not_synced: 'Node not synced',
+    epicbox_not_connected: 'Epicbox not connected',
+    epicbox_not_connected_hint: 'Sending to an Epicbox address is possible once the Epicbox listener is running. Use a file or HTTP address meanwhile.',
     node_not_synced_hint: 'Sending is possible once the node has synced.',
     send_proof: 'send proof',
     dandelion: 'Dandelion++',
