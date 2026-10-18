@@ -437,7 +437,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
           recover.stdout.on('end', function () {
 
-            debug ? console.log('execRecover.stdout.end', data) : null;
+            debug ? console.log('execRecover.stdout.end') : null;
 
             if(errorData != ''){
 
