@@ -220,7 +220,7 @@ async function createWindow() {
 
       ]);
     }else{
-      var menu = Menu.buildFromTemplate([
+      menu = Menu.buildFromTemplate([
           {
               label: 'Menu',
               submenu: [

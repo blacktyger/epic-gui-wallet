@@ -371,7 +371,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
               }
 
               if(data.includes('Failed to check node sync status')){
-                resolve({success: false, msg: 'node not synced', tor: isTorBooted});
+                resolve({success: false, msg: 'node not synced', tor: false});
               }
 
           });
@@ -437,7 +437,7 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
           recover.stdout.on('end', function () {
 
-            debug ? console.log('execRecover.stdout.end', data) : null;
+            debug ? console.log('execRecover.stdout.end') : null;
 
             if(errorData != ''){
 
