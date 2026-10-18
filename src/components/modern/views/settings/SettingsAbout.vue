@@ -39,7 +39,21 @@
       </div>
     </section>
 
-    <p class="e-small e-faint e-stg-credits">{{ $t('msg.modern.settings.thanks') }}</p>
+    <section class="e-set-group" aria-labelledby="stg-cr-h">
+      <h2 id="stg-cr-h">{{ $t('msg.modern.settings.about_credits') }}</h2>
+      <div class="e-set-list">
+        <div class="e-set-row e-stg-credit-row">
+          <span class="e-stg-btl-logo" role="img" :aria-label="$t('msg.modern.credit_btlabs')">
+            <img class="e-btl-dark" src="@/assets/btlabs/btlabs-logo.svg" alt="" />
+            <img class="e-btl-light" src="@/assets/btlabs/btlabs-logo-light.svg" alt="" />
+          </span>
+          <div>
+            <Credits large />
+            <p class="e-small e-faint">{{ $t('msg.modern.settings.thanks') }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
   </SettingsFrame>
 </template>
 
@@ -48,10 +62,11 @@
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import SettingsFrame from '@/components/modern/settings/SettingsFrame.vue';
+  import Credits from '@/components/modern/ui/Credits.vue';
   import { useStore } from '@/store';
 
   export default reskin(About, {
-    components: { EIcon, SettingsFrame },
+    components: { EIcon, SettingsFrame, Credits },
     data() {
       return { github: 'https://github.com/EpicCash/epic-gui-wallet', community: 'https://epiccash.com/' };
     },

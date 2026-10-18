@@ -1,7 +1,7 @@
 //Modern interface strings for Overview and Activity (msg.modern.overview.*)
 export default {
   //upgraded notice
-  upgraded_title: 'This is the new look of your wallet',
+  upgraded_title: 'Your wallet now uses the BT Labs Theme',
   upgraded_text: 'Same wallet, contacts and settings. Prefer the old one? Switch to Classic in Settings › Interface.',
   upgraded_open: 'Open Settings',
   dismiss: 'Dismiss',

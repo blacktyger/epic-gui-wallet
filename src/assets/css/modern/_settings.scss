@@ -11,7 +11,7 @@
 .e-stg-w { max-width: 360px; }
 .e-stg-ctl-w { width: 240px; }
 .e-stg-fact { color: var(--dim); font-weight: 500; }
-.e-stg-path { font-size: 12.5px; color: var(--dim); overflow-wrap: anywhere; }
+.e-stg-path { font-size: 0.7812rem; color: var(--dim); overflow-wrap: anywhere; }
 .e-stg-link { font-weight: 600; white-space: nowrap; }
 .e-stg-why { display: grid; grid-template-columns: 16px 1fr; gap: var(--sp-2); color: var(--faint) !important; margin-top: var(--sp-2) !important; }
 .e-stg-why .e-icon { margin-top: 2px; }
@@ -53,11 +53,11 @@
 .e-stg-progress { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4); border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--s2); }
 .e-stg-progress-top { display: flex; align-items: center; gap: var(--sp-3); }
 .e-stg-progress-top b { font-weight: 600; }
-.e-stg-progress-top .e-mono { font-size: 13px; }
+.e-stg-progress-top .e-mono { font-size: 0.8125rem; }
 .e-stg-pct { color: var(--accent-text); font-weight: 500; }
 .e-stg-progress .e-progress { height: 6px; border-radius: 3px; }
 .e-stg-log { background: var(--s1); }
-.e-stg-log pre { margin: 0; font-size: 12px; line-height: 1.7; color: var(--dim); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 160px; overflow: auto; }
+.e-stg-log pre { margin: 0; font-size: 0.75rem; line-height: 1.7; color: var(--dim); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 160px; overflow: auto; }
 
 /* About */
 .e-stg-about { display: flex; gap: var(--sp-4); align-items: flex-start; }
@@ -67,7 +67,7 @@
 .e-stg-linkrow:focus-visible { outline-offset: -2px; }
 .e-stg-linkrow .e-ctl { color: var(--faint); }
 .e-stg-linkrow:hover .e-ctl { color: var(--text); }
-.e-stg-linkrow p.e-mono { font-size: 12.5px; }
+.e-stg-linkrow p.e-mono { font-size: 0.7812rem; }
 .e-stg-faq { display: flex; flex-direction: column; gap: var(--sp-2); }
 .e-stg-faq details { background: var(--s1); }
 .e-stg-faq summary { color: var(--text) !important; font-weight: 500 !important; }
@@ -116,7 +116,7 @@
 /* Update log */
 .e-stg-upd-state { display: flex !important; align-items: center; gap: var(--sp-2); }
 .e-stg-upd-state.e-is-bad { color: var(--risk); }
-.e-stg-upd-text { font-size: 12.5px; overflow-wrap: anywhere; white-space: pre-wrap; max-width: none !important; }
+.e-stg-upd-text { font-size: 0.7812rem; overflow-wrap: anywhere; white-space: pre-wrap; max-width: none !important; }
 .e-stg-credits { margin-top: var(--sp-6); }
 
 /* Help topics: Help.vue toggles message-body / is-hidden on the DOM */
@@ -137,8 +137,18 @@
 .e-stg-faq .has-background-warning { background: var(--accent); color: var(--accent-ink); border-radius: 2px; }
 
 /* First scan dialog */
-.e-stg-scanout { margin: 0; font-size: 12px; line-height: 1.7; color: var(--dim); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 280px; overflow: auto; background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-sm); padding: var(--sp-3); }
+.e-stg-scanout { margin: 0; font-size: 0.75rem; line-height: 1.7; color: var(--dim); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 280px; overflow: auto; background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-sm); padding: var(--sp-3); }
 .e-stg-line { display: block; margin-bottom: var(--sp-1); }
 .e-stg-line:last-child { margin-bottom: 0; }
 /* keep focused controls clear of the sticky save bar (WCAG 2.4.11) */
 .e-content:has(.e-stg-savebar) { scroll-padding-bottom: 96px; }
+
+/* About: credits with the BT Labs logo (dark and light versions of the asset) */
+.e-stg-credit-row { display: flex; align-items: center; gap: var(--sp-5); }
+.e-stg-btl-logo { flex: none; width: 4.5rem; display: block; opacity: 0.85; }
+.e-stg-btl-logo img { width: 100%; height: auto; display: block; }
+.e-stg-btl-logo .e-btl-light { display: none; }
+html[data-ui='modern'][data-theme='light'] .e-stg-btl-logo .e-btl-dark { display: none; }
+html[data-ui='modern'][data-theme='light'] .e-stg-btl-logo .e-btl-light { display: block; }
+.e-stg-credit-row .e-small { margin-top: 4px; }
+.e-set-row .e-stg-why.e-stg-why-top { margin: 2px 0 4px !important; }

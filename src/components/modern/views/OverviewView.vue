@@ -78,7 +78,7 @@
     </div>
 
     <!-- the one framed object on the screen -->
-    <section class="e-panel e-balance e-gridfield e-ticked" aria-labelledby="ov-bal-label">
+    <section class="e-panel e-balance e-gridfield e-ticked" aria-labelledby="ov-bal-label" data-tour="balance">
       <span class="e-tick e-tl"></span><span class="e-tick e-tr"></span><span class="e-tick e-bl"></span><span class="e-tick e-br"></span>
       <div class="e-balance-top">
         <div>
@@ -153,11 +153,11 @@
               <small v-else-if="nodeDown" class="e-risk">{{ $t('msg.modern.overview.node_not_responding') }}</small>
               <small v-else-if="nodeSyncing">{{ $t('msg.modern.overview.node_progress', { status: store.state.nodeStatus.sync_status, p: syncPercent }) }} · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</small>
               <small v-else>{{ $t('msg.modern.overview.node_synced') }} · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</small>
-              <small v-if="!isInternal" class="e-mono e-faint e-truncate" translate="no" :title="store.state.nodeType">{{ store.state.nodeType }}</small>
+              <small v-if="nodeSynced" class="e-ov-height" translate="no" :title="$t('msg.modern.overview.node_block')">{{ $t('msg.modern.overview.node_block') }} <span class="e-mono">{{ fmt(blockHeight) }}</span></small>
+              <small v-if="!isInternal && nodeHost" class="e-mono e-ov-host" translate="no" :title="store.state.nodeType">{{ nodeHost }}</small>
               <small v-if="isInternal && !configService.config.nodesynced" class="e-faint">{{ $t('msg.modern.overview.node_fallback', { addr: nodeFallBack }) }}</small>
-              <small v-if="store.state.nodeStatus.user_agent" class="e-faint e-truncate" translate="no" :title="store.state.nodeStatus.user_agent">{{ $t('msg.modern.overview.node_version', { v: store.state.nodeStatus.user_agent }) }}</small>
+              <small v-if="store.state.nodeStatus.user_agent" class="e-faint" translate="no" :title="store.state.nodeStatus.user_agent">{{ nodeVersion }}</small>
             </div>
-            <span v-if="nodeSynced" class="e-mono e-small e-dim" translate="no" :title="$t('msg.modern.overview.node_block')">{{ fmt(blockHeight) }}</span>
             <button
               v-if="isInternal && !nodeDown"
               type="button"
@@ -192,12 +192,14 @@
       </aside>
     </div>
   </div>
+  <ETour v-if="tourOpen" :steps="tourSteps" @close="endTour" />
 </template>
 
 <script>
   import HeaderBar from '@/components/HeaderBar.vue';
   import { reskin } from '@/components/modern/reskin';
   import { noticeSeen, markNoticeSeen } from '@/shared/theme';
+  import ETour from '@/components/modern/ui/ETour.vue';
 
   //the fiat value last shown, for the balance it was computed for (see mounted)
   const lastFiat = { total: null, usd: 0 };
@@ -210,14 +212,44 @@
 
   export default reskin(HeaderBar, {
     name: 'OverviewView',
-    components: { EIcon, MoneyText, RecentTx, SyncNotes, TxRing },
+    components: { EIcon, MoneyText, RecentTx, SyncNotes, TxRing, ETour },
     data() {
       return {
         showUpgraded: !noticeSeen('upgraded'),
+        //the first-run tour (shown once; Settings › Show the tour again)
+        tourOpen: false,
         refreshing: false,
       };
     },
     computed: {
+      /* the node's address as people read it: no scheme, no trailing slash, the port only when it
+         isn't the usual one (80/443, or 3413, the node API's default); the full URL is the title */
+      nodeHost() {
+        const raw = String(this.store.state.nodeType || '').trim();
+        if (!raw || raw == 'external' || raw == 'internal') return '';
+        const m = raw.match(/^(?:[a-z][a-z0-9+.-]*:\/\/)?([^/?#]+)/i);
+        if (!m) return raw;
+        const hp = m[1];
+        const pm = hp.match(/^(.*):(\d+)$/);
+        if (pm && ['80', '443', '3413'].includes(pm[2])) return pm[1];
+        return hp;
+      },
+      /* "MW/Epic 4.1.0-1" -> "v4.1.0-1" */
+      nodeVersion() {
+        const ua = String(this.store.state.nodeStatus.user_agent || '');
+        const m = ua.match(/(\d+\.\d+\.\d+[^\s]*)/);
+        return m ? 'v' + m[1] : ua;
+      },
+      tourSteps() {
+        const s = (key, target) => ({ target, title: this.$t('msg.modern.tour_' + key + '_t'), text: this.$t('msg.modern.tour_' + key) });
+        return [
+          s('balance', '[data-tour=balance]'),
+          s('send', '[data-tour=send]'),
+          s('receive', '[data-tour=receive]'),
+          s('activity', '[data-tour=activity]'),
+          s('settings', '[data-tour=settings]'),
+        ];
+      },
       summary() {
         return this.store.state.summary;
       },
@@ -318,6 +350,10 @@
       },
     },
     async mounted() {
+      //the tour, once, shortly after the first unlock in the BT Labs Theme (or on request)
+      if (!noticeSeen('tour') || this.$route.query.tour) {
+        this.tourTimer = setTimeout(() => { this.tourOpen = true; }, 900);
+      }
       //HeaderBar fetches the price when the balance changes. Classic keeps one HeaderBar for the
       //whole session; this page is created on every visit, so it reuses the last value for the
       //same balance instead of asking CoinGecko again
@@ -334,6 +370,7 @@
     },
     beforeUnmount() {
       clearTimeout(this.refreshTimer);
+      clearTimeout(this.tourTimer);
       lastFiat.total = this.store.state.summary.total;
       lastFiat.usd = this.usdPrice;
     },
@@ -348,6 +385,13 @@
         this.emitter.emit('app.update');
         clearTimeout(this.refreshTimer);
         this.refreshTimer = setTimeout(() => { this.refreshing = false; }, 15000);
+      },
+      endTour() {
+        this.tourOpen = false;
+        //the tour also says where the interface switch is: the new-look notice is not needed after it
+        markNoticeSeen('tour', this.configService);
+        this.dismissUpgraded();
+        if (this.$route.query.tour) this.$router.replace('/dashboard');
       },
       dismissUpgraded() {
         markNoticeSeen('upgraded', this.configService);

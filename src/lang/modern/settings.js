@@ -11,17 +11,22 @@ export default {
 
   //node and receiving (route settings)
   node: 'Node',
-  node_hint: 'The node reads the chain and posts your transactions. Changing it reconnects the wallet; nothing is lost.',
+  node_hint: 'The node reads the chain and posts your transactions. Changing it reconnects the wallet.',
+  node_bg_label: 'Sync in background',
+  node_bg_text: 'The built-in node keeps syncing in the background even when the app is closed, so the next time you open the wallet you don’t wait for the blockchain.',
   node_bg_only: 'Only for the built-in node. A remote node syncs on its own.',
   receiving: 'Receiving',
   appearance: 'Appearance',
   interface_label: 'Look of the wallet',
-  interface_modern_text: 'The new design, in light or dark. The default from version 6.1.',
+  //About: credits (BT Labs Theme)
+  about_credits: 'Credits',
+  interface_modern_text: 'The new design by BT Labs, in light or dark. The default from version 6.1.',
   interface_classic_text: 'The look of version 6.0 and earlier. Dark only.',
   restart_title: 'Restart to switch interface',
   theme_hint: 'Applies at once. System follows your computer’s light or dark setting. Classic is always dark.',
   language_hint: 'Applied when you save.',
-  save_hint: 'Node, receiving and language are saved together.',
+  unsaved: 'You have unsaved changes',
+  discard: 'Discard',
   saving: 'Checking the node…',
 
   //wallet (route account)

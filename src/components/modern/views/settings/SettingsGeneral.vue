@@ -10,13 +10,13 @@
         </div>
         <div class="e-set-row">
           <div>
-            <b id="stg-bg-l">{{ $t('msg.settings.node_background') }}</b>
-            <p id="stg-bg-h">{{ $t('msg.settings.node_background_hint') }}</p>
-            <p class="e-stg-why"><EIcon name="info" size="sm" /><span>{{ $t('msg.modern.settings.node_bg_only') }}</span></p>
+            <b id="stg-bg-l">{{ $t('msg.modern.settings.node_bg_label') }}</b>
+            <p class="e-stg-why e-stg-why-top"><EIcon name="info" size="sm" /><span id="stg-bg-n">{{ $t('msg.modern.settings.node_bg_only') }}</span></p>
+            <p id="stg-bg-h">{{ $t('msg.modern.settings.node_bg_text') }}</p>
           </div>
           <div class="e-ctl">
             <label class="e-switch">
-              <input type="checkbox" v-model="node_background" :disabled="!nodeInternal" aria-labelledby="stg-bg-l" aria-describedby="stg-bg-h" @change="changeNodeBackgroundSetting" />
+              <input type="checkbox" v-model="node_background" :disabled="!nodeInternal" aria-labelledby="stg-bg-l" aria-describedby="stg-bg-n stg-bg-h" @change="changeNodeBackgroundSetting" />
               <span class="e-track"></span>
             </label>
           </div>
@@ -93,6 +93,17 @@
     <section class="e-set-group" aria-labelledby="stg-ap-h">
       <h2 id="stg-ap-h">{{ $t('msg.modern.settings.appearance') }}</h2>
       <div class="e-set-list">
+        <div class="e-set-row e-stacked">
+          <div>
+            <b id="stg-scale-l">{{ $t('msg.modern.scale') }}</b>
+            <p>{{ $t('msg.modern.scale_hint') }}</p>
+          </div>
+          <div class="e-ctl">
+            <div class="e-seg e-stg-scale" role="group" aria-labelledby="stg-scale-l">
+              <button v-for="s in scales" :key="s" type="button" :aria-pressed="scaleSelected == s ? 'true' : 'false'" :aria-label="$t('msg.modern.scale_label', { n: s })" @click="saveInterfaceScale(s)">{{ s }}%</button>
+            </div>
+          </div>
+        </div>
         <div class="e-set-row">
           <div>
             <b id="stg-theme-l">{{ $t('msg.modern.theme') }}</b>
@@ -117,14 +128,23 @@
             </select>
           </div>
         </div>
+        <div class="e-set-row">
+          <div>
+            <b>{{ $t('msg.modern.tour_again') }}</b>
+            <p>{{ $t('msg.modern.tour_again_hint') }}</p>
+          </div>
+          <div class="e-ctl"><button type="button" class="e-btn e-btn-sm" @click="showTourAgain"><EIcon name="help" />{{ $t('msg.modern.tour_again') }}</button></div>
+        </div>
       </div>
     </section>
 
     <!-- ============================================================ save -->
-    <div class="e-stg-savebar" role="region" :aria-label="$t('msg.save')">
+    <!-- only while something differs from what is saved -->
+    <div v-if="dirty" class="e-stg-savebar" role="region" :aria-label="$t('msg.modern.settings.unsaved')">
       <EIcon name="pencil" size="sm" />
-      <span>{{ $t('msg.modern.settings.save_hint') }}</span>
-      <button type="button" class="e-btn e-btn-primary e-sm e-right" :class="{ 'e-is-busy': nodeserverField.checking }" :disabled="nodeserverField.checking" :aria-busy="nodeserverField.checking ? 'true' : null" @click="save">
+      <span role="status">{{ $t('msg.modern.settings.unsaved') }}</span>
+      <button type="button" class="e-btn e-btn-ghost e-sm e-right" :disabled="nodeserverField.checking" @click="discard">{{ $t('msg.modern.settings.discard') }}</button>
+      <button type="button" class="e-btn e-btn-primary e-sm" :class="{ 'e-is-busy': nodeserverField.checking }" :disabled="nodeserverField.checking" :aria-busy="nodeserverField.checking ? 'true' : null" @click="saveChanges">
         <EIcon name="check" />{{ $t('msg.save') }}
       </button>
     </div>
@@ -137,5 +157,55 @@
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import NodeserverField from '@/components/modern/form/NodeserverField.vue';
   import SettingsFrame from '@/components/modern/settings/SettingsFrame.vue';
-  export default reskin(Settings, { components: { EIcon, NodeserverField, SettingsFrame } });
+  import { resetNotice } from '@/shared/theme';
+  export default reskin(Settings, {
+    components: { EIcon, NodeserverField, SettingsFrame },
+    data() {
+      //the saved values, to tell whether the form has unsaved changes
+      return { saved: null };
+    },
+    computed: {
+      current() {
+        const f = this.nodeserverField || {};
+        return JSON.stringify([f.select, String(f.input || '').trim(), !!this.node_background, this.localeSelected,
+          String(this.epicboxDomain || '').trim(), !!this.walletlisten_on_startup, !!this.epicbox_background]);
+      },
+      dirty() {
+        return this.saved !== null && this.saved !== this.current;
+      },
+    },
+    mounted() {
+      //Settings.vue fills the form in its own mounted, which runs first
+      this.$nextTick(() => { this.saved = this.current; });
+    },
+    methods: {
+      /* Settings.vue's save; the form counts as saved once the config holds what the form shows */
+      async saveChanges() {
+        await this.save();
+        const c = this.configService.config || {};
+        if (c.locale === this.localeSelected && (c.epicbox_domain || '') === String(this.epicboxDomain || '').trim()
+          && !!c.walletlisten_on_startup === !!this.walletlisten_on_startup && !!c.node_background === !!this.node_background) {
+          this.saved = this.current;
+        }
+      },
+      /* back to the saved values */
+      discard() {
+        const [select, input, nodeBg, locale, domain, listen, boxBg] = JSON.parse(this.saved);
+        this.nodeserverField.select = select;
+        this.nodeserverField.input = input;
+        this.nodeInternal = select == 'internal';
+        this.node_background = nodeBg;
+        this.localeSelected = locale;
+        this.epicboxDomain = domain;
+        this.walletlisten_on_startup = listen;
+        this.epicbox_background = boxBg;
+        this.resetFormErrors();
+      },
+      //forget that the tour was seen and open it on Overview
+      showTourAgain() {
+        resetNotice('tour', this.configService);
+        this.$router.push({ path: '/dashboard', query: { tour: '1' } });
+      },
+    },
+  });
 </script>

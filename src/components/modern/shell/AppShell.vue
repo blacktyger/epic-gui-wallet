@@ -11,7 +11,7 @@
       </router-link>
       <div class="e-nav">
         <router-link v-for="item in nav" :key="item.to" :to="item.to" :aria-current="isCurrent(item) ? 'page' : null" custom v-slot="{ href, navigate }">
-          <a :href="href" :aria-current="isCurrent(item) ? 'page' : null" @click="navigate">
+          <a :href="href" :aria-current="isCurrent(item) ? 'page' : null" :data-tour="item.tour" @click="navigate">
             <EIcon :name="item.icon" /><span>{{ item.label }}</span>
             <span v-if="item.count" class="e-count" :title="$t('msg.modern.needs_action', item.count)">
               <span aria-hidden="true">{{ item.count }}</span><span class="e-sr-only">, {{ $t('msg.modern.needs_action', item.count) }}</span>
@@ -20,7 +20,7 @@
         </router-link>
         <div class="e-nav-sep" role="separator"></div>
         <router-link to="/settings" custom v-slot="{ href, navigate }">
-          <a :href="href" :aria-current="isSettings ? 'page' : null" @click="navigate"><EIcon name="settings" /><span>{{ $t('msg.menu.settings') }}</span></a>
+          <a :href="href" :aria-current="isSettings ? 'page' : null" data-tour="settings" @click="navigate"><EIcon name="settings" /><span>{{ $t('msg.menu.settings') }}</span></a>
         </router-link>
       </div>
       <div class="e-side-foot">
@@ -39,6 +39,7 @@
             @click="logout"
           ><span v-if="isLoading" class="e-spinner" aria-hidden="true"></span><EIcon v-else name="lock" /></button>
         </div>
+        <Credits />
       </div>
     </nav>
     <main class="e-main" id="e-main" ref="main" tabindex="-1">
@@ -51,6 +52,7 @@
   import NavBar from '@/components/layout/NavBar.vue';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import ServiceStatus from '@/components/modern/shell/ServiceStatus.vue';
+  import Credits from '@/components/modern/ui/Credits.vue';
   import { reskin } from '@/components/modern/reskin';
 
   /* routes that belong to a sidebar entry without being its path */
@@ -65,7 +67,7 @@
 
   export default reskin(NavBar, {
     name: 'AppShell',
-    components: { EIcon, ServiceStatus },
+    components: { EIcon, ServiceStatus, Credits },
     data() {
       return { version: '' };
     },
@@ -80,9 +82,9 @@
       nav() {
         return [
           { to: '/dashboard', icon: 'home', label: this.$t('msg.modern.nav_overview') },
-          { to: '/activity', icon: 'activity', label: this.$t('msg.modern.activity'), count: this.pendingFiles },
-          { to: '/httpSend', icon: 'send', label: this.$t('msg.menu.send') },
-          { to: '/httpReceive', icon: 'receive', label: this.$t('msg.menu.receive') },
+          { to: '/activity', icon: 'activity', label: this.$t('msg.modern.activity'), count: this.pendingFiles, tour: 'activity' },
+          { to: '/httpSend', icon: 'send', label: this.$t('msg.menu.send'), tour: 'send' },
+          { to: '/httpReceive', icon: 'receive', label: this.$t('msg.menu.receive'), tour: 'receive' },
           { to: '/addressBook', icon: 'contacts', label: this.$t('msg.modern.contacts') },
         ];
       },
