@@ -221,6 +221,7 @@
         this.store.commit('txs', []);
         this.store.commit('commits', []);
         this.store.commit('walletTip', 0);
+        this.store.commit('walletSync', '');
         this.store.commit('listenerStarting', false);
         this.store.commit('summary', {
           spendable: 0,
@@ -260,6 +261,8 @@
 
         this.loggedIn = true;
         this.loginSession = (this.loginSession || 0) + 1;
+        //balances and txs shown before the first refresh are marked as updating
+        this.store.commit('walletSync', 'loading');
         this.store.dispatch('toggleFullPage', false);
         this.store.commit('asideStateToggle');
         this.$router.push('/dashboard');
@@ -421,6 +424,9 @@
           this.store.commit('nodeStatus', respNode);
           if(this.loggedIn && lastTip > 0 && respNode.tip && respNode.tip.height > lastTip){
             this.requestRefresh();
+          }else if(this.loggedIn && this.store.state.walletSync == 'local' && this.store.state.nodeStatus.sync_status == 'synced'){
+            //the balance was read without the node: refresh it as soon as the node is there
+            this.requestRefresh();
           }
         }else{
           //only toast on the transition to failed, keep polling
@@ -537,6 +543,8 @@
           }
           if(summary && summary.result && summary.result.Ok){
             let data = summary.result.Ok
+            //data[0]: the wallet was refreshed from the node; else this is the wallet's last known state
+            this.store.commit('walletSync', data[0] ? 'synced' : 'local');
             //confirmations are counted from the height this balance was worked out at
             this.store.commit('walletTip', data[1]['last_confirmed_height']);
             this.store.commit('summary', {
@@ -560,6 +568,9 @@
               });
             }
             this.walletApiFailed = true;
+            if(this.store.state.walletSync == 'loading'){
+              this.store.commit('walletSync', 'error');
+            }
           }else{
             this.store.commit('updates', {
                   "status": "is-danger",

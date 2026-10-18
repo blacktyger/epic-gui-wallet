@@ -185,7 +185,8 @@
                     <p>
 
 
-                      <span v-if="this.store.state.nodeStatus.sync_status == 'synced'" class="icon is-large"><mdicon name="circle-off-outline" size="48" /></span>
+                      <span v-if="this.store.state.walletSync == 'loading'">{{ $t("msg.app.loading_wallet_data") }}</span>
+                      <span v-else-if="this.store.state.nodeStatus.sync_status == 'synced'" class="icon is-large"><mdicon name="circle-off-outline" size="48" /></span>
                       <span v-else>{{ $t("msg.waiting_for_nodesync") }}</span>
 
                     </p>

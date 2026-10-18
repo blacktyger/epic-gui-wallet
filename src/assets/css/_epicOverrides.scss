@@ -410,6 +410,11 @@ span.amount-hidden:after {
   font-size: 1.6rem;
   line-height:2.3rem;
 }
+/* a balance not yet checked against the node (after login, or while the node syncs) */
+span.is-updating {
+  opacity: 0.55;
+  transition: opacity 0.3s ease;
+}
 
 .c-toast{
   width: 260px;
