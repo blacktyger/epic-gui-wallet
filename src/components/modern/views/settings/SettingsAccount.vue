@@ -114,6 +114,7 @@
             </div>
           </div>
           <p v-if="folderError" class="e-error-msg" role="alert"><EIcon name="alertc" /><span>{{ folderError }}</span></p>
+          <WalletFolderPick v-if="folderPick" modern :pick="folderPick" :busy="folderBusy" @open="folderPicked" @again="pickWalletFolder" @cancel="folderPick = null" />
         </div>
       </div>
     </section>

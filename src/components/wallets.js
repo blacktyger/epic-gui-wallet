@@ -6,6 +6,7 @@
  */
 import { i18n } from '@/i18n';
 import { pendingUser } from '@/shared/unlockResult';
+import WalletFolderPick from '@/components/form/WalletFolderPick.vue';
 
 const t = (...a) => i18n.global.t(...a);
 
@@ -234,11 +235,14 @@ export const walletOpen = {
 };
 
 /*
- * Open a wallet folder (Welcome › Advanced, Settings › Add another wallet): pick a folder,
- * configService.openExistingWallet; when its network can't be told, ask for it and try again.
+ * Open a wallet folder (Welcome › Advanced, Settings › Add another wallet): pick a folder, which the
+ * main process works out to the wallet folder(s) it means (shared/walletFolder.js); one wallet opens
+ * at once (configService.openExistingWallet), several or none show WalletFolderPick (a choice, or
+ * what a wallet folder is). When a wallet's network can't be told, ask for it and try again.
  * folderOpened(wallet) is called on success (each screen decides where to go).
  */
 export const walletFolder = {
+  components: { WalletFolderPick },
   data() {
     return {
       folderError: '',
@@ -246,15 +250,34 @@ export const walletFolder = {
       folderAsk: null,
       folderNetwork: 'mainnet',
       folderBusy: false,
+      //what was picked when it isn't exactly one wallet: {picked, wallets: [{dir, network}], chainOnly}
+      folderPick: null,
     };
   },
   methods: {
     async pickWalletFolder() {
       this.folderError = '';
       this.folderAsk = null;
-      const picked = await window.api.showOpenDialog();
-      if (!picked || picked.canceled || !picked.filePaths || !picked.filePaths[0]) return;
-      await this.openWalletFolder(picked.filePaths[0]);
+      this.folderPick = null;
+      let r;
+      try {
+        r = await window.api.pickWalletFolder(t('msg.chaindata.folder_dialog_title'));
+      } catch (e) {
+        this.folderError = e && e.message ? e.message : String(e);
+        return;
+      }
+      if (!r || r.canceled) return;
+      const wallets = Array.isArray(r.wallets) ? r.wallets.filter(w => w && typeof w.dir === 'string' && w.dir) : [];
+      if (wallets.length === 1 && !r.chainOnly) {
+        await this.openWalletFolder(wallets[0].dir, wallets[0].network || undefined);
+        return;
+      }
+      this.folderPick = { picked: String(r.picked || ''), wallets, chainOnly: !!r.chainOnly };
+    },
+    /* WalletFolderPick: the wallet chosen from what was picked */
+    async folderPicked(w) {
+      this.folderPick = null;
+      if (w && w.dir) await this.openWalletFolder(w.dir, w.network || undefined);
     },
     async openWalletFolder(dir, network) {
       this.folderBusy = true;

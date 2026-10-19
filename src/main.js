@@ -78,7 +78,7 @@ app.config.globalProperties.$importer = createImporter({
   configService: config,
   userService: app.config.globalProperties.$userService,
   addressbookService: app.config.globalProperties.$addressBookService,
-  legacyBridge: { scan: ({ known } = {}) => window.config.legacyScan(known) },
+  legacyBridge: { scan: ({ known, chainsOnly } = {}) => window.config.legacyScan(known, { chainsOnly }) },
   fs: window.nodeFs,
   pathMod: window.nodePath,
   //fix/userdata-migration's offline cleanup of a saved node address, and the language fallback

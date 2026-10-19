@@ -12,6 +12,8 @@
  */
 import { netShort, netFromShort } from './appPaths.js';
 import { tomlNetwork } from './walletToml.js';
+//Open a wallet folder's resolver, for the main process with the scans (background.js)
+export { resolveWalletFolder } from './walletFolder.js';
 
 const NETS = ['mainnet', 'floonet', 'usernet'];
 const SHORTS = ['main', 'floo', 'user'];

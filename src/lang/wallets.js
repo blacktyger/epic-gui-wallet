@@ -53,7 +53,7 @@ export default {
   back_to_unlock: 'Back to unlock',
   advanced: 'Advanced',
   open_wallet_folder: 'Open a wallet folder',
-  open_wallet_folder_hint: 'A folder that holds wallet_data, for example one made with the command line wallet. It stays where it is.',
+  open_wallet_folder_hint: 'Choose the wallet’s own folder: the one with wallet_data inside, for example .epic/main in your home folder. Not the blockchain folder (chain_data). The wallet stays where it is.',
   open: 'Open',
   import_older: 'Import from an older Epic Wallet',
   import_older_hint: 'Looks again for wallets that an older version of this app left on this computer.',
