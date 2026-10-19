@@ -50,7 +50,8 @@
             <button type="button" class="e-btn e-sm e-btn-ghost" aria-describedby="stg-cfg-l" @click="copyPath(configDir)"><EIcon name="copy" />{{ $t('msg.wallets.copy_path') }}</button>
           </div>
         </div>
-        <div class="e-set-row">
+        <!-- mainnet is the usual one and can't be changed: the row only for a test network -->
+        <div v-if="network && network !== 'mainnet'" class="e-set-row">
           <div>
             <b>{{ $t('msg.modern.settings.network') }}</b>
             <p>{{ $t('msg.modern.settings.network_hint') }}</p>
