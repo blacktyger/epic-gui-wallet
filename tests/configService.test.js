@@ -294,6 +294,37 @@ test('Windows: paths with spaces and quotes reach the tomls intact', () => {
   assert.equal(tomlStr(t, 'log_file_path'), root + '\\wallets\\w1\\epic-wallet.log');
   assert.equal(tomlStr(t, 'node_api_secret_path'), root + '\\node\\main\\.api_secret');
   assert.equal(tomlStr(fs.readFileSync(root + '\\node\\main\\epic-server.toml'), 'db_root'), root + '\\node\\main\\chain_data');
+  //WALLET.txt with Windows line ends, the old folder named, nothing written there
+  const m = fs.readFileSync(root + '\\wallets\\w1\\WALLET.txt');
+  assert.ok(m.includes('\r\n') && m.includes('data: ' + old + '\r\n'), m);
+  assert.ok(!fs.existsSync(old + '\\WALLET.txt'));
+});
+
+test('WALLET.txt: label, network, day, data folder; written on register, rename and start; one line per field', () => {
+  const { cs, fs, root } = setup();
+  const old = '/home/jane/.epic/alpha/main';
+  fs.put(old + '/wallet_data/wallet.seed', 'seed');
+  const d = cs.newWalletDirs('floonet');
+  cs.registerWallet({ ...d, dataDir: old, network: 'floonet', origin: 'imported', label: 'Alpha', createdAt: '2026-10-19T10:00:00.000Z',
+    importedFrom: { app: '5.3.1', account: 'alpha', dir: old } });
+  const file = root + '/wallets/w1/WALLET.txt';
+  const first = fs.readFileSync(file).split('\n');
+  assert.equal(first[0], 'Epic Wallet: Alpha · floonet · created 2026-10-19 · data: ' + old);
+  assert.ok(first.includes('Settings of this wallet in Epic Wallet 6.1: ' + root + '/wallets/w1'));
+  assert.ok(first.some(l => l.startsWith('Imported from an older Epic Wallet (5.3.1)')));
+  assert.equal(cs.renameWallet('w1', ' Savings\nfake line '), true);
+  assert.match(fs.readFileSync(file).split('\n')[0], /^Epic Wallet: Savings fake line · floonet/);
+  fs.unlinkSync(file);
+  assert.equal(cs.startCheck('w1'), 'login');
+  assert.ok(fs.existsSync(file));
+  assert.ok(!fs.existsSync(old + '/WALLET.txt'));
+  //a new wallet made in 6.1: no label, data and config the same folder
+  const n = cs.newWalletDirs('mainnet');
+  fs.put(n.configDir + '/wallet_data/wallet.seed', 'seed');
+  cs.registerWallet({ ...n, network: 'mainnet', origin: 'created' });
+  const t = fs.readFileSync(n.configDir + '/WALLET.txt');
+  assert.match(t, /^Epic Wallet: \(no label\) · mainnet · created \d{4}-\d\d-\d\d · data: /);
+  assert.ok(!t.includes('Settings of this wallet'));
 });
 
 test('killEpicProcess: our processes, Tor in the data dir, background roles kept; the ports to wait for', async () => {
