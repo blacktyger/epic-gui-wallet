@@ -17,6 +17,7 @@ import App from './App.vue'
 import mitt from 'mitt';
 import moment from 'moment';
 import Toaster from "@meforma/vue-toaster";
+import { toastOptions } from "./shared/toastOptions.js";
 import { applyTheme, applyScale, getUi, getScheme, getScale, UI_CLASSIC } from './shared/theme.js';
 
 
@@ -59,7 +60,7 @@ app.use(mdiVue, {
 });
 app.use(store);
 app.use(router);
-app.use(Toaster);
+app.use(Toaster, toastOptions);
 
 
 
