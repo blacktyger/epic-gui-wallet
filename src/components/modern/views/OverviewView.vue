@@ -154,8 +154,8 @@
               <b>{{ isInternal ? $t('msg.modern.overview.node_builtin') : $t('msg.modern.overview.node_external') }}</b>
               <small v-if="nodeConnecting" role="status">{{ $t('msg.modern.overview.node_connecting') }}</small>
               <small v-else-if="nodeDown" class="e-risk">{{ $t('msg.modern.overview.node_not_responding') }}</small>
-              <small v-else-if="nodeSyncing">{{ $t('msg.modern.overview.node_progress', { status: store.state.nodeStatus.sync_status, p: syncPercent }) }} · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</small>
-              <small v-else>{{ $t('msg.modern.overview.node_synced') }} · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</small>
+              <small v-else-if="nodeSyncing">{{ $t('msg.modern.overview.node_progress', { status: store.state.nodeStatus.sync_status, p: syncPercent }) }}<template v-if="node.connections != null"> · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</template></small>
+              <small v-else>{{ $t('msg.modern.overview.node_synced') }}<template v-if="node.connections != null"> · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</template></small>
               <small v-if="nodeSynced" class="e-ov-height" translate="no" :title="$t('msg.modern.overview.node_block')">{{ $t('msg.modern.overview.node_block') }} <span class="e-mono">{{ fmt(blockHeight) }}</span></small>
               <small v-if="!isInternal && nodeHost" class="e-mono e-ov-host" translate="no" :title="store.state.nodeType">{{ nodeHost }}</small>
               <small v-if="isInternal && !configService.config.nodesynced" class="e-faint">{{ $t('msg.modern.overview.node_fallback', { addr: nodeFallBack }) }}</small>
