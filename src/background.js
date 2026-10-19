@@ -14,6 +14,7 @@ const findProcess = require('find-process');
 const log = require('electron-log');
 //no wallet password in any log line (src/logRedact.js)
 require('./logRedact').installLogRedaction(log);
+require('./logRedact').installConsoleRedaction(console);
 const { migrateFromEpicWallet, pinUserDataDir } = require('./userDataMigration');
 //before any window or session touches userData: freeze its folder name (a package rename must not
 //move the profile again), then bring over the 5.x profile (address book, settings)

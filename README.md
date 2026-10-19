@@ -24,7 +24,7 @@ See [Configuration Reference](https://cli.vuejs.org/config/).
 "resources/bin" contains pre-built epic node **4.1.0-1** and epic-wallet **4.1.0** for Linux and Windows. macOS (`mac`, `macsilicon`) still has older binaries, because 4.1.0 has no macOS release yet. To use another version, build the [CLI epic-wallet project](https://github.com/EpicCash/epic-wallet) and replace the pre-built one.
 
 ### Node requirement
-Use an Epic node **4.1.0-1 or later**. Node 4.1.0 requires authentication on `GET /v1/status`, which the node panel and the Epicbox autostart need. With 4.1.0, the panel shows "node unreachable" and Epicbox must be started by hand on the Receive page.
+Use an Epic node **4.1.0-1 or later** (recommended). Older nodes work too as long as their public API answers: when `GET /v1/status` needs authentication (node 4.1.0, or 4.0.x with an api secret), the GUI reads the status from `POST /v2/owner get_status`, or the tip from `POST /v2/foreign get_tip` (the API epic-wallet uses), and compares that tip with a public node's to tell whether the node is synced. Only a node that answers none of these gets the "This node's version isn't compatible with this wallet." notice. The api secret is only ever sent to a node on this computer.
 
 # Ubuntu
 ```
