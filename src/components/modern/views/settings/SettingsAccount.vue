@@ -82,7 +82,7 @@
                 <b><span class="e-truncate">{{ nameOf(w) }}</span><span v-if="badge(w.network)" class="e-tag e-warn">{{ badge(w.network) }}</span></b>
                 <p class="e-mono" :title="w.dataDir" translate="no">{{ short(w.dataDir) }}</p>
               </div>
-              <button type="button" class="e-btn e-btn-sm e-btn-ghost" :aria-label="$t('msg.wallets.remove_named', [nameOf(w)])" @click="askRemove(w)"><EIcon name="trash" />{{ $t('msg.wallets.remove_from_list') }}</button>
+              <button type="button" class="e-btn e-btn-sm e-btn-ghost" :aria-label="$t('msg.removal.open_named', [nameOf(w)])" @click="askRemove(w)"><EIcon name="trash" />{{ $t('msg.removal.open') }}</button>
             </li>
           </ul>
         </div>
@@ -118,20 +118,7 @@
       </div>
     </section>
 
-    <EDialog
-      :open="!!removeTarget"
-      role="alertdialog"
-      icon="trash"
-      tone="risk"
-      :title="$t('msg.wallets.remove_title', [removeTarget ? removeTarget.name : ''])"
-      :description="$t('msg.wallets.remove_text')"
-      @update:open="(v) => { if (!v) removeTarget = null; }"
-    >
-      <template #foot>
-        <button type="button" class="e-btn e-btn-ghost" @click="removeTarget = null">{{ $t('msg.cancel') }}</button>
-        <button type="button" class="e-btn e-btn-danger" @click="confirmRemove"><EIcon name="trash" />{{ $t('msg.wallets.remove_from_list') }}</button>
-      </template>
-    </EDialog>
+    <ERemoveWallet v-if="removing" :wallet="removing.wallet" :name="removing.name" @close="removing = null" @done="removed" />
   </SettingsFrame>
 </template>
 
@@ -139,10 +126,10 @@
   import Account from '@/components/Account.vue';
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
-  import EDialog from '@/components/modern/ui/EDialog.vue';
+  import ERemoveWallet from '@/components/modern/settings/RemoveWalletDialog.vue';
   import SettingsFrame from '@/components/modern/settings/SettingsFrame.vue';
 
   export default reskin(Account, {
-    components: { EIcon, EDialog, SettingsFrame },
+    components: { EIcon, ERemoveWallet, SettingsFrame },
   });
 </script>
