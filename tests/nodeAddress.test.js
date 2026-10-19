@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { cleanNodeAddress, probeNodeAddress, isPrivateHost, MAINNET_FALLBACK_NODE, LOCAL_NODE } from '../src/shared/nodeAddress.js';
+import { cleanNodeAddress, probeNodeAddress, isPrivateHost, nodeFieldAddress, MAINNET_FALLBACK_NODE, LOCAL_NODE } from '../src/shared/nodeAddress.js';
 import { migrateNodeAddress, NODE_ADDRESS_FLAG } from '../src/shared/nodeAddressMigration.js';
 
 const replies = JSON.parse(fs.readFileSync(new URL('./fixtures/nodeReplies.json', import.meta.url), 'utf8'));
@@ -340,4 +340,30 @@ test('nothing answers (node off during the cleanup): exactly what the user had, 
   const c = { check_node_api_http_addr: 'https://192.168.0.123:3413' };
   await migrateNodeAddress(c, offline);
   assert.equal(c.check_node_api_http_addr, 'https://192.168.0.123:3413');
+});
+
+//the node address field (Settings, Setup): what is saved for what was typed; the field itself keeps the text
+test('nodeFieldAddress: the saved value for a typed or pasted address', () => {
+  const cases = [
+    ['http://1.2.3.4:3413/', 'http://1.2.3.4:3413'],
+    ['  http://1.2.3.4:3413//  ', 'http://1.2.3.4:3413'],
+    ['1.2.3.4:3413/', 'https://1.2.3.4:3413'],
+    ['192.168.1.20:3413/', 'http://192.168.1.20:3413'],
+    ['localhost:3413', 'http://localhost:3413'],
+    ['node.epiccash.com:3413', 'https://node.epiccash.com:3413'],
+    ['https://node.example.org/epic/', 'https://node.example.org/epic'],
+    ['http://[::1]:3413/', 'http://[::1]:3413'],
+    ['', ''],
+    ['   ', ''],
+  ];
+  for (const [typed, saved] of cases) assert.equal(nodeFieldAddress(typed), saved, typed);
+  //idempotent
+  for (const [, saved] of cases) assert.equal(nodeFieldAddress(saved), saved);
+});
+
+test('node address field: validInput never rewrites the text the user typed', () => {
+  const src = fs.readFileSync(new URL('../src/components/form/nodeserverField.vue', import.meta.url), 'utf8');
+  const body = src.slice(src.indexOf('const validInput'), src.indexOf('return { input'));
+  assert.ok(body.includes('nodeFieldAddress(input.value)'));
+  assert.ok(!/input\.value\s*=/.test(body), 'validInput must not assign input.value');
 });

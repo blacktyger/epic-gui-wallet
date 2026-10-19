@@ -6,6 +6,7 @@
  */
 import { i18n } from '@/i18n';
 import { pendingUser } from '@/shared/unlockResult';
+import WalletFolderPick from '@/components/form/WalletFolderPick.vue';
 
 const t = (...a) => i18n.global.t(...a);
 
@@ -81,6 +82,21 @@ export function takeScan() { const s = firstRunScan; firstRunScan = null; return
 export function isLoggedIn(store) {
   const u = store && store.state && store.state.user;
   return !!(u && Object.keys(u).length);
+}
+
+/* a wallet just added to the list starts with no IndexedDB rows: its id may have been used before
+   (settings.json lost or deleted by hand while <root>/app survived), and a new wallet must never show
+   that wallet's contacts. Create, Restore and Open a wallet folder call it (the importer does the same
+   itself); a failure is logged only, the wallet is listed and works. → true when cleared */
+export async function clearStaleUser(userService, walletId) {
+  try {
+    const n = await userService.removeUser(walletId);
+    if (n && n.User) console.log('[wallets] ' + walletId + ': rows of an earlier wallet with this id removed ' + JSON.stringify(n));
+    return true;
+  } catch (e) {
+    console.log('[wallets] ' + walletId + ': old rows not removed: ' + (e && e.message ? e.message : e));
+    return false;
+  }
 }
 
 /* the language a new User row gets: the app's choice, else the language the window runs in */
@@ -234,11 +250,14 @@ export const walletOpen = {
 };
 
 /*
- * Open a wallet folder (Welcome › Advanced, Settings › Add another wallet): pick a folder,
- * configService.openExistingWallet; when its network can't be told, ask for it and try again.
+ * Open a wallet folder (Welcome › Advanced, Settings › Add another wallet): pick a folder, which the
+ * main process works out to the wallet folder(s) it means (shared/walletFolder.js); one wallet opens
+ * at once (configService.openExistingWallet), several or none show WalletFolderPick (a choice, or
+ * what a wallet folder is). When a wallet's network can't be told, ask for it and try again.
  * folderOpened(wallet) is called on success (each screen decides where to go).
  */
 export const walletFolder = {
+  components: { WalletFolderPick },
   data() {
     return {
       folderError: '',
@@ -246,15 +265,52 @@ export const walletFolder = {
       folderAsk: null,
       folderNetwork: 'mainnet',
       folderBusy: false,
+      //what was picked when it isn't exactly one wallet: {picked, wallets: [{dir, network}], chainOnly}
+      folderPick: null,
     };
   },
   methods: {
     async pickWalletFolder() {
       this.folderError = '';
       this.folderAsk = null;
-      const picked = await window.api.showOpenDialog();
-      if (!picked || picked.canceled || !picked.filePaths || !picked.filePaths[0]) return;
-      await this.openWalletFolder(picked.filePaths[0]);
+      //Choose another folder: the picker closes, so focus goes back to the screen's button
+      const hadPick = !!this.folderPick;
+      this.folderPick = null;
+      let r;
+      try {
+        r = await window.api.pickWalletFolder(t('msg.chaindata.folder_dialog_title'));
+      } catch (e) {
+        this.folderError = e && e.message ? e.message : String(e);
+        if (hadPick) this.focusFolderButton();
+        return;
+      }
+      if (!r || r.canceled) {
+        if (hadPick) this.focusFolderButton();
+        return;
+      }
+      const wallets = Array.isArray(r.wallets) ? r.wallets.filter(w => w && typeof w.dir === 'string' && w.dir) : [];
+      if (wallets.length === 1 && !r.chainOnly) {
+        await this.openWalletFolder(wallets[0].dir, wallets[0].network || undefined);
+        return;
+      }
+      this.folderPick = { picked: String(r.picked || ''), wallets, chainOnly: !!r.chainOnly };
+    },
+    /* WalletFolderPick's Cancel */
+    folderPickCancel() {
+      this.folderPick = null;
+      this.focusFolderButton();
+    },
+    /* the screen's Open a wallet folder button (ref folderButton) */
+    focusFolderButton() {
+      this.$nextTick(() => {
+        const b = this.$refs.folderButton;
+        if (b && b.focus) b.focus();
+      });
+    },
+    /* WalletFolderPick: the wallet chosen from what was picked */
+    async folderPicked(w) {
+      this.folderPick = null;
+      if (w && w.dir) await this.openWalletFolder(w.dir, w.network || undefined);
     },
     async openWalletFolder(dir, network) {
       this.folderBusy = true;
@@ -263,6 +319,7 @@ export const walletFolder = {
         const r = await this.configService.openExistingWallet(dir, network);
         if (r && r.ok && r.wallet) {
           this.folderAsk = null;
+          await clearStaleUser(this.$userService, r.wallet.id);
           await this.folderOpened(r.wallet);
           return;
         }

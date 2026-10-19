@@ -79,6 +79,12 @@
                   </div>
                   <p class="has-text-centered is-size-7">{{ $t('msg.wallets.found_note') }}</p>
                   <p v-if="wallets.length && from !== 'settings'" class="has-text-centered is-size-7 has-text-grey">{{ $t('msg.wallets.found_later', wallets.length) }}</p>
+                  <p class="has-text-centered is-size-7 found-other">
+                    {{ $t('msg.wallets.found_or') }}
+                    <button type="button" class="found-other-link" :disabled="busy" @click="otherWay('create')">{{ $t('msg.wallets.found_or_create') }}</button>
+                    <span class="found-other-sep" aria-hidden="true">·</span>
+                    <button type="button" class="found-other-link" :disabled="busy" @click="otherWay('restore')">{{ $t('msg.wallets.found_or_restore') }}</button>
+                  </p>
                 </form>
 
               </div>
@@ -262,11 +268,27 @@
       back() {
         this.$router.push({ name: backRoute(this.from, this.configService.settings.wallets().length > 0) });
       },
+      /* Or: Create a new wallet · Restore from recovery phrase (name: 'create' | 'restore'), the
+         Welcome flows (from Settings: another wallet). The first start records the scan as Not now
+         does, so this screen doesn't come back at start; the found wallets stay undecided */
+      otherWay(name) {
+        if (this.busy) return;
+        const settings = this.configService.settings;
+        const plan = foundPlan('notNow', this.planInput(settings));
+        if (plan.markScanned !== null && !settings.markScanned(plan.markScanned)) {
+          this.$toast.error(this.$t('msg.settings.error_save'));
+        }
+        this.$router.push(this.from === 'settings' ? { name, query: { add: '1' } } : { name, params: { from: 'new' } });
+      },
     },
   };
 </script>
 
 <style scoped>
+  .found-other { margin-top: 0.75rem; }
+  .found-other-sep { margin: 0 0.4em; }
+  .found-other-link { background: none; border: 0; padding: 0; font: inherit; color: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+  .found-other-link:disabled { cursor: default; opacity: 0.6; }
   .found-lead { margin-bottom: 1rem; }
   .found-list { margin: 0 0 1rem; }
   .found-row { display: flex; gap: 0.75rem; align-items: flex-start; margin-bottom: 0.5rem; padding: 0.75rem 1rem; cursor: pointer; }

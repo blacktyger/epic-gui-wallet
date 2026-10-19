@@ -42,7 +42,7 @@
               <b>{{ $t('msg.wallets.missing_title') }}</b>
               <p>{{ $t('msg.wallets.missing_lead') }} <span class="e-mono" translate="no">{{ missing.dir }}</span></p>
               <div class="e-row">
-                <button type="button" class="e-btn e-btn-sm e-btn-danger" @click="askRemove"><EIcon name="trash" />{{ $t('msg.wallets.remove_from_list') }}</button>
+                <button type="button" class="e-btn e-btn-sm e-btn-danger" @click="askRemove"><EIcon name="trash" />{{ $t('msg.removal.open') }}</button>
                 <button type="button" class="e-btn e-btn-sm" @click="retry"><EIcon name="refresh" />{{ $t('msg.wallets.try_again') }}</button>
               </div>
             </div>
@@ -96,20 +96,7 @@
     </div>
     <AuthFoot />
 
-    <EDialog
-      :open="!!removeTarget"
-      role="alertdialog"
-      icon="trash"
-      tone="risk"
-      :title="$t('msg.wallets.remove_title', [removeTarget ? removeTarget.name : ''])"
-      :description="$t('msg.wallets.remove_text')"
-      @update:open="(v) => { if (!v) removeTarget = null; }"
-    >
-      <template #foot>
-        <button type="button" class="e-btn e-btn-ghost" @click="removeTarget = null">{{ $t('msg.cancel') }}</button>
-        <button type="button" class="e-btn e-btn-danger" @click="confirmRemove"><EIcon name="trash" />{{ $t('msg.wallets.remove_from_list') }}</button>
-      </template>
-    </EDialog>
+    <ERemoveWallet v-if="removing" :wallet="removing.wallet" :name="removing.name" folder-missing @close="removing = null" @done="removed" />
   </div>
 </template>
 
@@ -117,7 +104,7 @@
   import Login from '@/components/Login.vue';
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
-  import EDialog from '@/components/modern/ui/EDialog.vue';
+  import ERemoveWallet from '@/components/modern/settings/RemoveWalletDialog.vue';
   import StageList from '@/components/modern/ui/StageList.vue';
   import PasswordField from '@/components/modern/form/PasswordField.vue';
   import BrandTile from '@/components/modern/onboarding/BrandTile.vue';
@@ -126,7 +113,7 @@
   import { unlockFailure } from '@/shared/unlockResult';
 
   export default reskin(Login, {
-    components: { EIcon, EDialog, StageList, PasswordField, BrandTile, AuthFoot },
+    components: { EIcon, ERemoveWallet, StageList, PasswordField, BrandTile, AuthFoot },
     mixins: [fieldLabels],
     data() {
       return {

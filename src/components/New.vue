@@ -35,7 +35,7 @@
                   <div v-if="advancedOpen" class="card">
                     <div class="card-content">
                       <div class="field">
-                        <button type="button" class="button is-small is-outlined" :class="{ 'is-loading': folderBusy }" @click="pickWalletFolder">{{ $t('msg.wallets.open_wallet_folder') }}</button>
+                        <button ref="folderButton" type="button" class="button is-small is-outlined" :class="{ 'is-loading': folderBusy }" @click="pickWalletFolder">{{ $t('msg.wallets.open_wallet_folder') }}</button>
                         <p class="help">{{ $t('msg.wallets.open_wallet_folder_hint') }}</p>
                         <div v-if="folderAsk" class="field is-grouped" style="margin-top: 0.5rem;">
                           <p class="control">{{ $t('msg.wallets.folder_network') }}</p>
@@ -45,6 +45,7 @@
                           <div class="control"><button type="button" class="button is-small is-primary" @click="folderWithNetwork">{{ $t('msg.wallets.open') }}</button></div>
                         </div>
                         <p v-if="folderError" class="help is-danger" role="alert">{{ folderError }}</p>
+                        <WalletFolderPick v-if="folderPick" :pick="folderPick" :busy="folderBusy" @open="folderPicked" @again="pickWalletFolder" @cancel="folderPickCancel" />
                       </div>
 
                       <div class="field">

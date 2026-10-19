@@ -92,8 +92,17 @@ function setup(t, { profiles, failUserFor = '', cleanNodeAddress, supportedLocal
     //the real one: only known file names, never a folder holding wallet_data
     discardWalletDirs(dirs) { return ConfigService.prototype.discardWalletDirs.call({ fs, path }, dirs); },
   };
-  const users = [], book = [];
+  const users = [], book = [], links = [];
   const userService = {
+    removed: [],
+    /* as userService.removeUser: the contacts and transaction links of the id's User row, then the row */
+    async removeUser(walletId) {
+      userService.removed.push(walletId);
+      for (const u of users.filter(x => x.account === walletId)) {
+        for (const list of [book, links]) for (let i = list.length - 1; i >= 0; i--) if (list[i].user_id === u.id) list.splice(i, 1);
+      }
+      for (let i = users.length - 1; i >= 0; i--) if (users[i].account === walletId) users.splice(i, 1);
+    },
     async ensureUser(walletId, cols) {
       if (failUserFor && cols.name === failUserFor) throw new Error('Null value is not allowed');
       let u = users.find(x => x.account === walletId);
@@ -120,7 +129,7 @@ function setup(t, { profiles, failUserFor = '', cleanNodeAddress, supportedLocal
     },
   };
   const importer = createImporter({ configService, userService, addressbookService, legacyBridge, fs, pathMod: path, cleanNodeAddress, supportedLocale });
-  return { home, root, e, importer, settings, users, book, bridgeCalls, unchanged: () => diffOutsideRoot(home, root, before) };
+  return { home, root, e, importer, settings, users, book, links, userService, bridgeCalls, unchanged: () => diffOutsideRoot(home, root, before) };
 }
 
 /* the hash of the home without 6.1's root must be what it was */
@@ -341,7 +350,7 @@ test('nits: Windows: a wallet already imported under another spelling is not imp
   let registered = 0;
   const importer = createImporter({
     configService: { settings, newWalletDirs: () => ({ id: 'w2', configDir: 'C:\\R\\wallets\\w2' }), registerWallet: async () => { registered++; } },
-    userService: { ensureUser: async () => ({ id: 1 }) }, addressbookService: { getAddress: async () => [], addAddress: async () => {} },
+    userService: { removeUser: async () => {}, ensureUser: async () => ({ id: 1 }) }, addressbookService: { getAddress: async () => [], addAddress: async () => {} },
     legacyBridge: { scan: async () => ({ wallets: [{ key: 'c:\\users\\jane\\.EPIC\\alpha\\main', dir: 'c:\\users\\jane\\.EPIC\\alpha\\main',
       network: 'mainnet', account: 'alpha', app: '5.3.1' }], chains: [], profiles: [] }) },
     fs: memFs, pathMod: W,
@@ -351,4 +360,23 @@ test('nits: Windows: a wallet already imported under another spelling is not imp
   assert.deepEqual(res.imported.map(i => i.walletId), ['w1']);
   assert.equal(registered, 0);
   assert.deepEqual(settings.wallets().map(w => w.id), ['w1']);
+});
+
+test('importWallets: a new id never takes over an earlier wallet\'s User row, contacts or transaction links', async (t) => {
+  //settings.json lost while <root>/app survived: IndexedDB still has w1's rows from before
+  const b = setup(t, { profiles: PROFILES('') });
+  b.users.push({ id: 7, account: 'w1', name: 'Gone', email: '', keybase: '', ngrok: '', language: 'en' });
+  b.book.push({ id: 90, user_id: 7, name: 'Stranger', onion: 's@epicbox' });
+  b.links.push({ id: 91, user_id: 7, slateid: 'x', type: 'send', address: 90 });
+  const r = await b.importer.scan();
+  const res = await b.importer.importWallets([r.wallets.find(w => w.account === 'alpha').key]);
+  assert.deepEqual(res.imported.map(i => i.walletId), ['w1']);
+  assert.deepEqual(b.userService.removed, ['w1']);
+  const u = b.users.find(x => x.account === 'w1');
+  assert.notEqual(u.id, 7);
+  assert.equal(u.name, 'Alpha User');
+  assert.ok(!b.book.some(c => c.name === 'Stranger' || c.user_id === 7));
+  assert.deepEqual(b.links, []);
+  assert.deepEqual(b.book.map(c => c.name).sort(), ['Carol', 'Dan', 'Finn']);
+  assert.ok(b.book.every(c => c.user_id === u.id));
 });

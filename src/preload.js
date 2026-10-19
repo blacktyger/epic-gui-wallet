@@ -682,8 +682,9 @@ contextBridge.exposeInMainWorld('config', {
   },
   /* older GUIs' wallets and profiles (read only, background.js 'legacy-scan'); known: dirs to skip.
      The importer may read the wallets' folders it finds (their config.json) */
-  async legacyScan(known){
-    const scan = await ipcRenderer.invoke('legacy-scan', { known });
+  async legacyScan(known, opts){
+    //opts.chainsOnly: only the chain data ({chains}), for the built-in node in Settings
+    const scan = await ipcRenderer.invoke('legacy-scan', { known, chainsOnly: !!(opts && opts.chainsOnly) });
     for(const w of (scan && Array.isArray(scan.wallets) ? scan.wallets : [])){
       for(const d of strings([w && w.key, w && w.dir])) readDirs.add(d);
     }
@@ -762,6 +763,16 @@ contextBridge.exposeInMainWorld('api', {
     showOpenDialog: async () => {
         const r = await ipcRenderer.invoke('show-open-dialog');
         if(r && !r.canceled && Array.isArray(r.filePaths)) strings(r.filePaths).forEach(d => writeDirs.add(d));
+        return r;
+    },
+    //Open a wallet folder: the dialog, and what was picked worked out to wallet folders (background.js);
+    //the picked folder and the wallets found from it may then be read (wallet.seed, epic-wallet.toml)
+    pickWalletFolder: async (title) => {
+        const r = await ipcRenderer.invoke('pick-wallet-folder', String(title || ''));
+        if(r && !r.canceled){
+          strings([r.picked]).forEach(d => readDirs.add(d));
+          for(const w of (Array.isArray(r.wallets) ? r.wallets : [])) strings([w && w.dir]).forEach(d => readDirs.add(d));
+        }
         return r;
     },
     quit: () => {

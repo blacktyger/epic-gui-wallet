@@ -8,6 +8,27 @@
           <p class="e-stg-lede">{{ $t('msg.modern.settings.node_hint') }}</p>
           <NodeserverField ref="nodeserverField" />
         </div>
+        <!-- the built-in node uses chain data of an older app (Settings.vue resetChainData) -->
+        <div v-if="chainDirInUse" class="e-set-row e-stacked">
+          <div class="e-stg-paths">
+            <b id="stg-chain-l">{{ $t('msg.chaindata.in_use_label') }}</b>
+            <p>{{ $t('msg.chaindata.in_use_hint') }}</p>
+            <p class="e-mono e-stg-path" translate="no">{{ chainDirInUse }}</p>
+          </div>
+          <div v-if="!chainResetAsk" class="e-ctl">
+            <button ref="chainResetButton" type="button" class="e-btn e-sm" :disabled="saving" aria-describedby="stg-chain-l" @click="askChainReset"><EIcon name="download" />{{ $t('msg.chaindata.reset') }}</button>
+          </div>
+          <div v-else class="e-notice e-gold" role="group" aria-labelledby="stg-chain-ask">
+            <EIcon name="info" />
+            <div>
+              <p id="stg-chain-ask">{{ $t('msg.chaindata.reset_confirm') }}</p>
+              <div class="e-row e-notice-actions">
+                <button type="button" class="e-btn e-btn-sm e-btn-ghost" :disabled="saving" @click="cancelChainReset">{{ $t('msg.cancel') }}</button>
+                <button ref="chainResetGo" type="button" class="e-btn e-btn-sm e-btn-primary" :disabled="saving" @click="resetChainData">{{ $t('msg.chaindata.reset_go') }}</button>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="e-set-row">
           <div>
             <b id="stg-bg-l">{{ $t('msg.modern.settings.node_bg_label') }}</b>
@@ -133,11 +154,38 @@
     <div v-if="dirty" v-toast-lift class="e-stg-savebar" role="region" :aria-label="$t('msg.modern.settings.unsaved')">
       <EIcon name="pencil" size="sm" />
       <span role="status">{{ $t('msg.modern.settings.unsaved') }}</span>
-      <button type="button" class="e-btn e-btn-ghost e-sm e-right" :disabled="nodeserverField.checking" @click="discard">{{ $t('msg.modern.settings.discard') }}</button>
-      <button type="button" class="e-btn e-btn-primary e-sm" :class="{ 'e-is-busy': nodeserverField.checking }" :disabled="nodeserverField.checking" :aria-busy="nodeserverField.checking ? 'true' : null" @click="saveChanges">
+      <!-- always rendered, so the text change is announced -->
+      <span class="e-small e-dim" role="status">{{ chainChecking ? $t('msg.chaindata.checking') : '' }}</span>
+      <button type="button" class="e-btn e-btn-ghost e-sm e-right" :disabled="nodeserverField.checking || saving" @click="discard">{{ $t('msg.modern.settings.discard') }}</button>
+      <button ref="saveButton" type="button" class="e-btn e-btn-primary e-sm" :class="{ 'e-is-busy': nodeserverField.checking || chainChecking }" :disabled="nodeserverField.checking || saving" :aria-busy="nodeserverField.checking || chainChecking ? 'true' : null" @click="saveChanges">
         <EIcon name="check" />{{ $t('msg.save') }}
       </button>
     </div>
+
+    <!-- the built-in node switched on: older chain data found, asked once (Settings.vue offerChainData) -->
+    <EDialog
+      :open="!!chainOffer"
+      icon="node"
+      tone="gold"
+      :title="$t('msg.chaindata.offer_title')"
+      :description="$t('msg.chaindata.offer_lead')"
+      @update:open="(v) => { if (!v) answerChainOffer('cancel'); }"
+    >
+      <template v-if="chainOffer">
+        <dl class="e-facts e-chain-facts">
+          <dt>{{ $t('msg.chaindata.offer_folder') }}</dt><dd><span class="e-mono e-chain-dir" translate="no">{{ chainOffer.chain.dir }}</span></dd>
+          <dt>{{ $t('msg.chaindata.offer_size') }}</dt><dd>{{ chainOfferSize }}</dd>
+          <template v-if="chainOfferDate"><dt>{{ $t('msg.chaindata.offer_modified') }}</dt><dd>{{ chainOfferDate }}</dd></template>
+        </dl>
+        <p v-if="chainOffer.others" class="e-chain-p e-dim">{{ $t('msg.chaindata.offer_others', [chainOffer.others]) }}</p>
+        <p class="e-chain-p"><b>{{ $t('msg.chaindata.offer_question') }}</b></p>
+        <p class="e-chain-p e-small e-dim">{{ $t('msg.chaindata.offer_older_app') }}</p>
+      </template>
+      <template #foot>
+        <button type="button" class="e-btn e-btn-ghost" @click="answerChainOffer('declined')">{{ $t('msg.chaindata.offer_fresh') }}</button>
+        <button ref="chainOfferUse" type="button" class="e-btn e-btn-primary" @click="answerChainOffer('used')"><EIcon name="check" />{{ $t('msg.chaindata.offer_use') }}</button>
+      </template>
+    </EDialog>
   </SettingsFrame>
 </template>
 
@@ -145,6 +193,7 @@
   import Settings from '@/components/Settings.vue';
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
+  import EDialog from '@/components/modern/ui/EDialog.vue';
   import NodeserverField from '@/components/modern/form/NodeserverField.vue';
   import EpicboxServers from '@/components/modern/form/EpicboxServers.vue';
   import SettingsFrame from '@/components/modern/settings/SettingsFrame.vue';
@@ -152,7 +201,7 @@
   import { epicboxStatus } from '@/shared/epicboxStatus';
   import { toastLift } from '@/components/modern/ui/toastLift';
   export default reskin(Settings, {
-    components: { EIcon, NodeserverField, EpicboxServers, SettingsFrame },
+    components: { EIcon, EDialog, NodeserverField, EpicboxServers, SettingsFrame },
     //toasts (Settings saved, the node check) appear above the bar, never over its Save button
     directives: { toastLift },
     data() {
@@ -189,7 +238,8 @@
     methods: {
       /* Settings.vue's save; the form counts as saved once the config holds what the form shows */
       async saveChanges() {
-        await this.save();
+        //false: nothing was saved (the chain data prompt was closed, or a save already runs)
+        if (await this.save() === false) return;
         const c = this.configService.config || {};
         if (c.locale === this.localeSelected && (c.epicbox_domain || '') === String(this.epicboxDomain || '').trim()
           && !!c.walletlisten_on_startup === !!this.walletlisten_on_startup && !!c.node_background === !!this.node_background) {
@@ -216,3 +266,9 @@
     },
   });
 </script>
+
+<style scoped>
+  .e-chain-facts { font-size: var(--fs-sm); }
+  .e-chain-dir { user-select: text; }
+  .e-chain-p { margin-top: var(--sp-3); }
+</style>
