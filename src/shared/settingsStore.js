@@ -213,6 +213,8 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
     },
 
     wallets() { return data.wallets.map(w => ({ ...w, settings: { ...w.settings } })); },
+    /* the records that could not be read (kept in the file as they are): copies */
+    invalidWallets() { return JSON.parse(JSON.stringify(data.invalidWallets || [])); },
     wallet(id) { const w = find(id); return { ...w, settings: { ...w.settings } }; },
     defaultWalletId() { return data.defaultWallet; },
     setDefaultWallet(id) { find(id); data.defaultWallet = id; return save(); },
@@ -247,12 +249,33 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
       w.settings = { ...w.settings, ...patch };
       return save();
     },
-    /* the list entry only: no file of the wallet is touched */
+    /* the list entry, and its 'imported' decision (legacy[importedFrom.dir or dataDir]), so Import
+       from an older Epic Wallet lists that folder again; no file of the wallet is touched here
+       (walletRemoval.js). nextId stays: the id is never used again. False when not saved: then
+       nothing changed, also in memory (a removal that isn't on disk would come back at the next start) */
     removeWallet(id) {
-      find(id);
-      data.wallets = data.wallets.filter(w => w.id !== id);
+      const w = find(id);
+      const before = { wallets: data.wallets, defaultWallet: data.defaultWallet, legacy: { ...data.legacy } };
+      data.wallets = data.wallets.filter(x => x.id !== id);
       if (data.defaultWallet === id) data.defaultWallet = data.wallets.length ? data.wallets[0].id : '';
-      return save();
+      const win = pathMod && pathMod.sep === '\\';
+      const same = (a, b) => {
+        if (a === b) return true;
+        if (!pathMod || !a || !b) return false;
+        const ra = pathMod.resolve(a), rb = pathMod.resolve(b);
+        return win ? ra.toLowerCase() === rb.toLowerCase() : ra === rb;
+      };
+      const dirs = [w.importedFrom && w.importedFrom.dir, w.dataDir].filter(d => typeof d === 'string' && d);
+      //another wallet in the list from the same folder keeps the decision
+      const stillListed = (d) => data.wallets.some(x => same(x.dataDir, d) || (x.importedFrom && same(x.importedFrom.dir, d)));
+      for (const k of Object.keys(data.legacy)) {
+        if (data.legacy[k] === 'imported' && dirs.some(d => same(k, d)) && !stillListed(k)) delete data.legacy[k];
+      }
+      if (!save()) {
+        Object.assign(data, before);
+        return false;
+      }
+      return true;
     },
   };
   return api;

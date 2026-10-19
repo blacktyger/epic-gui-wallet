@@ -15,6 +15,7 @@
  */
 import { layout, netFromShort } from './appPaths.js';
 import { createSettingsStore, normalizeWallet, NETWORKS, WALLET_DEFAULTS } from './settingsStore.js';
+import { planRemoval, removeFiles } from './walletRemoval.js';
 import { renderWalletToml, renderNodeToml, networkPorts, walletMarkerText, WALLET_MARKER, tomlNetwork, localNodeUrl, isLocalNodeUrl } from './walletToml.js';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -222,6 +223,68 @@ class ConfigService {
     const added = this.settings.addWallet(rec);
     this.writeWalletMarker(added);
     return added;
+  }
+
+  /* --- removing a wallet (shared/walletRemoval.js) --- */
+
+  /* our epic processes using a wallet: its owner API, listeners, scan (by its config dir) and Tor
+     (torrc in its data dir). A failed scan counts as running: nothing is deleted unchecked */
+  async walletProcesses(wallet) {
+    try {
+      const found = await this.nodeChildProcess.ownedProcesses(['owner_api', 'listen', 'scan', 'epicbox'],
+        {dir: wallet.configDir, tor: true, torDirs: [wallet.dataDir].filter(Boolean)});
+      return Array.isArray(found) ? found : [];
+    } catch (e) {
+      console.log('configService.walletProcesses: scan failed', e && e.message);
+      return [{ pid: 0, role: 'unknown' }];
+    }
+  }
+
+  /* what may be removed for a wallet (walletRemoval.planRemoval). opts: {openId: the wallet open in
+     this window, folderMissing: its data folder is gone (Unlock), processes: false skips the scan} */
+  async removalPlan(id, opts = {}) {
+    const wallet = this.settings.wallet(id);
+    const running = opts.processes === false ? [] : await this.walletProcesses(wallet);
+    return planRemoval({
+      wallet, wallets: this.settings.wallets(), invalidWallets: this.settings.invalidWallets(),
+      paths: this.paths, chainDirs: NETWORKS.map(n => this.settings.nodeChainDir(n)).filter(Boolean),
+      openId: opts.openId || '', running, folderMissing: !!opts.folderMissing, fs: this.fs, pathMod: this.path,
+    });
+  }
+
+  /*
+   * Remove a wallet: mode 'list' | 'app' | 'everything' (walletRemoval.js). The plan is made again
+   * here, with a fresh process scan, right before anything is deleted.
+   * Order: the files first, then the list entry, and only when the entry is safe to drop
+   * (removeFiles: entrySafe). A failure part way leaves a wallet that still opens and stays listed
+   * ('app': its toml and secrets are written again at the next unlock; 'everything': the seed goes
+   * last, so while it is there the wallet is whole); once the seed is gone the entry goes too, so
+   * the list never points at a wallet without its seed. The caller removes the User row and
+   * contacts (userService.removeUser) only when entryRemoved.
+   * → {ok, reason?, plan, removed, failed, dirRemoved, entryRemoved, saved}
+   */
+  async removeWallet(id, mode, opts = {}) {
+    if (!['list', 'app', 'everything'].includes(mode)) return { ok: false, reason: 'mode' };
+    if (this.settings.readOnly) return { ok: false, reason: 'readonly' };
+    let plan;
+    try {
+      plan = await this.removalPlan(id, { ...opts, processes: mode !== 'list' });
+    } catch (e) {
+      return { ok: false, reason: 'gone' };
+    }
+    const allowed = mode === 'list' ? plan.canList : mode === 'app' ? plan.canAppFiles : plan.canEverything;
+    if (!allowed) {
+      const r = mode === 'everything' ? plan.reasons.everything : plan.reasons.appFiles;
+      return { ok: false, reason: (r && r.key) || 'open', plan };
+    }
+    const res = removeFiles(plan, mode, { fs: this.fs, pathMod: this.path });
+    let entryRemoved = false, saved = true;
+    if (res.entrySafe) {
+      saved = this.settings.removeWallet(id);
+      entryRemoved = saved;
+    }
+    console.log('configService.removeWallet ' + id + ' ' + mode + ': removed ' + res.removed.length + ', failed ' + res.failed.length + (entryRemoved ? ', unlisted' : ', still listed'));
+    return { ok: entryRemoved && !res.failed.length, plan, ...res, entryRemoved, saved };
   }
 
   /* Settings › Wallet: the label only (display; never part of a path), and WALLET.txt with it */

@@ -61,7 +61,8 @@ function contactRow(c, userId) {
 
 /*
  * configService: {settings (settingsStore), newWalletDirs(network), registerWallet(rec)}
- * userService.ensureUser(walletId, cols) → User row; addressbookService: {getAddress(userId), addAddress(row)}
+ * userService.ensureUser(walletId, cols) → User row; userService.removeUser(walletId): rows an earlier
+ * wallet of that id left (settings.json lost while <root>/app survived); addressbookService: {getAddress(userId), addAddress(row)}
  * legacyBridge.scan({known}) → {wallets, chains, profiles} (main: scanLegacy + readLegacyProfiles)
  * fs (readFileSync) and pathMod read each old config.json.
  * cleanNodeAddress(url, {network}) → {url} (shared/nodeAddress.js), supportedLocale(lang) → locale: optional.
@@ -163,6 +164,8 @@ export function createImporter({ configService, userService, addressbookService,
       settings: { ...row.settings },
     });
     try {
+      //a new id never takes over an earlier wallet's User row, contacts or transaction links
+      await userService.removeUser(id);
       const user = await userService.ensureUser(id, {
         name: row.label, language: row.language || undefined,
         nodeInternal: row.settings.nodeInternal, epicbox_domain: row.settings.epicbox_domain,

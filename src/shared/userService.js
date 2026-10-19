@@ -60,6 +60,24 @@ class UserService extends BaseService {
         return rows[0];
     }
 
+    /* a removed wallet's rows: its contacts (Addressbook) and their transaction links
+       (AddressTransactions) by User.id, then the User row. Nothing to do when it has none.
+       → the number of rows removed per table */
+    async removeUser(walletId){
+        if(!walletId){
+            throw new Error('removeUser: no wallet id');
+        }
+        const out = {Addressbook: 0, AddressTransactions: 0, User: 0};
+        const rows = await this.getUser(walletId);
+        for(const row of rows || []){
+            for(const table of ['AddressTransactions', 'Addressbook']){
+                out[table] += await this.connection.remove({from: table, where: {user_id: row.id}}) || 0;
+            }
+        }
+        out.User = await this.connection.remove({from: this.tableName, where: {account: walletId}}) || 0;
+        return out;
+    }
+
 }
 
 export default UserService;

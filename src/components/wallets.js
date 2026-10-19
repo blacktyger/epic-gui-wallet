@@ -83,6 +83,21 @@ export function isLoggedIn(store) {
   return !!(u && Object.keys(u).length);
 }
 
+/* a wallet just added to the list starts with no IndexedDB rows: its id may have been used before
+   (settings.json lost or deleted by hand while <root>/app survived), and a new wallet must never show
+   that wallet's contacts. Create, Restore and Open a wallet folder call it (the importer does the same
+   itself); a failure is logged only, the wallet is listed and works. → true when cleared */
+export async function clearStaleUser(userService, walletId) {
+  try {
+    const n = await userService.removeUser(walletId);
+    if (n && n.User) console.log('[wallets] ' + walletId + ': rows of an earlier wallet with this id removed ' + JSON.stringify(n));
+    return true;
+  } catch (e) {
+    console.log('[wallets] ' + walletId + ': old rows not removed: ' + (e && e.message ? e.message : e));
+    return false;
+  }
+}
+
 /* the language a new User row gets: the app's choice, else the language the window runs in */
 export function appLocale(configService) {
   try {
@@ -263,6 +278,7 @@ export const walletFolder = {
         const r = await this.configService.openExistingWallet(dir, network);
         if (r && r.ok && r.wallet) {
           this.folderAsk = null;
+          await clearStaleUser(this.$userService, r.wallet.id);
           await this.folderOpened(r.wallet);
           return;
         }

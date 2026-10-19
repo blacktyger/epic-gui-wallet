@@ -43,7 +43,7 @@
             <b>{{ nameOf(w) }}</b> <span v-if="badge(w.network)" class="tag is-warning is-light">{{ badge(w.network) }}</span>
             <p class="is-size-7"><code :title="w.dataDir">{{ short(w.dataDir) }}</code></p>
           </div></div>
-          <div class="level-right"><button type="button" class="button is-small is-danger is-outlined" @click="askRemove(w)">{{ $t('msg.wallets.remove_from_list') }}</button></div>
+          <div class="level-right"><button type="button" class="button is-small is-danger is-outlined" @click="askRemove(w)" :aria-label="$t('msg.removal.open_named', [nameOf(w)])">{{ $t('msg.removal.open') }}</button></div>
         </div>
 
         <h2 class="title is-5" style="margin-top: 1.5rem;">{{ $t('msg.wallets.add_wallet') }}</h2>
@@ -65,17 +65,7 @@
       </div>
     </div>
 
-    <div class="modal" :class="{ 'is-active': !!removeTarget }" role="dialog" aria-modal="true" aria-labelledby="accountRemoveTitle">
-      <div class="modal-background" @click="removeTarget = null"></div>
-      <div class="modal-card">
-        <header class="modal-card-head"><p id="accountRemoveTitle" class="modal-card-title">{{ $t('msg.wallets.remove_title', [removeTarget ? removeTarget.name : '']) }}</p></header>
-        <section class="modal-card-body">{{ $t('msg.wallets.remove_text') }}</section>
-        <footer class="modal-card-foot">
-          <button type="button" class="button" @click="removeTarget = null">{{ $t('msg.cancel') }}</button>
-          <button type="button" class="button is-danger" @click="confirmRemove">{{ $t('msg.wallets.remove_from_list') }}</button>
-        </footer>
-      </div>
-    </div>
+    <RemoveWalletDialog v-if="removing" :wallet="removing.wallet" :name="removing.name" @close="removing = null" @done="removed" />
   </section>
 
 </template>
@@ -84,14 +74,16 @@
 
 import { useStore } from '@/store';
 import { walletList, walletName, networkBadge, shortFolder, appLocale, walletFolder, walletOpen } from '@/components/wallets';
+import RemoveWalletDialog from '@/components/layout/RemoveWalletDialog.vue';
 
   /*
    * This wallet: its label, its folders, where it was imported from; the other wallets in the
-   * list (Remove from list) and Add another wallet (Create, Restore, Open folder, Import).
+   * list (Remove: components/removalPlan.js) and Add another wallet (Create, Restore, Open folder, Import).
    */
   export default {
     name: "account",
     mixins: [walletFolder, walletOpen],
+    components: { RemoveWalletDialog },
     setup(){
       return { store: useStore() };
     },
@@ -99,8 +91,8 @@ import { walletList, walletName, networkBadge, shortFolder, appLocale, walletFol
       return {
         label: '',
         wallets: [],
-        //asking before Remove from list: {id, name}
-        removeTarget: null,
+        //the wallet being removed (RemoveWalletDialog): {wallet, name}
+        removing: null,
       };
     },
     computed: {
@@ -209,20 +201,11 @@ import { walletList, walletName, networkBadge, shortFolder, appLocale, walletFol
       },
 
       askRemove(w) {
-        this.removeTarget = { id: w.id, name: this.nameOf(w) };
+        this.removing = { wallet: w, name: this.nameOf(w) };
       },
-      /* the list entry only: no file of the wallet is touched */
-      confirmRemove() {
-        const target = this.removeTarget;
-        this.removeTarget = null;
-        if (!target || target.id === this.walletId) return;
-        try {
-          this.configService.settings.removeWallet(target.id);
-          this.refresh();
-          this.$toast.success(this.$t('msg.wallets.removed', [target.name]));
-        } catch (e) {
-          this.$toast.error(e && e.message ? e.message : String(e));
-        }
+      removed() {
+        this.removing = null;
+        this.refresh();
       },
 
     }

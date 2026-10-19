@@ -117,7 +117,7 @@ import { useRoute } from 'vue-router';
 import PasswordField from "@/components/form/passwordField";
 import StartupProgress from "@/components/layout/StartupProgress.vue";
 import useFormValidation from "@/modules/useFormValidation";
-import { walletOpen, walletList, networkBadge, isLoggedIn } from '@/components/wallets';
+import { walletOpen, walletList, networkBadge, isLoggedIn, clearStaleUser } from '@/components/wallets';
 
 const NETWORKS = ['mainnet', 'floonet', 'usernet'];
 
@@ -258,6 +258,7 @@ export default {
           this.$toast.error(created && created.msg ? String(created.msg.message || created.msg) : this.$t('msg.wallets.create_failed'), {duration:false});
         }else{
           this.createStage = 'save';
+          await clearStaleUser(this.$userService, created.wallet.id);
           this.wallet = created.wallet;
           this.newseeds = String(created.msg).split(' ');
           this.qrText = String(created.msg);
