@@ -91,7 +91,7 @@ test('wallet toml per network: chain, ports, local node, every path ours', () =>
     assert.equal(r.wallet.owner_api_include_foreign, true);
     assert.equal(r.wallet.data_file_dir, '/r/wallets/w1/wallet_data');
     assert.equal(r.wallet.api_secret_path, '/r/wallets/w1/.owner_api_secret');
-    assert.equal(r.wallet.node_api_secret_path, '/r/wallets/w1/.api_secret');
+    assert.ok(!('node_api_secret_path' in r.wallet), 'no node secret for a node that is not the built-in one');
     assert.equal(r.tor.send_config_dir, '/r/wallets/w1');
     assert.equal(r.epicbox.epicbox_domain, 'epicbox.epiccash.com');
     assert.equal(r.epicbox.epicbox_port, 443);
@@ -113,7 +113,7 @@ test('wallet toml matches what epic-wallet 4.1.0 itself writes, apart from the k
     tor: ['send_config_dir'], epicbox: ['epicbox_domain', 'epicbox_port'], logging: ['stdout_log_level', 'log_file_path'] };
   assert.deepEqual(Object.keys(r), Object.keys(t));
   for (const sec of Object.keys(t)) {
-    assert.deepEqual(Object.keys(r[sec]), Object.keys(t[sec]), sec);
+    assert.deepEqual(Object.keys(r[sec]), Object.keys(t[sec]).filter(k => k !== 'node_api_secret_path'), sec);
     for (const k of Object.keys(t[sec])) if (!(set[sec] || []).includes(k)) assert.deepEqual(r[sec][k], t[sec][k], sec + '.' + k);
   }
 });

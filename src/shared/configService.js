@@ -353,10 +353,11 @@ class ConfigService {
   /* the secrets are read when used: epic-wallet creates them in a new config dir at its first start */
   get ownerApiSecretPath() { return this.walletConfigDir ? this.path.join(this.walletConfigDir, OWNER_SECRET) : ''; }
   get ownerApisecret() { return this.ownerApiSecretPath ? this.readSecret(this.ownerApiSecretPath) : ''; }
-  /* the node secret the GUI sends to a local node: the built-in node's, else the wallet's own */
+  /* the node secret the GUI sends to a local node: the built-in node's; none for any other node
+     (the wallet's own .api_secret protects nothing) */
   get apiSecretPath() {
-    if (!this.walletId) return '';
-    return this.config.nodeInternal ? this.path.join(this.nodeDir(this.defaultAccountNetwork), NODE_SECRET) : this.path.join(this.walletConfigDir, NODE_SECRET);
+    if (!this.walletId || !this.config.nodeInternal) return '';
+    return this.path.join(this.nodeDir(this.defaultAccountNetwork), NODE_SECRET);
   }
   get apisecret() { return this.apiSecretPath ? this.readSecret(this.apiSecretPath) : ''; }
 
