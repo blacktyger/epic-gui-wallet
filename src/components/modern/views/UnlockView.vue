@@ -123,6 +123,7 @@
   import BrandTile from '@/components/modern/onboarding/BrandTile.vue';
   import AuthFoot from '@/components/modern/onboarding/AuthFoot.vue';
   import { captureToast, fieldLabels } from '@/components/modern/onboarding/helpers';
+  import { unlockFailure } from '@/shared/unlockResult';
 
   export default reskin(Login, {
     components: { EIcon, EDialog, StageList, PasswordField, BrandTile, AuthFoot },
@@ -162,9 +163,10 @@
         //the unlock screen shows every failure itself: no toast on top
         const message = await captureToast(this, () => Login.methods.login.call(this), { swallow: true });
         if (!message) return;
+        const kind = unlockFailure({ startFailure: this.$walletService.lastStartFailure, lastStage: this.lastStage, opened: this.walletOpened });
         //a wrong password (the wallet said so while starting, or open_wallet refused it): straight back
-        //to the password field, selected so it can be typed over
-        if (this.$walletService.lastStartFailure == 'password' || this.lastStage == 'unlock') {
+        //to the password field, selected so it can be typed over. A first unlock too: nothing was saved
+        if (kind === 'password') {
           this.unlockError = this.$t('msg.modern.unlock.wrong_password');
           this.$nextTick(() => {
             const input = this.passwordInput();
@@ -172,7 +174,7 @@
           });
           return;
         }
-        if (!this.lastStage) {
+        if (kind === 'field') {
           this.unlockError = message;
         } else {
           this.failure = { stage: this.lastStage, message };

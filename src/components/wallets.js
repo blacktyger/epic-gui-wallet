@@ -5,6 +5,7 @@
  * their Modern reskins inherit it.
  */
 import { i18n } from '@/i18n';
+import { pendingUser } from '@/shared/unlockResult';
 
 const t = (...a) => i18n.global.t(...a);
 
@@ -98,7 +99,8 @@ export function appLocale(configService) {
 export const walletOpen = {
   data() {
     //old wallet processes were found and are being closed: show that step too
-    return { closingProcesses: false };
+    //walletOpened: the owner API took the password (a failure after it is not a wrong password)
+    return { closingProcesses: false, walletOpened: false };
   },
   computed: {
     //what has to happen before the dashboard; the node, listeners and balance refresh follow in the background
@@ -120,6 +122,7 @@ export const walletOpen = {
       const lap = (step) => console.log('[login] ' + step + ' +' + Math.round(performance.now() - started) + ' ms');
       const store = this.$store;
       this.closingProcesses = false;
+      this.walletOpened = false;
 
       store.commit('loginStage', 'check');
       const action = await this.configService.startCheck(walletId);
@@ -149,18 +152,31 @@ export const walletOpen = {
         lap('old processes closed');
       }
 
-      //the User row (store, contacts) of this wallet, made on its first login
+      //the User row (store, contacts) of this wallet, made on its first login: written only once
+      //the password is verified. Until then the store holds it unsaved (the start reads nodeInternal)
       const cfg = this.configService.config || {};
       const wallet = this.configService.wallet || {};
-      const user = await this.$userService.ensureUser(walletId, {
+      const userFields = {
         name: wallet.label || '',
         language: appLocale(this.configService),
         nodeInternal: !!cfg.nodeInternal,
         epicbox_domain: cfg.epicbox_domain || '',
-      });
-      if (user) store.commit('user', user);
+      };
+      const userBefore = store.state.user;
+      store.commit('user', pendingUser(walletId, await this.$userService.getUser(walletId), userFields));
 
-      if (!(await this.startWallet(password, knownNotRunning, lap))) return 'failed';
+      const saveUser = async () => {
+        const user = await this.$userService.ensureUser(walletId, userFields);
+        if (user) store.commit('user', user);
+      };
+      let opened = false;
+      try {
+        opened = await this.startWallet(password, knownNotRunning, lap, saveUser);
+      } finally {
+        //a wrong password (or any failure) leaves the store as it was
+        if (!opened) store.commit('user', userBefore || {});
+      }
+      if (!opened) return 'failed';
       //the wallet used last is the one Unlock offers next time
       try {
         if (this.configService.settings.defaultWalletId() !== walletId) this.configService.settings.setDefaultWallet(walletId);
@@ -170,8 +186,9 @@ export const walletOpen = {
 
     /* start the node and the wallet api, then log in.
        Only opening the wallet is waited for: the node check, the listeners and the first balance
-       refresh run after the dashboard is shown, with their status there (App.vue). */
-    async startWallet(password, knownNotRunning, lap = () => {}) {
+       refresh run after the dashboard is shown, with their status there (App.vue).
+       opened: run once the password is verified, before the dashboard (openWallet saves the User row) */
+    async startWallet(password, knownNotRunning, lap = () => {}, opened = async () => {}) {
       const store = this.$store;
       //the node starts (or is checked) alongside, it is not waited for
       this.emitter.emit('app.nodeStart');
@@ -185,6 +202,15 @@ export const walletOpen = {
       store.commit('loginStage', '');
 
       if (canLogin && canLogin.success) {
+        this.walletOpened = true;
+        try {
+          await opened();
+        } catch (e) {
+          //open but not logged in: close it again, the main process forgets the password
+          await window.nodeChildProcess.clearSessionPassword().catch(() => {});
+          this.$walletService.stopWallet();
+          throw e;
+        }
         this.emitter.emit('app.accountLoggedIn');
         //HTTP listener, then Epicbox once the node has synced (the main process has the password)
         this.emitter.emit('app.startListeners');
