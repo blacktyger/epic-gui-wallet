@@ -265,3 +265,50 @@ test('review: a password with a control character is not typed into a terminal',
   assert.equal(p.terms.length, 0);
   assert.equal(spawned[0][spawned[0].indexOf('--pass') + 1], 'a\u0003b');
 });
+
+test('cwd per start: the -c dir, absolute and existing, reaches the pty spawn; anything else is refused', async () => {
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const path = await import('node:path');
+  //a real folder (TMPDIR), as the wallet's config dir
+  const conf = fs.mkdtempSync(path.join(os.tmpdir(), 'pty-cwd-'));
+  try {
+    const { h, p } = host();
+    const listen = (c) => ['--usernet', '-t', DIR, '-c', c, 'listen', '--method', 'http', '--no_tor'];
+    const pw = () => Buffer.from(PASS);
+    //relative, missing, not the -c dir, a file, not a string: nothing starts, no fallback to the default
+    assert.throws(() => h.start({ cmd: BIN, args: listen(conf), kind: 'listen', password: pw(), cwd: 'wallets/w1' }), /absolute/);
+    assert.throws(() => h.start({ cmd: BIN, args: listen(conf), kind: 'listen', password: pw(), cwd: '' }), /absolute/);
+    assert.throws(() => h.start({ cmd: BIN, args: listen(conf), kind: 'listen', password: pw(), cwd: 42 }), /absolute/);
+    const gone = path.join(conf, 'gone');
+    assert.throws(() => h.start({ cmd: BIN, args: listen(gone), kind: 'listen', password: pw(), cwd: gone }), /not a directory/);
+    assert.throws(() => h.start({ cmd: BIN, args: listen(conf), kind: 'listen', password: pw(), cwd: os.tmpdir() }), /-c dir/);
+    const file = path.join(conf, 'epic-wallet.toml');
+    fs.writeFileSync(file, '');
+    assert.throws(() => h.start({ cmd: BIN, args: listen(file), kind: 'listen', password: pw(), cwd: file }), /not a directory/);
+    assert.equal(p.terms.length, 0);
+    //the -c dir: passed through to node-pty, for a listener and for init
+    h.start({ cmd: BIN, args: listen(conf), kind: 'listen', password: pw(), cwd: conf });
+    h.start({ cmd: BIN, args: ['--usernet', '-c', conf, 'init'], kind: 'init', password: pw(), cwd: conf });
+    assert.equal(p.terms[0].opts.cwd, conf);
+    assert.equal(p.terms[1].opts.cwd, conf);
+    //without one: the host's cwd, as before
+    h.start({ cmd: BIN, args: listen(conf), kind: 'listen', password: pw() });
+    assert.equal(p.terms[2].opts.cwd, '/');
+    //the --pass fallback gets the same cwd
+    const spawned = [];
+    const f = host({ loadPty: () => { throw new Error('no pty'); }, spawn: (cmd, args, opts) => { spawned.push(opts); const c = new EventEmitter(); c.pid = 3; return c; } });
+    f.h.start({ cmd: BIN, args: listen(conf), kind: 'listen', password: pw(), cwd: conf });
+    assert.deepEqual(spawned[0], { shell: false, windowsHide: true, cwd: conf });
+    //Windows paths: drive and UNC are absolute, a drive-relative one is not
+    const w = host({ win: true, isDir: () => true });
+    const wl = (c) => ['-t', 'C:\\Users\\jane\\.epic\\main', '-c', c, 'listen', '--method', 'http'];
+    for (const c of ['C:\\Users\\Jane Doe\\.epic-gui\\wallets\\w1', '\\\\server\\share\\w1']) {
+      w.h.start({ cmd: BIN, args: wl(c), kind: 'listen', password: pw(), cwd: c });
+    }
+    assert.throws(() => w.h.start({ cmd: BIN, args: wl('C:wallets'), kind: 'listen', password: pw(), cwd: 'C:wallets' }), /dir|absolute/);
+    assert.deepEqual(w.p.terms.map(t => t.opts.cwd), ['C:\\Users\\Jane Doe\\.epic-gui\\wallets\\w1', '\\\\server\\share\\w1']);
+  } finally {
+    fs.rmSync(conf, { recursive: true, force: true });
+  }
+});
