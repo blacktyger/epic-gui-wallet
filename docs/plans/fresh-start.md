@@ -111,6 +111,19 @@ wallets), network (floonet) on Create/Restore. Create: password ×2 → phrase �
 `WALLET_DEFAULTS` (public node, default Epicbox, OS language if we have it): no Setup Assistant. Settings has
 *Add another wallet* (Create, Restore, Open folder, Import) with an optional label.
 
+Several wallets (approved):
+- Label: optional, display only, never in a path (folders stay `wallets/<id>`). Not asked for the first
+  wallet. *Add another wallet* shows a label field prefilled "Wallet 2", "Wallet 3"… (by count); imported
+  wallets take their old name. Any characters, trimmed, at most 32 (`cleanLabel` in settingsStore),
+  duplicates allowed (the id is the key). Rename in Settings › Wallet.
+- Switching: no switcher with one wallet. With several, the BT Labs Theme sidebar account area and
+  Classic's menu get *Switch wallet*: it locks the current wallet like a logout (owner API, HTTP
+  listener and that wallet's Epicbox listener stopped, also when *Epicbox in the background* is on, since
+  that listener would keep the other wallet half-open; the built-in node stays, it serves every wallet of
+  its network) and returns to Unlock. One wallet open at a time.
+- Unlock: the last-used wallet is preselected (`setDefaultWallet` after each unlock), so most people
+  only type the password. Each wallet has its own password; it is checked against the selected one only.
+
 Found screen: "Found N wallets from an older Epic Wallet", one row each: label (old display name or
 account), folder, network, last used, contacts count; per row Import / Start fresh, plus *Import all* and
 *Start fresh* (all). Note: "Use the password you had in the older wallet. The older app keeps working."
@@ -229,8 +242,9 @@ importer.markFresh(keys)
 - Users who look in `~/.epic` for new wallets won't find them; release note and the Settings page show the
   folder.
 
-## Decisions for Patryk
+## Decisions (approved by Patryk, 2026-10-19)
 
 1. `%LOCALAPPDATA%\EpicCash\Wallet` instead of `%APPDATA%` (reason above).
 2. Reuse old chain data in place (default) rather than copy.
 3. New wallets default to the public node `node.epiccash.com` (built-in node one switch away in Settings).
+4. Labels, switching and the Unlock picker as in "Several wallets" above.
