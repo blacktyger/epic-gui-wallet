@@ -14,6 +14,7 @@
         </div>
         <!-- the QR code: hidden until asked for, like the balance hide/show -->
         <div style="text-align: center;">
+          <button type="button" class="button is-small is-light" @click="copyPhrase"><mdicon name="content-copy" size="16" />&nbsp;{{ $t('msg.modern.unlock.phrase_copy') }}</button>
           <button type="button" class="button is-small is-light" :aria-expanded="qrShown ? 'true' : 'false'" aria-controls="seed-qr" @click="toggleQr">
             <mdicon :name="qrShown ? 'eye-off' : 'eye'" size="16" />&nbsp;{{ qrShown ? $t('msg.modern.unlock.phrase_qr_hide') : $t('msg.modern.unlock.phrase_qr') }}
           </button>
@@ -87,6 +88,14 @@ export default {
 
 
   methods: {
+    async copyPhrase(){
+      try{
+        await window.clipboard.copySecret(this.seeds.join(' '));
+        this.$toast.success(this.$t('msg.modern.unlock.phrase_copied'));
+      }catch(e){
+        this.$toast.error(e && e.message ? e.message : String(e));
+      }
+    },
     toggleQr(){
       this.qrShown = !this.qrShown;
       if(this.qrShown) this.$nextTick(() => this.qrcode(this.qrText));

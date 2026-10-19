@@ -36,6 +36,7 @@
                     </template>
                     <div class="buttons is-centered">
                       <button v-if="revealed" type="button" class="button is-light" @click="hide">{{ $t('msg.modern.unlock.phrase_hide') }}</button>
+                      <button v-if="revealed" type="button" class="button is-light" @click="copyPhrase"><mdicon name="content-copy" size="16" />&nbsp;{{ $t('msg.modern.unlock.phrase_copy') }}</button>
                       <button v-else type="button" class="button is-warning" @click="reveal">{{ $t('msg.modern.unlock.phrase_reveal') }}</button>
                     </div>
                     <p v-if="!revealed" class="help has-text-centered">{{ $t('msg.modern.unlock.phrase_reveal_hint') }}</p>
@@ -209,6 +210,14 @@ export default {
   methods: {
     reveal(){
       this.revealed = true;
+    },
+    async copyPhrase(){
+      try{
+        await window.clipboard.copySecret(this.newseeds.join(' '));
+        this.$toast.success(this.$t('msg.modern.unlock.phrase_copied'));
+      }catch(e){
+        this.$toast.error(e && e.message ? e.message : String(e));
+      }
     },
     hide(){
       this.revealed = false;

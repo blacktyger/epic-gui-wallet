@@ -144,6 +144,7 @@
   import useFormValidation from "@/modules/useFormValidation";
   import { walletOpen, walletList, networkBadge, isLoggedIn, clearStaleUser } from '@/components/wallets';
   import { splitPhrase } from '@/shared/phraseWords';
+  import { nodeLoadWarning, savedNode } from '@/shared/nodeLoad';
 
   const NETWORKS = ['mainnet', 'floonet', 'usernet'];
 
@@ -321,6 +322,9 @@
           return;
         }
 
+        if(nodeLoadWarning('restore', savedNode(this.$store.state.user, this.configService && this.configService.config))){
+          this.$toast.warning(this.$t("msg.settings.node_load_warning"), {duration: 10000});
+        }
         this.restoring = true;
         this.restoreStage = 'restore';
         const password = this.passwordField.defaultValue;

@@ -376,7 +376,7 @@ const messages = {
       WrongTxData: 'Failed to build transaction',
       success: 'Transaction success',
       TxFailed: 'Send transaction failed',
-      proofEpicbox: 'Payment proofs aren\'t available over Epicbox. Use HTTP, Tor or a transaction file if you need one.',
+      proofEpicbox: 'Payment proofs aren\'t available over Epicbox. Use HTTP or a transaction file if you need one.',
       TxResponseFailed: 'Failed to get right respose from receiver',
       TxCreateFailed: 'Create transaction failed',
       salteVersion: 'Slate file version',
@@ -462,7 +462,7 @@ const messages = {
       node_background: 'sync in background',
       node_background_hint: 'the built-in node server continues to sync in the background even when the app is closed. The next time you run the wallet, you do not have to wait for the synchronization with the blockchain.',
       //toast when the built-in node or background sync is switched on (shared/nodeLoad.js)
-      node_load_warning: 'The built-in node is CPU and memory intensive.',
+      node_load_warning: 'Scanning uses a lot of CPU and memory until it\'s done.',
     },
     validators:{
       empty: 'The {0} field is required',

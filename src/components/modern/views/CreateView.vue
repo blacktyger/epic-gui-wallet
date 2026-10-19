@@ -107,6 +107,7 @@
         <!-- the phrase as a QR code too: behind the reveal, and hidden until asked for (toggleQr draws it) -->
         <div v-if="revealed" class="e-onb-qr">
           <button type="button" class="e-btn e-btn-ghost e-btn-sm" @click="hide"><EIcon name="eyeoff" />{{ $t('msg.modern.unlock.phrase_hide') }}</button>
+          <button type="button" class="e-btn e-btn-ghost e-btn-sm" @click="copyPhrase"><EIcon name="copy" />{{ $t('msg.modern.unlock.phrase_copy') }}</button>
           <button type="button" class="e-btn e-btn-ghost e-btn-sm" :aria-expanded="qrShown ? 'true' : 'false'" aria-controls="e-onb-qr-box" @click="toggleQr"><EIcon :name="qrShown ? 'eyeoff' : 'eye'" />{{ qrShown ? $t('msg.modern.unlock.phrase_qr_hide') : $t('msg.modern.unlock.phrase_qr') }}</button>
           <div v-if="qrShown" id="e-onb-qr-box">
             <p class="e-help">{{ $t('msg.modern.unlock.phrase_qr_hint') }}</p>

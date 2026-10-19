@@ -638,6 +638,8 @@ contextBridge.exposeInMainWorld('nodeSecp256k1', secp256k1);
 contextBridge.exposeInMainWorld('nodeAes256gcm', aes256gcm);
 contextBridge.exposeInMainWorld('clipboard', {
   writeText: (text) => ipcRenderer.invoke('clipboard-write-text', text),
+  copySecret: (text) => ipcRenderer.invoke('clipboard-copy-secret', text),
+  wipeSecret: () => ipcRenderer.invoke('clipboard-wipe-secret'),
 });
 //File.path was removed in Electron 32. A file dropped on or picked in the page (a File the page
 //can't make up for a path of its choice) may be read

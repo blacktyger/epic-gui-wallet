@@ -14,6 +14,7 @@ import { cleanLeftoverImport, cleanImportNow, importCopyNames, spawnAfterExitCle
 import { createPtyHost } from './shared/ptyHost'
 import { createSessionSecret } from './shared/sessionSecret'
 import { createShutdown, SIGNALS } from './shared/shutdown'
+import { createSecretClipboard } from './shared/secretClipboard'
 import { registerSessionIpc, wipeWithWindow, wipeWithApp } from './shared/sessionIpc'
 import { httpUrl, isAppUrl, isInside, nodeRequest, contentSecurityPolicy } from './shared/security'
 
@@ -810,6 +811,12 @@ ipcMain.handle('clipboard-write-text', (event, text) => {
   if (!fromAppWindow(event)) return;
   return clipboard.writeText(String(text));
 });
+
+//the recovery phrase: marked sensitive, wiped after 60 s if unchanged, and on lock and quit (shared/secretClipboard.js)
+const secretClipboard = createSecretClipboard({ clipboard, platform: process.platform });
+ipcMain.handle('clipboard-copy-secret', (event, text) => fromAppWindow(event) && secretClipboard.copy(String(text)));
+ipcMain.handle('clipboard-wipe-secret', (event) => fromAppWindow(event) && secretClipboard.wipe());
+app.on('will-quit', () => secretClipboard.wipe());
 
 ipcMain.handle('resize', (event, width, height) => {
   if (!fromAppWindow(event)) return;
