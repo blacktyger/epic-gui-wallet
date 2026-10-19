@@ -227,6 +227,7 @@ const messages = {
       stage_closing: 'Closing the old wallet processes',
       stage_wallet: 'Starting the wallet service',
       stage_unlock: 'Unlocking the wallet',
+      folder_missing: 'The folder of the wallet "{0}" was not found: {1}. It may have been moved, renamed or deleted.',
     },
     seed:{
       errorGetMnemonic: 'Error getting Mnemonic. Is password correct?',
