@@ -61,6 +61,7 @@
 
 
 import { ref, computed } from 'vue';
+import { withoutUserinfo } from '@/shared/nodeVersion';
 import PasswordField from "@/components/form/passwordField";
 import AccountField from "@/components/form/accountField";
 import StartupProgress from "@/components/layout/StartupProgress.vue";
@@ -178,7 +179,7 @@ export default {
         //the saved node address was cleaned up just now (once per account): the notice says old -> new
         const change = this.configService.nodeAddressChange;
         if(change){
-          console.log('[node] saved address changed: ' + change.from + ' -> ' + change.to + ' (' + change.reason + ')');
+          console.log('[node] saved address changed: ' + withoutUserinfo(change.from) + ' -> ' + withoutUserinfo(change.to) + ' (' + change.reason + ')');
         }
         this.store.commit('nodeAddressChange', change ? {...change, network: this.configService.defaultAccountNetwork} : null);
         //the account's folder is gone (moved or deleted by hand): say so, start nothing.
@@ -205,7 +206,13 @@ export default {
           lap('old processes closed');
         }
         let user = await this.$userService.getUser(this.accountField.defaultValue);
-        
+        //a floonet/usernet wallet that pointed at a mainnet node was moved to the local node address:
+        //use the built-in node too, or nothing answers there
+        if(change && change.reason == 'mainnet_node_on_testnet' && user.length && !user[0].nodeInternal){
+          await this.$userService.updateUserByAccount(this.accountField.defaultValue, {nodeInternal: true});
+          user = await this.$userService.getUser(this.accountField.defaultValue);
+        }
+
         if(user.length && action != 'settings'){
           this.store.commit('user', user[0]);
         }else{

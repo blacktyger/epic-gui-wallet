@@ -6,6 +6,9 @@ import { cleanNodeAddress, probeNodeAddress } from './nodeAddress.js';
 
 //set in config.json once the saved address was cleaned up (the version of this cleanup)
 export const NODE_ADDRESS_FLAG = 'node_address_checked';
+//logins on which nothing answered (offline?): the network step is tried again, at most this often
+export const NODE_ADDRESS_TRIES = 'node_address_tries';
+export const MAX_TRIES = 3;
 
 /*
  * config: the account's config (changed in place); network: the account's network
@@ -25,18 +28,28 @@ export async function migrateNodeAddress(config, {network = 'mainnet', fetch, ti
   let to = clean.url;
   let reason = clean.reason;
 
+  let done = true;
   if(clean.suggest.length){
     const probe = await probeNodeAddress(clean.url, clean.suggest, {fetch, timeoutMs});
     if(probe.changed){
       to = probe.url;
       reason = 'answered';
+    }else if(probe.reason == 'no_answer'){
+      //nothing answered, not even the saved address (offline, or the node is down): try the
+      //network step again at the next login, a few times, instead of giving up for good
+      const tries = (parseInt(config[NODE_ADDRESS_TRIES], 10) || 0) + 1;
+      config[NODE_ADDRESS_TRIES] = tries;
+      done = tries >= MAX_TRIES;
     }
   }
 
   if(to !== from && typeof from === 'string'){
     config.check_node_api_http_addr = to;
   }
-  config[NODE_ADDRESS_FLAG] = 1;
+  if(done){
+    config[NODE_ADDRESS_FLAG] = 1;
+    delete config[NODE_ADDRESS_TRIES];
+  }
 
   //spaces, a trailing slash or letter case only: not worth a message
   const notify = typeof from === 'string' && to !== from && reason !== 'format';

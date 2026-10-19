@@ -241,3 +241,24 @@ test('migrate: no config or no address', async () => {
   assert.deepEqual(await migrateNodeAddress(config), { updated: true, change: null });
   assert.equal('check_node_api_http_addr' in config, false);
 });
+
+test('migrate: offline at the first logins -> the network step is tried again, at most 3 times', async () => {
+  const config = { check_node_api_http_addr: 'http://node.epiccash.com:3413' };
+  const offline = { fetch: network({}).fetch, timeoutMs: 100 };
+  for (let i = 1; i <= 2; i++) {
+    assert.deepEqual(await migrateNodeAddress(config, offline), { updated: true, change: null });
+    assert.equal(config[NODE_ADDRESS_FLAG], undefined, 'not flagged after offline login ' + i);
+    assert.equal(config.node_address_tries, i);
+  }
+  //back online at the 3rd login: switched
+  const n = network({ 'https://node.epiccash.com:3413': rec('https://node.epiccash.com:3413') });
+  const r = await migrateNodeAddress(config, { fetch: n.fetch });
+  assert.equal(r.change.to, 'https://node.epiccash.com:3413');
+  assert.equal(config[NODE_ADDRESS_FLAG], 1);
+  assert.equal(config.node_address_tries, undefined);
+  //still offline at the 3rd: given up, address kept
+  const c2 = { check_node_api_http_addr: 'http://node.epiccash.com:3413', node_address_tries: 2 };
+  await migrateNodeAddress(c2, offline);
+  assert.equal(c2[NODE_ADDRESS_FLAG], 1);
+  assert.equal(c2.check_node_api_http_addr, 'http://node.epiccash.com:3413');
+});

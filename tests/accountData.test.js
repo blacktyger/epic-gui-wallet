@@ -85,3 +85,13 @@ test('isListedAccount', () => {
   assert.equal(isListedAccount({}, 'alpha'), false);
   assert.equal(isListedAccount(undefined, 'alpha'), false);
 });
+
+test('no readable wallet list: nothing is deleted', async () => {
+  const db = seed();
+  const userService = { removeAccountData: (a) => removeAccountData(db, a) };
+  for (const appConfig of [undefined, {}, { account_dirs: 'broken' }]) {
+    assert.equal(await forgetLeftoverAccountData({ appConfig, userService, account: 'test', log: quiet }), null);
+  }
+  assert.equal(db.tables.User.length, 2);
+  assert.equal(db.tables.Addressbook.length, 3);
+});

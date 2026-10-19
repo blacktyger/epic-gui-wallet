@@ -43,7 +43,8 @@ export function isListedAccount(appConfig, account){
  */
 export async function forgetLeftoverAccountData({ appConfig, userService, account, log = console }){
   try{
-    if(!account || isListedAccount(appConfig, account)){
+    //no readable wallet list: don't guess, delete nothing
+    if(!account || !appConfig || !Array.isArray(appConfig.account_dirs) || isListedAccount(appConfig, account)){
       return null;
     }
     const removed = await userService.removeAccountData(account);

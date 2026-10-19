@@ -32,6 +32,7 @@
   import mixin from './mixin.js';
   import { MIN_CONFIRMATIONS, outputConfirmationState } from '@/shared/confirmations';
   import { useI18n } from 'vue-i18n';
+  import { withoutUserinfo } from '@/shared/nodeVersion';
   import { ref, onUnmounted } from 'vue';
   import { useStore } from '@/store';
   import { useRouter } from '@/router';
@@ -233,6 +234,8 @@
         this.stopRefreshNode();
         this.stopRefresh();
         this.loginSession = (this.loginSession || 0) + 1;
+        //a node check still running (nodeStart, reclassifyNode) belongs to no session any more
+        this.nodeStartGen = (this.nodeStartGen || 0) + 1;
         this.store.commit('user', {});
         this.store.commit('txs', []);
         this.store.commit('commits', []);
@@ -359,14 +362,17 @@
           return;
         }
         const {kind, address, version, reason, local, statusReadable, statusVia} = check;
+        //the user hid the notice, or Epicbox was skipped, in this session: a new check keeps that
+        //(same node only: another address gets its own notice)
+        const before = this.store.state.nodeProblem && this.store.state.nodeProblem.address == address ? this.store.state.nodeProblem : {};
         //the notice says it in plain words; the details are for the log
-        console.log('[node] ' + address + ': ' + kind + ', version ' + (version || 'unknown') + ', ' + (reason || '-')
+        console.log('[node] ' + withoutUserinfo(address) + ': ' + kind + ', version ' + (version || 'unknown') + ', ' + (reason || '-')
           + ', status ' + (statusReadable ? 'readable via ' + statusVia : 'not readable'));
         this.store.commit('nodeProblem', {
           kind, address, version, reason, local, statusReadable, statusVia,
           network: this.configService.defaultAccountNetwork || 'mainnet',
-          epicboxSkipped: false,
-          hidden: false,
+          epicboxSkipped: !!before.epicboxSkipped,
+          hidden: !!before.hidden,
         });
       },
 

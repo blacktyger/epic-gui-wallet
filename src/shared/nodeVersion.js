@@ -16,6 +16,11 @@
 //the oldest node the GUI is fully made for (README: 4.1.0-1 or later; 4.1.0 needs the owner status fallback)
 export const MIN_NODE_VERSION = '4.1.0';
 
+/* an address for the log: without user:password@ */
+export function withoutUserinfo(address){
+  return String(address || '').replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/@]*@/i, '$1');
+}
+
 export function isLocal(address){
   try{
     return ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(address).hostname);
@@ -60,6 +65,9 @@ async function probeVersion(address, {fetch: fetchFn = (...args) => fetch(...arg
       return body && body.node_version
         ? {ok: true, version: body.node_version}
         : {ok: false, reason: 'no node version in the reply', code: 'no_version'};
+    }
+    if(res.type == 'opaqueredirect' || (res.status >= 300 && res.status < 400)){
+      return {ok: false, reason: 'redirects elsewhere', code: 'http'};
     }
     if(res.status != 401){
       return {ok: false, reason: 'HTTP ' + res.status, code: 'http'};
@@ -140,7 +148,7 @@ export function ownerStatusToV1(reply){
  * returns {ok: true, status, via: 'v1' | 'owner', locked} or {ok: false, reason, locked}
  *   locked: /v1/status answered 401
  */
-export async function fetchNodeStatus(address, {fetch: fetchFn = (...args) => fetch(...args), apiSecret = '', timeoutMs = 10000} = {}){
+export async function fetchNodeStatus(address, {fetch: fetchFn = (...args) => fetch(...args), apiSecret = '', timeoutMs = 10000, redirect = 'manual'} = {}){
 
   const base = baseOf(address);
   const controller = new AbortController();
@@ -148,7 +156,8 @@ export async function fetchNodeStatus(address, {fetch: fetchFn = (...args) => fe
   const headers = {'Content-Type': 'application/json', ...authHeaders(base, apiSecret)};
 
   try{
-    const res = await fetchFn(base + '/v1/status', {method: 'GET', headers, signal: controller.signal});
+    //redirect 'manual': epic-wallet doesn't follow redirects, so a node behind one is not usable
+    const res = await fetchFn(base + '/v1/status', {method: 'GET', headers, signal: controller.signal, redirect});
     if(res.ok){
       const status = await readJson(res);
       return status && status.tip
@@ -159,7 +168,7 @@ export async function fetchNodeStatus(address, {fetch: fetchFn = (...args) => fe
       return {ok: false, reason: 'HTTP ' + res.status, locked: false};
     }
 
-    const res2 = await fetchFn(base + '/v2/owner', {method: 'POST', headers, body: rpc('get_status'), signal: controller.signal});
+    const res2 = await fetchFn(base + '/v2/owner', {method: 'POST', headers, body: rpc('get_status'), signal: controller.signal, redirect});
     const status = res2.ok ? ownerStatusToV1(await readJson(res2)) : null;
     return status
       ? {ok: true, status, via: 'owner', locked: true}
@@ -194,7 +203,8 @@ export async function classifyNode(address, {fetch: fetchFn, apiSecret = '', tim
     kind, address: base, version: null, reason: '', local, statusReadable: false, statusVia: null, status: null, ...extra,
   });
 
-  const v = await probeVersion(base, {...opts, timeoutMs});
+  //redirects not followed: epic-wallet wouldn't follow them either (http://host -> https://host)
+  const v = await probeVersion(base, {...opts, timeoutMs, redirect: 'manual'});
   if(!v.ok){
     if(v.code == 'auth'){
       return result('too_old', {reason: 'needs api secret'});

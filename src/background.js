@@ -122,6 +122,13 @@ async function createWindow() {
     }
   });
 
+  //a link that would open a new app window (target=_blank, middle-click, window.open) opens in the
+  //browser instead, http(s) only; the new window would have this window's preload and powers
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url)
+    return { action: 'deny' }
+  })
+
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode

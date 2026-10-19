@@ -19,9 +19,9 @@
       </div>
     </article>
 
-    <article v-if="problem" class="message node-problem" :class="severe ? 'is-warning' : 'is-info'"
-             :role="severe ? 'alert' : 'status'" aria-labelledby="node-problem-title">
-      <div class="message-header">
+    <article v-if="problem" class="message node-problem" :class="severe ? 'is-warning' : 'is-info'" aria-labelledby="node-problem-title">
+      <!-- only the title is announced, not the whole notice with its buttons -->
+      <div class="message-header" :role="severe ? 'alert' : 'status'">
         <h2 id="node-problem-title" class="node-problem-title">
           <mdicon :name="severe ? 'alert-outline' : 'information-outline'" size="18" aria-hidden="true" />
           {{ $t('msg.node_problem.title_' + problem.kind) }}
