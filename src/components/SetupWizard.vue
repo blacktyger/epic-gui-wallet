@@ -129,6 +129,7 @@
                         <TextField ref="epicboxDomain" fieldname="domain" />
                         <p class="help">{{ $t("msg.setupwizard.epicbox_domain_hint") }}</p>
                       </div>
+                      <EpicboxServers v-if="epicboxDomain" :domain="epicboxDomain.input || ''" :chain="configService.defaultAccountNetwork || 'mainnet'" @pick="(d) => { epicboxDomain.input = d; }" />
 
                       <p>&nbsp;</p>
                       <p>&nbsp;</p>
@@ -176,6 +177,7 @@
   import { ref } from 'vue';
   import NodeserverField from "@/components/form/nodeserverField";
   import TextField from "@/components/form/textField";
+  import EpicboxServers from "@/components/form/EpicboxServers.vue";
   import useFormValidation from "@/modules/useFormValidation";
   import { useRouter } from '@/router';
   import { useRoute } from 'vue-router';
@@ -188,6 +190,7 @@
     components: {
       NodeserverField,
       TextField,
+      EpicboxServers,
       //videoPlay,
     },
     setup(){

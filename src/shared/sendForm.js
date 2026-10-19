@@ -24,3 +24,39 @@ export function clearSendForm(vm) {
 export function inputAfterSend(vm, value) {
   if (vm.sent && String(value == null ? '' : value).trim() !== '') vm.sent = false;
 }
+
+/*
+ * Payment proofs and Epicbox. epic-wallet 4.1.0 sends over Epicbox as a V2 slate
+ * (impls/src/adapters/epicbox.rs: VersionedSlate::into_version(slate, SlateVersion::V2)), and V2
+ * has no payment_proof field, so a requested proof is dropped silently: the EPIC goes out without
+ * one. HTTP, Tor (http to an .onion) and transaction files keep the V3 slate with the proof.
+ * So the Send form offers no proof over Epicbox, and a request that gets through anyway (a stale
+ * form state) is refused before it reaches the wallet.
+ */
+
+/* an Epicbox address (key@domain, or the bare key that starts with "es"), as the Send form reads it */
+export function isEpicboxAddress(address) {
+  const v = String(address == null ? '' : address).trim();
+  if (/^https?:\/\//i.test(v) || /\.onion(?::\d+)?\/?$/i.test(v)) return false;
+  return v.includes('@') || v.startsWith('es') || v.startsWith('epicbox');
+}
+
+/* the send method: the chosen one (an Epicbox contact sets 'epicbox'), or 'epicbox' for an Epicbox address */
+export function sendMethod(method, address) {
+  return method == 'epicbox' || isEpicboxAddress(address) ? 'epicbox' : (method || 'http');
+}
+
+/* can this send carry a payment proof? */
+export function proofAllowed(method, address) {
+  return sendMethod(method, address) != 'epicbox';
+}
+
+/*
+ * The proof request for the wallet: { address } to send (null: no proof), or { refused: true }
+ * when a proof is asked for where none is possible: the send must stop and say why.
+ */
+export function proofRequest(method, address, withproof, proofAddress) {
+  if (!withproof) return { address: null };
+  if (!proofAllowed(method, address)) return { address: null, refused: true };
+  return { address: proofAddress };
+}

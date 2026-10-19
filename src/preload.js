@@ -786,6 +786,8 @@ contextBridge.exposeInMainWorld('api', {
     //a node API call (shared/nodeFetch.js), sent by the main process: {url, method, headers, body,
     //redirect, timeoutMs} → {ok, status, text} | {error}
     nodeFetch: (req) => ipcRenderer.invoke('node-fetch', req),
+    //the url of this version's GitHub release (or the releases page), checked by the main process
+    releaseUrl: () => ipcRenderer.invoke('release-url'),
     //start the app again: after choosing another app folder (configService.setRoot), which is read at start
     relaunch: () => ipcRenderer.invoke('app-relaunch'),
     

@@ -12,6 +12,7 @@
  *
  * No Electron or DOM imports, so it runs under `node --test` as is (tests/nodeDirectory.test.js).
  */
+import { parseEpicboxServers } from './epicboxDirectory.js';
 
 export const STATUS_SITE = 'https://status.btlabs.uk';
 export const CHAINS = ['mainnet', 'floonet'];
@@ -127,8 +128,9 @@ export function compareNodes(a, b) {
 }
 
 /*
- * The status.json document → { chain, tipHeight, generatedAt, nodes: [...] } with only the fields
- * the wallet shows, each checked. null when it is not a usable directory for that chain.
+ * The status.json document → { chain, tipHeight, generatedAt, nodes: [...], epicbox: [...] } with
+ * only the fields the wallet shows, each checked (epicbox: the public Epicbox servers, see
+ * shared/epicboxDirectory.js). null when it has neither nodes nor Epicbox servers for that chain.
  */
 export function parseDirectory(json, chain) {
   if (!isPlainObject(json) || !Array.isArray(json.nodes)) return null;
@@ -143,13 +145,15 @@ export function parseDirectory(json, chain) {
     seen.add(n.endpoint);
     nodes.push(n);
   }
-  if (!nodes.length) return null;
+  const epicbox = parseEpicboxServers(json);
+  if (!nodes.length && !epicbox.length) return null;
   nodes.sort(compareNodes);
   return {
     chain,
     tipHeight: count(network.tip_height),
     generatedAt: typeof json.generated_at === 'string' && json.generated_at.length <= 40 ? json.generated_at : null,
     nodes: nodes.slice(0, MAX_NODES),
+    epicbox,
   };
 }
 

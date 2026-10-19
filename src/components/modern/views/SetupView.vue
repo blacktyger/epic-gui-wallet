@@ -44,6 +44,7 @@
         <label class="e-label" data-field>{{ $t('msg.setupwizard.epicbox_domain') }}</label>
         <TextField ref="epicboxDomain" fieldname="domain" />
         <p class="e-help">{{ $t('msg.setupwizard.epicbox_domain_hint') }}</p>
+        <EpicboxServers v-if="epicboxDomain" :domain="epicboxDomain.input || ''" :chain="configService.defaultAccountNetwork || 'mainnet'" @pick="(d) => { epicboxDomain.input = d; }" />
       </div>
     </div>
 
@@ -106,6 +107,7 @@
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import TextField from '@/components/modern/form/TextField.vue';
   import NodeserverField from '@/components/modern/form/NodeserverField.vue';
+  import EpicboxServers from '@/components/modern/form/EpicboxServers.vue';
   import OnboFrame from '@/components/modern/onboarding/OnboFrame.vue';
   import { railGroups } from '@/components/modern/onboarding/rails';
   import { fieldLabels } from '@/components/modern/onboarding/helpers';
@@ -114,7 +116,7 @@
   const PREVIOUS = { step2: 'step1', step3: 'step2', step4: 'step3' };
 
   export default reskin(SetupWizard, {
-    components: { EIcon, TextField, NodeserverField, OnboFrame },
+    components: { EIcon, TextField, NodeserverField, EpicboxServers, OnboFrame },
     mixins: [fieldLabels],
     computed: {
       groups() {

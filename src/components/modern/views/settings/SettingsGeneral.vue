@@ -47,6 +47,7 @@
             <p id="stg-relay-h" class="e-help">{{ $t('msg.settings.epicbox_domain_hint') }}</p>
           </div>
           <p v-if="listenerServerLine" class="e-help e-stg-relay-now" role="status"><EIcon :name="listenerServerLine.icon" size="sm" /><span>{{ listenerServerLine.text }}</span></p>
+          <EpicboxServers :domain="epicboxDomain || ''" :chain="configService.defaultAccountNetwork || 'mainnet'" @pick="(d) => { epicboxDomain = d; }" />
         </div>
       </div>
     </section>
@@ -145,12 +146,13 @@
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import NodeserverField from '@/components/modern/form/NodeserverField.vue';
+  import EpicboxServers from '@/components/modern/form/EpicboxServers.vue';
   import SettingsFrame from '@/components/modern/settings/SettingsFrame.vue';
   import { resetNotice } from '@/shared/theme';
   import { epicboxStatus } from '@/shared/epicboxStatus';
   import { toastLift } from '@/components/modern/ui/toastLift';
   export default reskin(Settings, {
-    components: { EIcon, NodeserverField, SettingsFrame },
+    components: { EIcon, NodeserverField, EpicboxServers, SettingsFrame },
     //toasts (Settings saved, the node check) appear above the bar, never over its Save button
     directives: { toastLift },
     data() {

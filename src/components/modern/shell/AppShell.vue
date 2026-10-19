@@ -5,10 +5,16 @@
   <a class="e-skip" href="#e-main" @click.prevent="focusMain">{{ $t('msg.modern.skip') }}</a>
   <div class="e-app">
     <nav class="e-side" :aria-label="$t('msg.modern.nav_main')">
-      <router-link class="e-side-brand" to="/dashboard" :aria-label="$t('msg.modern.brand_label')">
+      <!-- the logo is only a logo; the version opens its release on GitHub in the browser -->
+      <div class="e-side-brand">
         <svg viewBox="0 0 281 324" aria-hidden="true"><use href="#i-mark" /></svg>
-        <div><b>Epic Cash</b><br><span>{{ $t('msg.modern.wallet_version', { v: version }) }}</span></div>
-      </router-link>
+        <div>
+          <b>Epic Cash</b><br>
+          <a v-if="version" class="e-side-version" :href="releasesUrl" :title="$t('msg.modern.version_link')" @click.prevent="openRelease" @auxclick.prevent>
+            {{ $t('msg.modern.wallet_version', { v: version }) }}
+          </a>
+        </div>
+      </div>
       <div class="e-nav">
         <router-link v-for="item in nav" :key="item.to" :to="item.to" :aria-current="isCurrent(item) ? 'page' : null" custom v-slot="{ href, navigate }">
           <a :href="href" :aria-current="isCurrent(item) ? 'page' : null" :data-tour="item.tour" @click="navigate">
@@ -63,6 +69,7 @@
   import ServiceStatus from '@/components/modern/shell/ServiceStatus.vue';
   import Credits from '@/components/modern/ui/Credits.vue';
   import { reskin } from '@/components/modern/reskin';
+  import { RELEASES_URL, openRelease } from '@/shared/releaseLink';
 
   /* routes that belong to a sidebar entry without being its path */
   const SECTIONS = {
@@ -78,7 +85,7 @@
     name: 'AppShell',
     components: { EIcon, ServiceStatus, Credits },
     data() {
-      return { version: '' };
+      return { version: '', releasesUrl: RELEASES_URL };
     },
     computed: {
       /* file sends that wait for the recipient's response file: the same test as the Finalize
@@ -118,6 +125,12 @@
       window.removeEventListener('keydown', this.onKey);
     },
     methods: {
+      /* this version's release on GitHub (or the releases page), in the browser */
+      async openRelease() {
+        if (this.releaseOpening) return;
+        this.releaseOpening = true;
+        try { await openRelease(window.api, (url) => window.openlink.open(url)); } finally { this.releaseOpening = false; }
+      },
       isCurrent(item) {
         return this.$route.path == item.to || (SECTIONS[item.to] || []).includes(this.$route.name);
       },

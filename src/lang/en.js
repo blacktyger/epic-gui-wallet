@@ -1,11 +1,14 @@
 import modern from './modern/en';
 import nodedir from './nodedir';
+import epicboxdir from './epicboxdir';
 import wallets from './wallets';
 
 const messages = {
   msg: {
     //public node list from status.btlabs.uk, see lang/nodedir.js
     nodedir,
+    //public Epicbox servers and their status, see lang/epicboxdir.js
+    epicboxdir,
     //wallet list, first start and the found screen (6.1), see lang/wallets.js
     wallets,
 
@@ -367,6 +370,7 @@ const messages = {
       WrongTxData: 'Failed to build transaction',
       success: 'Transaction success',
       TxFailed: 'Send transaction failed',
+      proofEpicbox: 'Payment proofs aren\'t available over Epicbox. Use HTTP, Tor or a transaction file if you need one.',
       TxResponseFailed: 'Failed to get right respose from receiver',
       TxCreateFailed: 'Create transaction failed',
       salteVersion: 'Slate file version',

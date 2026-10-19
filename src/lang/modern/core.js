@@ -12,7 +12,7 @@ export default {
   checking: 'Checking…',
   skip: 'Skip to content',
   nav_main: 'Main',
-  brand_label: 'Epic Cash wallet, overview',
+  version_link: 'Release notes on GitHub (opens in your browser)',
   wallet_version: 'Wallet {v}',
   needs_action: '{n} needs your action | {n} need your action',
   lock: 'Lock wallet',
