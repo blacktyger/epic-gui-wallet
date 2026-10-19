@@ -5,7 +5,7 @@
     <EIcon name="info" />
     <div>
       <b id="e-node-change-t">{{ $t('msg.node_problem.address_changed_title') }}</b>
-      <p class="e-nn-addr" translate="no">{{ $t('msg.node_problem.address_changed', [addressChange.from, addressChange.to]) }}</p>
+      <p style="overflow-wrap:anywhere">{{ $t('msg.node_problem.address_changed', [addressChange.from, addressChange.to]) }}</p>
     </div>
     <div class="e-actions">
       <button type="button" class="e-icon-btn" :aria-label="$t('msg.node_problem.ok')" @click="store.commit('nodeAddressChange', null)"><EIcon name="close" /></button>
