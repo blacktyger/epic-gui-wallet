@@ -16,6 +16,7 @@
                   <h1 class="title has-text-centered">{{ $t('msg.wallets.found_failed_title', failed.length) }}</h1>
                   <article class="message is-danger" role="alert">
                     <div class="message-body">
+                      <p>{{ $t('msg.wallets.found_failed_lead') }}</p>
                       <ul>
                         <li v-for="f in failed" :key="f.key"><b>{{ f.name }}</b>: {{ f.reason }}</li>
                       </ul>
@@ -37,34 +38,48 @@
                   </div>
                 </template>
 
-                <template v-else>
-                  <h1 class="title has-text-centered">{{ title }}</h1>
-                  <p class="has-text-centered" style="margin-bottom: 1rem;">{{ $t('msg.wallets.found_note') }}</p>
+                <form v-else novalidate @submit.prevent="submit">
+                  <h1 class="title is-4 has-text-centered">{{ title }}</h1>
+                  <p v-if="wallets.length" class="has-text-centered found-lead">{{ $t('msg.wallets.found_lead', wallets.length) }}</p>
 
-                  <div v-for="(w, i) in wallets" :key="w.key" class="box">
-                    <p><b>{{ rowName(w, i) }}</b>
-                      <span v-if="badge(w.network)" class="tag is-warning is-light" style="margin-left: 0.5rem;">{{ badge(w.network) }}</span></p>
-                    <p class="is-size-7"><code :title="w.dir">{{ short(w.dir) }}</code></p>
-                    <p class="is-size-7">{{ rowMeta(w) }}</p>
-                    <p v-if="w.legacyDb" class="is-size-7 has-text-warning">{{ $t('msg.wallets.found_legacy_db') }}</p>
-                    <div class="control" role="radiogroup" :aria-label="$t('msg.wallets.found_choice_label', [rowName(w, i)])" style="margin-top: 0.5rem;">
-                      <label class="radio"><input type="radio" :name="'found-' + i" value="import" v-model="choice[w.key]"> {{ $t('msg.wallets.found_import') }}</label>
-                      <label class="radio"><input type="radio" :name="'found-' + i" value="fresh" v-model="choice[w.key]"> {{ $t('msg.wallets.found_fresh') }}</label>
-                    </div>
-                  </div>
+                  <ul v-if="wallets.length" class="found-list" :aria-label="$t('msg.wallets.found_list')">
+                    <li v-for="(w, i) in wallets" :key="w.key">
+                      <label class="box found-row" :class="{ 'is-unchecked': !checked[w.key] }">
+                        <input type="checkbox" class="found-check" v-model="checked[w.key]" :disabled="busy"
+                          :aria-labelledby="'found-n-' + i" :aria-describedby="'found-d-' + i">
+                        <span class="found-body">
+                          <span class="found-name">
+                            <b :id="'found-n-' + i">{{ rowName(w, i) }}</b>
+                            <span v-if="badge(w.network)" class="tag is-warning">{{ badge(w.network) }}</span>
+                          </span>
+                          <span :id="'found-d-' + i" class="found-details">
+                            <span class="found-dir is-size-7"><code :title="w.dir" translate="no">{{ short(w.dir) }}</code></span>
+                            <span v-if="rowMeta(w)" class="is-size-7 has-text-grey">{{ rowMeta(w) }}</span>
+                            <span v-if="w.legacyDb" class="is-size-7 has-text-warning-dark">{{ $t('msg.wallets.found_legacy_db') }}</span>
+                          </span>
+                        </span>
+                      </label>
+                    </li>
+                  </ul>
 
-                  <label v-if="chain" class="checkbox" style="display: block; margin: 1rem 0;">
-                    <input type="checkbox" v-model="reuseChain">
-                    {{ $t('msg.wallets.found_reuse_chain', [short(chain.dir), size(chain.bytes)]) }}
+                  <label v-if="chain" class="checkbox found-chain">
+                    <input type="checkbox" v-model="reuseChain" :disabled="busy" aria-describedby="found-chain-d">
+                    <span>
+                      {{ $t('msg.wallets.found_reuse_chain') }}
+                      <span id="found-chain-d" class="is-size-7 has-text-grey found-chain-where" :title="chain.dir">{{ chainWhere }}</span>
+                    </span>
                   </label>
 
                   <p v-if="error" class="has-text-danger" role="alert">{{ error }}</p>
-                  <div class="buttons is-centered">
-                    <button v-if="from" type="button" class="button is-outlined" :disabled="busy" @click="back">{{ $t('msg.back') }}</button>
-                    <button v-if="wallets.length" type="button" class="button is-outlined" :disabled="busy" @click="startFresh">{{ $t('msg.wallets.found_fresh_all') }}</button>
-                    <button type="button" class="button is-primary" :class="{ 'is-loading': busy }" :disabled="busy" @click="submit">{{ primaryLabel }}</button>
+
+                  <div class="buttons is-centered found-actions">
+                    <button type="button" class="button is-outlined" :disabled="busy" @click="notNow">{{ $t('msg.wallets.found_not_now') }}</button>
+                    <button type="submit" class="button is-primary" :class="{ 'is-loading': busy }"
+                      :aria-disabled="usable && !busy ? null : 'true'" :aria-busy="busy ? 'true' : null">{{ primaryLabel }}</button>
                   </div>
-                </template>
+                  <p class="has-text-centered is-size-7">{{ $t('msg.wallets.found_note') }}</p>
+                  <p v-if="wallets.length && from !== 'settings'" class="has-text-centered is-size-7 has-text-grey">{{ $t('msg.wallets.found_later', wallets.length) }}</p>
+                </form>
 
               </div>
             </div>
@@ -77,12 +92,14 @@
 
 <script>
   import { takeScan, shortFolder, formatBytes, formatDate, networkBadge, walletOpen } from '@/components/wallets';
+  import { canUse, foundPlan, initialChecked, pickChain, backRoute } from '@/components/foundPlan';
 
   /*
-   * Wallets an older Epic Wallet left on this computer (importer.scan): import each one, or
-   * start fresh. Shown once on the first start, and again from Welcome › Advanced and
-   * Settings › Add another wallet (route query from: 'new' | 'settings'). The older app's files
-   * are not changed; each choice is stored, so a wallet is not offered twice.
+   * Wallets an older Epic Wallet left on this computer (importer.scan): tick the ones to use here
+   * (all are ticked), or Not now. Shown once on the first start, and again from Welcome › Advanced
+   * and Settings › Add another wallet (route query from: 'new' | 'settings'). The older app's
+   * files are not changed. Imported wallets are stored as such; unticked ones and Not now are not
+   * stored, so Import from an older Epic Wallet lists them again (foundPlan.js).
    */
   export default {
     name: 'found',
@@ -91,8 +108,8 @@
       return {
         loading: true,
         scan: null,
-        //key → 'import' | 'fresh'
-        choice: {},
+        //key → true (ticked) | false
+        checked: {},
         reuseChain: true,
         busy: false,
         error: '',
@@ -108,27 +125,29 @@
       wallets() {
         return (this.scan && this.scan.wallets) || [];
       },
-      //the chain data to offer: mainnet first, then the largest
       chain() {
-        const chains = ((this.scan && this.scan.chains) || []).slice();
-        chains.sort((a, b) => (a.network === 'mainnet' ? 0 : 1) - (b.network === 'mainnet' ? 0 : 1) || (b.bytes || 0) - (a.bytes || 0));
-        return chains[0] || null;
+        return pickChain(this.scan && this.scan.chains);
       },
       nothingFound() {
         return !this.loading && !this.wallets.length && !this.chain;
       },
-      importKeys() {
-        return this.wallets.filter(w => this.choice[w.key] !== 'fresh').map(w => w.key);
+      checkedCount() {
+        return this.wallets.filter(w => this.checked[w.key]).length;
+      },
+      usable() {
+        return canUse({ wallets: this.wallets, checked: this.checked, chain: this.chain });
       },
       title() {
         return this.wallets.length ? this.$t('msg.wallets.found_title', this.wallets.length) : this.$t('msg.wallets.found_chain_title');
       },
-      //"Import all" while every row says Import, else what the choices add up to
+      //"Use selected wallet" while one is ticked, else "Use selected wallets"; Continue with chain data only
       primaryLabel() {
-        const n = this.importKeys.length;
-        if (!this.wallets.length || n === 0) return this.$t('msg.wallets.continue');
-        if (n === this.wallets.length) return this.$t('msg.wallets.found_import_all', n);
-        return this.$t('msg.wallets.found_import_some', { n, total: this.wallets.length });
+        if (!this.wallets.length) return this.$t('msg.wallets.continue');
+        return this.$t('msg.wallets.found_use', this.checkedCount === 1 ? 1 : 2);
+      },
+      chainWhere() {
+        if (!this.chain) return '';
+        return this.short(this.chain.dir) + (this.chain.bytes ? ' · ' + this.size(this.chain.bytes) : '');
       },
       importedCount() {
         return this.result && this.result.imported ? this.result.imported.length : 0;
@@ -147,9 +166,7 @@
           this.scan = null;
           this.error = this.$t('msg.wallets.found_scan_failed', [e && e.message ? e.message : String(e)]);
         }
-        const choice = {};
-        this.wallets.forEach(w => { choice[w.key] = 'import'; });
-        this.choice = choice;
+        this.checked = initialChecked(this.wallets);
         this.loading = false;
       },
       rowName(w, i) {
@@ -169,40 +186,45 @@
         return shortFolder(dir, this.configService, 56);
       },
       size: formatBytes,
-      setAll(value) {
-        const choice = {};
-        this.wallets.forEach(w => { choice[w.key] = value; });
-        this.choice = choice;
+      planInput(settings) {
+        return {
+          wallets: this.wallets, checked: this.checked, chain: this.chain,
+          reuseChain: this.reuseChain, firstRun: settings.isFirstRun(),
+        };
       },
-      startFresh() {
-        this.setAll('fresh');
-        this.submit();
+      /* Not now: nothing is imported, marked or set; the first start records the scan only */
+      notNow() {
+        if (this.busy) return;
+        const settings = this.configService.settings;
+        const plan = foundPlan('notNow', this.planInput(settings));
+        if (plan.markScanned !== null && !settings.markScanned(plan.markScanned)) {
+          this.$toast.error(this.$t('msg.settings.error_save'));
+        }
+        console.log('[found] not now: ' + this.wallets.length + ' left undecided');
+        this.back();
       },
+      /* Use selected wallets: import the ticked ones (the unticked stay undecided) */
       async submit() {
         if (this.busy) return;
+        const settings = this.configService.settings;
+        const plan = foundPlan('use', this.planInput(settings));
+        //nothing ticked: the button says so (aria-disabled), there is nothing to do
+        if (!plan) return;
         this.busy = true;
         this.error = '';
-        const settings = this.configService.settings;
-        const firstRun = settings.isFirstRun();
-        const imports = this.importKeys;
-        const fresh = this.wallets.filter(w => this.choice[w.key] === 'fresh').map(w => w.key);
-        const reuseChain = !!(this.chain && this.reuseChain);
         try {
           let result = { imported: [], failed: [] };
-          if (imports.length) {
-            result = await this.$importer.importWallets(imports, { reuseChain });
+          if (plan.importKeys.length) {
+            result = await this.$importer.importWallets(plan.importKeys, { reuseChain: plan.reuseChain });
           }
-          if (fresh.length) {
-            await this.$importer.markFresh(fresh);
-          }
-          //the importer sets the chain data for the networks it imported; with nothing imported
-          //(Start fresh, or chain data only) the built-in node still reuses it when ticked
+          //the importer sets the chain data for the networks it imported; the built-in node
+          //still reuses the offered one when ticked (e.g. a floonet wallet and mainnet chain data)
           let saved = true;
-          if (reuseChain && !settings.nodeChainDir(this.chain.network)) {
-            saved = settings.setNodeChainDir(this.chain.network, this.chain.dir) && saved;
+          if (plan.chainDir && !settings.nodeChainDir(plan.chainDir.network)) {
+            saved = settings.setNodeChainDir(plan.chainDir.network, plan.chainDir.dir) && saved;
           }
-          if (firstRun) {
-            saved = settings.markScanned(this.wallets.length) && saved;
+          if (plan.markScanned !== null) {
+            saved = settings.markScanned(plan.markScanned) && saved;
           }
           //settings.json could not be written (the choices stay for this session): say so, go on
           if (!saved) {
@@ -211,7 +233,8 @@
           const imported = (result && result.imported) || [];
           //(the importer makes the first imported wallet the default when there was none)
           this.result = { imported, failed: (result && result.failed) || [] };
-          console.log('[found] imported ' + imported.length + ', failed ' + this.result.failed.length + ', fresh ' + fresh.length);
+          console.log('[found] imported ' + imported.length + ', failed ' + this.result.failed.length
+            + ', left ' + (this.wallets.length - plan.importKeys.length));
           if (this.result.failed.length) {
             this.failed = this.result.failed.map(f => {
               const i = this.wallets.findIndex(w => w.key === f.key);
@@ -237,14 +260,35 @@
         this.back();
       },
       back() {
-        if (this.from === 'settings') {
-          this.$router.push({ name: 'account' });
-        } else if (this.from === 'new' || !this.configService.settings.wallets().length) {
-          this.$router.push({ name: 'new' });
-        } else {
-          this.$router.push({ name: 'login' });
-        }
+        this.$router.push({ name: backRoute(this.from, this.configService.settings.wallets().length > 0) });
       },
     },
   };
 </script>
+
+<style scoped>
+  .found-lead { margin-bottom: 1rem; }
+  .found-list { margin: 0 0 1rem; }
+  .found-row { display: flex; gap: 0.75rem; align-items: flex-start; margin-bottom: 0.5rem; padding: 0.75rem 1rem; cursor: pointer; }
+  .found-row:hover { box-shadow: 0 0 0 1px #b5b5b5; }
+  .found-row:focus-within { box-shadow: 0 0 0 2px #485fc7; }
+  .found-row.is-unchecked .found-body { opacity: 0.6; }
+  .found-check { width: 1.1rem; height: 1.1rem; margin-top: 0.2rem; flex: none; cursor: pointer; }
+  .found-body, .found-details { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+  .found-name { display: flex; align-items: center; gap: 0.5rem; }
+  .found-dir code { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+  .found-chain { display: flex; gap: 0.5rem; align-items: flex-start; margin: 0 0 1rem; }
+  .found-chain input { margin-top: 0.3rem; }
+  .found-chain-where { display: block; overflow-wrap: anywhere; }
+  .found-actions { margin-top: 1rem; margin-bottom: 0.25rem; }
+  .found-actions + p { margin-bottom: 0.25rem; }
+  .button[aria-disabled='true']:not(.is-loading) { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+</style>
+
+<style>
+  /* Classic's dark mode keeps .box white but draws tags for a dark background: follow the dark card */
+  html.is-dark-mode-active .found-row { background: transparent; color: inherit; box-shadow: 0 0 0 1px #4a4a4a; }
+  html.is-dark-mode-active .found-row:hover { box-shadow: 0 0 0 1px #7a7a7a; }
+  html.is-dark-mode-active .found-row:focus-within { box-shadow: 0 0 0 2px #485fc7; }
+  html.is-dark-mode-active .found-row b { color: #f5f5f5; }
+</style>

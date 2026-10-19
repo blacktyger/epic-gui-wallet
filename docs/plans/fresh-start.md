@@ -133,16 +133,16 @@ Several wallets (approved):
   <path>", plus id and origin), rewritten on register, rename (`configService.renameWallet`) and each
   unlock. Informational only: the app never reads it. Never written in an old folder.
 
-Found screen (redesigned, Patryk 2026-10-19): title "We found N wallets from an older Epic Wallet", one
-line "Use them here? Your coins and recovery phrase stay the same." One row per wallet with a
-pre-checked checkbox: label (old display name or account) · network · folder · last used, contacts count,
-and the history note for epic-wallet 3.x wallets. Below the list, when old chain data exists, one ticked
-checkbox "Reuse the downloaded blockchain". Primary *Use selected wallets* (disabled with none checked)
-imports the checked ones; unchecked ones stay undecided. Secondary *Not now* imports and changes nothing.
-Both mark the scan done (`firstRun`), so the screen doesn't come back at start; "You can import them later in
-Settings." (Settings › Add another wallet › *Import from an older Epic Wallet* runs the scan again and shows
-the same screen, listing everything not yet in the 6.1 list). Imported ones are stored in `legacy`; the first
-imported wallet becomes the default.
+Found screen (Patryk, 2026-10-19): "We found N wallets from an older Epic Wallet", "Use them here? Your
+coins and recovery phrase stay the same." One row each with a checkbox, all ticked: label (old display
+name or account), network badge (not mainnet), folder (short, full path in a tooltip), last used,
+contacts count, the `legacyDb` note. *Reuse the downloaded blockchain* (ticked) when chain data was found.
+*Use selected wallets* imports the ticked ones (`legacy[dir] = 'imported'`, the first imported becomes
+the default, then Unlock); unticked ones get no decision. *Not now* changes nothing but `markScanned`, then
+Welcome (or back to Settings). Either way the screen doesn't come back at start; Settings › Add another
+wallet › Import from an older Epic Wallet lists every wallet still undecided. The decisions are in
+`src/components/foundPlan.js` (tests/foundPlan.test.js). Notes: "Close the older Epic Wallet first. Unlock
+with the password you had there." and "You can import them later in Settings."
 
 ## Importer
 
