@@ -18,11 +18,14 @@
  *   loadPty() → node-pty (may throw); spawn: child_process.spawn; killTree(pid) → Promise
  *   win: Windows; log: {info, warn}; env: the environment for the child
  *   isAllowedBin(cmd): the app's own epic-wallet binary (default: the name only)
+ *   isDir(path): is it an existing directory (default: fs.statSync)
+ *   cwd: the working dir of a process started without its own cwd (default: process.cwd())
  *   answerTimeoutMs: a process that has not asked for all its answers by then is stopped
  *
  * Zeroing is best effort: the password reaches the main process as a string over IPC, and
  * node-pty copies what it writes; the app's own Buffers are zeroed.
  */
+import { statSync } from 'fs';
 import { createPromptAnswerer, PHRASE_INVALID } from './ptyPrompt.js';
 import { PTY_KINDS, checkPtyArgs, withPassArg } from './walletArgs.js';
 
@@ -31,6 +34,16 @@ const WALLET_BIN = /^epic-wallet(\.exe)?$/i;
 //control characters would be read by the terminal (^C, ^U, ^D...), not as part of the password
 // eslint-disable-next-line no-control-regex
 const CONTROL = /[\x00-\x1f\x7f]/;
+
+/* an absolute path: /…, C:\… or C:/…, \\server\share (no relative or drive-relative path) */
+function isAbsoluteDir(p, win) {
+  if (typeof p !== 'string' || !p || p.includes('\0')) return false;
+  return win ? /^[a-z]:[\\/]/i.test(p) || /^\\\\[^\\]/.test(p) : p.startsWith('/');
+}
+
+function isDirectory(p) {
+  try { return statSync(p).isDirectory(); } catch (e) { return false; }
+}
 
 function baseName(p) {
   return String(p || '').split(/[\\/]/).pop();
@@ -42,7 +55,7 @@ function words(s) {
 }
 
 export function createPtyHost({ loadPty, spawn, killTree, win = false, log = {}, env = {}, cwd,
-  isAllowedBin = (cmd) => WALLET_BIN.test(baseName(cmd)), answerTimeoutMs = 120000 } = {}) {
+  isAllowedBin = (cmd) => WALLET_BIN.test(baseName(cmd)), isDir = isDirectory, answerTimeoutMs = 120000 } = {}) {
   const info = log.info || (() => {});
   const warn = log.warn || (() => {});
   let pty;
@@ -77,15 +90,25 @@ export function createPtyHost({ loadPty, spawn, killTree, win = false, log = {},
    *   onLines(lines): output lines (stdout and stderr together), prompts and echoes left out
    *   onExit({code, signal, fail}): fail 'invalid_phrase' | 'unexpected_prompt' | 'no_prompt' | null
    *   dir: when given, the wallet dir the args must name (the session's wallet)
+   *   cwd: when given, the process's working dir: an absolute path of an existing directory, and
+   *        the -c dir of the args (epic-wallet 4.1.0 reads an epic-wallet.toml in its working
+   *        dir before the one in -c). Anything else is refused, never replaced by a default
    * Throws on a bad request (nothing is started): a command other than the kind's own
-   * (walletArgs.checkPtyArgs), another binary, a password in the args.
+   * (walletArgs.checkPtyArgs), another binary, a password in the args, a bad cwd.
    */
-  function start({ cmd, args, kind, password, phrase, dir, onLines = () => {}, onExit = () => {} }) {
+  function start({ cmd, args, kind, password, phrase, dir, cwd: procCwd, onLines = () => {}, onExit = () => {} }) {
     const spec = PTY_KINDS[kind];
     if (!spec) throw new Error('unknown kind ' + kind);
     if (!isAllowedBin(cmd)) throw new Error('not the epic-wallet binary');
     const target = checkPtyArgs(kind, args);
     if (dir !== undefined && target.dir !== dir) throw new Error('not the wallet of this session');
+    if (procCwd !== undefined) {
+      if (!isAbsoluteDir(procCwd, win)) throw new Error('cwd must be an absolute path');
+      //checkPtyArgs made sure every kind has a -c dir
+      if (procCwd !== args[args.indexOf('-c') + 1]) throw new Error('cwd must be the -c dir');
+      if (!isDir(procCwd)) throw new Error('cwd is not a directory');
+    }
+    const workDir = procCwd !== undefined ? procCwd : (cwd || process.cwd());
     if (!Buffer.isBuffer(password)) throw new Error('no password');
     if (spec.phrase && !words(phrase)) throw new Error('no recovery phrase');
 
@@ -127,7 +150,7 @@ export function createPtyHost({ loadPty, spawn, killTree, win = false, log = {},
       let term = null;
       try {
         //wide, so ConPTY doesn't wrap the log lines; cwd and env as the other spawns
-        term = p.spawn(cmd, args, { name: 'xterm', cols: 400, rows: 40, cwd: cwd || process.cwd(), env, useConptyDll: false });
+        term = p.spawn(cmd, args, { name: 'xterm', cols: 400, rows: 40, cwd: workDir, env, useConptyDll: false });
       } catch (e) {
         ptyError = e;
         term = null;
@@ -177,7 +200,7 @@ export function createPtyHost({ loadPty, spawn, killTree, win = false, log = {},
     //fallback: a pipe, the password as an argument (as before node-pty)
     logFallback(ptyError ? ptyError.message : 'spawn failed');
     const fullArgs = withPassArg(args, pw.toString('utf8'));
-    const child = spawn(cmd, fullArgs, { shell: false, windowsHide: true });
+    const child = spawn(cmd, fullArgs, Object.assign({ shell: false, windowsHide: true }, procCwd !== undefined ? { cwd: procCwd } : {}));
     fullArgs.fill('');
     pid = child.pid || 0;
     let stopped = false;
