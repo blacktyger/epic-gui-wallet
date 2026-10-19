@@ -50,7 +50,10 @@
       </li>
     </ol>
 
-    <div v-if="nodeDown" class="e-notice e-risk e-ov-notice" role="alert">
+    <!-- the external node is too old, locked, not an Epic node, or the saved address was cleaned up -->
+    <NodeNotice />
+
+    <div v-if="nodeDown && !nodeProblemShown" class="e-notice e-risk e-ov-notice" role="alert">
       <EIcon name="alertc" />
       <div>
         <b>{{ isInternal ? $t('msg.modern.overview.node_down') : $t('msg.modern.overview.node_down_at', { addr: store.state.nodeType }) }}</b>
@@ -209,10 +212,11 @@
   import RecentTx from '@/components/modern/activity/RecentTx.vue';
   import SyncNotes from '@/components/modern/activity/SyncNotes.vue';
   import TxRing from '@/components/modern/activity/TxRing.vue';
+  import NodeNotice from '@/components/modern/activity/NodeNotice.vue';
 
   export default reskin(HeaderBar, {
     name: 'OverviewView',
-    components: { EIcon, MoneyText, RecentTx, SyncNotes, TxRing, ETour },
+    components: { EIcon, MoneyText, RecentTx, SyncNotes, TxRing, ETour, NodeNotice },
     data() {
       return {
         showUpgraded: !noticeSeen('upgraded'),
@@ -258,6 +262,11 @@
       },
       nodeDown() {
         return !!this.node.error;
+      },
+      /* NodeNotice already says what is wrong with the node: no second notice for it */
+      nodeProblemShown() {
+        const p = this.store.state.nodeProblem;
+        return !!(p && !p.hidden);
       },
       nodeConnecting() {
         return !this.node.error && !this.node.user_agent;
