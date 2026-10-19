@@ -59,7 +59,7 @@
                         <p class="help">{{ $t('msg.wallets.network_hint') }}</p>
                       </div>
 
-                      <div v-if="!hasWallets" class="field">
+                      <div v-if="canMoveRoot" class="field">
                         <button type="button" class="button is-small is-outlined" @click="pickRoot">{{ $t('msg.wallets.root_choose') }}</button>
                         <button v-if="rootSource === 'location'" type="button" class="button is-small is-text" @click="useDefaultRoot">{{ $t('msg.wallets.root_default') }}</button>
                         <div v-if="rootPicked" class="notification is-warning is-light" style="margin-top: 0.5rem;">
@@ -105,6 +105,8 @@ export default {
       network: 'mainnet',
       advancedOpen: false,
       hasWallets: !!(settings && settings.wallets().length),
+      //another app data folder: only while the list is empty and the folder is not set by EPIC_GUI_HOME
+      canMoveRoot: typeof this.configService.canMoveRoot === 'function' ? this.configService.canMoveRoot() : false,
       //a folder picked for the app data, waiting for the restart to be confirmed
       rootPicked: '',
       rootError: '',

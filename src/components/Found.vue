@@ -184,26 +184,27 @@
         this.error = '';
         const settings = this.configService.settings;
         const firstRun = settings.isFirstRun();
-        const hadWallets = settings.wallets().length > 0;
         const imports = this.importKeys;
         const fresh = this.wallets.filter(w => this.choice[w.key] === 'fresh').map(w => w.key);
         const reuseChain = !!(this.chain && this.reuseChain);
         try {
           let result = { imported: [], failed: [] };
-          if (imports.length || reuseChain) {
+          if (imports.length) {
             result = await this.$importer.importWallets(imports, { reuseChain });
           }
           if (fresh.length) {
             await this.$importer.markFresh(fresh);
           }
+          //the importer sets the chain data for the networks it imported; with nothing imported
+          //(Start fresh, or chain data only) the built-in node still reuses it when ticked
+          if (reuseChain && !settings.nodeChainDir(this.chain.network)) {
+            settings.setNodeChainDir(this.chain.network, this.chain.dir);
+          }
           if (firstRun) {
             settings.markScanned(this.wallets.length);
           }
           const imported = (result && result.imported) || [];
-          //the first imported wallet opens by default
-          if (imported.length && !hadWallets) {
-            settings.setDefaultWallet(imported[0].walletId);
-          }
+          //(the importer makes the first imported wallet the default when there was none)
           this.result = { imported, failed: (result && result.failed) || [] };
           console.log('[found] imported ' + imported.length + ', failed ' + this.result.failed.length + ', fresh ' + fresh.length);
           if (this.result.failed.length) {

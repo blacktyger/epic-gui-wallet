@@ -56,7 +56,7 @@
           </div>
 
           <div class="e-adv-row">
-            <template v-if="!hasWallets">
+            <template v-if="canMoveRoot">
               <div class="e-adv-inline">
                 <button type="button" class="e-btn e-btn-sm" @click="pickRoot"><EIcon name="folder" />{{ $t('msg.wallets.root_choose') }}</button>
                 <button v-if="rootSource === 'location'" type="button" class="e-link-btn e-small" @click="useDefaultRoot">{{ $t('msg.wallets.root_default') }}</button>
