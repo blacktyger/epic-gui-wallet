@@ -8,20 +8,28 @@
 
 export function createSessionSecret() {
   let buf = null;
+  //the wallet dir it opens: listeners of another wallet don't get it
+  let walletDir = '';
 
   function wipe() {
     if (buf) buf.fill(0);
     buf = null;
+    walletDir = '';
   }
 
   return {
-    /* the password (string or Buffer; a Buffer is copied, the caller zeroes its own) */
-    set(value) {
+    /* the password (string or Buffer; a Buffer is copied, the caller zeroes its own) of the
+       wallet in dir */
+    set(value, dir) {
       const next = Buffer.isBuffer(value) ? Buffer.from(value) : Buffer.from(String(value == null ? '' : value), 'utf8');
       wipe();
       //an empty password is a real password for epic-wallet: kept as an empty buffer
       buf = next;
+      walletDir = String(dir || '');
       return true;
+    },
+    dir() {
+      return buf ? walletDir : '';
     },
     has() {
       return buf !== null;

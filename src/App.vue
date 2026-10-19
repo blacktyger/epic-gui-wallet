@@ -229,6 +229,8 @@
 
       this.emitter.on('app.logout', async () => {
 
+        //first: the main process forgets the password, whatever happens below
+        window.nodeChildProcess.clearSessionPassword().catch(() => {});
         this.stopRefreshNode();
         this.stopRefresh();
         this.loginSession = (this.loginSession || 0) + 1;

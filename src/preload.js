@@ -195,6 +195,24 @@ function errorLines(text){
   return String(text || '').split('\n').filter(l => /\bERROR\b|Wallet command failed|Error opening wallet|invalid/i.test(l)).join('\n').trim();
 }
 
+/* one start at a time per role and wallet dir: a second caller while the first one runs (the
+   check above and the record of the new pid are an IPC round trip apart) gets its answer */
+const startsInFlight = new Map();
+function oncePerDir(role, cmd, args, start){
+  const desc = describeSpawn(cmd, args);
+  const key = desc ? role + '\n' + desc.dir : '';
+  if(key && startsInFlight.has(key)){
+    return startsInFlight.get(key);
+  }
+  const p = start();
+  if(key){
+    startsInFlight.set(key, p);
+    const done = () => { if(startsInFlight.get(key) === p) startsInFlight.delete(key); };
+    p.then(done, done);
+  }
+  return p;
+}
+
 contextBridge.exposeInMainWorld('nodeChildProcess', {
 
     /* stop a process by pid, only if the app started it; resolves false if it was not stopped */
@@ -248,8 +266,8 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
         return {success: false, msg: child.error || 'epic-wallet init not started'};
       }
       const done = await new Promise(function(resolve) {
+        //not logged, not even in debug mode: it holds the new recovery phrase
         child.stdout.on('data', (data) => {
-          debug ? console.log('execNew.stdout', data) : null;
           output.push(data);
         });
         child.on('exit', (code) => {
@@ -400,50 +418,53 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
     /* start wallet epicbox; the main process answers its password prompt with the session's */
     async execEpicbox(cmd, args, platform){
+      //two starts at once (login after the node synced, the Receive page) share one listener
+      return oncePerDir('epicbox', cmd, args, async () => {
 
-      //one Epicbox listener per wallet dir: a second one (a scan that missed ours, two starts at once) reuses it
-      const desc = describeSpawn(cmd, args);
-      const running = desc ? liveChildOf('epicbox', desc.dir) : 0;
-      if(running){
-        debug ? console.log('execEpicbox: already running', running) : null;
-        return {success: true, msg: running};
-      }
+        //one Epicbox listener per wallet dir: a second one (a scan that missed ours, two starts at once) reuses it
+        const desc = describeSpawn(cmd, args);
+        const running = desc ? liveChildOf('epicbox', desc.dir) : 0;
+        if(running){
+          debug ? console.log('execEpicbox: already running', running) : null;
+          return {success: true, msg: running};
+        }
 
-      const listenProcess = await spawnPty(cmd, args, 'epicbox');
-      if(!listenProcess.pid){
-        return {success: false, msg: listenProcess.error || 'not started', noSession: !!listenProcess.noSession};
-      }
-      track(listenProcess, cmd, args);
+        const listenProcess = await spawnPty(cmd, args, 'epicbox');
+        if(!listenProcess.pid){
+          return {success: false, msg: listenProcess.error || 'not started', noSession: !!listenProcess.noSession};
+        }
+        track(listenProcess, cmd, args);
 
-      return new Promise(function(resolve) {
+        return new Promise(function(resolve) {
 
-          let errors = [];
-          listenProcess.stdout.on('data', (data) => {
+            let errors = [];
+            listenProcess.stdout.on('data', (data) => {
 
-              debug ? console.log('execEpicbox.stdout', data) : null;
+                debug ? console.log('execEpicbox.stdout', data) : null;
 
-              if(data.includes('Starting epicbox listener') || data.includes('Epicbox listener started.')){
+                if(data.includes('Starting epicbox listener') || data.includes('Epicbox listener started.')){
 
-                resolve({success: true, msg: listenProcess.pid});
-              }
+                  resolve({success: true, msg: listenProcess.pid});
+                }
 
-              if(data.includes('Failed to check node sync status')){
-                resolve({success: false, msg: 'node not synced', tor: false});
-              }
-              const err = errorLines(data);
-              if(err){
-                errors.push(err);
-              }
-              if(data.includes('Wallet command failed') || data.includes('Error opening wallet')){
-                resolve({success: false, msg: err || data});
-              }
+                if(data.includes('Failed to check node sync status')){
+                  resolve({success: false, msg: 'node not synced', tor: false});
+                }
+                const err = errorLines(data);
+                if(err){
+                  errors.push(err);
+                }
+                if(data.includes('Wallet command failed') || data.includes('Error opening wallet')){
+                  resolve({success: false, msg: err || data});
+                }
 
-          });
+            });
 
-          listenProcess.on('exit', (code) => {
-            resolve({success: false, msg: errors.join('\n') || 'listener exited (' + code + ')'});
-          });
+            listenProcess.on('exit', (code) => {
+              resolve({success: false, msg: errors.join('\n') || 'listener exited (' + code + ')'});
+            });
 
+        });
       });
     },
 
@@ -457,8 +478,8 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
         return {success: false, msg: recover.error || 'epic-wallet init -r not started'};
       }
       const done = await new Promise(function(resolve) {
+        //not logged, not even in debug mode: it holds the recovery phrase
         recover.stdout.on('data', (data) => {
-          debug ? console.log('execRecover.stdout', data) : null;
           output.push(data);
         });
         recover.on('exit', (code, signal, fail) => {
@@ -480,8 +501,8 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
     /* the wallet password of this session goes to the main process, once after the unlock; it is
        never handed back. clear: lock, logout, wallet switch */
-    setSessionPassword(password){
-      return ipcRenderer.invoke('session-password-set', String(password));
+    setSessionPassword(password, dir){
+      return ipcRenderer.invoke('session-password-set', String(password), String(dir || ''));
     },
     clearSessionPassword(){
       return ipcRenderer.invoke('session-password-clear');

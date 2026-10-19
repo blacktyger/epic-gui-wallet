@@ -17,12 +17,20 @@
  * Plain ESM with its I/O passed in (tests/ptyHost.test.js):
  *   loadPty() → node-pty (may throw); spawn: child_process.spawn; killTree(pid) → Promise
  *   win: Windows; log: {info, warn}; env: the environment for the child
+ *   isAllowedBin(cmd): the app's own epic-wallet binary (default: the name only)
+ *   answerTimeoutMs: a process that has not asked for all its answers by then is stopped
+ *
+ * Zeroing is best effort: the password reaches the main process as a string over IPC, and
+ * node-pty copies what it writes; the app's own Buffers are zeroed.
  */
 import { createPromptAnswerer, PHRASE_INVALID } from './ptyPrompt.js';
-import { PTY_KINDS, hasPassArg, withPassArg } from './walletArgs.js';
+import { PTY_KINDS, checkPtyArgs, withPassArg } from './walletArgs.js';
 
 const CR = Buffer.from('\r');
 const WALLET_BIN = /^epic-wallet(\.exe)?$/i;
+//control characters would be read by the terminal (^C, ^U, ^D...), not as part of the password
+// eslint-disable-next-line no-control-regex
+const CONTROL = /[\x00-\x1f\x7f]/;
 
 function baseName(p) {
   return String(p || '').split(/[\\/]/).pop();
@@ -33,7 +41,8 @@ function words(s) {
   return String(s || '').trim().split(/\s+/).filter(Boolean).join(' ');
 }
 
-export function createPtyHost({ loadPty, spawn, killTree, win = false, log = {}, env = {}, cwd } = {}) {
+export function createPtyHost({ loadPty, spawn, killTree, win = false, log = {}, env = {}, cwd,
+  isAllowedBin = (cmd) => WALLET_BIN.test(baseName(cmd)), answerTimeoutMs = 120000 } = {}) {
   const info = log.info || (() => {});
   const warn = log.warn || (() => {});
   let pty;
@@ -66,18 +75,22 @@ export function createPtyHost({ loadPty, spawn, killTree, win = false, log = {},
    *   kind: listen | epicbox | init | recover (walletArgs.PTY_KINDS); args without a password
    *   password: Buffer (the host's copy: zeroed here once written or at exit); phrase: init -r only
    *   onLines(lines): output lines (stdout and stderr together), prompts and echoes left out
-   *   onExit({code, signal, fail}): fail 'invalid_phrase' | 'unexpected_prompt' | null
-   * Throws on a bad request (nothing is started).
+   *   onExit({code, signal, fail}): fail 'invalid_phrase' | 'unexpected_prompt' | 'no_prompt' | null
+   *   dir: when given, the wallet dir the args must name (the session's wallet)
+   * Throws on a bad request (nothing is started): a command other than the kind's own
+   * (walletArgs.checkPtyArgs), another binary, a password in the args.
    */
-  function start({ cmd, args, kind, password, phrase, onLines = () => {}, onExit = () => {} }) {
+  function start({ cmd, args, kind, password, phrase, dir, onLines = () => {}, onExit = () => {} }) {
     const spec = PTY_KINDS[kind];
     if (!spec) throw new Error('unknown kind ' + kind);
-    if (!WALLET_BIN.test(baseName(cmd))) throw new Error('not the epic-wallet binary');
-    if (!Array.isArray(args) || args.some(a => typeof a !== 'string')) throw new Error('args must be strings');
-    if (hasPassArg(args)) throw new Error('args must not carry a password');
+    if (!isAllowedBin(cmd)) throw new Error('not the epic-wallet binary');
+    const target = checkPtyArgs(kind, args);
+    if (dir !== undefined && target.dir !== dir) throw new Error('not the wallet of this session');
     if (!Buffer.isBuffer(password)) throw new Error('no password');
     if (spec.phrase && !words(phrase)) throw new Error('no recovery phrase');
 
+    //kept until the process ends: an echo of it (the terminal may echo before rpassword turns
+    //echo off) is recognised in any later line
     let pw = password;
     let phraseWords = spec.phrase ? words(phrase) : '';
     const wipe = () => {
@@ -87,8 +100,7 @@ export function createPtyHost({ loadPty, spawn, killTree, win = false, log = {},
     };
     const isSecret = (line) => {
       if (phraseWords && words(line).includes(phraseWords)) return true;
-      //an echoed password would be a line of its own
-      return !!pw && pw.length > 0 && Buffer.from(line.trim(), 'utf8').equals(pw);
+      return !!pw && pw.length > 0 && Buffer.from(line, 'utf8').includes(pw);
     };
 
     const id = nextId++;
@@ -107,7 +119,9 @@ export function createPtyHost({ loadPty, spawn, killTree, win = false, log = {},
       onExit({ code: code == null ? null : code, signal: signal || null, fail });
     };
 
-    const p = ptyModule();
+    //a password the terminal would not pass on as it is: started the old way
+    const p = CONTROL.test(pw.toString('utf8')) || CONTROL.test(phraseWords) ? null : ptyModule();
+    if (!p && ptyModule()) warn('a control character in the password or phrase: this ' + kind + ' is started with the password argument');
     if (p) {
       const answerer = createPromptAnswerer({ passwords: spec.passwords, phrase: spec.phrase, isSecret });
       let term = null;
@@ -120,6 +134,17 @@ export function createPtyHost({ loadPty, spawn, killTree, win = false, log = {},
       }
       if (term && term.pid > 0) {
         pid = term.pid;
+        //a socket error other than EIO would be thrown in the main process without a listener
+        if (typeof term.on === 'function') term.on('error', () => {});
+        //a prompt that is never recognised would keep it (and the caller) waiting for ever
+        const watchdog = setTimeout(() => {
+          if (!exited && !answerer.done && !fail) {
+            fail = 'no_prompt';
+            warn(kind + ': epic-wallet did not ask for its answers in time, stopped');
+            stop();
+          }
+        }, answerTimeoutMs);
+        if (watchdog && typeof watchdog.unref === 'function') watchdog.unref();
         const write = (what) => {
           if (what === 'password' && pw) {
             const data = Buffer.concat([pw, CR]);
@@ -134,19 +159,16 @@ export function createPtyHost({ loadPty, spawn, killTree, win = false, log = {},
           const r = answerer.feed(d);
           if (r.lines.length) onLines(r.lines);
           for (const a of r.answers) write(a);
-          //all prompts answered: nothing is written any more, the password goes (the phrase is
-          //kept until the end, to keep it out of the output)
-          if (r.answers.length && answerer.done && pw) {
-            pw.fill(0);
-            pw = null;
-          }
           if (r.fail && !fail) {
             fail = r.fail;
             wipe();
             stop();
           }
         });
-        term.onExit(({ exitCode, signal }) => finish(exitCode, signal, answerer.end().lines));
+        term.onExit(({ exitCode, signal }) => {
+          clearTimeout(watchdog);
+          finish(exitCode, signal, answerer.end().lines);
+        });
         live.set(id, { pid, mode: 'pty' });
         return { id, pid, mode: 'pty' };
       }
@@ -157,10 +179,9 @@ export function createPtyHost({ loadPty, spawn, killTree, win = false, log = {},
     const fullArgs = withPassArg(args, pw.toString('utf8'));
     const child = spawn(cmd, fullArgs, { shell: false, windowsHide: true });
     fullArgs.fill('');
-    //given: only the phrase may still be needed
-    pw.fill(0);
-    pw = null;
     pid = child.pid || 0;
+    let stopped = false;
+    if (child.stdin && typeof child.stdin.on === 'function') child.stdin.on('error', () => {});
     //no prompt is expected: --pass answers them. The phrase goes to stdin when it is asked for
     const answerer = createPromptAnswerer({ passwords: 0, phrase: false, isSecret });
     let phraseSent = false;
@@ -176,9 +197,9 @@ export function createPtyHost({ loadPty, spawn, killTree, win = false, log = {},
         phraseSent = true;
         child.stdin.write(phraseWords + '\n');
       }
-      if ((r.fail || fail) && !child.killed) {
+      if ((r.fail || fail) && !stopped) {
+        stopped = true;
         fail = fail || r.fail;
-        wipe();
         stop();
       }
     };
