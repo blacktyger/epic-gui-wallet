@@ -491,11 +491,18 @@ class WalletService {
       return walletIsListen.length > 0;
     }
 
+    /* the current wallet's processes only (its config dir) and its Tor (in its data dir): another
+       wallet's listener is never stopped here; the built-in node is shared, never filtered by dir */
+    ownedOpts(){
+      const cs = this.configService;
+      return {dir: cs.walletConfigDir, tor: true, torDirs: [cs.walletDataDir].filter(Boolean)};
+    }
+
     /* stop our listeners and their Tor; the Epicbox listener stays with epicbox_background */
     async stopListen(epicbox_background){
 
       const roles = epicbox_background ? ['listen'] : ['listen', 'epicbox'];
-      const res = await window.nodeChildProcess.stopOwned(roles, {tor: true, torDirs: [this.configService.walletDataDir].filter(Boolean)});
+      const res = await window.nodeChildProcess.stopOwned(roles, this.ownedOpts());
       this.debug ? console.log('WalletService.listener_stopped', JSON.stringify(res.stopped)) : null;
       return true;
     }
@@ -508,7 +515,7 @@ class WalletService {
     async stopAll(epicbox_background, node_background){
 
       const roles = ['owner_api', 'listen', ...(epicbox_background ? [] : ['epicbox']), ...(node_background ? [] : ['node'])];
-      const res = await window.nodeChildProcess.stopOwned(roles, {tor: true, torDirs: [this.configService.walletDataDir].filter(Boolean)});
+      const res = await window.nodeChildProcess.stopOwned(roles, this.ownedOpts());
       this.debug ? console.log('WalletService.stopAll', JSON.stringify(res.stopped)) : null;
       return true;
     }
@@ -516,7 +523,7 @@ class WalletService {
     /* stop our owner_api */
     async stopWallet(){
 
-      const res = await window.nodeChildProcess.stopOwned(['owner_api']);
+      const res = await window.nodeChildProcess.stopOwned(['owner_api'], {dir: this.configService.walletConfigDir});
       this.debug ? console.log('WalletService.stopWallet', JSON.stringify(res.stopped)) : null;
       return true;
     }
@@ -609,7 +616,7 @@ class WalletService {
     async stopCheck(){
 
         this.checkStopped = true;
-        const res = await window.nodeChildProcess.stopOwned(['scan']);
+        const res = await window.nodeChildProcess.stopOwned(['scan'], {dir: this.configService.walletConfigDir});
         this.debug ? console.log('WalletService.stopCheck', JSON.stringify(res.stopped)) : null;
 
     }

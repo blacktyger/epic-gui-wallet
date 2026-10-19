@@ -377,7 +377,8 @@ test('killEpicProcess: our processes, Tor in the data dir, background roles kept
   assert.equal(cs.settings.wallet('w1').settings.epicbox_background, undefined);
   cs.startCheck('w1');
   assert.equal(await cs.killEpicProcess(), null);
-  assert.deepEqual(nodeChildProcess.lastScan, { roles: ['owner_api', 'listen', 'scan', 'epicbox'], opts: { tor: true, torDirs: [old] } });
+  assert.deepEqual(nodeChildProcess.lastScan, { roles: ['owner_api', 'listen', 'scan', 'epicbox'],
+    opts: { dir: cs.walletConfigDir, anyDirRoles: ['owner_api', 'listen'], tor: true, torDirs: [old] } });
   nodeChildProcess.owned = [{ pid: 5, role: 'owner_api' }, { pid: 6, role: 'listen' }];
   const p = cs.killEpicProcess();
   await new Promise(r => setTimeout(r, 0));

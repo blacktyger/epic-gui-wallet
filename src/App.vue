@@ -370,7 +370,7 @@
 
       /* opts.stay: the caller (Add another wallet) goes on from its own page; opts.done: called once closed;
          opts.switching: Switch wallet, so this wallet's Epicbox listener stops even when it runs in the
-         background (the built-in node stays as set) */
+         background, and the built-in node keeps running */
       async logoutApp(opts = {}){
         this.stopRefreshNode();
         this.stopRefresh();
@@ -392,7 +392,8 @@
         //one process scan for listener, Tor, wallet and node (walletService.stopAll)
         const started = performance.now();
         const cfg = this.configService.config || {};
-        await this.$walletService.stopAll(opts.switching ? false : cfg.epicbox_background, cfg.node_background != false);
+        //switching: the built-in node stays, it serves every wallet of its network
+        await this.$walletService.stopAll(opts.switching ? false : cfg.epicbox_background, opts.switching ? true : cfg.node_background != false);
         this.store.commit('walletEpicboxService', false);
         console.log('[logout] processes stopped +' + Math.round(performance.now() - started) + ' ms');
 

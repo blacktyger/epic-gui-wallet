@@ -489,8 +489,11 @@ class ConfigService {
       ...(!cfg.node_background ? ['node'] : [])];
 
     //one process scan for wallet, node and Tor: each scan spawns ps (powershell on Windows, ~1 s there).
-    //Tor of a listener lives in the wallet's data dir (wallet_tor)
-    let killPids = await this.nodeChildProcess.ownedProcesses(roles, {tor: true, torDirs: [this.walletDataDir].filter(Boolean)});
+    //This wallet's processes (its config dir); the owner API and http listener of any of our wallets
+    //too, since they hold the ports this wallet needs (3420, the listener port); another wallet's
+    //Epicbox listener or scan is left alone. Tor of a listener lives in the wallet's data dir (wallet_tor)
+    let killPids = await this.nodeChildProcess.ownedProcesses(roles, {dir: this.walletConfigDir, anyDirRoles: ['owner_api', 'listen'],
+      tor: true, torDirs: [this.walletDataDir].filter(Boolean)});
     this.allKilled = true;
 
     if (killPids.length) {
