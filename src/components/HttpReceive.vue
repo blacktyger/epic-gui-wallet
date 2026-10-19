@@ -187,9 +187,10 @@ export default {
   async mounted(){
 
 
-    this.publicIp = await window.config.getPublicIp();
-    this.localAddress = 'http://' + this.publicIp.ip + ':' + this.configService.walletListenerPort;
-    this.portIsForwarded = await window.config.isPortReachable(this.publicIp.ip, this.configService.walletListenerPort);
+    //no public IP (api.ipify.org not reachable): no address rather than http://undefined:3415
+    this.publicIp = await window.config.getPublicIp() || {};
+    this.localAddress = this.publicIp.ip ? 'http://' + this.publicIp.ip + ':' + this.configService.walletListenerPort : '';
+    this.portIsForwarded = this.publicIp.ip ? await window.config.isPortReachable(this.publicIp.ip, this.configService.walletListenerPort) : false;
 
     this.onionAddress = await this.getOnionAndProofAddress();
     this.epicboxAddress = await this.getEpicboxAddress();
@@ -203,7 +204,7 @@ export default {
   },
   methods: {
     async checkPortOpen(){
-      this.portIsForwarded = await window.config.isPortReachable(this.publicIp.ip, this.configService.walletListenerPort);
+      this.portIsForwarded = this.publicIp && this.publicIp.ip ? await window.config.isPortReachable(this.publicIp.ip, this.configService.walletListenerPort) : false;
       this.$toast.show(this.$t("msg.httpReceive.check_port_open_done"), {duration:1000});
     },
     async qrcode(text, addressType){
