@@ -5,14 +5,16 @@
  *          Bulma interface as it was up to 6.0)
  *   theme: 'dark' (default) | 'light' | 'system', modern only; Classic has only its dark skin
  *
- * Both are app-wide, stored next to account_dirs in the app config file
- * (~/.epic/epic_3-0-0_config.json), so support can change them by hand. A missing key means the
- * default. main.js reads them synchronously before the first render, sets data-ui and data-theme
- * on <html> and loads only that interface's stylesheet (src/ui/classic.js or src/ui/modern.js).
- * Switching the interface therefore needs a reload (reloadUi), the colour scheme does not.
+ * Both are app-wide, in the app section of GUI 6.1's settings file (<root>/settings.json, see
+ * shared/settingsStore.js), so support can change them by hand. A missing key means the default.
+ * main.js reads them synchronously before the first render, sets data-ui and data-theme on <html>
+ * and loads only that interface's stylesheet (src/ui/classic.js or src/ui/modern.js). Switching the
+ * interface therefore needs a reload (reloadUi), the colour scheme does not.
+ *
+ * The settings store is the one configService uses (sharedSettings), so neither writes the other's
+ * old values back. The configService arguments below are kept for the callers and not needed.
  */
-const path = window.nodePath;
-const fs = window.nodeFs;
+import { sharedSettings } from './configService.js';
 
 export const UI_MODERN = 'modern';
 export const UI_CLASSIC = 'classic';
@@ -23,51 +25,15 @@ export const SCALES = [90, 100, 110, 125, 150];
 /* the BT Labs Theme's base text is a little larger than Classic's 16 px root (17 px) */
 const MODERN_BASE = 1.0625;
 
-function appConfigFile() {
-  return path.join(window.config.getUserHomedir(), '.epic', 'epic_3-0-0_config.json');
-}
-
-/* the app config as an object; {} when the file doesn't exist yet; null when it exists but can't be
-   read or parsed (then nothing is written, so a hand-edited file with a typo never loses its
-   account list) */
-function loadAppConfig() {
-  const file = appConfigFile();
-  try {
-    if (!fs.existsSync(file)) return {};
-  } catch (e) {
-    return null;
-  }
-  try {
-    const cfg = JSON.parse(fs.readFileSync(file, { encoding: 'utf8', flag: 'r' }));
-    return cfg && typeof cfg === 'object' && !Array.isArray(cfg) ? cfg : null;
-  } catch (e) {
-    return null;
-  }
-}
-
 function readAppConfig() {
-  return loadAppConfig() || {};
+  return sharedSettings().app();
 }
 
-/* read-modify-write, so keys written by configService (account_dirs) are kept; the in-memory copy
-   configService holds is updated too, or its next updateAppConfig() would write the old value back */
-function writeAppSetting(key, value, configService) {
-  const file = appConfigFile();
-  const cfg = loadAppConfig();
-  if (!cfg) {
-    console.error('theme: the app config file could not be read, not saving', key);
-    return false;
-  }
-  if (!cfg.account_dirs) cfg.account_dirs = [];
-  cfg[key] = value;
-  try {
-    fs.writeFileSync(file, JSON.stringify(cfg), { encoding: 'utf8', flag: 'w' });
-  } catch (e) {
-    console.error('theme: could not save', key, e && e.message);
-    return false;
-  }
-  if (configService && configService.appConfig) configService.appConfig[key] = value;
-  return true;
+/* false when the settings file can't be read (then nothing is written, see settingsStore) */
+function writeAppSetting(key, value) {
+  const ok = sharedSettings().setApp({ [key]: value });
+  if (!ok) console.error('theme: the settings file could not be read, not saving', key);
+  return ok;
 }
 
 export function getUi() {
@@ -98,7 +64,7 @@ export function applyScale(scale, ui) {
 export function saveScale(scale, configService) {
   const v = Number(scale);
   if (!SCALES.includes(v)) return false;
-  const ok = writeAppSetting('scale', v, configService);
+  const ok = writeAppSetting('scale', v);
   applyScale(v);
   return ok;
 }
@@ -118,19 +84,19 @@ export function applyTheme(ui, scheme) {
 /* saves the interface; it takes effect on reloadUi() */
 export function saveUi(ui, configService) {
   if (!UIS.includes(ui)) return false;
-  return writeAppSetting('ui', ui, configService);
+  return writeAppSetting('ui', ui);
 }
 
 /* saves and applies the colour scheme at once (modern only) */
 export function saveScheme(scheme, configService) {
   if (!SCHEMES.includes(scheme)) return false;
-  const ok = writeAppSetting('theme', scheme, configService);
+  const ok = writeAppSetting('theme', scheme);
   applyTheme(document.documentElement.dataset.ui || UI_MODERN, scheme);
   return ok;
 }
 
 /* one-time notices of the Modern interface (e.g. 'upgraded', the "this is the new look" note on
-   Overview), remembered in the app config as ui_notices: { key: true } */
+   Overview), remembered in the app settings as ui_notices: { key: true } */
 export function noticeSeen(key) {
   const n = readAppConfig().ui_notices;
   return !!(n && n[key]);
@@ -138,7 +104,7 @@ export function noticeSeen(key) {
 
 export function markNoticeSeen(key, configService) {
   const n = Object.assign({}, readAppConfig().ui_notices, { [key]: true });
-  return writeAppSetting('ui_notices', n, configService);
+  return writeAppSetting('ui_notices', n);
 }
 
 /* a restart into another interface in progress: remembered over the reload (sessionStorage
@@ -161,7 +127,7 @@ export function takeRestart() {
 export function resetNotice(key, configService) {
   const n = Object.assign({}, readAppConfig().ui_notices);
   delete n[key];
-  return writeAppSetting('ui_notices', n, configService);
+  return writeAppSetting('ui_notices', n);
 }
 
 /* reload the renderer at index.html (a history-mode reload of the current path would 404 under

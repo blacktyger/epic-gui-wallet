@@ -1,502 +1,432 @@
-/* check required files and folder on on app start */
-const defaultAppConfigDir = window.config.getUserHomedir();
-const defaultUserdir = 'epicguiwallet';
-const path = window.nodePath;
-const nodeChildProcess = window.nodeChildProcess;
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-const sleepTime = 50;
+/*
+ * The wallet list, the current wallet and its files, on GUI 6.1's own root (shared/appPaths.js).
+ *
+ * One settings file, <root>/settings.json (shared/settingsStore.js), holds the app settings and
+ * every wallet with its two folders:
+ *   configDir  <root>/wallets/<id>: epic-wallet.toml, .owner_api_secret, .api_secret, the log
+ *   dataDir    the folder holding wallet_data (the seed): configDir for wallets made in 6.1, an
+ *              older GUI's folder for imported or opened ones, which 6.1 never writes settings to
+ * The wallet's epic-wallet.toml (and the built-in node's epic-server.toml) are rendered from the
+ * templates in resources/ on every start (shared/walletToml.js); nothing is read from an older
+ * GUI's files here (only the importer, shared/importer.js, reads those).
+ *
+ * The I/O is passed in (deps), so tests/configService.test.js runs it on a fake file system; in the
+ * app it comes from the preload (window.nodeFs, window.config.appPaths(), ...).
+ */
+import { layout, netFromShort } from './appPaths.js';
+import { createSettingsStore, normalizeWallet, NETWORKS, WALLET_DEFAULTS } from './settingsStore.js';
+import { renderWalletToml, renderNodeToml, networkPorts } from './walletToml.js';
 
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+export const WALLET_TOML = 'epic-wallet.toml';
+export const NODE_TOML = 'epic-server.toml';
+export const FOUNDATION = 'foundation.json';
+const OWNER_SECRET = '.owner_api_secret';
+const NODE_SECRET = '.api_secret';
+//what a new wallet's folder may hold before its seed exists: these files only (see discardWalletDirs)
+const PRE_SEED_FILES = [WALLET_TOML, OWNER_SECRET, NODE_SECRET, 'epic-wallet.log'];
+const CHAIN_TYPES = { Mainnet: 'mainnet', Floonet: 'floonet', UserTesting: 'usernet', Usernet: 'usernet' };
+
+/* the preload's I/O, in the app */
+function windowDeps() {
+  return {
+    fs: window.nodeFs,
+    pathMod: window.nodePath,
+    paths: window.config.appPaths(),
+    resourcePath: window.config.getResourcePath(),
+    platform: window.config.getPlatform(),
+    arch: window.config.getArch(),
+    isPortReachable: (host, port) => window.config.isPortReachable(host, port),
+    nodeChildProcess: window.nodeChildProcess,
+    debug: window.debug,
+  };
+}
+
+/* the settings store of this renderer: one instance, so the theme (shared/theme.js) and
+   configService never write each other's old values back */
+let shared = null;
+export function sharedSettings() {
+  if (!shared) {
+    shared = createSettingsStore({ fs: window.nodeFs, pathMod: window.nodePath, file: window.config.appPaths().settingsFile }).load();
+  }
+  return shared;
+}
+
+/* a random secret like the ones epic and epic-wallet write (20 letters and digits) */
+function randomSecret() {
+  const abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(20));
+  return Array.from(bytes, b => abc[b % abc.length]).join('');
+}
 
 class ConfigService {
 
-  constructor(emitter) {
-      this.emitter = emitter;
-      this.configAccount = '';
-      this.configVersion = "5.0.4";
-      this.debug = window.debug;
+  constructor(emitter, deps) {
+    const d = deps || windowDeps();
+    this.emitter = emitter;
+    this.fs = d.fs;
+    this.path = d.pathMod;
+    this.paths = d.paths;
+    this.layout = layout(this.paths.root, this.path);
+    this.settings = d.settings || (deps ? createSettingsStore({ fs: d.fs, pathMod: d.pathMod, file: this.paths.settingsFile }).load() : sharedSettings());
+    this.isPortReachable = d.isPortReachable;
+    this.nodeChildProcess = d.nodeChildProcess;
+    this.debug = d.debug;
+    this.resourcePath = d.resourcePath;
 
-      //where to find accounts and wallet data
-      this.userhomedir = '';
-      this.langs = {'bg': 'България', 'cz': 'Česko', 'de': 'Deutsch', 'en': 'English',  'fa': 'فارسی', 'hi': 'हिन्दी'};
-      this.locale = 'en';
-      //the default wallet dir from current selected account
-      //TODO: make it selectable in app, so user can
-      //start wallet from last used account
-      this.defaultAccountWalletdir = path.join(defaultAppConfigDir, '.epic');
-      this.appConfigFile = path.join(defaultAppConfigDir, '.epic', 'epic_3-0-0_config.json');
+    this.langs = {'bg': 'България', 'cz': 'Česko', 'de': 'Deutsch', 'en': 'English', 'fa': 'فارسی', 'hi': 'हिन्दी'};
 
-      this.defaultAccountNetwork = 'mainnet';
-      this.platform = window.config.getPlatform();
-      this.arch = window.config.getArch();
-      
-      if(this.platform == 'mac' && this.arch == 'arm64'){
-        this.platform = 'macsilicon';
-      }
-      
-      this.binariesPath = path.join(window.config.getResourcePath(), 'bin', this.platform);   
-      this.epicWalletBinary = this.platform === 'win' ? 'epic-wallet.exe' : 'epic-wallet';
-      this.epicNodeBinary = this.platform === 'win' ? 'epic.exe' : 'epic';
-      this.epicBinPath = path.join(this.binariesPath, this.epicWalletBinary);
-      this.epicNodeBinPath = path.join(this.binariesPath, this.epicNodeBinary);
+    this.platform = d.platform;
+    if (this.platform == 'mac' && d.arch == 'arm64') {
+      this.platform = 'macsilicon';
+    }
+    //no quotes: the binaries are started without a shell (shared/spawnCommand.js)
+    const bin = this.path.join(this.resourcePath, 'bin', this.platform);
+    this.epicPath = this.path.resolve(bin, this.platform === 'win' ? 'epic-wallet.exe' : 'epic-wallet');
+    this.epicNodePath = this.path.resolve(bin, this.platform === 'win' ? 'epic.exe' : 'epic');
 
-      //no quotes: the binaries are started without a shell (shared/spawnCommand.js)
-      this.epicBinPath = path.resolve(this.epicBinPath);
-      this.epicNodeBinPath = path.resolve(this.epicNodeBinPath);
+    //the wallet's fallback before any node is set, and while the built-in node syncs
+    this.defaultEpicNode = 'http://127.0.0.1:3413';
+    this.nodeFallBack = WALLET_DEFAULTS.check_node_api_http_addr;
+    this.epicboxDomain = WALLET_DEFAULTS.epicbox_domain;
 
-      this.epicPath = this.epicBinPath;
-      this.epicNodePath = this.epicNodeBinPath;
-      this.config = {};
-      this.configFile = '';
-      this.apiSecretPath = '';
-      this.defaultEpicNode = 'http://127.0.0.1:3413';
-      this.apisecret = '';
-      this.ownerApiSecretPath = '';
-      this.ownerApisecret = '';
-
-      this.walletTOMLPath = '';
-      this.walletTOMLName = 'epic-wallet.toml';
-      this.walletTOMLLogfile = 'epic-wallet.log';
-      this.walletListenerPort = 3415;
-      this.nodeTOMLPath = '';
-      this.nodeTOMLName = 'epic-server.toml';
-      this.nodeFoundationName = 'foundation.json';
-      this.tomlNetworkname = '';
-
-      this.nodeFallBack = 'https://node.epiccash.com:3413';
-      this.epicboxDomain = 'epicbox.epiccash.com';
-
-
-      //this should never fail or app is not working
-      let epicDir = path.join(defaultAppConfigDir, '.epic');
-      if (!window.nodeFs.existsSync(epicDir)){
-        window.nodeFs.mkdirSync(epicDir, { recursive: true });
-      }
-
-
+    this.resetConfig();
   }
 
-  getNodeFallBack(){
+  /* logout: no current wallet */
+  resetConfig() {
+    this.walletId = '';
+    this.defaultAccountNetwork = 'mainnet';
+    this.walletListenerPort = networkPorts('mainnet').walletListener;
+    this.walletTOMLPath = '';
+    this.nodeTOMLPath = '';
+    this.walletNodeAddr = '';
+    this.killedPorts = [];
+  }
+
+  getNodeFallBack() {
     return this.nodeFallBack;
   }
 
-  resetConfig(){
-    this.configAccount = '';
-    this.userhomedir = '';
-    this.defaultAccountNetwork = 'mainnet';
-    this.config = {};
-    this.configFile = '';
-    this.apiSecretPath = '';
-    this.ownerApisecret = '';
-    this.walletListenerPort = 3415;
+  /* the current wallet's record (a copy), null when none */
+  get wallet() {
+    if (!this.walletId) return null;
+    try { return this.settings.wallet(this.walletId); } catch (e) { return null; }
+  }
+  get walletConfigDir() { const w = this.wallet; return w ? w.configDir : ''; }
+  get walletDataDir() { const w = this.wallet; return w ? w.dataDir : ''; }
+
+  /* the current wallet's settings, and the app language */
+  get config() {
+    const w = this.wallet;
+    return { ...(w ? w.settings : {}), locale: this.settings.app().locale || '' };
   }
 
-  checkServerTomlFile(defaultAccountWalletdir){
-
-
-    let walletDir = defaultAccountWalletdir ? defaultAccountWalletdir : this.defaultAccountWalletdir;
-    let chainDir = path.join(walletDir, 'chain_data');
-    let tomlFile = path.join(walletDir, this.nodeTOMLName);
-    let foundationFile = path.join(walletDir, this.nodeFoundationName);
-
-    //check if toml file exist
-    if (window.nodeFs.existsSync(tomlFile) ) {
-        this.emitter.emit('checkSuccess', 'node toml "' + tomlFile.replace(walletDir, '~') + '" file exist');
-
-    } else {
-
-      //copy default epic-server.toml to new wallet dir
-      let defaultNodeTomlFile = path.join(window.config.getResourcePath(), "epic-server.toml");
-      window.nodeFs.copyFileSync(defaultNodeTomlFile, tomlFile);
+  /* locale goes to the app settings, the wallet's own keys to the current wallet; then the toml is
+     rendered again (node address, Epicbox domain, node secret) */
+  updateConfig(patch) {
+    const p = Object.assign({}, patch);
+    let ok = true;
+    if ('locale' in p) {
+      ok = this.settings.setApp({ locale: p.locale || '' }) && ok;
+      delete p.locale;
     }
-
-
-    //check if foundation file exist
-    if (window.nodeFs.existsSync(foundationFile) ) {
-        this.emitter.emit('checkSuccess', 'foundation "' + foundationFile.replace(walletDir, '~') + '" file exist');
-
-    } else {
-
-      //copy foundation
-      let defaultFoundationFile = path.join(window.config.getResourcePath(), "foundation.json");
-      window.nodeFs.copyFileSync(defaultFoundationFile, foundationFile);
-
-    }
-
-    if(window.nodeFs.readFileSync(tomlFile, {encoding:'utf8', flag:'r'})){
-
-        //rewrite some toml properties to work with gui wallet
-
-        let tomlContent = window.nodeFs.readFileSync(tomlFile, {encoding:'utf8', flag:'r'});
-
-        const re = /^db_root(\s)*=(\s).*/gm;
-        if(tomlContent.search(re) != -1){
-          if(this.platform == 'win'){
-                  //double escaped path
-            tomlContent = tomlContent.replace(re, 'db_root = "' + chainDir.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re, 'db_root = "' + chainDir + '"');
-          }
-        }
-
-        const re2 = /^chain_type(\s)*=(\s).*/gm;
-        if(tomlContent.search(re2) != -1){
-          tomlContent = tomlContent.replace(re2, 'chain_type = "' + this.tomlNetworkname + '"');
-        }
-
-        const re3 = /^foundation_path(\s)*=(\s).*/gm;
-        if(tomlContent.search(re3) != -1){
-          if(this.platform == 'win'){
-                  //double escaped path
-            tomlContent = tomlContent.replace(re3, 'foundation_path = "' + foundationFile.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re3, 'foundation_path = "' + foundationFile + '"');
-          }
-        }
-
-        const re4 = /^stdout_log_level(\s)*=(\s).*/gm;
-        if(tomlContent.search(re4) != -1){
-            tomlContent = tomlContent.replace(re4, 'stdout_log_level = "Debug"');
-        }
-
-        const re5 = /^run_tui(\s)*=(\s).*/gm;
-        if(tomlContent.search(re5) != -1){
-            tomlContent = tomlContent.replace(re5, 'run_tui = false');
-        }
-
-        const re6 = /^bits(\s)*=(\s).*/gm;
-        if(tomlContent.search(re6) != -1){
-            tomlContent = tomlContent.replace(re6, 'capabilities = "HEADER_HIST | TXHASHSET_HIST | PEER_LIST | TX_KERNEL_HASH | HEADER_FASTSYNC"');
-        }
-
-        const re66 = /^\[server\.p2p_config\.capabilities\].*/gm;
-        if(tomlContent.search(re66) != -1){
-            tomlContent = tomlContent.replace(re66, '');
-        }
-
-        const re7 = /^skip_pow_validation(\s)*=(\s).*/gm;
-        if(tomlContent.search(re7) != -1){
-          tomlContent = tomlContent.replace(re7, 'skip_pow_validation = true');
-        }else{
-          const subre7 = /^archive_mode(\s)*=(\s).*/gm;
-
-          if(tomlContent.search(subre7) != -1){
-
-            tomlContent = tomlContent.replace(subre7,  'archive_mode = false' +"\n\n"+ 'skip_pow_validation = true' + "\n");
-          }
-
-        }
-
-        const re8 = /^seeds(\s)*=(\s)*\["95\.217\.197\.180:3517"\]/gm;
-        if(tomlContent.search(re8) != -1){
-            tomlContent = tomlContent.replace(re8, 'seeds = ["95.217.197.180:3414"]');
-        }
-
-        window.nodeFs.writeFileSync(tomlFile, tomlContent, {
-          encoding: "utf8",
-          flag: "w"
-        })
-
-    }else{
-      return false;
-    }
-
-    return tomlFile;
-
-  }
-
-
-  /* checks the globa app config for accounts by name */
-  accountExist(account){
-    let accountExist = false;
-    this.appConfig['account_dirs'].forEach(function(existingAccount){
-        if(existingAccount['account'] == account ){
-          accountExist = true;
-
-          return;
-        }
-    });
-
-    if(accountExist){
-      this.configAccount = account;
-    }
-
-    return accountExist;
-  }
-
-  loadConfig(configPath){
-
-    let config;
-    if(window.nodeFs.readFileSync(configPath, {encoding:'utf8', flag:'r'})){
-
-      let configContent = window.nodeFs.readFileSync(configPath, {encoding:'utf8', flag:'r'});
-
+    const walletPatch = {};
+    for (const k of Object.keys(p)) if (k in WALLET_DEFAULTS) walletPatch[k] = p[k];
+    if (Object.keys(walletPatch).length && this.walletId) {
+      ok = this.settings.updateWalletSettings(this.walletId, walletPatch) && ok;
       try {
-        config = JSON.parse(configContent);
-        this.emitter.emit('checkSuccess', 'wallet config readable');
-
+        this.writeWalletToml();
+        if (this.config.nodeInternal) this.writeNodeToml(this.defaultAccountNetwork);
       } catch (e) {
-        this.emitter.emit('checkFail', 'Wallet config ' + e);
+        console.log('configService.updateConfig: toml not written', e && e.message);
+        ok = false;
       }
-
-    } else {
-      this.emitter.emit('checkFail', 'wallet config is empty');
     }
-    return config;
-
+    return ok;
   }
 
-  saveConfig(){
+  /* --- folders --- */
 
-    try{
-      window.nodeFs.writeFileSync(this.configFile, JSON.stringify(this.config), {encoding: "utf8",flag: "w"});
-      return true;
-    }catch(e){
+  nodeDir(network) {
+    return this.layout.nodeDir(network);
+  }
 
+  nodeChainDir(network) {
+    return this.settings.nodeChainDir(network) || this.path.join(this.nodeDir(network), 'chain_data');
+  }
+
+  /* is there something in this dir (a missing dir is empty) */
+  dirHasFiles(dir) {
+    try {
+      return this.fs.readdirSync(dir).length > 0;
+    } catch (e) {
       return false;
     }
-
   }
 
-  updateConfig(data){
-    for(var key in data){
-      this.config[key] = data[key]
+  /* the folders of a new wallet: <root>/wallets/<id>, created empty. An id whose folder still holds
+     files (a wallet removed from the list, a create that failed after init) is skipped: a wallet's
+     folder is never shared */
+  newWalletDirs(network) {
+    if (!NETWORKS.includes(network)) throw new Error('unknown network ' + network);
+    if (this.settings.readOnly) throw new Error('settings file not readable: ' + this.paths.settingsFile);
+    let n = Number(this.settings.nextWalletId().slice(1));
+    while (this.dirHasFiles(this.layout.walletDir('w' + n))) n++;
+    const id = 'w' + n;
+    const configDir = this.layout.walletDir(id);
+    this.fs.mkdirSync(configDir, { recursive: true });
+    return { id, configDir, dataDir: configDir };
+  }
+
+  /* a new wallet's folder after a create or restore that failed: removed only while it holds no
+     wallet_data and nothing but the files written before the seed (by exact name). Returns true
+     when the folder is gone. */
+  discardWalletDirs({ configDir }) {
+    if (!configDir || this.fs.existsSync(this.path.join(configDir, 'wallet_data'))) return false;
+    for (const f of PRE_SEED_FILES) {
+      const file = this.path.join(configDir, f);
+      try { if (this.fs.existsSync(file)) this.fs.unlinkSync(file); } catch (e) { /* kept */ }
     }
-    return this.saveConfig();
-  }
-
-  saveAppConfig(){
-
-    try{
-      window.nodeFs.writeFileSync(this.appConfigFile, JSON.stringify(this.appConfig), {encoding: "utf8", flag: "w"});
+    try {
+      //not recursive: anything else in it keeps the folder
+      this.fs.rmdirSync(configDir);
       return true;
-    }catch(e){
-      console.log('error write app config', e);
+    } catch (e) {
       return false;
     }
-
   }
 
-  checkTomlFile(defaultAccountWalletdir){
+  /* add a wallet to the list (rec as in settingsStore: id, network, configDir, dataDir, origin, label,
+     importedFrom, settings) after writing its toml; nothing is listed when the toml can't be written */
+  registerWallet(rec) {
+    if (this.settings.readOnly) throw new Error('settings file not readable: ' + this.paths.settingsFile);
+    const w = normalizeWallet(rec);
+    if (this.settings.wallets().some(x => x.id === w.id)) throw new Error('wallet ' + w.id + ' exists');
+    this.fs.mkdirSync(w.configDir, { recursive: true });
+    this.writeWalletToml(w);
+    if (w.settings.nodeInternal) this.writeNodeToml(w.network);
+    return this.settings.addWallet(rec);
+  }
 
-    let walletDir = defaultAccountWalletdir ? defaultAccountWalletdir : this.defaultAccountWalletdir;
-    let walletTOMLLogfilePath = path.join(walletDir, this.walletTOMLLogfile);
-    //check if toml file exist
-    let tomlFile = path.join(walletDir, this.walletTOMLName);
-
-    if (window.nodeFs.existsSync(tomlFile) && window.nodeFs.readFileSync(tomlFile, {encoding:'utf8', flag:'r'})) {
-        this.emitter.emit('checkSuccess', 'wallet toml "' + tomlFile.replace(walletDir, '~') + '" file exist and readable');
-
-
-        //rewrite some toml properties to work with owner_api lifecycle and foreign receive
-        let tomlContent = window.nodeFs.readFileSync(tomlFile, {encoding:'utf8', flag:'r'});
-
-        //the listener port depends on the network (3415 mainnet, 13415 floonet)
-        const listenPort = tomlContent.match(/^api_listen_port\s*=\s*(\d+)/m);
-        this.walletListenerPort = listenPort ? parseInt(listenPort[1]) : (this.defaultAccountNetwork == 'floonet' ? 13415 : 3415);
-
-        const re = /^owner_api_include_foreign(\s)*=(\s)*false/gm;
-        if(tomlContent.search(re) != -1){
-
-            tomlContent = tomlContent.replace(re, 'owner_api_include_foreign = true')
-        }
-
-        const re2 = /^data_file_dir(\s)*=(\s).*/gm; 
-        if(tomlContent.search(re2) != -1){
-            let wallet_data_dir = path.join(walletDir, 'wallet_data');
-            if(this.platform == 'win'){
-              //double escaped path
-              tomlContent = tomlContent.replace(re2, 'data_file_dir = "' + wallet_data_dir.replace(/\\/g, '\\\\') + '"');
-            }else{
-              tomlContent = tomlContent.replace(re2, 'data_file_dir = "' + wallet_data_dir + '"');
-            }
-        }
-
-        const re3 = /^check_node_api_http_addr(\s)*=(\s).*/gm;
-
-        let nodeApiHttp = '';
-        if(this.config.nodesynced == false && this.config.check_node_api_http_addr == 'http://127.0.0.1:3413'){
-          nodeApiHttp = this.nodeFallBack;
-        }else{
-          nodeApiHttp = this.config.check_node_api_http_addr;
-        }
-        //the node the wallet is told to use, for the log (it can differ from the one the GUI polls)
-        this.walletNodeAddr = nodeApiHttp;
-
-        if(tomlContent.search(re3) != -1){
-          tomlContent = tomlContent.replace(re3, 'check_node_api_http_addr = "' + nodeApiHttp + '"');
-        }
-
-        const re4 = /^stdout_log_level(\s)*=(\s).*/gm;
-        if(tomlContent.search(re4) != -1){
-            tomlContent = tomlContent.replace(re4, 'stdout_log_level = "Debug"');
-        }
-
-        const re5 = /^api_secret_path(\s)*=(\s).*/gm;
-        if(tomlContent.search(re5) != -1){
-          if(this.platform == 'win'){
-            //double escaped path
-            tomlContent = tomlContent.replace(re5, 'api_secret_path = "' + this.ownerApiSecretPath.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re5, 'api_secret_path = "' + this.ownerApiSecretPath + '"');
-          }
-        }
-
-        const re6 = /^node_api_secret_path(\s)*=(\s).*/gm;
-        if(tomlContent.search(re6) != -1){
-          if(this.platform == 'win'){
-            //double escaped path
-            tomlContent = tomlContent.replace(re6, 'node_api_secret_path = "' + this.apiSecretPath.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re6, 'node_api_secret_path = "' + this.apiSecretPath + '"');
-          }
-        }
-
-        const re7 = /^send_config_dir(\s)*=(\s).*/gm;
-        if(tomlContent.search(re7) != -1){
-          if(this.platform == 'win'){
-            //double escaped path
-            tomlContent = tomlContent.replace(re7, 'send_config_dir = "' + walletDir.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re7, 'send_config_dir = "' + walletDir + '"');
-          }
-        }
-
-        const re8 = /^log_file_path(\s)*=(\s).*/gm;
-        if(tomlContent.search(re8) != -1){
-          if(this.platform == 'win'){
-            //double escaped path
-            tomlContent = tomlContent.replace(re8, 'log_file_path = "' + walletTOMLLogfilePath.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re8, 'log_file_path = "' + walletTOMLLogfilePath + '"');
-          }
-        }
-
-        const re9 = /^epicbox_domain(\s)*=(\s).*/gm;
-        let epicboxDomain = '';
-        if(!this.config.epicbox_domain){
-          epicboxDomain = this.epicboxDomain;
-        }else{
-          epicboxDomain = this.config.epicbox_domain;
-        }
-
-        if(tomlContent.search(re9) != -1){
-          tomlContent = tomlContent.replace(re9, 'epicbox_domain = "' + epicboxDomain + '"');
-        }else{
-//do not add space in this block!!!
-///this updates older toml file format to work with epicbox
-            tomlContent += `
-
-#########################################
-### EPICBOX CONFIGURATION ###
-#########################################
-[epicbox]
-epicbox_domain = "${epicboxDomain}"
-epicbox_port = 443
-
-`;
-//do not add space in this block!!!
-        }
-
-        const re10 = /^epicbox_port(\s)*=(\s).*/gm;
-        if(tomlContent.search(re10) == -1){
-          const subre10 = /^\[epicbox\]/gm;
-          if(tomlContent.search(subre10) != -1){
-
-            tomlContent = tomlContent.replace(subre10,  '[epicbox]' +"\n"+ 'epicbox_port = 443');
-          }
-        }
-
-        //replace old epicbox domain
-        const re11 = /^epicbox_domain(\s)*=(\s)*"epicbox.epic.tech"/gm;
-        if(tomlContent.search(re11) != -1){
-            tomlContent = tomlContent.replace(re11, 'epicbox_domain = "epicbox.epiccash.com"');
-        }
-
-
-
-
-        window.nodeFs.writeFileSync(tomlFile, tomlContent, {
-            encoding: "utf8",
-            flag: "w"
-        })
-
-
-    } else {
-
-        this.emitter.emit('checkFail', 'wallet toml "' + tomlFile.replace(walletDir, '~') + '" file does not exist or readable');
-        console.log('check fail toml does not exist', tomlFile);
-        return false;
-
-
-
+  /* the network of a wallet folder: the folder name (main, floo, user), else chain_type in the
+     folder's own epic-wallet.toml (read only), else '' */
+  networkOfDir(dir) {
+    const fromName = netFromShort(this.path.basename(this.path.resolve(dir)));
+    if (fromName) return fromName;
+    try {
+      const m = this.fs.readFileSync(this.path.join(dir, WALLET_TOML), 'utf8').match(/^\s*chain_type\s*=\s*"([^"]*)"/m);
+      return m && CHAIN_TYPES[m[1]] || '';
+    } catch (e) {
+      return '';
     }
-
-    return tomlFile;
-
   }
 
-  /* save only default user paths here */
-  updateAppConfig(configKey, userdata){
-
-      let data = userdata;
-      let appConfig = this.appConfig;
-
-      if(appConfig[configKey]){
-
-        if(appConfig[configKey].length >= 1){
-
-          for(let index in appConfig[configKey]){
-            if(appConfig[configKey][index].account == data.account){
-              appConfig[configKey][index].userhomedir = data.userhomedir;
-              appConfig[configKey][index].network     = data.network;
-              appConfig[configKey][index].isdefault   = data.isdefault;
-              data = undefined;
-              break;
-            }
-          }
-        }
-      }
-
-      if(data != undefined){
-        appConfig[configKey].push(data);
-      }
-
-      this.appConfig = appConfig;
-      console.log('account create updateAppConfig', this.appConfig);
-      return this.saveAppConfig();
+  /*
+   * Advanced › Open a wallet folder: a folder holding wallet_data/wallet.seed is listed with its data
+   * in place and a new config dir. Resolves {ok: true, wallet} or {ok: false, reason}:
+   *   'noseed' no wallet_data/wallet.seed in it; 'listed' already in the list;
+   *   'network' unknown network: ask, then call again with it; 'readonly' the settings file is broken
+   */
+  openExistingWallet(dir, network) {
+    if (this.settings.readOnly) return { ok: false, reason: 'readonly' };
+    if (!dir || !this.path.isAbsolute(dir)) return { ok: false, reason: 'noseed' };
+    const dataDir = this.path.resolve(dir);
+    if (!this.fs.existsSync(this.path.join(dataDir, 'wallet_data', 'wallet.seed'))) return { ok: false, reason: 'noseed' };
+    if (this.settings.wallets().some(w => this.path.resolve(w.dataDir) === dataDir)) return { ok: false, reason: 'listed' };
+    const net = NETWORKS.includes(network) ? network : this.networkOfDir(dataDir);
+    if (!net) return { ok: false, reason: 'network' };
+    const dirs = this.newWalletDirs(net);
+    try {
+      const wallet = this.registerWallet({ id: dirs.id, network: net, configDir: dirs.configDir, dataDir, origin: 'opened' });
+      return { ok: true, wallet };
+    } catch (e) {
+      this.discardWalletDirs(dirs);
+      return { ok: false, reason: 'toml', msg: e && e.message };
+    }
   }
+
+  /* --- tomls --- */
+
+  template(name) {
+    return this.fs.readFileSync(this.path.join(this.resourcePath, name), 'utf8');
+  }
+
+  /* the node the wallet is told to use: a public node while the built-in one has not synced yet */
+  walletNodeUrl(settings) {
+    const addr = settings.check_node_api_http_addr || this.defaultEpicNode;
+    return settings.nodesynced == false && addr == 'http://127.0.0.1:3413' ? this.nodeFallBack : addr;
+  }
+
+  /* <configDir>/epic-wallet.toml of the current (or the given) wallet, written whole every time */
+  writeWalletToml(wallet = this.wallet) {
+    if (!wallet) throw new Error('no wallet');
+    const s = wallet.settings;
+    const nodeUrl = this.walletNodeUrl(s);
+    const file = this.path.join(wallet.configDir, WALLET_TOML);
+    const text = renderWalletToml({
+      template: this.template(WALLET_TOML), network: wallet.network, configDir: wallet.configDir, dataDir: wallet.dataDir,
+      nodeUrl, epicboxDomain: s.epicbox_domain || this.epicboxDomain,
+      nodeApiSecretPath: s.nodeInternal ? this.path.join(this.nodeDir(wallet.network), NODE_SECRET) : '',
+    });
+    this.writeFile(file, text);
+    if (wallet.id === this.walletId) {
+      this.walletTOMLPath = file;
+      this.walletNodeAddr = nodeUrl;
+    }
+    return file;
+  }
+
+  /* the built-in node of a network: <root>/node/<net>/ with its toml, foundation.json and an api
+     secret (written here, so a wallet started next to the node finds it at once) */
+  writeNodeToml(network) {
+    const nodeDir = this.nodeDir(network);
+    this.fs.mkdirSync(nodeDir, { recursive: true });
+    const foundationPath = this.path.join(nodeDir, FOUNDATION);
+    if (!this.fs.existsSync(foundationPath)) {
+      this.fs.copyFileSync(this.path.join(this.resourcePath, FOUNDATION), foundationPath);
+    }
+    const apiSecretPath = this.path.join(nodeDir, NODE_SECRET);
+    if (!this.readSecret(apiSecretPath)) {
+      this.fs.writeFileSync(apiSecretPath, randomSecret(), { encoding: 'utf8', mode: 0o600 });
+    }
+    const file = this.path.join(nodeDir, NODE_TOML);
+    this.writeFile(file, renderNodeToml({
+      template: this.template(NODE_TOML), network, nodeDir, chainDir: this.nodeChainDir(network), foundationPath, apiSecretPath,
+    }));
+    return file;
+  }
+
+  /* write via a temp file, so a crash never leaves half a toml */
+  writeFile(file, text) {
+    const tmp = file + '.tmp';
+    this.fs.writeFileSync(tmp, text, { encoding: 'utf8', mode: 0o600 });
+    this.fs.renameSync(tmp, file);
+  }
+
+  readSecret(file) {
+    try {
+      return this.fs.readFileSync(file, 'utf8').toString().trim();
+    } catch (e) {
+      return '';
+    }
+  }
+
+  /* the secrets are read when used: epic-wallet creates them in a new config dir at its first start */
+  get ownerApiSecretPath() { return this.walletConfigDir ? this.path.join(this.walletConfigDir, OWNER_SECRET) : ''; }
+  get ownerApisecret() { return this.ownerApiSecretPath ? this.readSecret(this.ownerApiSecretPath) : ''; }
+  /* the node secret the GUI sends to a local node: the built-in node's, else the wallet's own */
+  get apiSecretPath() {
+    if (!this.walletId) return '';
+    return this.config.nodeInternal ? this.path.join(this.nodeDir(this.defaultAccountNetwork), NODE_SECRET) : this.path.join(this.walletConfigDir, NODE_SECRET);
+  }
+  get apisecret() { return this.apiSecretPath ? this.readSecret(this.apiSecretPath) : ''; }
+
+  /* the built-in node of the current wallet's network: its toml, written again */
+  startCheckNode() {
+    try {
+      this.nodeTOMLPath = this.writeNodeToml(this.defaultAccountNetwork);
+      return true;
+    } catch (e) {
+      console.log('configService.startCheckNode: node toml not written', e && e.message);
+      this.nodeTOMLPath = '';
+      return false;
+    }
+  }
+
+  /*
+   * Before unlocking a wallet: make it the current one and write its toml.
+   *   'login'   ready to start
+   *   'missing' unknown id, or no wallet_data/wallet.seed in its data dir (folder moved or gone)
+   *   'toml'    its toml (or the built-in node's) could not be written
+   */
+  startCheck(walletId) {
+    let w;
+    try { w = this.settings.wallet(walletId); } catch (e) { return 'missing'; }
+    if (!this.fs.existsSync(this.path.join(w.dataDir, 'wallet_data', 'wallet.seed'))) {
+      this.emitter && this.emitter.emit('checkFail', 'wallet folder missing: ' + w.dataDir);
+      return 'missing';
+    }
+    this.resetConfig();
+    this.walletId = w.id;
+    this.defaultAccountNetwork = w.network;
+    this.walletListenerPort = networkPorts(w.network).walletListener;
+    try {
+      this.fs.mkdirSync(w.configDir, { recursive: true });
+      this.writeWalletToml(w);
+      if (w.settings.nodeInternal) this.nodeTOMLPath = this.writeNodeToml(w.network);
+    } catch (e) {
+      this.emitter && this.emitter.emit('checkFail', 'wallet toml not written: ' + (e && e.message));
+      return 'toml';
+    }
+    this.emitter && this.emitter.emit('checkSuccess', 'wallet toml written');
+    return 'login';
+  }
+
+  /* --- another root (Advanced, only while the list is empty; needs a restart: window.api.relaunch) --- */
+
+  locationFile() {
+    return this.paths.defaultRoot ? this.path.join(this.paths.defaultRoot, 'location.json') : '';
+  }
+
+  canMoveRoot() {
+    return !this.settings.readOnly && this.settings.wallets().length === 0 && this.paths.source !== 'env' && !!this.locationFile();
+  }
+
+  setRoot(dir) {
+    if (!this.canMoveRoot() || !dir || !this.path.isAbsolute(dir)) return false;
+    const root = this.path.resolve(dir);
+    if (root === this.path.resolve(this.paths.defaultRoot)) return this.clearRoot();
+    try {
+      this.fs.mkdirSync(root, { recursive: true });
+      this.fs.mkdirSync(this.paths.defaultRoot, { recursive: true });
+      this.writeFile(this.locationFile(), JSON.stringify({ root }, null, 2));
+      return true;
+    } catch (e) {
+      console.log('configService.setRoot', e && e.message);
+      return false;
+    }
+  }
+
+  /* back to the default root */
+  clearRoot() {
+    if (!this.canMoveRoot()) return false;
+    try {
+      if (this.fs.existsSync(this.locationFile())) this.fs.unlinkSync(this.locationFile());
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /* --- processes --- */
 
   /*
    * find epic-wallet, node and Tor processes this app started earlier (a crash, an old session,
    * a background node or Epicbox listener) and close them if user confirms via prompt.
-   * Processes the app did not start (e.g. the user's own CLI wallet or node) are never listed.
+   * Processes the app did not start (e.g. the user's own CLI wallet or node, or an older GUI's)
+   * are never listed.
    */
-  async killEpicProcess(){
+  async killEpicProcess() {
 
     //the node and the Epicbox listener stay if the user runs them in the background
+    const cfg = this.config;
     const roles = ['owner_api', 'listen', 'scan',
-      ...(this.config && this.config.epicbox_background ? [] : ['epicbox']),
-      ...(this.config && !this.config.node_background ? ['node'] : [])];
+      ...(cfg.epicbox_background ? [] : ['epicbox']),
+      ...(!cfg.node_background ? ['node'] : [])];
 
-    //after an update the previous version's node or Epicbox listener may still run, unrecorded:
-    //adopt them once (only the bundled binaries on this account), so they are reused, not doubled
-    const adopted = await nodeChildProcess.adopt({
-      walletBin: this.epicPath, nodeBin: this.epicNodePath, dir: this.defaultAccountWalletdir,
-      nodeConfig: path.join(this.defaultAccountWalletdir, this.nodeTOMLName), network: this.defaultAccountNetwork,
-    }).catch(() => []);
-    adopted.length ? console.log('configService.killEpicProcess adopted', JSON.stringify(adopted)) : null;
-
-    //one process scan for wallet, node and Tor: each scan spawns ps (powershell on Windows, ~1 s there)
-    let killPids = await nodeChildProcess.ownedProcesses(roles, {tor: true, torDirs: [this.defaultAccountWalletdir]});
+    //one process scan for wallet, node and Tor: each scan spawns ps (powershell on Windows, ~1 s there).
+    //Tor of a listener lives in the wallet's data dir (wallet_tor)
+    let killPids = await this.nodeChildProcess.ownedProcesses(roles, {tor: true, torDirs: [this.walletDataDir].filter(Boolean)});
     this.allKilled = true;
 
-    if(killPids.length){
+    if (killPids.length) {
       this.debug ? console.log('configService.killEpicProcess', JSON.stringify(killPids)) : null;
-      let confirmed = await new Promise((resolve) => {
-
-        this.emitter.emit('killEpicProcess', {pid: killPids, callback:async(confirmed)=>{
-          if(confirmed){
-            const killed = await nodeChildProcess.stopPids(killPids.map(p => p.pid));
+      return new Promise((resolve) => {
+        this.emitter.emit('killEpicProcess', {pid: killPids, callback: async (confirmed) => {
+          if (confirmed) {
+            const killed = await this.nodeChildProcess.stopPids(killPids.map(p => p.pid));
             //false when a process could not be killed (or did not exit in time)
             this.allKilled = killed.every(k => k !== false);
             //the ports these processes held, to wait for before starting new ones
@@ -507,456 +437,34 @@ epicbox_port = 443
               ...(has('node') ? [this.getNodeApiPort()] : []),
             ];
             resolve(true);
-          }else{
+          } else {
             resolve(false);
           }
         }});
-
       });
-      return confirmed;
-    }else{
-      return null;
     }
-
-
+    return null;
   }
 
   /* the api port of the built-in node for the current network */
-  getNodeApiPort(){
-    if(this.defaultAccountNetwork == 'floonet'){
-      return 13413;
-    }else if(this.defaultAccountNetwork == 'usernet'){
-      return 23413;
-    }
-    return 3413;
+  getNodeApiPort() {
+    return networkPorts(this.defaultAccountNetwork).nodeApi;
   }
 
   /* after killEpicProcess: wait until the killed processes released their ports (at most timeoutMs) */
-  async waitForKilledPorts(timeoutMs = 5000){
+  async waitForKilledPorts(timeoutMs = 5000) {
     const ports = this.killedPorts || [];
     this.killedPorts = [];
     const started = Date.now();
-    for(const port of ports){
-      while(await window.config.isPortReachable('127.0.0.1', port)){
-        if(Date.now() - started > timeoutMs){
+    for (const port of ports) {
+      while (await this.isPortReachable('127.0.0.1', port)) {
+        if (Date.now() - started > timeoutMs) {
           return false;
         }
         await delay(100);
       }
     }
     return true;
-  }
-
-
-  /* check if the select dir is a valid epic wallet dir */
-  async walletDirExist(selectedDir, updateConfig){
-
-      let walletDir = path.join(selectedDir, 'wallet_data');
-      let tomlFile = path.join(selectedDir, this.walletTOMLName);
-      let configFile = path.join(selectedDir, 'config.json');
-      let walletDirSegements = selectedDir.split(path.sep).reverse();
-      let network = '';
-      if(walletDirSegements.length <= 0){
-
-        return false;
-      }
-      let userdata;
-
-      if(!window.nodeFs.existsSync(walletDir)){
-        return false;
-      }
-      if(window.nodeFs.existsSync(configFile)){
-
-        let config = this.loadConfig(configFile);
-        if(config && config.version == '3.0.0'){
-
-            let account = walletDirSegements[0];
-            if(account == 'main' || account == 'floo' || account == 'user'){
-              account = 'default';
-            }else{
-              walletDirSegements.shift();
-            }
-
-            let networkShortname = walletDirSegements[0];
-            network = config.network;
-            if(networkShortname == 'main'){
-              network = 'mainnet';
-              walletDirSegements.shift();
-            } else if(networkShortname == 'floo'){
-              network = 'floonet';
-              walletDirSegements.shift();
-            }else if(networkShortname == 'user'){
-              network = 'usernet';
-              walletDirSegements.shift();
-            }
-
-            userdata = {
-              account: account,
-              userhomedir: walletDirSegements.reverse().join(path.sep),
-              network: network,
-              isdefault:false,
-
-            }
-
-        }else{
-
-          let account = walletDirSegements[0];
-          if(account == 'main' || account == 'floo' || account == 'user'){
-            account = 'default';
-          }else{
-            walletDirSegements.shift();
-          }
-
-          let networkShortname = walletDirSegements[0];
-          if(networkShortname == 'main'){
-            network = 'mainnet';
-            walletDirSegements.shift();
-          } else if(networkShortname == 'floo'){
-            network = 'floonet';
-            walletDirSegements.shift();
-          }else if(networkShortname == 'user'){
-            network = 'usernet';
-            walletDirSegements.shift();
-          }
-
-          if(network == undefined){
-            let selectedNetwork = await this.emitter.emit('selectNetwork');
-          }
-          userdata = {
-            account: 'default',
-            userhomedir: walletDirSegements.reverse().join(path.sep),
-            network: network,
-            isdefault:false,
-          }
-
-        }
-
-      }else{
-
-        let account = walletDirSegements[0];
-        if(account == 'main' || account == 'floo' || account == 'user'){
-          account = 'default';
-        }else{
-          walletDirSegements.shift();
-        }
-
-        let networkShortname = walletDirSegements[0];
-        if(networkShortname == 'main'){
-          network = 'mainnet';
-          walletDirSegements.shift();
-        } else if(networkShortname == 'floo'){
-          network = 'floonet';
-          walletDirSegements.shift();
-        }else if(networkShortname == 'user'){
-          network = 'usernet';
-          walletDirSegements.shift();
-        }
-
-        if(network == undefined){
-          let selectedNetwork = await this.emitter.emit('selectNetwork');
-        }
-        userdata = {
-          account: account,
-          userhomedir: walletDirSegements.reverse().join(path.sep),
-          network: network,
-          isdefault:false,
-        }
-
-      }
-
-      if(userdata && updateConfig){
-
-        this.updateAppConfig('account_dirs', userdata);
-      }
-
-      return true;
-
-  }
-
-  updateAccountsConfig(newAccountConfig){
-    let parent = this;
-    newAccountConfig.forEach(function(account){
-      parent.updateAppConfig('account_dirs', account);
-    });
-
-  }
-
-  /* check if the folder structure of all accounts is consistence with current app folder structure */
-  async checkAccountsFolderStructure(){
-      let appConfig = this.appConfig['account_dirs'];
-      let move = [];
-      let newAccountconfig = [];
-      for (let account of appConfig){
-
-        if(account.account !== 'default'){
-          //wallet 3.0 folder structure is [wallet dir]/[network type]/[account name]/
-          //wallet 4.0 folder structure is [wallet dir]/[account name]/[network type]/
-          let walletpathV3 = path.join(account.userhomedir, this.getNetworkfolderShortname(account.network), account.account);
-          let walletpathV4 = path.join(account.userhomedir, account.account, this.getNetworkfolderShortname(account.network));
-
-          let pathType = 4;
-          let src = '';
-          let dest = '';
-          if(!await this.walletDirExist(walletpathV4)){
-            if(await this.walletDirExist(walletpathV3)){
-              pathType = 3;
-              src = walletpathV3;
-              dest = walletpathV4
-            }else{
-              pathType = 0;
-            }
-          }
-
-          //if path type == 0 ... no folder exist for account -> prompt for it
-          //if path type == 3 ... update path type to 4 -> prompt for it
-          //if path type == 4 ... all fine, do nothing
-          if(src != '' && dest != '' ){
-
-             move.push(window.nodeFsExtra.move(src, dest));
-             let homedir = path.join(account.userhomedir, account.account);
-             let newAccount = {
-                 account: account.account,
-                 userhomedir: homedir,
-                 network: account.network,
-                 isdefault: false
-             };
-             newAccountconfig.push(newAccount);
-          }
-
-
-        }else{
-
-          console.log('check folder structure for default account');
-
-        }
-      }
-
-      await Promise.all(move).then(values => {
-        console.log('all renamed');
-        if(newAccountconfig.length){
-          this.updateAccountsConfig(newAccountconfig);
-        }
-
-      })
-      .catch(error => {
-        this.debug ? console.log('error move old folder structure', error) : null;
-        return false;
-      });
-      console.log('finish');
-      return true;
-  }
-
-  /* check if app has its config file */
-  appHasAccounts(){
-    if (!window.nodeFs.existsSync(this.appConfigFile)) {
-      //copy default config json to new wallet dir
-      let defaultAppFile = path.join(window.config.getResourcePath(), "default.app.json");
-      window.nodeFs.copyFileSync(defaultAppFile, this.appConfigFile);
-      this.appConfig = {'account_dirs':[]};
-      return false;
-    }else{
-
-      let appConfigContent = window.nodeFs.readFileSync(this.appConfigFile, {encoding:'utf8', flag:'r'})
-
-      try{
-        this.appConfig = JSON.parse(appConfigContent);
-        if(this.appConfig['account_dirs'].length <= 0){
-          return false;
-        }
-
-      }catch(e){
-        return false;
-      }
-    }
-    return true;
-  }
-
-  getNetworkfolderShortname(network){
-
-    let shortName = 'main';
-    if(network == 'floonet'){
-      shortName = 'floo';
-    }else if(network == 'usernet'){
-      shortName = 'user';
-    }
-    return shortName;
-
-  }
-  getNetworkTomlName(network){
-
-    let tomlName = 'Mainnet';
-    if(network == 'floonet'){
-      tomlName = 'Floonet';
-    }else if(network == 'usernet'){
-      tomlName = 'Usernet';
-    }
-    return tomlName;
-
-  }
-  startCheckNode(){
-
-      this.nodeTOMLPath = this.checkServerTomlFile();
-      if(!this.nodeTOMLPath){
-        return false;
-      }
-      return true;
-
-  }
-
-  configVersionOk(){
-
-    if(this.config['version'] != this.configVersion){
-      this.emitter.emit('checkFail', 'config version to old');
-      return false;
-    }
-
-    this.emitter.emit('checkSuccess', 'config version ok');
-    return true;
-
-  }
-
-  async startCheck(account){
-      console.log('start check account', account);
-      console.log('start check this.appConfig', this.appConfig['account_dirs']);
-      this.debug ? console.log('configService.startCheck', account) : null;
-
-      let userHomedir = defaultUserdir;
-      let defaultAccountWalletdir = '';
-      let initWallet = false;
-      let parent = this;
-      let network = '';
-      let networkToml = '';
-      //this fails if user create a wallet without default name
-      if(account == 'default'){
-
-            this.appConfig['account_dirs'].forEach(function(existingAccount){
-                if(existingAccount['account'] == account && existingAccount['userhomedir'] != ''){
-                  userHomedir = existingAccount['userhomedir'];
-                  defaultAccountWalletdir = path.join(userHomedir, parent.getNetworkfolderShortname(existingAccount['network']));
-                  networkToml = parent.getNetworkTomlName(existingAccount['network']);
-                  network = existingAccount['network'];
-                }
-            });
-
-      }else{
-
-          this.appConfig['account_dirs'].forEach(function(existingAccount){
-              if(existingAccount['account'] == account && existingAccount['userhomedir'] != ''){
-                userHomedir = existingAccount['userhomedir'];
-                defaultAccountWalletdir = path.join(userHomedir, parent.getNetworkfolderShortname(existingAccount['network']));
-                networkToml = parent.getNetworkTomlName(existingAccount['network']);
-                network = existingAccount['network'];
-
-              }
-          });
-
-      }
-
-      //await delay(sleepTime);
-
-      //check if user home dir exist.
-      //if home dir is not found then user have to select one
-
-      if (window.nodeFs.existsSync(userHomedir)) {
-          this.emitter.emit('checkSuccess', 'user wallet dir exist');
-      } else {
-          initWallet = true;
-          this.emitter.emit('checkFail', 'user wallet dir does not exist');
-          return 'init';
-      }
-      this.userhomedir = userHomedir;
-      this.defaultAccountWalletdir = defaultAccountWalletdir;
-      this.tomlNetworkname = networkToml;
-      this.defaultAccountNetwork = network;
-
-      console.log('start check userhomedir', this.userhomedir);
-      console.log('start check defaultAccountWalletdir', this.defaultAccountWalletdir);
-
-      //await delay(sleepTime);
-
-      //check if config file exist
-      //TODO: this does not work if user never created a wallet
-      let configFile = path.join(defaultAccountWalletdir, 'config.json');
-      if(this.defaultAccountWalletdir != '' && window.nodeFs.existsSync(this.defaultAccountWalletdir)){
-
-        if (window.nodeFs.existsSync(configFile)) {
-            this.emitter.emit('checkSuccess', 'wallet config file exist');
-        } else {
-            initWallet = true;
-            this.emitter.emit('checkFail', 'wallet config file does not exist');
-            //copy default config json to new wallet dir
-            let defaultConfigFile = path.join(window.config.getResourcePath(), "default.config.json");
-            window.nodeFs.copyFileSync(defaultConfigFile, configFile);
-        }
-        this.configFile = configFile;
-        //await delay(sleepTime);
-
-
-
-
-        //await delay(sleepTime);
-
-      }else{
-        initWallet = true;
-      }
-
-      //if we dont have any epic wallet data prompt user for init or recover a wallet
-      if(initWallet && !account){
-          this.emitter.emit('checkSuccess', 'create new or recover wallet');
-          return 'init'
-      }else{
-
-        //check if api secret file exist
-        let apiSecretFile = path.join(defaultAccountWalletdir, '.api_secret');
-        if (window.nodeFs.existsSync(apiSecretFile) && window.nodeFs.readFileSync(apiSecretFile, {encoding:'utf8', flag:'r'})) {
-
-            this.apiSecretPath = apiSecretFile;
-            this.apisecret = window.nodeFs.readFileSync(this.apiSecretPath, {encoding:'utf8', flag:'r'}).toString().trim();
-            this.emitter.emit('checkSuccess', 'node api secret "' + apiSecretFile.replace(defaultAccountWalletdir, '~') + '" file exist and readable');
-
-        } else {
-            this.emitter.emit('checkFail', 'node api secret "' + apiSecretFile.replace(defaultAccountWalletdir, '~') + '" file does not exist or readable');
-        }
-
-        //await delay(sleepTime);
-
-        //check if owner api secret file exist
-        let ownerApiSecretFile = path.join(defaultAccountWalletdir, '.owner_api_secret');
-
-        if (window.nodeFs.existsSync(ownerApiSecretFile) && window.nodeFs.readFileSync(ownerApiSecretFile, {encoding:'utf8', flag:'r'})) {
-
-            this.ownerApiSecretPath = ownerApiSecretFile;
-            this.ownerApisecret = window.nodeFs.readFileSync(this.ownerApiSecretPath, {encoding:'utf8', flag:'r'}).toString().trim();
-            this.emitter.emit('checkSuccess', 'owner api secret "' + ownerApiSecretFile.replace(defaultAccountWalletdir, '~') + '" file exist and readable');
-
-        } else {
-            this.emitter.emit('checkFail', 'owner api secret "' + ownerApiSecretFile.replace(defaultAccountWalletdir, '~') + '" file does not exist or readable');
-        }
-        //await delay(sleepTime);
-
-        //make some settings
-        //load settings before change wallet toml
-        this.config = this.loadConfig(this.configFile);
-
-        this.walletTOMLPath = this.checkTomlFile(defaultAccountWalletdir);
-        if(!this.walletTOMLPath){
-          return 'toml';
-        }
-
-        if(!this.configVersionOk()){
-          return 'settings'
-        }
-        if(this.config['firstTime']){
-          this.accountExist(account);
-          return 'settings'
-        }
-
-
-
-      }
-
-      return 'login';
-
   }
 
 }

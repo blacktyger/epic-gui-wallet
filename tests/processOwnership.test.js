@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   redactCmd, redactArgs, redactProcess, describeSpawn, cmdMatchesEntry, findOwned, torrcPaths,
-  createProcessRegistry, createPidCheck, pickAdoptable, argsAfterBin, validEntry, SCAN_PATTERN,
+  createProcessRegistry, createPidCheck, argsAfterBin, validEntry, SCAN_PATTERN,
 } from '../src/shared/processOwnership.js';
 
 const BIN = '/opt/EpicWallet/resources/bin/linux/epic-wallet';
@@ -475,69 +475,30 @@ test('M3: two writers (main and preload) merge, neither drops the other\'s recor
   }
 });
 
-test('M1: pickAdoptable takes only the bundled binaries on this account', () => {
-  const nodeConfig = DIR + '/epic-server.toml';
-  const opts = { walletBin: BIN, nodeBin: NODE, dir: DIR, nodeConfig, network: 'mainnet' };
+test('an imported wallet: the record is the config dir (-c), Tor is found in the data dir (-t)', () => {
+  const CONF = '/home/u/.epic-gui/wallets/w2';
+  const DATA = '/home/u/.epic/alpha/main';
+  const listen = { pid: 20, at: 1, ...describeSpawn(BIN, ['--pass', 'x', '-t', DATA, '-c', CONF, 'listen', '--method', 'http']) };
+  assert.equal(listen.dir, CONF);
+  assert.equal(listen.topDir, DATA);
+  assert.ok(validEntry(listen, false));
+  assert.ok(!validEntry({ ...listen, topDir: 'relative' }, false));
+  //same -c and -t (a wallet made in 6.1): no topDir
+  assert.equal(describeSpawn(BIN, ['-t', CONF, '-c', CONF, 'listen', '--method', 'http']).topDir, undefined);
   const procs = [
-    proc(1, `${BIN} --pass x -t ${DIR} -c ${DIR} listen --method epicbox --no_tor`),
-    proc(2, `${NODE} server --config_file ${nodeConfig} run`),
-    proc(3, `${BIN} --offline_mode -c ${DIR} --pass x owner_api`),
-    proc(4, `/home/u/epic/epic-wallet -t ${DIR} -c ${DIR} listen --method epicbox`), //the user's own binary
-    proc(5, `${BIN} -t /home/u/epicguiwallet/floo -c /home/u/epicguiwallet/floo listen --method epicbox`), //another account
-    proc(6, `${NODE} --floonet server --config_file ${nodeConfig} run`), //another network
-    proc(7, `/opt/Other/resources/bin/linux/epic server --config_file ${nodeConfig} run`), //another app's bundle
-    proc(8, `${NODE} server run`), //no config: can't tell
-    proc(9, `${BIN} --pass x -c ${DIR} init`), //not a tracked command
+    proc(20, `${BIN} --pass x -t ${DATA} -c ${CONF} listen --method http`),
+    proc(21, `/usr/bin/tor -f ${DATA}/wallet_tor/torrc`, 20),
+    proc(22, `/usr/bin/tor -f ${CONF}/wallet_tor/torrc`, 1),
   ];
-  const picked = pickAdoptable(procs, opts);
-  assert.deepEqual(picked, [
-    { pid: 1, role: 'epicbox', bin: BIN, dir: DIR, network: 'mainnet' },
-    { pid: 2, role: 'node', bin: NODE, dir: nodeConfig, network: 'mainnet' },
-    { pid: 3, role: 'owner_api', bin: BIN, dir: DIR, network: 'mainnet' },
-  ]);
-  assert.ok(!JSON.stringify(picked).includes('--pass'));
-  //they are then found like spawned ones
-  const entries = picked.map(e => ({ at: 1, ...e }));
-  assert.deepEqual(findOwned(entries, procs).owned.map(p => p.pid), [1, 2, 3]);
-  //never a binary outside the app's resources/bin, even if the caller passes one
-  assert.deepEqual(pickAdoptable([proc(4, `/home/u/epic/epic-wallet -t ${DIR} -c ${DIR} listen --method epicbox`)],
-    { ...opts, walletBin: '/home/u/epic/epic-wallet' }), []);
-  assert.deepEqual(pickAdoptable(procs, { ...opts, dir: 'relative' }).map(e => e.pid), [2]);
-  assert.deepEqual(pickAdoptable(procs, { ...opts, network: 'floonet' }).map(e => e.pid), [1, 3, 6]);
-
-  //Windows: the cmd.exe wrapper of the old version, not its child too (taskkill /t takes it along)
-  const wb = WBIN;
-  const wprocs = [
-    { pid: 50, ppid: 4, cmd: `C:\\WINDOWS\\system32\\cmd.exe /d /s /c ""${wb}" --pass x -t "${WDIR}" -c "${WDIR}" listen --method epicbox --no_tor"` },
-    { pid: 51, ppid: 50, cmd: `"${wb}" --pass x -t "${WDIR}" -c "${WDIR}" listen --method epicbox --no_tor` },
-  ];
-  assert.deepEqual(pickAdoptable(wprocs, { walletBin: '"' + wb + '"', dir: WDIR.toLowerCase(), win: true }).map(e => [e.pid, e.role]), [[50, 'epicbox']]);
-  //the wrapper is gone, its child still runs: the child
-  assert.deepEqual(pickAdoptable(wprocs.slice(1), { walletBin: '"' + wb + '"', dir: WDIR, win: true }).map(e => e.pid), [51]);
+  assert.deepEqual(findOwned([listen], procs, { tor: true }).owned.map(p => [p.pid, p.role]), [[20, 'listen'], [21, 'tor']]);
+  //the listener is found by its config dir
+  assert.deepEqual(findOwned([listen], procs, { dir: CONF }).owned.map(p => p.pid), [20]);
+  assert.deepEqual(findOwned([listen], procs, { dir: DATA }).owned.map(p => p.pid), []);
 });
 
-test('M1: adopt runs once, only while there is no record file', async () => {
-  const { file, done } = tmpFile();
-  try {
-    const sys = fakeSystem([]);
-    const reg = createProcessRegistry({ fs, file, findProcess: sys.findProcess, kill: sys.kill, pidAlive: sys.pidAlive });
-    const opts = { walletBin: BIN, nodeBin: NODE, dir: DIR, nodeConfig: DIR + '/epic-server.toml', network: 'mainnet' };
-    //nothing runs (or the scan failed): no file, so the next start tries again
-    assert.deepEqual(await reg.adopt(opts), []);
-    assert.ok(!fs.existsSync(file));
-    sys.procs.push(proc(1, `${BIN} --pass x -t ${DIR} -c ${DIR} listen --method epicbox --no_tor`));
-    sys.procs.push(proc(2, `/home/u/epic/epic-wallet -c ${DIR} owner_api`));
-    assert.deepEqual((await reg.adopt(opts)).map(e => e.pid), [1]);
-    assert.ok(!fs.readFileSync(file, 'utf8').includes('--pass'));
-    assert.deepEqual((await reg.list(['epicbox'], { dir: DIR })).map(p => p.pid), [1], 'reused, not started again');
-    //once: a later start adopts nothing more
-    sys.procs.push(proc(3, `${BIN} -c ${DIR} owner_api`));
-    assert.deepEqual(await reg.adopt(opts), []);
-    assert.deepEqual(reg.load().map(e => e.pid), [1]);
-    //a failing scan does not throw
-    const reg2 = createProcessRegistry({ fs, file: file + '2', findProcess: async () => { throw new Error('ps'); }, kill: sys.kill });
-    assert.deepEqual(await reg2.adopt(opts), []);
-  } finally {
-    done();
-  }
+test('no adoption of unrecorded processes any more: 6.1 starts with its own record file', async () => {
+  const mod = await import('../src/shared/processOwnership.js');
+  assert.equal(mod.pickAdoptable, undefined);
+  const reg = createProcessRegistry({ fs: { readFileSync: () => '[]' }, file: '/x/p.json', findProcess: async () => [], kill: async () => true });
+  assert.equal(reg.adopt, undefined);
 });

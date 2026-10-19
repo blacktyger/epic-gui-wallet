@@ -71,15 +71,8 @@ module.exports = {
               ]
             },
             {
-              "from": "resources/default.app.json",
-              "to": "Resources/default.app.json",
-              "filter": [
-                "**/*"
-              ]
-            },
-            {
-              "from": "resources/default.config.json",
-              "to": "Resources/default.config.json",
+              "from": "resources/epic-wallet.toml",
+              "to": "Resources/epic-wallet.toml",
               "filter": [
                 "**/*"
               ]
@@ -113,15 +106,8 @@ module.exports = {
             },
 
             {
-              "from": "resources/default.app.json",
-              "to": "Resources/default.app.json",
-              "filter": [
-                "**/*"
-              ]
-            },
-            {
-              "from": "resources/default.config.json",
-              "to": "Resources/default.config.json",
+              "from": "resources/epic-wallet.toml",
+              "to": "Resources/epic-wallet.toml",
               "filter": [
                 "**/*"
               ]
@@ -165,15 +151,8 @@ module.exports = {
               ]
             },
             {
-              "from": "resources/default.app.json",
-              "to": "resources/default.app.json",
-              "filter": [
-                "**/*"
-              ]
-            },
-            {
-              "from": "resources/default.config.json",
-              "to": "resources/default.config.json",
+              "from": "resources/epic-wallet.toml",
+              "to": "resources/epic-wallet.toml",
               "filter": [
                 "**/*"
               ]

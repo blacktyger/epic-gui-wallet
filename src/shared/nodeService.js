@@ -58,10 +58,14 @@ class NodeService {
         return false;
       }
 
+      //always with 6.1's own toml (<root>/node/<net>/epic-server.toml): without --config_file the
+      //node would use ~/.epic. The preload starts it in that folder.
+      if(!this.configService.nodeTOMLPath && !this.configService.startCheckNode()){
+        return false;
+      }
       let args = [
         ...(this.configService.defaultAccountNetwork != 'mainnet' ? ['--' + this.configService.defaultAccountNetwork] : []),
-        ...(this.configService.nodeTOMLPath != '' ? ['server', '--config_file', this.configService.nodeTOMLPath, 'run'] : ['server', 'run']),
-
+        'server', '--config_file', this.configService.nodeTOMLPath, 'run',
       ];
 
       let nodeOpenId = await window.nodeChildProcess.execNode(this.configService.epicNodePath, args, this.configService.platform);
