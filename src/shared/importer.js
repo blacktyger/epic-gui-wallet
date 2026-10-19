@@ -229,14 +229,14 @@ export function createImporter({ configService, userService, addressbookService,
     return { marked };
   }
 
-  /* the chain data on this machine, for the built-in node (Settings: shared/chainOffer.js); [] on failure */
+  /* the chain data on this machine, for the built-in node (Settings: shared/chainOffer.js); null when the scan failed */
   async function scanChains() {
     try {
       const res = await legacyBridge.scan({ known: [], chainsOnly: true }) || {};
       return Array.isArray(res.chains) ? res.chains : [];
     } catch (e) {
       log('chain scan failed: ' + (e && e.message ? e.message : e));
-      return [];
+      return null;
     }
   }
 

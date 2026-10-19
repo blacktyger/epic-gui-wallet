@@ -257,12 +257,15 @@ import { formatBytes, formatDate } from "@/components/wallets";
         if (!ask) return true;
 
         this.chainChecking = true;
-        let offer = null;
+        let chains = null;
         try {
-          offer = pickOffer(await this.$importer.scanChains(), network);
+          chains = await this.$importer.scanChains();
         } finally {
           this.chainChecking = false;
         }
+        //the scan failed: nothing is kept, so it runs again at the next save
+        if (!chains) return true;
+        const offer = pickOffer(chains, network);
         if (!offer) {
           cs.settings.setChainOffer(network, offerRecord('none'));
           return true;
