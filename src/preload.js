@@ -10,6 +10,7 @@ import { spawnCommand, plainBin, epicCwd } from './shared/spawnCommand';
 import { parseListenerLine } from './shared/epicboxListener';
 import { createScopedFs, isInside } from './shared/security';
 import { checkSpawnArgs } from './shared/walletArgs';
+import { pickedReadDirs } from './shared/walletFolder';
 
 const moment = require('moment');
 const base32 = require('rfc-3548-b32');
@@ -766,12 +767,11 @@ contextBridge.exposeInMainWorld('api', {
         return r;
     },
     //Open a wallet folder: the dialog, and what was picked worked out to wallet folders (background.js);
-    //the picked folder and the wallets found from it may then be read (wallet.seed, epic-wallet.toml)
+    //only the wallets found from it may then be read (wallet.seed, epic-wallet.toml), not the picked folder
     pickWalletFolder: async (title) => {
         const r = await ipcRenderer.invoke('pick-wallet-folder', String(title || ''));
         if(r && !r.canceled){
-          strings([r.picked]).forEach(d => readDirs.add(d));
-          for(const w of (Array.isArray(r.wallets) ? r.wallets : [])) strings([w && w.dir]).forEach(d => readDirs.add(d));
+          strings(pickedReadDirs(r)).forEach(d => readDirs.add(d));
         }
         return r;
     },

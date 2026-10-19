@@ -100,3 +100,11 @@ function networkOf(fs, pathMod, dir) {
   return (short && netFromShort(short))
     || tomlNetwork(tryDo(() => fs.readFileSync(pathMod.join(dir, 'epic-wallet.toml'), 'utf8'), ''));
 }
+
+/* After Open a wallet folder: the folders the renderer may read from now on. Only the wallet
+   folders worked out from the pick (r.wallets[].dir), never the picked folder itself, which can be
+   any folder on the disk (feedback #32). */
+export function pickedReadDirs(r) {
+  if (!r || r.canceled || !Array.isArray(r.wallets)) return [];
+  return r.wallets.map(w => w && w.dir).filter(d => typeof d === 'string' && d !== '');
+}
