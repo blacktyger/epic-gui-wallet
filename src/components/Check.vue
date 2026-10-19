@@ -110,45 +110,9 @@ export default {
     }
 
   },
-  created() {
-      window.nodeChildProcess.on('scan-finish', () => {
-        if(this.checking){
-          log.debug('Got walletCheckFinished message.')
-          this.checking = false;
-          this.checkOutputs = [];
-          this.emitter.emit('app.update');
-          this.$toast.success(this.$t("msg.check.scan_finished"));
-        }
-
-      });
-
-      window.nodeChildProcess.on('scan-error', () => {
-        if(this.checking){
-
-          this.$toast.error(this.$t("msg.check.error_scan"));
-        }
-
-      })
-
-  },
-  mounted() {
-    // handle reply from the backend
-    window.nodeChildProcess.on('scan-stdout', (payload) => {
-
-      let lines = payload.data.split("\n");
-      for(var i = 0;i<lines.length;i++){
-        let cleanString = lines[i].replace(/^.+(?:WARN\s|DEBUG\s)/gm, '');
-        if(cleanString !== lines[i]){
-          this.checkOutputs.unshift("\n"+cleanString);
-        }
-      }
-
-    });
-
-  },
   methods: {
 
-    start(){
+    async start(){
       this.resetFormErrors();
 
       let isFormAllValid = [];
@@ -158,8 +122,27 @@ export default {
       //check now requires settings
       if(!isFormAllValid.includes(false)){
         this.checking = true;
+        this.checkOutputs = [];
 
-        this.$walletService.check(this.passwordField.defaultValue, this.delete_unconfirmed);
+        const res = await this.$walletService.check(this.passwordField.defaultValue, this.delete_unconfirmed, (line) => {
+          if(this.checking && line){
+            this.checkOutputs.unshift("\n" + line);
+          }
+        });
+
+        if(res.stopped || !this.checking){
+          return;
+        }
+        this.checking = false;
+        this.checkOutputs = [];
+        if(res.success){
+          log.debug('Wallet check finished.')
+          this.emitter.emit('app.update');
+          this.$toast.success(this.$t("msg.check.scan_finished"));
+        }else{
+          log.debug('Wallet check failed: ' + res.msg)
+          this.$toast.error(res.wrongPassword ? this.$t("msg.wrongPassword") : this.$t("msg.check.error_scan"));
+        }
       }
     },
 
