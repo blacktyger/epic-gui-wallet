@@ -159,7 +159,9 @@ async function spawnPty(cmd, args, kind, secrets){
   ptyChildren.set(token, {deliver: (what, v) => queue ? queue.push([what, v]) : emit(what, v)});
   let r;
   try{
-    //in the wallet's config dir (-c), as spawnEpic: epic-wallet 4.1.0 reads an epic-wallet.toml in its working dir first
+    //in the wallet's config dir (-c), as spawnEpic: epic-wallet 4.1.0 reads an epic-wallet.toml in its working
+    //dir first. init / init -r: walletService.initWallet made that dir (configService.newWalletDirs, 0700)
+    //before the start; ptyHost refuses a dir that doesn't exist
     const cwd = epicCwd(args) || undefined;
     r = await ipcRenderer.invoke('pty-start', Object.assign({token, cmd: plainBin(cmd), args: (args || []).map(String), kind, cwd}, secrets || {}));
   }catch(e){
