@@ -47,11 +47,12 @@ function withTimeout(promise, ms, what) {
   return Promise.race([promise, t]).finally(() => clearTimeout(timer));
 }
 
-async function readOne({ session, BrowserWindow, fs, path, root, tmpDir, profile, log }) {
+async function readOne({ session, BrowserWindow, fs, path, root, tmpDir, profile, log, onCopy }) {
   const src = path.join(profile.dir, 'IndexedDB');
   if (!fs.existsSync(src)) return null;
   fs.mkdirSync(tmpDir, { recursive: true });
   const tmp = fs.mkdtempSync(path.join(tmpDir, 'legacy-profile-'));
+  onCopy(path.basename(tmp));
   let ses = null, win = null;
   try {
     //only the IndexedDB dir: no caches, cookies or local storage of the old app are copied
@@ -92,9 +93,10 @@ async function readOne({ session, BrowserWindow, fs, path, root, tmpDir, profile
  * electron: {session, BrowserWindow} from 'electron' (after app 'ready'; the app:// scheme must be
  * registered as privileged, as background.js does); fs, path: node's; tmpDir: a dir of ours
  * (<root>/tmp/import, under 6.1's own folder); profiles: appPaths.legacyPaths().profiles.
+ * onCopy(name): called with the name of each temp copy made (the cleaner at quit removes those).
  * → [{app, dir, users, contacts}] for each profile that could be read; never throws.
  */
-export async function readLegacyProfiles({ session, BrowserWindow, fs, path, root, tmpDir, profiles, log = () => {} }) {
+export async function readLegacyProfiles({ session, BrowserWindow, fs, path, root, tmpDir, profiles, log = () => {}, onCopy = () => {} }) {
   //copies left by earlier runs (background.js also removes them at every start; scans run one at a time)
   await cleanLeftoverImport({ fs, path, root, log, retries: 2, delayMs: 100 });
   const out = [];
@@ -103,7 +105,7 @@ export async function readLegacyProfiles({ session, BrowserWindow, fs, path, roo
     const known = PROFILE_NAMES.find(n => n.app === p.app && n.name === path.basename(p.dir || ''));
     if (!known || !path.isAbsolute(p.dir)) { log('legacy profile: not accepted: ' + p.dir); continue; }
     try {
-      const r = await readOne({ session, BrowserWindow, fs, path, root, tmpDir, profile: p, log });
+      const r = await readOne({ session, BrowserWindow, fs, path, root, tmpDir, profile: p, log, onCopy });
       if (r) out.push(r);
     } catch (e) {
       log('legacy profile ' + p.dir + ': ' + (e && e.message));

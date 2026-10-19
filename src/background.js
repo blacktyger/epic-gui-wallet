@@ -9,7 +9,7 @@ import { createProcessRegistry, createPidCheck } from './shared/processOwnership
 import { resolveRoot, layout, legacyPaths } from './shared/appPaths'
 import { scanLegacy } from './shared/legacyScan'
 import { readLegacyProfiles } from './legacyProfile'
-import { cleanLeftoverImport, cleanImportNow, spawnAfterExitCleaner } from './shared/tmpCleanup.js'
+import { cleanLeftoverImport, cleanImportNow, importCopyNames, spawnAfterExitCleaner } from './shared/tmpCleanup.js'
 import { createPtyHost } from './shared/ptyHost'
 import { createSessionSecret } from './shared/sessionSecret'
 import { registerSessionIpc, wipeWithWindow, wipeWithApp } from './shared/sessionIpc'
@@ -414,14 +414,17 @@ autoUpdater.on('error', (err) => {
 //the importer's temp copy (<root>/tmp/import): removed now; what the reading session still locks
 //(Windows, until this process exits) a detached cleaner removes right after the exit, else the next start.
 //After a read the cleaner runs even when the copy is gone now: Chromium flushes the reading session's
-//caches into it again as the app exits (Linux too)
-let importReadThisRun = false;
+//caches into it again as the app exits (Linux too). The cleaner removes only the copies named to it
+//(this run's, and any left now), never one a next start of the app is reading
+const importCopies = new Set();
 app.on('will-quit', () => {
   if (!primaryInstance) return;
   try {
-    if (!cleanImportNow({ fs, path, root: appLayout.root }) || importReadThisRun) {
+    const left = importCopyNames({ fs, path, root: appLayout.root });
+    if (!cleanImportNow({ fs, path, root: appLayout.root }) || importCopies.size) {
       log.info('import temp copy: removed after the exit');
-      spawnAfterExitCleaner({ spawn, execPath: process.execPath, pid: process.pid, root: appLayout.root, env: process.env, log: (m) => log.info(m) });
+      spawnAfterExitCleaner({ spawn, execPath: process.execPath, pid: process.pid, root: appLayout.root,
+        names: [...new Set([...importCopies, ...left])], env: process.env, log: (m) => log.info(m) });
     }
   } catch (e) { /* never holds up the quit */ }
 });
@@ -556,9 +559,8 @@ async function legacyScan({ known } = {}){
   const legacy = legacyPaths({ platform: process.platform, env: process.env, home: os.homedir(), appData: app.getPath('appData'), pathMod: path });
   const scan = scanLegacy({ fs, pathMod: path, legacy, known: Array.isArray(known) ? known.filter(k => typeof k === 'string') : [] });
   //the old IndexedDB is read (from a copy) only when there is something to import
-  if (scan.wallets.length) importReadThisRun = true;
   const profiles = scan.wallets.length ? await readLegacyProfiles({ session, BrowserWindow, fs, path, root: appLayout.root,
-    tmpDir: path.join(appLayout.root, 'tmp', 'import'), profiles: legacy.profiles, log: (m) => log.info(m) }) : [];
+    tmpDir: path.join(appLayout.root, 'tmp', 'import'), profiles: legacy.profiles, log: (m) => log.info(m), onCopy: (n) => importCopies.add(n) }) : [];
   return { ...scan, profiles };
 }
 

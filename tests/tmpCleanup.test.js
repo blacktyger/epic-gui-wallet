@@ -4,9 +4,9 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import os from 'node:os';
 import realFs from 'node:fs';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import {
-  removeTmpDir, cleanLeftoverImport, cleanImportNow, isInsideTmp, importTmpDir, AFTER_EXIT_CLEANER, spawnAfterExitCleaner,
+  removeTmpDir, cleanLeftoverImport, cleanImportNow, importCopyNames, isInsideTmp, importTmpDir, AFTER_EXIT_CLEANER, spawnAfterExitCleaner,
 } from '../src/shared/tmpCleanup.js';
 
 const P = path.posix, W = path.win32;
@@ -103,29 +103,49 @@ test('at quit: cleanImportNow removes the copies and the empty folders, true whe
   assert.equal(cleanImportNow({ fs: locked, path: P, root: ROOT }), false);
 });
 
-test('after exit: the cleaner script waits for the pid to go, then removes the copies and empty folders', () => {
+test('after exit: the cleaner waits for the pid to go, then removes only the copies named to it', async () => {
   const r = realRoot();
   try {
+    realFs.mkdirSync(path.join(r.imp, 'legacy-profile-next'));   //a next start's copy: not named, kept
     realFs.writeFileSync(path.join(r.imp, 'mine.txt'), 'keep');
-    //a pid that has exited: the cleaner starts at once
+    assert.deepEqual(importCopyNames({ fs: realFs, path, root: r.root }).sort(), ['legacy-profile-a', 'legacy-profile-b', 'legacy-profile-next']);
+    //a process that lives about a second: the cleaner must wait for it
+    const app = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 1000)']);
+    const started = Date.now();
+    //run without blocking this process, so it reaps the app child when that exits
+    const status = await new Promise((resolve) => {
+      const c = spawn(process.execPath, ['-e', AFTER_EXIT_CLEANER, String(app.pid), r.root,
+        'legacy-profile-a', 'legacy-profile-b', '../x', 'legacy-profile-../..', 'legacy-profile-a/..', 'mine.txt'], { timeout: 20000 });
+      c.on('exit', resolve);
+    });
+    assert.equal(status, 0);
+    assert.ok(Date.now() - started >= 700, 'waited for the app to exit');
+    assert.deepEqual(realFs.readdirSync(r.imp).sort(), ['legacy-profile-next', 'mine.txt']);
+    assert.ok(realFs.existsSync(r.root));
+  } finally { r.done(); }
+});
+
+test('after exit: tmp/import and tmp go once empty; no names: nothing is done', () => {
+  const r = realRoot();
+  try {
     const gone = spawnSync(process.execPath, ['-e', '0']).pid;
-    const res = spawnSync(process.execPath, ['-e', AFTER_EXIT_CLEANER, String(gone), r.root], { timeout: 20000 });
-    assert.equal(res.status, 0, String(res.stderr));
-    assert.deepEqual(realFs.readdirSync(r.imp), ['mine.txt']);
-    realFs.rmSync(path.join(r.imp, 'mine.txt'));
     spawnSync(process.execPath, ['-e', AFTER_EXIT_CLEANER, String(gone), r.root], { timeout: 20000 });
+    assert.equal(realFs.readdirSync(r.imp).length, 2);
+    spawnSync(process.execPath, ['-e', AFTER_EXIT_CLEANER, String(gone), r.root, 'legacy-profile-a', 'legacy-profile-b'], { timeout: 20000 });
     assert.equal(realFs.existsSync(path.join(r.root, 'tmp')), false);
   } finally { r.done(); }
 });
 
-test('spawnAfterExitCleaner: detached, the app binary as node, never throws', () => {
+test('spawnAfterExitCleaner: detached, the app binary as node, the names passed; none: not started; never throws', () => {
   const calls = [];
-  const spawn = (cmd, args, opts) => { calls.push({ cmd, args, opts }); return { on() {}, unref() {} }; };
-  assert.equal(spawnAfterExitCleaner({ spawn, execPath: '/opt/app/epic', pid: 42, root: ROOT, env: { A: '1' } }), true);
+  const spawnFn = (cmd, args, opts) => { calls.push({ cmd, args, opts }); return { on() {}, unref() {} }; };
+  assert.equal(spawnAfterExitCleaner({ spawn: spawnFn, execPath: '/opt/app/epic', pid: 42, root: ROOT, names: ['legacy-profile-x'], env: { A: '1' } }), true);
   assert.equal(calls[0].cmd, '/opt/app/epic');
-  assert.deepEqual(calls[0].args.slice(2), ['42', ROOT]);
+  assert.deepEqual(calls[0].args.slice(2), ['42', ROOT, 'legacy-profile-x']);
   assert.equal(calls[0].opts.detached, true);
   assert.equal(calls[0].opts.env.ELECTRON_RUN_AS_NODE, '1');
   assert.equal(calls[0].opts.env.A, '1');
-  assert.equal(spawnAfterExitCleaner({ spawn: () => { throw new Error('no'); }, execPath: 'x', pid: 1, root: ROOT }), false);
+  assert.equal(spawnAfterExitCleaner({ spawn: spawnFn, execPath: 'x', pid: 1, root: ROOT }), false);
+  assert.equal(calls.length, 1);
+  assert.equal(spawnAfterExitCleaner({ spawn: () => { throw new Error('no'); }, execPath: 'x', pid: 1, root: ROOT, names: ['legacy-profile-x'] }), false);
 });

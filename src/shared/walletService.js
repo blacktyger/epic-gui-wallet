@@ -666,6 +666,7 @@ class WalletService {
           this.epicboxState({state: now.live.state == 'paused' ? 'paused' : 'listening', server: now.live.url || serverUrl(cfg), address: now.live.address, pid: now.live.pid});
           return {success: true, reused: true, server: cfg};
         }
+        let checkedNow = null;
         if(now){
           console.log('[epicbox] restarting our listener (' + (now.live ? 'on ' + serverUrl(now.server) : 'started earlier, ' + (now.server.unknown ? 'server unknown' : 'on ' + serverUrl(now.server))) + '), configured: ' + serverUrl(cfg));
           this.epicboxState({state: 'switching', server: serverUrl(cfg), address: ''});
@@ -673,24 +674,33 @@ class WalletService {
             return {success: false};
           }
           if(!now.server.unknown && !sameServer(now.server, cfg)){
-            const checked = await this.checkOldEpicbox(now.server, session);
-            //a check that didn't run (locked, wallet switched) stays pending for the next start
-            if(session === this.epicboxSession && checked && checked.why != 'cancelled' && checked.why != 'not_started'){
-              this.setPendingEpicboxCheck(null);
-            }
+            await this.checkOldEpicboxOnce(now.server, session);
+            checkedNow = now.server;
           }
         }
         //a server change that was not applied then ("Not now", a lock during the switch): the
-        //server the listener was on is checked once now
+        //server the listener was on is checked once now (not twice: not when it was just checked)
         const pending = this.pendingEpicboxCheck();
-        if(pending && !sameServer(pending, cfg)){
-          await this.checkOldEpicbox(pending, session);
-        }
-        if(pending && session === this.epicboxSession){
-          this.setPendingEpicboxCheck(null);
+        if(pending && sameServer(pending, cfg)){
+          //back on that server: its slates come to the listener
+          if(session === this.epicboxSession){
+            this.setPendingEpicboxCheck(null);
+          }
+        }else if(pending && !(checkedNow && sameServer(pending, checkedNow))){
+          await this.checkOldEpicboxOnce(pending, session);
         }
         return this.startEpicboxNow(cfg, session);
       });
+    }
+
+    /* checkOldEpicbox, and the pending check cleared once it ran: one that didn't (locked, wallet
+       switched, the check listener didn't start) stays pending for the next start */
+    async checkOldEpicboxOnce(server, session){
+      const checked = await this.checkOldEpicbox(server, session);
+      if(session === this.epicboxSession && checked && checked.why != 'cancelled' && checked.why != 'not_started'){
+        this.setPendingEpicboxCheck(null);
+      }
+      return checked;
     }
 
     /* the old server still to be checked once (a server change the listener did not follow yet),

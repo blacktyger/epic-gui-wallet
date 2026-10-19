@@ -70,6 +70,11 @@ function leftoverCopies(fs, path, root) {
   }
 }
 
+/* the names of the importer's copies now in <root>/tmp/import */
+export function importCopyNames({ fs, path, root }) {
+  return rootOk(root, path) ? leftoverCopies(fs, path, root).map((d) => path.basename(d)) : [];
+}
+
 /* at start: remove the importer's copies left by an earlier run, then the folders once empty.
    → true when no copy is left */
 export async function cleanLeftoverImport({ fs, path, root, log = () => {}, ...opts }) {
@@ -100,23 +105,23 @@ export function cleanImportNow({ fs, path, root }) {
 /*
  * What is still locked at quit (Windows: the reading session keeps its leveldb open until the app
  * exits) is removed right after the app exits by this script, run detached by the app's own binary
- * as plain node (ELECTRON_RUN_AS_NODE) with the args <app pid> <root>: it waits for the pid to go
- * (at most a minute), then removes <root>/tmp/import/legacy-profile-* (20 tries, half a second
- * apart) and the two folders once empty. Anything it can't remove, the next start does.
+ * as plain node (ELECTRON_RUN_AS_NODE) with the args <app pid> <root> <copy name>...: it waits for
+ * the pid to go (at most a minute), then removes those copies, only legacy-profile-* names in
+ * <root>/tmp/import (20 tries, half a second apart; never a copy a next start of the app is
+ * reading), and the two folders once empty. Anything it can't remove, the next start does.
  */
 export const AFTER_EXIT_CLEANER = `
 const fs = require('fs'), path = require('path');
-const [pid, root] = process.argv.slice(1);
-if (!root || !path.isAbsolute(root) || !(Number(pid) > 0)) process.exit(0);
+const [pid, root, ...given] = process.argv.slice(1);
+const names = given.filter((n) => n.startsWith(${JSON.stringify(PROFILE_PREFIX)}) && path.posix.basename(n) === n && path.win32.basename(n) === n && !n.includes('..'));
+if (!root || !path.isAbsolute(root) || !(Number(pid) > 0) || !names.length) process.exit(0);
 const imp = path.join(root, 'tmp', 'import');
 const alive = () => { try { process.kill(Number(pid), 0); return true; } catch (e) { return e.code === 'EPERM'; } };
 const started = Date.now();
 let tries = 0;
 const clean = () => {
-  let left = 0, names = [];
-  try { names = fs.readdirSync(imp); } catch (e) { names = []; }
+  let left = 0;
   for (const n of names) {
-    if (!n.startsWith(${JSON.stringify(PROFILE_PREFIX)})) continue;
     try { fs.rmSync(path.join(imp, n), { recursive: true, force: true }); } catch (e) { left++; }
   }
   for (const d of [imp, path.join(root, 'tmp')]) {
@@ -129,9 +134,10 @@ wait();
 `;
 
 /* starts AFTER_EXIT_CLEANER detached (spawn: child_process.spawn, execPath: the app's binary); never throws */
-export function spawnAfterExitCleaner({ spawn, execPath, pid, root, env = {}, log = () => {} }) {
+export function spawnAfterExitCleaner({ spawn, execPath, pid, root, names = [], env = {}, log = () => {} }) {
+  if (!names.length) return false;
   try {
-    const child = spawn(execPath, ['-e', AFTER_EXIT_CLEANER, String(pid), root],
+    const child = spawn(execPath, ['-e', AFTER_EXIT_CLEANER, String(pid), root, ...names],
       { detached: true, stdio: 'ignore', windowsHide: true, env: { ...env, ELECTRON_RUN_AS_NODE: '1' } });
     if (child && typeof child.on === 'function') child.on('error', () => {});
     if (child && typeof child.unref === 'function') child.unref();

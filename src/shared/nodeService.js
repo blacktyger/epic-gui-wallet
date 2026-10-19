@@ -119,6 +119,7 @@ class NodeService {
 
   /* a node was (re)started or switched: its "behind" count starts again */
   resetHealth(){
+    this.healthEpoch = (this.healthEpoch || 0) + 1;
     this.behindTracker.reset();
     this.highestSeenHeight = 0;
   }
@@ -170,6 +171,8 @@ class NodeService {
   /* the node's status (assessStatus); poll: the regular 10 s status poll, the only read counted for
      the "behind" line */
   async getNodeStatus(internal, {poll = false} = {}){
+    //a read that was on its way when the node was switched does not count for the new one
+    const epoch = this.healthEpoch;
 
     let baseURL = this.configService.config['check_node_api_http_addr'] ? this.configService.config['check_node_api_http_addr'] : this.configService.defaultEpicNode;
 
@@ -233,7 +236,7 @@ class NodeService {
     }
 
     //the restart checks above read the status as the node gave it
-    response = this.assessStatus(response, {count: poll});
+    response = this.assessStatus(response, {count: poll && epoch === this.healthEpoch});
     this.debug ? console.log('NodeService.getNodeStatus', response) : null;
     return response;
 

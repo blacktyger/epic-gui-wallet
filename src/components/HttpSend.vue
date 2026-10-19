@@ -221,7 +221,7 @@ export default {
 
         if(value != ''){
 
-          let found = await this.$addressBookService.findAddress(value);
+          let found = await this.$addressBookService.findAddress(this.store.state.user.id, value);
           //only entries with an address that can be sent to (onion, Epicbox or HTTP)
           this.foundAddress = found.filter(a => a.onion || a.externalOne || a.externalTwo);
         }else{

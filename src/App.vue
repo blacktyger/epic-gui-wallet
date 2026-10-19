@@ -716,7 +716,12 @@
       async nodeStatus(){
         await window.api.nodebackground(this.configService.config.node_background);
 
+        const gen = this.nodeStartGen;
         let respNode = await this.$nodeService.getNodeStatus(this.store.state.user.nodeInternal, {poll: true});
+        //the node was switched meanwhile: this status is the old node's
+        if(gen !== this.nodeStartGen){
+          return;
+        }
         if(respNode){
           this.nodeStatusFailed = false;
           if(!this.store.state.user.nodeInternal && this.store.state.nodeProblem && this.store.state.nodeProblem.kind == 'unreachable'){
