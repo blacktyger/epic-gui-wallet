@@ -68,6 +68,7 @@ export default {
   rcv_listening_no_epicbox: 'The listener is on, but Epicbox is not running.',
   rcv_not_listening: 'Not listening. Payments wait on the relay.',
   rcv_qr_label: 'QR code',
+  rcv_qr_empty: 'Choose an address below to show its QR code.',
   rcv_paused: 'Paused',
   rcv_show_qr: 'Show QR code',
   rcv_other: 'Other ways to receive',
