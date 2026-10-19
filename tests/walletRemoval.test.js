@@ -109,7 +109,7 @@ test('created and restored wallets: every choice; this app\'s files listed by ex
     assert.equal(p.canList, true);
     assert.equal(p.canAppFiles, true);
     assert.equal(p.canEverything, true, origin);
-    assert.deepEqual(p.reasons, { appFiles: null, everything: null });
+    assert.deepEqual(p.reasons, { list: null, appFiles: null, everything: null });
     assert.equal(p.dir, w.w1.configDir);
     const names = p.appFiles.map(f => w.P.relative(p.dir, f)).sort();
     assert.deepEqual(names, ['.api_secret', '.owner_api_secret', 'WALLET.txt', 'epic-wallet.log', 'epic-wallet.log.1', 'epic-wallet.toml', 'epic-wallet.toml.tmp', 'wallet_tor']);
