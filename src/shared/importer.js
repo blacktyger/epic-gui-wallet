@@ -150,7 +150,7 @@ export function createImporter({ configService, userService, addressbookService,
   }
 
   /* setLocale: this wallet's language becomes the app's (see importWallets) */
-  async function importOne(row, { reuseChain, setLocale }) {
+  async function importOne(row, { setLocale }) {
     const s = settings();
     //idempotent: a retry after a crash or a double click doesn't add the wallet twice
     const existing = s.wallets().find(w => samePath(w.dataDir, row.key) || (w.importedFrom && samePath(w.importedFrom.dir, row.dir)));
@@ -190,14 +190,11 @@ export function createImporter({ configService, userService, addressbookService,
     }
     s.setLegacyDecision(row.dir, 'imported');
     if (setLocale && row.language) s.setApp({ locale: row.language });
-    if (reuseChain && !s.nodeChainDir(row.network)) {
-      const chain = (row.chainDir && chains.find(c => c.dir === row.chainDir)) || chains.find(c => c.network === row.network);
-      if (chain) s.setNodeChainDir(row.network, chain.dir);
-    }
     return id;
   }
 
-  async function importWallets(keys, { reuseChain = true } = {}) {
+  /* the wallets only: an older app's chain data is node data, offered in Settings (shared/chainOffer.js) */
+  async function importWallets(keys) {
     if (!rows.size) await scan();
     const s = settings();
     const hadDefault = !!s.defaultWalletId();
@@ -210,7 +207,7 @@ export function createImporter({ configService, userService, addressbookService,
       if (!row) { failed.push({ key, reason: 'not found' }); continue; }
       try {
         const setLocale = localeOpen && !!row.language;
-        const walletId = await importOne(row, { reuseChain, setLocale });
+        const walletId = await importOne(row, { setLocale });
         if (setLocale) localeOpen = false;
         imported.push({ key, walletId });
       } catch (e) {

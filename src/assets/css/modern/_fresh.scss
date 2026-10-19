@@ -40,10 +40,6 @@
 .e-oldw-legacy { display: flex; gap: 6px; align-items: flex-start; margin-top: var(--sp-1); font-size: var(--fs-sm); color: var(--warn); }
 .e-oldw-legacy .e-icon { flex: none; margin-top: 2px; }
 
-.e-oldw-chain { margin-top: var(--sp-4); padding-inline: var(--sp-5); align-items: flex-start; }
-.e-oldw-chain input { margin-top: 2px; }
-.e-oldw-chain > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.e-oldw-chain-where { font-size: 0.75rem; font-weight: 400; color: var(--faint); overflow-wrap: anywhere; }
 .e-oldw-actions { margin-top: var(--sp-6); align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
 .e-oldw-later { margin: 0; font-size: var(--fs-sm); color: var(--faint); }
 .e-oldw-note { margin: var(--sp-3) 0 0; text-align: right; font-size: var(--fs-sm); color: var(--dim); }

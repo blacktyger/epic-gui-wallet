@@ -69,13 +69,6 @@
           </li>
         </ul>
 
-        <label v-if="chain" class="e-onb-check e-oldw-chain">
-          <input type="checkbox" v-model="reuseChain" :disabled="busy" aria-describedby="found-chain-d" />
-          <span>
-            {{ $t('msg.wallets.found_reuse_chain') }}
-            <small id="found-chain-d" class="e-mono e-oldw-chain-where" :title="chain.dir" translate="no">{{ chainWhere }}</small>
-          </span>
-        </label>
 
         <p v-if="error" class="e-error-msg e-oldw-error" role="alert"><EIcon name="alertc" /><span>{{ error }}</span></p>
 

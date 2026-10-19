@@ -2,7 +2,8 @@
  * What the found screen (Found.vue, and its Modern reskin FoundView.vue) does with the user's
  * answer. Pure, no Vue and no settings, so tests/foundPlan.test.js checks it directly.
  *
- *   'use'    (Use selected wallets): import the ticked wallets; reuse the chain data when ticked;
+ *   'use'    (Use selected wallets): import the ticked wallets (never chain data: that is node data,
+ *            offered once in Settings when the built-in node is switched on, shared/chainOffer.js);
  *            the unticked ones are left undecided (no markFresh), so Settings › Add another
  *            wallet › Import from an older Epic Wallet lists them again.
  *   'notNow' (Not now): nothing is imported, marked or set; only the first-start scan is recorded.
@@ -23,37 +24,23 @@ export function initialChecked(wallets) {
   return out;
 }
 
-/* the chain data to offer: mainnet first, then the largest */
-export function pickChain(chains) {
-  const list = (Array.isArray(chains) ? chains : []).slice();
-  list.sort((a, b) => (a.network === 'mainnet' ? 0 : 1) - (b.network === 'mainnet' ? 0 : 1) || (b.bytes || 0) - (a.bytes || 0));
-  return list[0] || null;
-}
-
-/* the primary button works: at least one wallet ticked (or, with no wallets, chain data to reuse) */
-export function canUse({ wallets = [], checked = {}, chain = null } = {}) {
-  if (wallets.length) return checkedKeys(wallets, checked).length > 0;
-  return !!chain;
+/* the primary button works: at least one wallet ticked */
+export function canUse({ wallets = [], checked = {} } = {}) {
+  return checkedKeys(wallets, checked).length > 0;
 }
 
 /*
  * action: 'use' | 'notNow'. Returns null when 'use' can't run (nothing ticked), else
- * {importKeys, reuseChain, chainDir: {network, dir} | null, markScanned: number | null}.
+ * {importKeys, markScanned: number | null}.
  */
-export function foundPlan(action, { wallets = [], checked = {}, chain = null, reuseChain = false, firstRun = false } = {}) {
+export function foundPlan(action, { wallets = [], checked = {}, firstRun = false } = {}) {
   const markScanned = firstRun ? wallets.length : null;
   if (action === 'notNow') {
-    return { importKeys: [], reuseChain: false, chainDir: null, markScanned };
+    return { importKeys: [], markScanned };
   }
   if (action !== 'use') throw new Error('unknown action: ' + action);
-  if (!canUse({ wallets, checked, chain })) return null;
-  const reuse = !!(chain && reuseChain);
-  return {
-    importKeys: checkedKeys(wallets, checked),
-    reuseChain: reuse,
-    chainDir: reuse ? { network: chain.network, dir: chain.dir } : null,
-    markScanned,
-  };
+  if (!canUse({ wallets, checked })) return null;
+  return { importKeys: checkedKeys(wallets, checked), markScanned };
 }
 
 /* where Not now (and Continue with nothing imported) goes: back to Settings when it came from

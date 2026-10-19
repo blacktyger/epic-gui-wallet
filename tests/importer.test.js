@@ -173,11 +173,11 @@ test('scan: label, contacts count and cleaned settings preview per found wallet'
   assert.ok(s2.unchanged());
 });
 
-test('importWallets: list entries, User rows, linked contacts, decisions, chain, default; old files untouched', async (t) => {
+test('importWallets: list entries, User rows, linked contacts, decisions, default, no chain data; old files untouched', async (t) => {
   const b = setup(t, { profiles: PROFILES('') });
   const r = await b.importer.scan();
   const keyOf = (acc) => r.wallets.find(w => w.account === acc).key;
-  const res = await b.importer.importWallets([keyOf('alpha'), keyOf('beta')], { reuseChain: true });
+  const res = await b.importer.importWallets([keyOf('alpha'), keyOf('beta')]);
   assert.deepEqual(res.failed, []);
   assert.deepEqual(res.imported.map(i => i.walletId), ['w1', 'w2']);
 
@@ -193,7 +193,8 @@ test('importWallets: list entries, User rows, linked contacts, decisions, chain,
   assert.equal(w2.network, 'floonet');
   assert.equal(b.settings.defaultWalletId(), 'w1');
   assert.equal(b.settings.app().locale, 'de');         //from the first imported wallet, app locale was empty
-  assert.equal(b.settings.nodeChainDir('mainnet'), realFs.realpathSync(b.e('alpha', 'main', 'chain_data')));
+  //an old wallet's chain_data is node data: never set by an import (Settings offers it, shared/chainOffer.js)
+  assert.equal(b.settings.nodeChainDir('mainnet'), '');
   assert.equal(b.settings.nodeChainDir('floonet'), '');
   assert.deepEqual(b.settings.legacyDecisions(), { [b.e('alpha', 'main')]: 'imported', [path.join(b.home, 'My Wallets', 'beta', 'floo')]: 'imported' });
 
@@ -211,7 +212,7 @@ test('importWallets: list entries, User rows, linked contacts, decisions, chain,
   assert.equal(b.book.find(c => c.name === 'Dan').alwaysproof, true);
 
   //again (double click, retry): nothing added twice; next scan skips both
-  const again = await b.importer.importWallets([keyOf('alpha')], { reuseChain: true });
+  const again = await b.importer.importWallets([keyOf('alpha')]);
   assert.deepEqual(again.imported, [{ key: keyOf('alpha'), walletId: 'w1' }]);
   assert.equal(b.settings.wallets().length, 2);
   assert.equal(b.book.length, 4);
@@ -225,7 +226,7 @@ test('importWallets: one failure does not stop the others and leaves no half ent
   const b = setup(t, { profiles: PROFILES(''), failUserFor: 'Beta User' });
   const r = await b.importer.scan();
   const keys = ['alpha', 'beta', 'gamma'].map(acc => r.wallets.find(w => w.account === acc).key);
-  const res = await b.importer.importWallets([...keys, '/no/such/wallet'], { reuseChain: false });
+  const res = await b.importer.importWallets([...keys, '/no/such/wallet']);
   //beta's entry was undone and its new config folder removed; its id is never given out again (S5)
   assert.deepEqual(res.imported.map(i => [i.key, i.walletId]), [[keys[0], 'w1'], [keys[2], 'w3']]);
   assert.ok(!realFs.existsSync(path.join(b.root, 'wallets', 'w2')), 'the failed import\'s config folder is gone');
@@ -235,7 +236,7 @@ test('importWallets: one failure does not stop the others and leaves no half ent
   ]);
   assert.deepEqual(b.settings.wallets().map(w => [w.id, w.importedFrom.account]), [['w1', 'alpha'], ['w3', 'gamma']]);
   assert.ok(!(path.join(b.home, 'My Wallets', 'beta', 'floo') in b.settings.legacyDecisions()));
-  assert.equal(b.settings.nodeChainDir('mainnet'), '');   //reuseChain off
+  assert.equal(b.settings.nodeChainDir('mainnet'), '');
   assert.ok(b.unchanged());
 });
 

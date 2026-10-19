@@ -62,14 +62,6 @@
                     </li>
                   </ul>
 
-                  <label v-if="chain" class="checkbox found-chain">
-                    <input type="checkbox" v-model="reuseChain" :disabled="busy" aria-describedby="found-chain-d">
-                    <span>
-                      {{ $t('msg.wallets.found_reuse_chain') }}
-                      <span id="found-chain-d" class="is-size-7 has-text-grey found-chain-where" :title="chain.dir">{{ chainWhere }}</span>
-                    </span>
-                  </label>
-
                   <p v-if="error" class="has-text-danger" role="alert">{{ error }}</p>
 
                   <div class="buttons is-centered found-actions">
@@ -97,8 +89,8 @@
 </template>
 
 <script>
-  import { takeScan, shortFolder, formatBytes, formatDate, networkBadge, walletOpen } from '@/components/wallets';
-  import { canUse, foundPlan, initialChecked, pickChain, backRoute } from '@/components/foundPlan';
+  import { takeScan, shortFolder, formatDate, networkBadge, walletOpen } from '@/components/wallets';
+  import { canUse, foundPlan, initialChecked, backRoute } from '@/components/foundPlan';
 
   /*
    * Wallets an older Epic Wallet left on this computer (importer.scan): tick the ones to use here
@@ -116,7 +108,6 @@
         scan: null,
         //key → true (ticked) | false
         checked: {},
-        reuseChain: true,
         busy: false,
         error: '',
         //importWallets' answer, kept while the failures are shown
@@ -131,29 +122,21 @@
       wallets() {
         return (this.scan && this.scan.wallets) || [];
       },
-      chain() {
-        return pickChain(this.scan && this.scan.chains);
-      },
       nothingFound() {
-        return !this.loading && !this.wallets.length && !this.chain;
+        return !this.loading && !this.wallets.length;
       },
       checkedCount() {
         return this.wallets.filter(w => this.checked[w.key]).length;
       },
       usable() {
-        return canUse({ wallets: this.wallets, checked: this.checked, chain: this.chain });
+        return canUse({ wallets: this.wallets, checked: this.checked });
       },
       title() {
-        return this.wallets.length ? this.$t('msg.wallets.found_title', this.wallets.length) : this.$t('msg.wallets.found_chain_title');
+        return this.$t('msg.wallets.found_title', this.wallets.length);
       },
-      //"Use selected wallet" while one is ticked, else "Use selected wallets"; Continue with chain data only
+      //"Use selected wallet" while one is ticked, else "Use selected wallets"
       primaryLabel() {
-        if (!this.wallets.length) return this.$t('msg.wallets.continue');
         return this.$t('msg.wallets.found_use', this.checkedCount === 1 ? 1 : 2);
-      },
-      chainWhere() {
-        if (!this.chain) return '';
-        return this.short(this.chain.dir) + (this.chain.bytes ? ' · ' + this.size(this.chain.bytes) : '');
       },
       importedCount() {
         return this.result && this.result.imported ? this.result.imported.length : 0;
@@ -191,11 +174,9 @@
       short(dir) {
         return shortFolder(dir, this.configService, 56);
       },
-      size: formatBytes,
       planInput(settings) {
         return {
-          wallets: this.wallets, checked: this.checked, chain: this.chain,
-          reuseChain: this.reuseChain, firstRun: settings.isFirstRun(),
+          wallets: this.wallets, checked: this.checked, firstRun: settings.isFirstRun(),
         };
       },
       /* Not now: nothing is imported, marked or set; the first start records the scan only */
@@ -221,14 +202,9 @@
         try {
           let result = { imported: [], failed: [] };
           if (plan.importKeys.length) {
-            result = await this.$importer.importWallets(plan.importKeys, { reuseChain: plan.reuseChain });
+            result = await this.$importer.importWallets(plan.importKeys);
           }
-          //the importer sets the chain data for the networks it imported; the built-in node
-          //still reuses the offered one when ticked (e.g. a floonet wallet and mainnet chain data)
           let saved = true;
-          if (plan.chainDir && !settings.nodeChainDir(plan.chainDir.network)) {
-            saved = settings.setNodeChainDir(plan.chainDir.network, plan.chainDir.dir) && saved;
-          }
           if (plan.markScanned !== null) {
             saved = settings.markScanned(plan.markScanned) && saved;
           }
@@ -299,9 +275,6 @@
   .found-body, .found-details { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
   .found-name { display: flex; align-items: center; gap: 0.5rem; }
   .found-dir code { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
-  .found-chain { display: flex; gap: 0.5rem; align-items: flex-start; margin: 0 0 1rem; }
-  .found-chain input { margin-top: 0.3rem; }
-  .found-chain-where { display: block; overflow-wrap: anywhere; }
   .found-actions { margin-top: 1rem; margin-bottom: 0.25rem; }
   .found-actions + p { margin-bottom: 0.25rem; }
   .button[aria-disabled='true']:not(.is-loading) { opacity: 0.5; cursor: not-allowed; box-shadow: none; }

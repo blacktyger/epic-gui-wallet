@@ -438,7 +438,8 @@
           const wallets = scan && scan.wallets ? scan.wallets.length : 0;
           const chains = scan && scan.chains ? scan.chains.length : 0;
           console.log('[start] older wallets: ' + wallets + ', chain data: ' + chains + ' +' + Math.round(performance.now() - started) + ' ms');
-          if(wallets || chains){
+          //chain data alone is no reason for the found screen: it is node data, offered in Settings
+          if(wallets){
             keepScan(scan);
             this.$router.push({name: 'found'});
             return;

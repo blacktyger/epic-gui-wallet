@@ -94,9 +94,11 @@ One node per network, `<root>/node/<net>/`, with a generated `epic-server.toml` 
 `foundation_path` and `api_secret_path`; 4.1.0-1 does not create a relative `.api_secret`, checked).
 The wallet toml's `node_api_secret_path` points at that file when the built-in node is used.
 Old chain data lives in old wallet folders (`<wallet dir>/chain_data`, 4.x–6.x GUIs) or `~/.epic/main/chain_data`
-(CLI). The scan lists those that contain `lmdb/`. If found, the found screen offers "Reuse the blockchain
-data at … (x GB)", ticked; 6.1 then sets `node.<net>.chainDir` to it, in place: no copy (GBs), no move
-(the old GUI would re-sync). Safe against two nodes at once: node 4.1.0-1 locks `chain_data/epic.lock`
+(CLI). The scan lists those that contain `lmdb/`. Chain data is node data, not wallet data, so the found
+screen never offers it (6.1.2: an imported wallet may have used an external node, and a folder may be junk,
+e.g. a 44 KB `~/.epic/user/chain_data`). It is offered once, in Settings, when the built-in node is switched
+on (shared/chainOffer.js, `usableChain`); 6.1 then sets `node.<net>.chainDir` to it, in place: no copy
+(GBs), no move (the old GUI would re-sync). Safe against two nodes at once: node 4.1.0-1 locks `chain_data/epic.lock`
 and a second node exits with "epic server already running?" (checked); 6.1 also doesn't start its node
 while the API port is taken.
 
@@ -151,7 +153,7 @@ Several wallets (approved):
 Found screen (Patryk, 2026-10-19): "We found N wallets from an older Epic Wallet", "Use them here? Your
 coins and recovery phrase stay the same." One row each with a checkbox, all ticked: label (old display
 name or account), network badge (not mainnet), folder (short, full path in a tooltip), last used,
-contacts count, the `legacyDb` note. *Reuse the downloaded blockchain* (ticked) when chain data was found.
+contacts count, the `legacyDb` note. Chain data alone doesn't bring up the found screen.
 *Use selected wallets* imports the ticked ones (`legacy[dir] = 'imported'`, the first imported becomes
 the default, then Unlock); unticked ones get no decision. *Not now* changes nothing but `markScanned`, then
 Welcome (or back to Settings). Either way the screen doesn't come back at start; Settings › Add another
