@@ -224,42 +224,6 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
       });
     },
-    async execScan(cmd, args, platform, password){
-
-      return new Promise(function(resolve, reject) {
-
-
-          let scanProcess = track(spawnEpic(cmd, args), cmd, args);
-
-          //scan process is self closing
-          scanProcess.stdout.setEncoding('utf8');
-          scanProcess.stdout.on('data', function(data){
-            debug ? console.log('execScan.stdout', data) : null;
-
-            if(data.includes('Password:')){
-              scanProcess.stdin.write(password+"\n");
-            }
-
-            ipcRenderer.send('scan-stdout', data);
-          })
-
-          scanProcess.stderr.setEncoding('utf8');
-          scanProcess.stderr.on('data', function(data){
-            debug ? console.log('execScan.stderr', data) : null;
-            ipcRenderer.send('scan-stdout', data);
-          })
-          scanProcess.on('close', function(code){
-            debug ? console.log('execScan.close', code) : null;
-
-
-            if(code==0){ipcRenderer.send('scan-finish')}
-            if(code==1){ipcRenderer.send('scan-error')}
-          });
-
-      });
-
-    },
-
     on:(channel, func) => {
       if (validChannels.includes(channel)) {
         ipcRenderer.on(channel, (event, data) => func(data));
@@ -693,4 +657,4 @@ contextBridge.exposeInMainWorld('api', {
     
 
 });
-
+
