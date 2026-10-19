@@ -320,7 +320,7 @@ test('a broken settings file: nothing is registered or written', () => {
 
 test('Windows: paths with spaces and quotes reach the tomls intact', () => {
   const W = path.win32;
-  const root = 'C:\\Users\\Jane "JD" Doe\\AppData\\Local\\EpicCash\\Wallet';
+  const root = 'C:\\Users\\Jane "JD" Doe\\.epic-gui';
   const { cs, fs } = setup({ P: W, root, resourcePath: 'C:\\Program Files\\Epic Wallet\\resources', platform: 'win' });
   assert.equal(cs.epicPath, 'C:\\Program Files\\Epic Wallet\\resources\\bin\\win\\epic-wallet.exe');
   const old = 'D:\\Old $& Epic\\.epic\\alpha\\main';

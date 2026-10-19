@@ -10,14 +10,26 @@ import { createSettingsStore, WALLET_DEFAULTS, APP_DEFAULTS, cleanLabel, normali
 const W = path.win32, P = path.posix;
 const winEnv = { LOCALAPPDATA: 'C:\\Users\\Jane Doe\\AppData\\Local', APPDATA: 'C:\\Users\\Jane Doe\\AppData\\Roaming', USERPROFILE: 'C:\\Users\\Jane Doe' };
 
-test('default root per platform', () => {
+test('default root: .epic-gui in the home folder on every platform', () => {
   assert.equal(defaultRoot({ platform: 'linux', home: '/home/jane', pathMod: P }), '/home/jane/.epic-gui');
   assert.equal(defaultRoot({ platform: 'darwin', home: '/Users/jane', pathMod: P }), '/Users/jane/.epic-gui');
   assert.equal(defaultRoot({ platform: 'win32', env: winEnv, home: 'C:\\Users\\Jane Doe', pathMod: W }),
-    'C:\\Users\\Jane Doe\\AppData\\Local\\EpicCash\\Wallet');
-  //no LOCALAPPDATA (unusual shells): the same place, built from the home dir
+    'C:\\Users\\Jane Doe\\.epic-gui');
+  //%USERPROFILE% wins on Windows (like the CLI's %USERPROFILE%\.epic); without it, the home dir
+  assert.equal(defaultRoot({ platform: 'win32', env: { USERPROFILE: 'D:\\Profiles\\jane' }, home: 'C:\\Users\\jane', pathMod: W }),
+    'D:\\Profiles\\jane\\.epic-gui');
   assert.equal(defaultRoot({ platform: 'win32', env: {}, home: 'C:\\Users\\jane', pathMod: W }),
-    'C:\\Users\\jane\\AppData\\Local\\EpicCash\\Wallet');
+    'C:\\Users\\jane\\.epic-gui');
+  assert.equal(defaultRoot({ platform: 'win32', env: { USERPROFILE: 'relative' }, home: 'C:\\Users\\jane', pathMod: W }),
+    'C:\\Users\\jane\\.epic-gui');
+  //never under AppData any more
+  assert.ok(!defaultRoot({ platform: 'win32', env: winEnv, home: winEnv.USERPROFILE, pathMod: W }).includes('AppData'));
+  //the same layout inside on every platform
+  const lw = layout(defaultRoot({ platform: 'win32', env: winEnv, home: winEnv.USERPROFILE, pathMod: W }), W);
+  const lu = layout(defaultRoot({ platform: 'linux', home: '/home/jane', pathMod: P }), P);
+  for (const k of ['settingsFile', 'walletsDir', 'userData', 'logsDir', 'processesFile']) {
+    assert.equal(W.relative(lw.root, lw[k]).replace(/\\/g, '/'), P.relative(lu.root, lu[k]), k);
+  }
 });
 
 test('root: env, then location.json, then the default; bad values fall back to the default', () => {
@@ -36,17 +48,17 @@ test('root: env, then location.json, then the default; bad values fall back to t
     assert.equal(r().root, def, bad);
   }
   //Windows location file
-  const wdef = 'C:\\Users\\Jane Doe\\AppData\\Local\\EpicCash\\Wallet';
+  const wdef = 'C:\\Users\\Jane Doe\\.epic-gui';
   const wf = { [wdef + '\\location.json']: JSON.stringify({ root: 'D:\\Epic GUI' }) };
   assert.equal(resolveRoot({ platform: 'win32', env: winEnv, home: winEnv.USERPROFILE, pathMod: W, readFile: (f) => wf[f] }).root, 'D:\\Epic GUI');
 });
 
 test('layout under a root', () => {
-  const l = layout('C:\\Users\\Jane Doe\\AppData\\Local\\EpicCash\\Wallet', W);
-  assert.equal(l.settingsFile, 'C:\\Users\\Jane Doe\\AppData\\Local\\EpicCash\\Wallet\\settings.json');
-  assert.equal(l.walletDir('w2'), 'C:\\Users\\Jane Doe\\AppData\\Local\\EpicCash\\Wallet\\wallets\\w2');
-  assert.equal(l.nodeDir('floonet'), 'C:\\Users\\Jane Doe\\AppData\\Local\\EpicCash\\Wallet\\node\\floo');
-  assert.equal(l.userData, 'C:\\Users\\Jane Doe\\AppData\\Local\\EpicCash\\Wallet\\app');
+  const l = layout('C:\\Users\\Jane Doe\\.epic-gui', W);
+  assert.equal(l.settingsFile, 'C:\\Users\\Jane Doe\\.epic-gui\\settings.json');
+  assert.equal(l.walletDir('w2'), 'C:\\Users\\Jane Doe\\.epic-gui\\wallets\\w2');
+  assert.equal(l.nodeDir('floonet'), 'C:\\Users\\Jane Doe\\.epic-gui\\node\\floo');
+  assert.equal(l.userData, 'C:\\Users\\Jane Doe\\.epic-gui\\app');
   const u = layout('/home/jane/.epic-gui', P);
   assert.equal(u.nodeDir('mainnet'), '/home/jane/.epic-gui/node/main');
   assert.equal(u.processesFile, '/home/jane/.epic-gui/gui_processes.json');

@@ -53,7 +53,7 @@ function readToml(text) {
   return out;
 }
 
-const HARD_WIN = 'C:\\Users\\Jane "JD" O\'Doe\\AppData\\Local\\EpicCash\\Wallet $& co\\wallets\\w2';
+const HARD_WIN = 'C:\\Users\\Jane "JD" O\'Doe\\.epic-gui $& co\\wallets\\w2';
 const HARD_OLD = 'D:\\Old Epic\\.epic\\alpha & beta\\main\\';
 
 test('values: JSON strings are TOML basic strings, numbers and booleans plain', () => {
@@ -158,7 +158,7 @@ test('node toml per network: absolute paths, ports, chain type', () => {
 });
 
 test('node toml, Windows: reused chain data in an old folder with spaces and quotes', () => {
-  const nodeDir = 'C:\\Users\\Jane Doe\\AppData\\Local\\EpicCash\\Wallet\\node\\main';
+  const nodeDir = 'C:\\Users\\Jane Doe\\.epic-gui\\node\\main';
   const chainDir = 'C:\\Users\\Jane Doe\\.epic\\"old" $& wallet\\main\\chain_data';
   const r = readToml(renderNodeToml({ template: NODE_TEMPLATE, network: 'mainnet', nodeDir, chainDir, foundationPath: nodeDir + '\\foundation.json' }));
   assert.equal(r.server.db_root, chainDir);

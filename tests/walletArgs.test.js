@@ -75,7 +75,7 @@ test('init and recover: -c the new wallet folder', () => {
 });
 
 test('Windows paths with spaces pass through unchanged', () => {
-  const conf = 'C:\\Users\\Jane Doe\\AppData\\Local\\EpicCash\\Wallet\\wallets\\w2';
+  const conf = 'C:\\Users\\Jane Doe\\.epic-gui\\wallets\\w2';
   const old = 'C:\\Users\\Jane Doe\\.epic\\alpha & co\\main';
   const args = listenArgs({ network: 'mainnet', configDir: conf, dataDir: old, password: PASS, tor: true });
   assert.equal(args[args.indexOf('-c') + 1], conf);

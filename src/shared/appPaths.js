@@ -17,7 +17,8 @@
  *   1. env EPIC_GUI_HOME (tests, portable use)
  *   2. <default root>/location.json {"root": "<absolute dir>"} (Advanced: another folder, chosen
  *      on a fresh start)
- *   3. the default: ~/.epic-gui (Linux, macOS), %LOCALAPPDATA%\EpicCash\Wallet (Windows)
+ *   3. the default: .epic-gui in the user's home on every platform (~/.epic-gui,
+ *      %USERPROFILE%\.epic-gui), with the same layout inside
  */
 
 export const ENV_ROOT = 'EPIC_GUI_HOME';
@@ -34,13 +35,12 @@ export function netFromShort(short) {
 }
 
 /* platform: process.platform ('linux' | 'darwin' | 'win32'); env: process.env; home: os.homedir()
-   pathMod: require('path') for this platform (path.win32 in tests of Windows) */
+   pathMod: require('path') for this platform (path.win32 in tests of Windows).
+   The same name everywhere, in the user's home: ~/.epic-gui, %USERPROFILE%\.epic-gui (next to the
+   CLI's .epic) */
 export function defaultRoot({ platform, env = {}, home, pathMod }) {
-  if (platform === 'win32') {
-    const local = env.LOCALAPPDATA || pathMod.join(home, 'AppData', 'Local');
-    return pathMod.join(local, 'EpicCash', 'Wallet');
-  }
-  return pathMod.join(home, '.epic-gui');
+  const base = platform === 'win32' && env.USERPROFILE && pathMod.isAbsolute(env.USERPROFILE) ? env.USERPROFILE : home;
+  return pathMod.join(base, '.epic-gui');
 }
 
 /* readFile(path) → string, throws when missing. A broken or relative location.json is ignored
