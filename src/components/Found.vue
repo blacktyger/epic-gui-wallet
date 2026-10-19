@@ -78,13 +78,13 @@
                       :aria-disabled="usable && !busy ? null : 'true'" :aria-busy="busy ? 'true' : null">{{ primaryLabel }}</button>
                   </div>
                   <p class="has-text-centered is-size-7">{{ $t('msg.wallets.found_note') }}</p>
+                  <p v-if="wallets.length && from !== 'settings'" class="has-text-centered is-size-7 has-text-grey">{{ $t('msg.wallets.found_later', wallets.length) }}</p>
                   <p class="has-text-centered is-size-7 found-other">
                     {{ $t('msg.wallets.found_or') }}
                     <button type="button" class="found-other-link" :disabled="busy" @click="otherWay('create')">{{ $t('msg.wallets.found_or_create') }}</button>
-                    <span aria-hidden="true">·</span>
+                    <span class="found-other-sep" aria-hidden="true">·</span>
                     <button type="button" class="found-other-link" :disabled="busy" @click="otherWay('restore')">{{ $t('msg.wallets.found_or_restore') }}</button>
                   </p>
-                  <p v-if="wallets.length && from !== 'settings'" class="has-text-centered is-size-7 has-text-grey">{{ $t('msg.wallets.found_later', wallets.length) }}</p>
                 </form>
 
               </div>
@@ -286,6 +286,7 @@
 
 <style scoped>
   .found-other { margin-top: 0.75rem; }
+  .found-other-sep { margin: 0 0.4em; }
   .found-other-link { background: none; border: 0; padding: 0; font: inherit; color: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
   .found-other-link:disabled { cursor: default; opacity: 0.6; }
   .found-lead { margin-bottom: 1rem; }
