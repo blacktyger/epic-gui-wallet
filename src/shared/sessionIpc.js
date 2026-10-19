@@ -7,12 +7,13 @@
  *                                    memory, never sent back; listeners of other dirs don't get it
  *   session-password-clear           lock, logout, wallet switch
  *   session-password-has             → boolean
- *   pty-start {token, cmd, args, kind, password?, phrase?}
+ *   pty-start {token, cmd, args, kind, password?, phrase?, cwd?}
  *       a listener (listen, epicbox) gets the session password; init / recover get theirs with
  *       the request, for that one process. Output goes back as 'pty-data' {token, lines} and
  *       'pty-exit' {token, code, signal, fail}. Resolves {ok, pid, mode, id} or {ok: false,
  *       noSession?, error}: never a password. Only the kind's own command of the app's binary
- *       (ptyHost, walletArgs.checkPtyArgs).
+ *       (ptyHost, walletArgs.checkPtyArgs). cwd: the process's working dir, the args' -c dir
+ *       (ptyHost refuses anything else).
  * Only the app's window is served. Wiped also when the window reloads or navigates (the interface
  * switch), when its renderer is gone (crash) or the window is closed, at quit and when the
  * process exits.
@@ -49,6 +50,8 @@ export function registerSessionIpc({ ipcMain, session, ptyHost, isAppWindow }) {
         kind: req.kind,
         password,
         phrase: req.kind === 'recover' ? req.phrase : undefined,
+        //checked by ptyHost: absolute, an existing directory, the -c dir
+        cwd: req.cwd === undefined ? undefined : req.cwd,
         //a listener only for the unlocked wallet
         dir: listener ? session.dir() : undefined,
         onLines: (lines) => send('pty-data', { lines }),
