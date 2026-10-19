@@ -41,6 +41,19 @@ export function isEpicboxAddress(address) {
   return v.includes('@') || v.startsWith('es') || v.startsWith('epicbox');
 }
 
+/* a bare Tor address (56 base32 characters, with or without .onion / a port), as a contact can fill it in */
+export function isOnionAddress(address) {
+  return /^[a-z2-7]{56}(\.onion)?(:\d+)?\/?$/i.test(String(address == null ? '' : address).trim());
+}
+
+/* a recipient that is none of the kinds the Send form can send to: not http(s), not Epicbox-like, not Tor
+   ("hello world" used to pass, QA T05) */
+export function isUnknownRecipient(address) {
+  const v = String(address == null ? '' : address).trim();
+  if (v === '' || v.includes('http') || isEpicboxAddress(v)) return false;
+  return !isOnionAddress(v);
+}
+
 /* the send method: the chosen one (an Epicbox contact sets 'epicbox'), or 'epicbox' for an Epicbox address */
 export function sendMethod(method, address) {
   return method == 'epicbox' || isEpicboxAddress(address) ? 'epicbox' : (method || 'http');

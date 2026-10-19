@@ -2,6 +2,7 @@ import { reactive } from "vue";
 import { i18n } from '../i18n';
 import useValidators from '@/modules/Validators';
 import { epicToNano, amountProblem } from '@/shared/sendMath';
+import { isUnknownRecipient } from '@/shared/sendForm';
 
 const errors = reactive({});
 
@@ -89,7 +90,7 @@ export default function useFormValidation() {
         }else if(fieldValue.includes('@') || fieldValue.startsWith('es') || fieldValue.startsWith('epicbox')) { 
           message = !fieldValue ? isEmpty(fieldName, fieldValue) : isEpicboxAddress(fieldName, fieldValue);
         }else{
-          message = isEmpty(fieldName, fieldValue);
+          message = isEmpty(fieldName, fieldValue) || (isUnknownRecipient(fieldValue) ? i18n.global.t("msg.validators.epicbox_address") : null);
         }
 
 
