@@ -180,6 +180,7 @@
   import { useRouter } from '@/router';
   import { useRoute } from 'vue-router';
   import { useStore } from '@/store';
+  import { nodeLoadWarning } from '@/shared/nodeLoad';
   //import "vue3-video-play/dist/style.css";
   //import { videoPlay } from "vue3-video-play";
 
@@ -322,6 +323,8 @@
           const label = this.labelValue;
           const nodeInternal = !!this.nodeserverField.nodeInternal;
           const epicboxDomain = this.epicboxDomain.defaultValue || '';
+          //the node as saved until now: switching the built-in node on warns once (shared/nodeLoad.js)
+          const nodeBefore = {internal: !!(this.store.state.user || {}).nodeInternal, background: !!(this.configService.config || {}).node_background};
 
           //a re-run while unlocked may change the Epicbox server: see the config before the save
           const savedEpicbox = this.$walletService.token ? this.$walletService.readEpicboxConfig() : null;
@@ -353,6 +356,9 @@
             this.emitter.emit('app.applyEpicbox', {saved: savedEpicbox});
           }
 
+          if(nodeLoadWarning(nodeBefore, {internal: nodeInternal, background: nodeBefore.background})){
+            this.$toast.warning(this.$t("msg.settings.node_load_warning"), {duration: 10000});
+          }
           this.isSaving = false;
           this.emitter.emit('app.accountLoggedIn');
 

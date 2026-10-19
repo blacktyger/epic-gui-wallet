@@ -451,6 +451,8 @@ const messages = {
 
       node_background: 'sync in background',
       node_background_hint: 'the built-in node server continues to sync in the background even when the app is closed. The next time you run the wallet, you do not have to wait for the synchronization with the blockchain.',
+      //toast when the built-in node or background sync is switched on (shared/nodeLoad.js)
+      node_load_warning: 'The built-in node uses a lot of CPU, memory and disk and can slow this computer down. An external node is lighter.',
     },
     validators:{
       empty: 'The {0} field is required',
