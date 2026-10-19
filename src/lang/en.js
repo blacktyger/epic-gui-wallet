@@ -29,10 +29,10 @@ const messages = {
 
     sent_confirmed: 'Sent',
     received_confirmed: 'Received',
-    sent_unconfirmed: '... waiting for receiver to sign',
-    sent_waiting_reply: "... waiting for the recipient's reply. Cancel it if it does not come",
-    received_unconfirmed: '... waiting for sender to finalize',
-    received_mempool: '... waiting for confirmation',
+    sent_unconfirmed: 'Waiting for receiver to sign',
+    sent_waiting_reply: "Waiting for the recipient's reply. Cancel it if it does not come",
+    received_unconfirmed: 'Waiting for sender to finalize',
+    received_mempool: 'Waiting for confirmations',
 
     locked: 'Locked',
     send: 'Send',
@@ -350,7 +350,7 @@ const messages = {
       confirmed: 'Confirmed',
       confirmed_count: 'Confirmed ({0} confirmations)',
       confirmed_spendable_count: 'Confirmed, spendable ({0} confirmations)',
-      waiting: 'Waiting to be mined',
+      waiting: 'Waiting for confirmations',
     },
     fileSend:{
       sendAmount: 'Amount to send',
@@ -455,6 +455,8 @@ const messages = {
 
       node_background: 'sync in background',
       node_background_hint: 'the built-in node server continues to sync in the background even when the app is closed. The next time you run the wallet, you do not have to wait for the synchronization with the blockchain.',
+      //toast when the built-in node or background sync is switched on (shared/nodeLoad.js)
+      node_load_warning: 'The built-in node uses a lot of CPU, memory and disk and can slow this computer down. An external node is lighter.',
     },
     validators:{
       empty: 'The {0} field is required',

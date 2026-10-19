@@ -116,5 +116,5 @@ export default {
   other_wallets_hint: 'Lock this wallet to switch to another one.',
   no_other_wallets: 'This is the only wallet in the list.',
   add_wallet: 'Add another wallet',
-  add_wallet_hint: 'It opens in place of this one. All your wallets are listed when you unlock.',
+  add_wallet_hint: 'Create a new wallet, or restore one from its recovery phrase. This wallet is kept: pick either one when you unlock.',
 };
