@@ -114,11 +114,16 @@
       this.emitter.on('app.startEpicbox', async(res) => {
 
         const session = this.loginSession;
-        let confirmed = await this.waitForNodesynced('nodeSynced').then((res) => {
-          return res;
-        });
+        //stops at once when the external node's status can't be read (too old, status locked)
+        let confirmed = await this.waitForNodesynced('nodeSynced', undefined, () => this.epicboxBlocked());
         //logged out while waiting for the node: no Epicbox for that session
         if(session !== this.loginSession){
+          return;
+        }
+        if(confirmed === 'blocked'){
+          //say why now instead of after the 10 minute wait; the notice links to Receive
+          this.store.commit('nodeProblemUpdate', {epicboxSkipped: true, hidden: false});
+          this.$toast.error(this.t("msg.node_problem.epicbox_skipped"), {duration: 15000});
           return;
         }
 
@@ -234,6 +239,8 @@
         this.store.commit('walletTip', 0);
         this.store.commit('walletSync', '');
         this.store.commit('listenerStarting', false);
+        this.store.commit('nodeProblem', null);
+        this.store.commit('nodeAddressChange', null);
         this.store.commit('summary', {
           spendable: 0,
           total: 0,
@@ -321,11 +328,15 @@
     },
     methods: {
 
-      waitForNodesynced (variable, timeoutMs = 10*60*1000) {
+      /* true once window[variable] is true, false after timeoutMs, 'blocked' as soon as blocked() is true */
+      waitForNodesynced (variable, timeoutMs = 10*60*1000, blocked = () => false) {
         const started = Date.now();
         function waitFor() {
           if (window[variable] === true) {
             return Promise.resolve(true);
+          }
+          if (blocked()) {
+            return Promise.resolve('blocked');
           }
           if (Date.now() - started > timeoutMs) {
             return Promise.resolve(false);
@@ -333,6 +344,44 @@
           return new Promise((resolve) => setTimeout(resolve, 500)).then(() => waitFor());
         }
         return waitFor();
+      },
+
+      /* Epicbox can't wait for this node: its status can't be read and won't be (unlike an unreachable node) */
+      epicboxBlocked(){
+        const p = this.store.state.nodeProblem;
+        return !!(p && !p.statusReadable && p.kind != 'unreachable');
+      },
+
+      /* the classification of the external node (shared/nodeVersion.js) -> the store's nodeProblem */
+      setNodeProblem(check){
+        if(!check || check.kind == 'ok'){
+          this.store.commit('nodeProblem', null);
+          return;
+        }
+        const {kind, address, version, reason, local, statusReadable, statusVia} = check;
+        this.store.commit('nodeProblem', {
+          kind, address, version, reason, local, statusReadable, statusVia,
+          network: this.configService.defaultAccountNetwork || 'mainnet',
+          epicboxSkipped: false,
+          hidden: false,
+        });
+      },
+
+      /* an external node that was unreachable answers again: classify it again (it may be too old) */
+      async reclassifyNode(){
+        if(this.reclassifying){
+          return;
+        }
+        this.reclassifying = true;
+        const gen = this.nodeStartGen;
+        try{
+          const check = await this.$nodeService.classifyNode(this.configService.config['check_node_api_http_addr'] || '');
+          if(gen === this.nodeStartGen && !this.store.state.user.nodeInternal){
+            this.setNodeProblem(check);
+          }
+        }finally{
+          this.reclassifying = false;
+        }
       },
 
       nodesyncedModalOpen(){
@@ -361,6 +410,9 @@
         this.nodeStatusFailed = false;
         window.nodeSynced = null;
         this.store.commit('nodeStatus', {});
+        this.store.commit('nodeProblem', null);
+        //a newer nodeStart (node switched meanwhile) wins
+        const gen = this.nodeStartGen = (this.nodeStartGen || 0) + 1;
 
         //start internal server only if its setup else just check if external node is running
         if(this.store.state.user.nodeInternal){
@@ -385,29 +437,24 @@
         }else{
 
           this.store.commit('nodeType', this.configService.config['check_node_api_http_addr']);
-          //a saved address that is no Epic node (e.g. carried over from an old config): say so once
+          //what kind of node is it: too old, status locked, unreachable, not an Epic node? The notice
+          //(NodeProblemNotice) says which and offers the fixes; no toast for it
           const nodeAddr = this.configService.config['check_node_api_http_addr'] || '';
-          const check = await this.$nodeService.checkNodeVersion(nodeAddr);
-          if(!check.ok){
-            this.$toast.error(this.t("msg.app.external_node_invalid", [nodeAddr, check.reason]), {duration: false});
-            this.nodeStatusFailed = true;
-            this.store.commit('nodeStatus', {error: true});
-            this.startRefreshNodeId = setTimeout(this.startRefreshNode, 10000);
+          const check = await this.$nodeService.classifyNode(nodeAddr);
+          if(gen !== this.nodeStartGen){
             return;
           }
-          let respNode = await this.$nodeService.getNodeStatus(this.store.state.user.nodeInternal);
-          if(respNode){
+          this.setNodeProblem(check);
+          if(check.statusReadable){
             this.$toast.success(this.t("msg.app.external_node_online"));
-            this.store.commit('nodeStatus', respNode);
-            //start the status check for the node
-            //give the node some time before api status is called
-            this.startRefreshNodeId = setTimeout(this.startRefreshNode, 10000);
+            this.store.commit('nodeStatus', check.status);
           }else{
-            this.$toast.error(this.t("msg.app.external_node_offline"));
             this.nodeStatusFailed = true;
             this.store.commit('nodeStatus', {error: true});
-            this.startRefreshNodeId = setTimeout(this.startRefreshNode, 10000);
           }
+          //start the status check for the node
+          //give the node some time before api status is called
+          this.startRefreshNodeId = setTimeout(this.startRefreshNode, 10000);
 
         }
       },
@@ -419,6 +466,9 @@
         let respNode = await this.$nodeService.getNodeStatus(this.store.state.user.nodeInternal);
         if(respNode){
           this.nodeStatusFailed = false;
+          if(!this.store.state.user.nodeInternal && this.store.state.nodeProblem && this.store.state.nodeProblem.kind == 'unreachable'){
+            this.reclassifyNode();
+          }
 
           window.nodeSynced = respNode.tip && respNode.tip.height > 0 && respNode.sync_status === 'no_sync';
 

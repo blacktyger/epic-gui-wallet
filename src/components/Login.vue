@@ -175,6 +175,9 @@ export default {
         this.store.commit('loginStage', 'check');
         let action = await this.configService.startCheck(this.accountField.defaultValue);
         lap('config checked');
+        //the saved node address was cleaned up just now (once per account): the notice says old -> new
+        const change = this.configService.nodeAddressChange;
+        this.store.commit('nodeAddressChange', change ? {...change, network: this.configService.defaultAccountNetwork} : null);
         //the account's folder is gone (moved or deleted by hand): say so, start nothing.
         //Going on would start epic-wallet in ~/.epic and hang at "Starting the wallet service"
         if(action === 'init'){

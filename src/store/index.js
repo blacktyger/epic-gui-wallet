@@ -78,6 +78,12 @@ export const store = createStore({
     listenerStarting: false,
     //the step of opening the wallet running now (see StartupProgress), '' when idle
     loginStage: '',
+    //the external node can't be used as it should (NodeProblemNotice): null, or
+    //{kind: 'too_old' | 'status_locked' | 'unreachable' | 'not_epic', address, version, reason, local,
+    // statusReadable, statusVia, network, epicboxSkipped, hidden} (kinds: shared/nodeVersion.js classifyNode)
+    nodeProblem: null,
+    //the saved node address was cleaned up at login (shared/nodeAddressMigration.js): null or {from, to, reason, network}
+    nodeAddressChange: null,
     summary: {
       spendable: 0,
       total: 0,
@@ -192,6 +198,21 @@ rproofs_total: 64579
 
     loginStage(state, payload) {
       state.loginStage = payload || '';
+    },
+
+    nodeProblem(state, payload) {
+      state.nodeProblem = payload || null;
+    },
+
+    /* merge into the current node problem (e.g. {epicboxSkipped: true}); nothing when there is none */
+    nodeProblemUpdate(state, payload) {
+      if (state.nodeProblem) {
+        state.nodeProblem = {...state.nodeProblem, ...payload};
+      }
+    },
+
+    nodeAddressChange(state, payload) {
+      state.nodeAddressChange = payload || null;
     },
 
     commits(state, payload) {
