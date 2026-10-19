@@ -30,3 +30,16 @@ export function searchContacts(list, keyword) {
   if (!q) return all;
   return all.filter((c) => c && SEARCH_FIELDS.some((k) => fold(c[k]).includes(q)));
 }
+
+/* what is wrong with a contact before it is saved, or null: 'name' (no name), 'address' (no address to
+   send to at all), 'epicbox' (the Epicbox address is not one; same pattern as modules/Validators.js).
+   An empty form and "not an address!!" used to be saved as they were (QA T04). */
+const EPICBOX_ADDRESS = /^(epicbox:\/\/)?([123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{52})(@([a-zA-Z0-9.]+)(:([0-9]*))?)?$/;
+export function contactProblem(c = {}) {
+  const f = contactFields(c);
+  const v = (k) => f[k].trim();
+  if (!v('name')) return 'name';
+  if (!v('externalOne') && !v('externalTwo') && !v('onion')) return 'address';
+  if (v('externalOne') && !EPICBOX_ADDRESS.test(v('externalOne'))) return 'epicbox';
+  return null;
+}
