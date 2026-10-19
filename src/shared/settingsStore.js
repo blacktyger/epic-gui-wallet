@@ -181,6 +181,15 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
     return true;
   }
 
+  /* node.<net> patched and saved, or left as it was when the save fails */
+  function saveNode(network, patch) {
+    const had = Object.prototype.hasOwnProperty.call(data.node, network), before = data.node[network];
+    data.node[network] = { ...(before || {}), ...patch };
+    if (save()) return true;
+    if (had) data.node[network] = before; else delete data.node[network];
+    return false;
+  }
+
   function find(id) {
     const w = data.wallets.find(x => x.id === id);
     if (!w) throw new Error('no wallet ' + id);
@@ -212,13 +221,22 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
       data.node[network] = { ...(data.node[network] || {}), chainDir: dir || '' };
       return save();
     },
-    /* the one-time chain data offer of Settings (shared/chainOffer.js); 'used' also sets chainDir */
+    /* the one-time chain data offer of Settings (shared/chainOffer.js); 'used' also sets chainDir.
+       False when not saved: then nothing changed, also in memory (a chainDir only in memory would
+       go into the node's toml while Settings says the node downloads the blockchain) */
     chainOffer(network) { const o = data.node[network] && data.node[network].chainOffer; return o ? { ...o } : null; },
     setChainOffer(network, offer) {
       const patch = { chainOffer: { ...offer } };
       if (offer.answer === 'used' && offer.dir) patch.chainDir = offer.dir;
-      data.node[network] = { ...(data.node[network] || {}), ...patch };
-      return save();
+      return saveNode(network, patch);
+    },
+    /* Settings' Download the blockchain again: the built-in node uses its own folder again, the offer
+       counts as declined (not asked again) and keeps the folder it showed; nothing on disk is deleted.
+       False when not saved: then nothing changed */
+    forgetChainDir(network, now = new Date()) {
+      const before = data.node[network] || {};
+      const dir = before.chainDir || (before.chainOffer && before.chainOffer.dir) || '';
+      return saveNode(network, { chainDir: '', chainOffer: { checkedAt: now.toISOString(), answer: 'declined', dir } });
     },
 
     wallets() { return data.wallets.map(w => ({ ...w, settings: { ...w.settings } })); },

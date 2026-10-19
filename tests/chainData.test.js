@@ -177,3 +177,61 @@ test('a broken chainOffer from a hand edit is asked again', (t) => {
   const s = createSettingsStore({ fs, pathMod: path, file }).load();
   assert.equal(shouldCheck(s, 'mainnet', false), true);
 });
+
+/* settings.json in memory; failWrites makes every write throw (a full disk, a read-only folder) */
+function memStore() {
+  const files = new Map();
+  const fs = {
+    failWrites: false,
+    existsSync: (p) => files.has(p),
+    readFileSync: (p) => { if (!files.has(p)) throw new Error('ENOENT'); return files.get(p); },
+    writeFileSync: (p, d) => { if (fs.failWrites) throw Object.assign(new Error('ENOSPC'), { code: 'ENOSPC' }); files.set(p, String(d)); },
+    copyFileSync: (a, b) => files.set(b, files.get(a)),
+    renameSync: (a, b) => { files.set(b, files.get(a)); files.delete(a); },
+    unlinkSync: (p) => files.delete(p),
+    mkdirSync: () => {},
+  };
+  const open = () => createSettingsStore({ fs, pathMod: P, file: '/r/settings.json', wait: () => {} }).load();
+  return { fs, open };
+}
+
+test('setChainOffer: a failed save changes nothing, so the node toml keeps its own folder', () => {
+  const { fs: mem, open } = memStore();
+  const s = open();
+  s.setChainOffer('floonet', offerRecord('declined', '/old/floo/chain_data'));
+  mem.failWrites = true;
+  assert.equal(s.setChainOffer('mainnet', offerRecord('used', '/h/.epic/main/chain_data')), false);
+  assert.equal(s.nodeChainDir('mainnet'), '');
+  assert.equal(s.chainOffer('mainnet'), null);
+  assert.equal('mainnet' in s.data.node, false);
+  //asked again at the next save
+  assert.equal(shouldCheck(s, 'mainnet', false), true);
+  //a network that had a record keeps it as it was
+  assert.equal(s.setChainOffer('floonet', offerRecord('used', '/old/floo/chain_data')), false);
+  assert.equal(s.chainOffer('floonet').answer, 'declined');
+  assert.equal(s.nodeChainDir('floonet'), '');
+  mem.failWrites = false;
+  assert.equal(s.setChainOffer('mainnet', offerRecord('used', '/h/.epic/main/chain_data')), true);
+  assert.equal(open().nodeChainDir('mainnet'), '/h/.epic/main/chain_data');
+});
+
+test('forgetChainDir: back to the own folder, declined so not offered again; a failed save changes nothing', () => {
+  const { fs: mem, open } = memStore();
+  const s = open();
+  s.setChainOffer('mainnet', offerRecord('used', '/h/.epic/main/chain_data'));
+  mem.failWrites = true;
+  assert.equal(s.forgetChainDir('mainnet'), false);
+  assert.equal(s.nodeChainDir('mainnet'), '/h/.epic/main/chain_data');
+  assert.equal(s.chainOffer('mainnet').answer, 'used');
+  mem.failWrites = false;
+  assert.equal(s.forgetChainDir('mainnet', new Date(Date.UTC(2026, 9, 19))), true);
+  const again = open();
+  assert.equal(again.nodeChainDir('mainnet'), '');
+  assert.deepEqual(again.chainOffer('mainnet'), { checkedAt: '2026-10-19T00:00:00.000Z', answer: 'declined', dir: '/h/.epic/main/chain_data' });
+  assert.equal(shouldCheck(again, 'mainnet', false), false);
+  //a chain folder the found screen set (no offer record): forgotten the same way
+  again.setNodeChainDir('floonet', '/old/floo/chain_data');
+  assert.equal(again.forgetChainDir('floonet'), true);
+  assert.equal(again.nodeChainDir('floonet'), '');
+  assert.equal(again.chainOffer('floonet').dir, '/old/floo/chain_data');
+});
