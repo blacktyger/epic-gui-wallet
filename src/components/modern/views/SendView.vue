@@ -100,13 +100,14 @@
               <div>
                 <b id="e-send-proof-l">{{ $t('msg.modern.send.proof_title') }}</b>
                 <p id="e-send-proof-d">{{ $t('msg.modern.send.proof_hint') }}</p>
+                <p v-if="!proofAllowed" id="e-send-proof-n" class="e-help">{{ $t('msg.modern.send.proof_epicbox') }}</p>
               </div>
               <label class="e-switch">
-                <input id="sendProofSwitch" v-model="withproof" type="checkbox" aria-labelledby="e-send-proof-l" aria-describedby="e-send-proof-d" @click="addProof" />
+                <input id="sendProofSwitch" v-model="withproof" type="checkbox" :disabled="!proofAllowed" aria-labelledby="e-send-proof-l" :aria-describedby="proofAllowed ? 'e-send-proof-d' : 'e-send-proof-d e-send-proof-n'" @click="addProof" />
                 <span class="e-track"></span>
               </label>
             </div>
-            <div v-show="withproof" class="e-field e-send-proof">
+            <div v-show="withproof && proofAllowed" class="e-field e-send-proof">
               <label class="e-label" for="e-send-proof">{{ $t('msg.modern.send.proof_address') }}</label>
               <div ref="proofBox"><ProofAddressField ref="proofAddressField" /></div>
             </div>
@@ -355,7 +356,7 @@
         } finally {
           this.reviewing = false;
         }
-        this.withproof ? valid.push(this.proofAddressField.validInput()) : null;
+        this.withproof && this.proofAllowed ? valid.push(this.proofAddressField.validInput()) : null;
         valid.push(this.addressField.validInput());
         if (valid.includes(false)) {
           if (this.withproof && this.proofAddressField.errors && this.proofAddressField.errors.proof_address) this.advOpen = true;
@@ -384,7 +385,8 @@
           total: nanoToEpic(amountNano + feeNano),
           dec: Math.max(decimalsOf(this.amountField.defaultValue), decimalsOf(fee)),
           message: this.message,
-          proof: this.withproof,
+          //never "proof requested" for an Epicbox send (it carries none)
+          proof: this.withproof && kind != 'epicbox',
         };
         this.reviewOpen = true;
       },

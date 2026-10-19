@@ -1,7 +1,7 @@
 // Tests for src/shared/sendForm.js: the Send form is cleared after a successful send. `npm test`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clearSendForm, inputAfterSend } from '../src/shared/sendForm.js';
+import { clearSendForm, inputAfterSend, isEpicboxAddress, sendMethod, proofAllowed, proofRequest } from '../src/shared/sendForm.js';
 
 function field(v) {
   return { input: v, setValue(x) { this.input = x; } };
@@ -39,4 +39,37 @@ test('the form stays "sent" until something new is typed', () => {
   assert.equal(vm.sent, true);
   inputAfterSend(vm, '2');
   assert.equal(vm.sent, false);
+});
+
+test('an Epicbox address is recognised (key@domain, bare es… key)', () => {
+  assert.equal(isEpicboxAddress('esAbc@epicbox.epiccash.com'), true);
+  assert.equal(isEpicboxAddress('  esAbc  '), true);
+  assert.equal(isEpicboxAddress('http://1.2.3.4:3415'), false);
+  assert.equal(isEpicboxAddress('abcdef.onion'), false);
+  assert.equal(isEpicboxAddress(''), false);
+  assert.equal(isEpicboxAddress(null), false);
+});
+
+test('the send method: Epicbox by choice or by address, else the chosen one', () => {
+  assert.equal(sendMethod('epicbox', ''), 'epicbox');
+  assert.equal(sendMethod('http', 'esAbc@epicbox.epiccash.com'), 'epicbox');
+  assert.equal(sendMethod('http', 'http://1.2.3.4:3415'), 'http');
+  assert.equal(sendMethod(undefined, 'http://1.2.3.4:3415'), 'http');
+});
+
+test('no payment proof over Epicbox; HTTP and Tor allow one', () => {
+  assert.equal(proofAllowed('epicbox', ''), false);
+  assert.equal(proofAllowed('epicbox', 'http://1.2.3.4:3415'), false);
+  assert.equal(proofAllowed('http', 'esAbc@epicbox.epiccash.com'), false);
+  assert.equal(proofAllowed('http', 'http://1.2.3.4:3415'), true);
+  assert.equal(proofAllowed('http', 'http://abcdef.onion'), true);
+  assert.equal(proofAllowed('http', ''), true);
+});
+
+test('a proof request over Epicbox is refused before it reaches the wallet', () => {
+  assert.deepEqual(proofRequest('epicbox', 'esAbc@epicbox.epiccash.com', true, 'proofaddr'), { address: null, refused: true });
+  assert.deepEqual(proofRequest('http', 'esAbc', true, 'proofaddr'), { address: null, refused: true });
+  assert.deepEqual(proofRequest('epicbox', 'esAbc', false, 'proofaddr'), { address: null });
+  assert.deepEqual(proofRequest('http', 'http://1.2.3.4:3415', true, 'proofaddr'), { address: 'proofaddr' });
+  assert.deepEqual(proofRequest('http', 'http://1.2.3.4:3415', false, 'proofaddr'), { address: null });
 });
