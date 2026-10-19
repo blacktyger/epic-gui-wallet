@@ -479,16 +479,17 @@ class ConfigService {
 
   /*
    * find epic-wallet, node and Tor processes this app started earlier (a crash, an old session,
-   * a background node or Epicbox listener) and close them if user confirms via prompt.
+   * a background node, a listener of an earlier session) and close them. This wallet's listeners
+   * (http, Epicbox) and Tor are closed without asking: a new one is started on the pseudo-terminal
+   * after the unlock. The others only if the user confirms via prompt.
    * Processes the app did not start (e.g. the user's own CLI wallet or node, or an older GUI's)
    * are never listed.
    */
   async killEpicProcess() {
 
-    //the node and the Epicbox listener stay if the user runs them in the background
+    //the node stays if the user runs it in the background
     const cfg = this.config;
-    const roles = ['owner_api', 'listen', 'scan',
-      ...(cfg.epicbox_background ? [] : ['epicbox']),
+    const roles = ['owner_api', 'listen', 'scan', 'epicbox',
       ...(!cfg.node_background ? ['node'] : [])];
 
     //one process scan for wallet, node and Tor: each scan spawns ps (powershell on Windows, ~1 s there).
@@ -498,6 +499,25 @@ class ConfigService {
     let killPids = await this.nodeChildProcess.ownedProcesses(roles, {dir: this.walletConfigDir, anyDirRoles: ['owner_api', 'listen'],
       tor: true, torDirs: [this.walletDataDir].filter(Boolean)});
     this.allKilled = true;
+    this.killedPorts = [];
+
+    //our listeners of this wallet from before (e.g. an Epicbox listener kept running by an older
+    //version), and Tor: stopped. Those of another wallet (a second window) are asked about below
+    const isListener = (p) => p.role == 'tor'
+      || ((p.role == 'listen' || p.role == 'epicbox') && p.dir == this.walletConfigDir);
+    const listeners = killPids.filter(isListener);
+    if(listeners.length){
+      const stopped = await this.nodeChildProcess.stopPids(listeners.map(p => p.pid));
+      console.log('configService.killEpicProcess stopped listeners ' + listeners.map((p, i) => p.pid + ' ' + p.role + (stopped[i] === false ? ' (failed)' : '')).join(', '));
+      this.allKilled = stopped.every(k => k !== false);
+      if(listeners.some(p => p.role == 'listen')){
+        this.killedPorts.push(this.walletListenerPort);
+      }
+      killPids = killPids.filter(p => !isListener(p));
+      if(!killPids.length){
+        return true;
+      }
+    }
 
     if (killPids.length) {
       this.debug ? console.log('configService.killEpicProcess', JSON.stringify(killPids)) : null;
@@ -506,12 +526,14 @@ class ConfigService {
           if (confirmed) {
             const killed = await this.nodeChildProcess.stopPids(killPids.map(p => p.pid));
             //false when a process could not be killed (or did not exit in time)
-            this.allKilled = killed.every(k => k !== false);
+            this.allKilled = this.allKilled && killed.every(k => k !== false);
             //the ports these processes held, to wait for before starting new ones
             const has = (role) => killPids.some(p => p.role == role);
             this.killedPorts = [
+              ...this.killedPorts,
               ...(has('owner_api') ? [3420] : []),
-              ...(has('listen') ? [this.walletListenerPort] : []),
+              //another wallet's http listener holds the same port
+              ...(has('listen') && !this.killedPorts.includes(this.walletListenerPort) ? [this.walletListenerPort] : []),
               ...(has('node') ? [this.getNodeApiPort()] : []),
             ];
             resolve(true);

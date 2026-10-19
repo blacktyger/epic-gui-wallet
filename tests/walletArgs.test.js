@@ -4,7 +4,9 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import {
   ownerApiArgs, listenArgs, epicboxArgs, initArgs, statusMessageText, networkArgs, OWNER_API_START_DIR,
+  PTY_KINDS, hasPassArg, withPassArg, checkPtyArgs,
 } from '../src/shared/walletArgs.js';
+import { createPtyHost } from '../src/shared/ptyHost.js';
 import { describeSpawn, redactArgs } from '../src/shared/processOwnership.js';
 
 const BIN = '/opt/epic/resources/bin/linux/epic-wallet';
@@ -40,7 +42,7 @@ test('owner_api refuses a missing start dir, or one that holds the wallet', () =
   assert.throws(() => ownerApiArgs({ network: 'mainnet', startDir: NEW + '/x' }));
 });
 
-test('listeners: -c the config dir, -t the data dir, the password (4.1.0 reads it only from a terminal otherwise)', () => {
+test('listeners: -c the config dir, -t the data dir, no password (the pty prompt gets it)', () => {
   for (const network of NETS) {
     const cases = [
       [listenArgs({ network, configDir: CONF, dataDir: OLD, password: PASS, tor: false }), 'listen'],
@@ -48,8 +50,9 @@ test('listeners: -c the config dir, -t the data dir, the password (4.1.0 reads i
       [epicboxArgs({ network, configDir: CONF, dataDir: OLD, password: PASS }), 'epicbox'],
     ];
     for (const [args, role] of cases) {
+      //even a caller that still passes one gets none
+      assert.ok(!hasPassArg(args) && !args.includes(PASS), args.join(' '));
       assert.deepEqual(args.slice(0, networkArgs(network).length), networkArgs(network));
-      assert.equal(args[args.indexOf('--pass') + 1], PASS);
       assert.equal(args[args.indexOf('-c') + 1], CONF);
       assert.equal(args[args.indexOf('-t') + 1], OLD);
       const d = describeSpawn(BIN, args);
@@ -57,27 +60,90 @@ test('listeners: -c the config dir, -t the data dir, the password (4.1.0 reads i
       assert.equal(d.dir, CONF);
       assert.equal(d.topDir, OLD);
       assert.equal(d.network, network);
-      assert.ok(!redactArgs(args).includes(PASS), 'redacted for logs');
     }
   }
-  assert.deepEqual(listenArgs({ network: 'mainnet', configDir: NEW, dataDir: NEW, password: PASS, tor: false }).slice(-3), ['--method', 'http', '--no_tor']);
-  assert.ok(!listenArgs({ network: 'mainnet', configDir: NEW, dataDir: NEW, password: PASS, tor: true }).includes('--no_tor'));
-  assert.throws(() => listenArgs({ network: 'mainnet', configDir: NEW, password: PASS }));
-  assert.throws(() => epicboxArgs({ network: 'mainnet', dataDir: NEW, password: PASS }));
+  assert.deepEqual(listenArgs({ network: 'mainnet', configDir: NEW, dataDir: NEW, tor: false }), ['-t', NEW, '-c', NEW, 'listen', '--method', 'http', '--no_tor']);
+  assert.ok(!listenArgs({ network: 'mainnet', configDir: NEW, dataDir: NEW, tor: true }).includes('--no_tor'));
+  assert.deepEqual(epicboxArgs({ network: 'floonet', configDir: CONF, dataDir: OLD }), ['--floonet', '-t', OLD, '-c', CONF, 'listen', '--method', 'epicbox', '--no_tor']);
+  assert.throws(() => listenArgs({ network: 'mainnet', configDir: NEW }));
+  assert.throws(() => epicboxArgs({ network: 'mainnet', dataDir: NEW }));
 });
 
-test('init and recover: -c the new wallet folder', () => {
-  assert.deepEqual(initArgs({ network: 'usernet', configDir: NEW, password: PASS }), ['--usernet', '--pass', PASS, '-c', NEW, 'init']);
-  assert.deepEqual(initArgs({ network: 'mainnet', configDir: NEW, password: PASS, recover: true }), ['--pass', PASS, '-c', NEW, 'init', '-r']);
-  assert.deepEqual(initArgs({ network: 'floonet', configDir: NEW, password: PASS }).slice(0, 1), ['--floonet']);
-  assert.equal(describeSpawn(BIN, initArgs({ network: 'mainnet', configDir: NEW, password: PASS })), null, 'init is not tracked');
+test('init and recover: -c the new wallet folder, no password', () => {
+  assert.deepEqual(initArgs({ network: 'usernet', configDir: NEW, password: PASS }), ['--usernet', '-c', NEW, 'init']);
+  assert.deepEqual(initArgs({ network: 'mainnet', configDir: NEW, password: PASS, recover: true }), ['-c', NEW, 'init', '-r']);
+  assert.deepEqual(initArgs({ network: 'floonet', configDir: NEW }).slice(0, 1), ['--floonet']);
+  assert.equal(describeSpawn(BIN, initArgs({ network: 'mainnet', configDir: NEW })), null, 'init is not tracked');
   assert.throws(() => initArgs({ network: 'mainnet', password: PASS }));
+});
+
+test('checkPtyArgs accepts every 6.1 shape: listeners -t data dir -c config dir, init/recover -c only', () => {
+  for (const network of NETS) {
+    for (const [configDir, dataDir] of [[NEW, NEW], [CONF, OLD]]) {
+      assert.deepEqual(checkPtyArgs('listen', listenArgs({ network, configDir, dataDir, tor: false })), { dir: dataDir });
+      assert.deepEqual(checkPtyArgs('listen', listenArgs({ network, configDir, dataDir, tor: true })), { dir: dataDir });
+      assert.deepEqual(checkPtyArgs('epicbox', epicboxArgs({ network, configDir, dataDir })), { dir: dataDir });
+    }
+    assert.deepEqual(checkPtyArgs('init', initArgs({ network, configDir: NEW })), { dir: NEW });
+    assert.deepEqual(checkPtyArgs('recover', initArgs({ network, configDir: NEW, recover: true })), { dir: NEW });
+  }
+  //Windows paths with spaces
+  const conf = 'C:\\Users\\Jane Doe\\.epic-gui\\wallets\\w2';
+  const old = 'C:\\Users\\Jane Doe\\.epic\\alpha & co\\main';
+  assert.deepEqual(checkPtyArgs('listen', listenArgs({ network: 'mainnet', configDir: conf, dataDir: old })), { dir: old });
+  //relative dirs, a listener without -t, another kind's command, a password: refused
+  assert.throws(() => checkPtyArgs('listen', ['-t', 'wallets/w1', '-c', NEW, 'listen', '--method', 'http']), /dir/);
+  assert.throws(() => checkPtyArgs('init', ['-c', '.', 'init']), /dir/);
+  assert.throws(() => checkPtyArgs('listen', ['-c', CONF, 'listen', '--method', 'http']), /missing dir/);
+  assert.throws(() => checkPtyArgs('init', initArgs({ network: 'mainnet', configDir: NEW, recover: true })), /init command/);
+  assert.throws(() => checkPtyArgs('listen', withPassArg(listenArgs({ network: 'mainnet', configDir: CONF, dataDir: OLD }), PASS)), /password/);
+  //the owner API is never started on a pty
+  assert.throws(() => checkPtyArgs('listen', ownerApiArgs({ network: 'mainnet', configDir: CONF, dataDir: OLD, startDir: CONF + '/owner_api_closed' })));
+});
+
+test('a listener runs only for the unlocked wallet: -t must be the dir the session password was set for', () => {
+  const terms = [];
+  const h = createPtyHost({
+    loadPty: () => ({ spawn: (file, args, opts) => { const t = { pid: 100 + terms.length, args, opts, onData() {}, onExit() {}, write() {} }; terms.push(t); return t; } }),
+    spawn: () => { throw new Error('no pipe spawn expected'); },
+    killTree: async () => true,
+    cwd: '/',
+  });
+  //session set for the imported wallet's data dir (walletService.start: setSessionPassword(password, dataDir))
+  const args = listenArgs({ network: 'usernet', configDir: CONF, dataDir: OLD, tor: false });
+  assert.throws(() => h.start({ cmd: BIN, args, kind: 'listen', password: Buffer.from(PASS), dir: CONF }), /session/);
+  assert.throws(() => h.start({ cmd: BIN, args: listenArgs({ network: 'usernet', configDir: NEW, dataDir: NEW }), kind: 'listen', password: Buffer.from(PASS), dir: OLD }), /session/);
+  assert.equal(terms.length, 0);
+  const r = h.start({ cmd: BIN, args, kind: 'listen', password: Buffer.from(PASS), dir: OLD });
+  assert.equal(r.mode, 'pty');
+  assert.deepEqual(terms[0].args, args);
+});
+
+test('every pty kind says how many password prompts it answers', () => {
+  assert.deepEqual(PTY_KINDS.listen, { passwords: 1, phrase: false });
+  assert.deepEqual(PTY_KINDS.epicbox, { passwords: 1, phrase: false });
+  assert.deepEqual(PTY_KINDS.init, { passwords: 2, phrase: false });
+  assert.deepEqual(PTY_KINDS.recover, { passwords: 2, phrase: true });
+});
+
+test('fallback only: withPassArg puts --pass before the dir options, as before', () => {
+  assert.deepEqual(withPassArg(listenArgs({ network: 'floonet', configDir: CONF, dataDir: OLD, tor: false }), PASS),
+    ['--floonet', '--pass', PASS, '-t', OLD, '-c', CONF, 'listen', '--method', 'http', '--no_tor']);
+  assert.deepEqual(withPassArg(initArgs({ network: 'mainnet', configDir: NEW, recover: true }), PASS), ['--pass', PASS, '-c', NEW, 'init', '-r']);
+  const args = withPassArg(epicboxArgs({ network: 'mainnet', configDir: CONF, dataDir: OLD }), PASS);
+  assert.ok(hasPassArg(args));
+  const d = describeSpawn(BIN, args);
+  assert.equal(d.role, 'epicbox');
+  assert.equal(d.dir, CONF);
+  assert.equal(d.topDir, OLD);
+  assert.ok(!redactArgs(args).includes(PASS), 'redacted for logs');
+  assert.ok(hasPassArg(['--pass=x']) && hasPassArg(['-p', 'x']) && !hasPassArg(['-c', NEW]));
 });
 
 test('Windows paths with spaces pass through unchanged', () => {
   const conf = 'C:\\Users\\Jane Doe\\.epic-gui\\wallets\\w2';
   const old = 'C:\\Users\\Jane Doe\\.epic\\alpha & co\\main';
-  const args = listenArgs({ network: 'mainnet', configDir: conf, dataDir: old, password: PASS, tor: true });
+  const args = listenArgs({ network: 'mainnet', configDir: conf, dataDir: old, tor: true });
   assert.equal(args[args.indexOf('-c') + 1], conf);
   assert.equal(args[args.indexOf('-t') + 1], old);
   const o = ownerApiArgs({ network: 'mainnet', configDir: conf, dataDir: old, startDir: path.win32.join(conf, OWNER_API_START_DIR) });

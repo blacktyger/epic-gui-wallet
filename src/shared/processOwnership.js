@@ -4,9 +4,9 @@
  * The app used to find wallet, node and Tor processes by name and stop (or reuse) whatever matched,
  * which also hit a user's own CLI wallet or node. Now every process the app spawns is recorded in a
  * small JSON file (pid, role, binary, wallet dir or node config) and only recorded processes are
- * ever stopped or reused. The file outlives the app, so a background node or Epicbox listener is
- * still known after a restart; a recorded pid only counts while its command line is still the one
- * the app started (same executable, same dir, same role), so a reused pid is never touched.
+ * ever stopped or reused. The file outlives the app, so a background node, or a listener of a session
+ * that crashed, is still known after a restart; a recorded pid only counts while its command line is
+ * still the one the app started (same executable, same dir, same role), so a reused pid is never touched.
  *
  * Tor is started by the http listener, not by the app: a Tor process counts as ours when its torrc
  * is in the top level dir (-t, the wallet's data dir) of one of our listeners, or in torDirs, and its

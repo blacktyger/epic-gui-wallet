@@ -391,6 +391,29 @@ test('killEpicProcess: our processes, Tor in the data dir, background roles kept
   assert.equal(await cs.waitForKilledPorts(), true);
 });
 
+test('killEpicProcess: this wallet\'s listeners and Tor are stopped without asking (restarted on the pty)', async () => {
+  const { cs, fs, events, nodeChildProcess, killed } = setup();
+  const old = '/home/jane/.epic/alpha/main';
+  fs.put(old + '/wallet_data/wallet.seed');
+  const d = cs.newWalletDirs('mainnet');
+  cs.registerWallet({ ...d, dataDir: old, network: 'mainnet' });
+  cs.startCheck('w1');
+  nodeChildProcess.owned = [{ pid: 7, role: 'listen', dir: d.configDir }, { pid: 8, role: 'epicbox', dir: d.configDir }, { pid: 9, role: 'tor' }];
+  assert.equal(await cs.killEpicProcess(), true);
+  assert.equal(events.filter(e => e[0] === 'killEpicProcess').length, 0, 'no prompt');
+  assert.deepEqual(killed, [7, 8, 9]);
+  assert.deepEqual(cs.killedPorts, [3415]);
+  //with an owner API left as well: that one is asked about, the listener port is not doubled
+  killed.length = 0;
+  nodeChildProcess.owned = [{ pid: 7, role: 'listen', dir: d.configDir }, { pid: 5, role: 'owner_api', dir: d.configDir }];
+  const p = cs.killEpicProcess();
+  await new Promise(r => setTimeout(r, 0));
+  await events.find(e => e[0] === 'killEpicProcess')[1].callback(true);
+  assert.equal(await p, true);
+  assert.deepEqual(killed, [7, 5]);
+  assert.deepEqual(cs.killedPorts, [3415, 3420]);
+});
+
 test('B1: a new floonet/usernet wallet uses its own local node, mainnet the public node', () => {
   const { cs, fs } = setup();
   const nodeOf = (id) => tomlStr(fs.readFileSync(cs.settings.wallet(id).configDir + '/epic-wallet.toml'), 'check_node_api_http_addr');

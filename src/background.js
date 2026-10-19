@@ -2,13 +2,16 @@
 
 import { app, protocol, net, session, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard } from 'electron'
 import contextMenu from 'electron-context-menu'
-import { exec, execFile } from 'child_process'
+import { execFile } from 'child_process'
 import { pathToFileURL } from 'url'
 import { createDirectory } from './shared/nodeDirectory'
 import { createProcessRegistry, createPidCheck } from './shared/processOwnership'
 import { resolveRoot, layout, legacyPaths } from './shared/appPaths'
 import { scanLegacy } from './shared/legacyScan'
 import { readLegacyProfiles } from './legacyProfile'
+import { createPtyHost } from './shared/ptyHost'
+import { createSessionSecret } from './shared/sessionSecret'
+import { registerSessionIpc, wipeWithWindow, wipeWithApp } from './shared/sessionIpc'
 
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -50,7 +53,6 @@ autoUpdater.allowPrerelease = false;
 autoUpdater.autoDownload = false;
 let win;
 let noderuninbackground = false;
-let epicboxruninbackground = false;
 
 
 contextMenu({
@@ -74,7 +76,8 @@ async function kill(pid){
   return new Promise(function(resolve, reject) {
     let iskilled;
     if (process.platform === 'win32') {
-        exec(`taskkill /pid ${pid} /f /t`, function( err ) {
+        //no cmd.exe and no console window
+        execFile('taskkill', ['/pid', String(Number(pid)), '/f', '/t'], {windowsHide: true}, function( err ) {
            if (err) {
              resolve(false);
            }
@@ -113,11 +116,46 @@ const ownProcesses = createProcessRegistry({
   selfPid: process.pid,
 });
 
+/*
+ * The wallet password of the unlocked session (shared/sessionSecret.js): set by the renderer once
+ * after an unlock, never sent back; wiped at lock, logout, wallet switch, quit, reload and crash.
+ * The listeners and init/recover run on a pseudo-terminal here (shared/ptyHost.js), which answers
+ * their password prompt with it.
+ */
+const sessionSecret = createSessionSecret();
+
+/* node-pty, not bundled: from resources/node-pty in the installed app (vue.config.js ptyExtra),
+   from node_modules in development */
+function loadPty(){
+  /* global __non_webpack_require__ */
+  return __non_webpack_require__(app.isPackaged ? path.join(process.resourcesPath, 'node-pty') : 'node-pty');
+}
+
+//only the app's own epic-wallet in resources/bin (as the preload finds it) is started on the pty
+const bundledBinDir = path.resolve(!process.env.NODE_ENV || process.env.NODE_ENV === 'production'
+  ? process.resourcesPath : path.join(__dirname, '../resources/'), 'bin') + path.sep;
+function isBundledWallet(cmd){
+  const b = path.resolve(String(cmd || ''));
+  const win = process.platform === 'win32';
+  const inside = win ? b.toLowerCase().startsWith(bundledBinDir.toLowerCase()) : b.startsWith(bundledBinDir);
+  return inside && /^epic-wallet(\.exe)?$/i.test(path.basename(b));
+}
+
+const ptyHost = createPtyHost({
+  loadPty,
+  isAllowedBin: isBundledWallet,
+  spawn: require('child_process').spawn,
+  killTree: kill,
+  win: process.platform === 'win32',
+  log: { info: (m) => log.info(m), warn: (m) => log.warn(m) },
+  env: process.env,
+});
+
 /* on quit: stop the wallet, listener, scan, node and Tor processes the app started, except the
-   node and the Epicbox listener when they run in the background. Nothing the app did not start. */
+   node when it runs in the background. Nothing the app did not start. */
 async function stopOwnProcesses(){
-  const roles = ['owner_api', 'listen', 'scan',
-    ...(epicboxruninbackground ? [] : ['epicbox']),
+  sessionSecret.wipe();
+  const roles = ['owner_api', 'listen', 'scan', 'epicbox',
     ...(noderuninbackground ? [] : ['node'])];
   try{
     const owned = await ownProcesses.list(roles, {tor: true});
@@ -126,6 +164,8 @@ async function stopOwnProcesses(){
   }catch(e){
     log.info('quit: could not stop the app processes: ' + (e && e.message));
   }
+  //init / recover still running (they are not in the process record)
+  await ptyHost.killAll().catch(() => {});
 }
 
 //[13088:0215/073859.040:ERROR:gpu_init.cc(454)] Passthrough is not supported, GL is disabled, ANGLE is
@@ -183,6 +223,9 @@ async function createWindow() {
     if (/^https?:\/\//i.test(url)) shell.openExternal(url)
     return { action: 'deny' }
   })
+
+  //a reload (the interface switch) or a crashed renderer: that session is over
+  wipeWithWindow(win.webContents, sessionSecret);
 
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
@@ -387,7 +430,6 @@ app.on('ready', async (event) => {
   if (!primaryInstance) return;
   //console.log('app', noderuninbackground);
   console.log('noderuninbackground', noderuninbackground);
-  console.log('epicboxruninbackground', epicboxruninbackground);
 
   if (isDevelopment && !process.env.IS_TEST) {
     // Install Vue Devtools
@@ -572,6 +614,13 @@ ipcMain.on('nodeBackground', (event, data) => {
   noderuninbackground = data;
 });
 
-ipcMain.on('epicboxBackground', (event, data) => {
-  epicboxruninbackground = data;
+
+/* ---- session password and the pseudo-terminal processes (shared/sessionIpc.js, ptyHost.js) ---- */
+//only the app's own window may hand over or use the password
+registerSessionIpc({
+  ipcMain,
+  session: sessionSecret,
+  ptyHost,
+  isAppWindow: (event) => !!win && !win.isDestroyed() && event.sender === win.webContents,
 });
+wipeWithApp({ app, proc: process, session: sessionSecret });
