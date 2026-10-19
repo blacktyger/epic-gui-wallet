@@ -14,21 +14,31 @@
 export const ANSWERS = ['used', 'declined', 'none'];
 
 /*
- * USABLE: what is offered.
- * - lmdb/ and txhashset/ both present (shared/legacyScan.js scanChains checks that).
- * - mainnet: at least MIN_MAINNET_TXHASHSET bytes in txhashset/. A node that stopped right after it
- *   started has a few KB there; a synced mainnet chain has hundreds of MB. lmdb/data.mdb is not a
- *   measure: on Windows LMDB sizes the file to its map size, empty or not. Floonet and usernet
- *   chains are small: any txhashset data counts.
- * - older nodes' data: see the notes in the report of this change (docs in the commit); every
- *   chain_data an older GUI or CLI (epic 2.x–4.x) wrote is offered, the node upgrades it in place.
+ * USABLE: what is offered. Evidence (checked 2026-10-19, EpicCash/epic source and runs of the Linux
+ * nodes older GUIs bundled: 3.0.0 in 4.0–5.0, 3.3.2/3.4.0 in 5.1, 3.4.0/3.5.0 in 5.2, 3.6.0 in
+ * 5.3–6.0, 4.1.0-1 in 6.1):
+ * - The chain store is the same in 3.0.0 and 4.1.0-1 (chain/src/store.rs keys unchanged, the one
+ *   migration migrate_db_v1_v2 in every version). 4.1.0-1 opened chains made by 3.0.0, 3.3.2,
+ *   3.4.0, 3.5.0 and 3.6.0; a mainnet chain went 3.6.0 → 4.1.0 → 3.6.0 → 4.1.0 and kept syncing.
+ *   No file tells which node wrote a chain, and none has to: every one is offered.
+ * - Nodes 3.0.0 and 3.3.2 had a fork at 2,600,000 that 3.4.0 moved; their chains stop near there.
+ *   That part is still the main chain, so 4.1.0 syncs on from it.
+ * - The layout every node writes: lmdb/data.mdb, header/header_head/pmmr_hash.bin and
+ *   txhashset/{kernel,output,rangeproof} (shared/legacyScan.js scanChains requires them).
+ * - Mainnet: at least MIN_MAINNET_HEADERS bytes of header hashes (about 64 bytes a header), so a node
+ *   stopped right after it started isn't offered. Floonet and usernet: any headers.
+ *   lmdb/data.mdb is not a measure: on Windows LMDB sizes the file to its map size, empty or not.
+ *   An empty txhashset (headers only) is still offered: the headers alone save most of the sync.
+ * - chain_data/epic.lock stays on disk after the node exits, so it says nothing; a node still
+ *   running on the folder is refused by the node itself ("epic server already running?").
+ * Not verified: a full txhashset written by an old node, and old chains on Windows or macOS.
  */
-export const MIN_MAINNET_TXHASHSET = 1024 * 1024;
+export const MIN_MAINNET_HEADERS = 64 * 1000;
 
 export function usableChain(chain, network) {
   if (!chain || typeof chain.dir !== 'string' || !chain.dir || chain.network !== network) return false;
-  const tx = Number(chain.txhashsetBytes) || 0;
-  return network === 'mainnet' ? tx >= MIN_MAINNET_TXHASHSET : tx > 0;
+  const headers = Number(chain.headerBytes) || 0;
+  return network === 'mainnet' ? headers >= MIN_MAINNET_HEADERS : headers > 0;
 }
 
 /*
