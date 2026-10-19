@@ -120,3 +120,17 @@ test('Windows paths (path.win32): %USERPROFILE%\\.epic, wallet_data in another c
   assert.deepEqual(r('D:\\Empty').wallets, []);
   assert.deepEqual(r('D:\\').wallets.map(w => w.dir), []);   //two levels down only through a network folder
 });
+
+test('Windows paths (path.win32): network folders in another case still tell the network', () => {
+  const epic = 'C:\\Users\\Jane\\.epic';
+  const seed = 'wallet_data\\wallet.seed';
+  const fsW = fakeWinFs({
+    [epic + '\\Main\\' + seed]: 'x',
+    [epic + '\\FLOO\\beta\\' + seed]: 'x',
+    [epic + '\\gamma\\User\\' + seed]: 'x',
+  });
+  const r = (picked) => resolveWalletFolder({ fs: fsW, pathMod: W, picked });
+  assert.deepEqual(dirs(r(epic + '\\Main')), [[epic + '\\Main', 'mainnet']]);
+  assert.deepEqual(dirs(r(epic + '\\FLOO\\beta\\wallet_data')), [[epic + '\\FLOO\\beta', 'floonet']]);
+  assert.deepEqual(dirs(r(epic + '\\gamma\\User')), [[epic + '\\gamma\\User', 'usernet']]);
+});

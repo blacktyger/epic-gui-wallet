@@ -92,9 +92,11 @@ export function resolveWalletFolder({ fs, pathMod, picked }) {
   return { canceled: false, picked: dir, wallets, chainOnly: false };
 }
 
-/* the network a wallet folder is on: its name or its parent's (main, floo, user), else its toml */
+/* the network a wallet folder is on: its name or its parent's (main, floo, user; any case on
+   Windows), else its toml */
 function networkOf(fs, pathMod, dir) {
-  const short = [pathMod.basename(dir), pathMod.basename(pathMod.dirname(dir))].find(n => SHORTS.includes(n));
+  const norm = (p) => pathMod.sep === '\\' ? p.toLowerCase() : p;
+  const short = [pathMod.basename(dir), pathMod.basename(pathMod.dirname(dir))].map(norm).find(n => SHORTS.includes(n));
   return (short && netFromShort(short))
     || tomlNetwork(tryDo(() => fs.readFileSync(pathMod.join(dir, 'epic-wallet.toml'), 'utf8'), ''));
 }
