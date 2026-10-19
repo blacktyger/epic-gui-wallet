@@ -149,11 +149,11 @@ test('scan: label, contacts count and cleaned settings preview per found wallet'
   assert.deepEqual(Object.keys(by).sort(), ['alpha', 'beta', 'gamma']);
   assert.equal(by.alpha.label, 'Alpha User');          //6.0+ profile wins
   assert.equal(by.alpha.contacts, 3);                  //Carol once, Dan, Finn
-  assert.equal(by.alpha.language, 'cz');
+  assert.equal(by.alpha.language, 'de');               //the old config.json's locale wins over User.language (M1)
   assert.deepEqual(by.alpha.settings, {
     check_node_api_http_addr: 'http://127.0.0.1:3413', nodeInternal: false, epicbox_domain: 'epicbox.epiccash.com' });
   assert.equal(by.beta.label, 'Beta User');
-  assert.equal(by.beta.language, 'en');                //zh: no translation
+  assert.equal(by.beta.language, 'en');                //config.json 'ru': no translation
   assert.equal(by.beta.settings.check_node_api_http_addr, 'http://127.0.0.1:13413');   //floonet: never the mainnet node
   assert.equal(by.beta.settings.epicbox_domain, 'epicbox.epiccash.com');
   assert.equal(by.gamma.label, 'gamma');               //no User row, broken config.json: account name, defaults
@@ -183,14 +183,14 @@ test('importWallets: list entries, User rows, linked contacts, decisions, chain,
   assert.equal(w1.settings.walletlisten_on_startup, WALLET_DEFAULTS.walletlisten_on_startup);
   assert.equal(w2.network, 'floonet');
   assert.equal(b.settings.defaultWalletId(), 'w1');
-  assert.equal(b.settings.app().locale, 'cz');         //from the first imported wallet, app locale was empty
+  assert.equal(b.settings.app().locale, 'de');         //from the first imported wallet, app locale was empty
   assert.equal(b.settings.nodeChainDir('mainnet'), realFs.realpathSync(b.e('alpha', 'main', 'chain_data')));
   assert.equal(b.settings.nodeChainDir('floonet'), '');
   assert.deepEqual(b.settings.legacyDecisions(), { [b.e('alpha', 'main')]: 'imported', [path.join(b.home, 'My Wallets', 'beta', 'floo')]: 'imported' });
 
   //User rows keyed by the wallet id; contacts point at the new row ids, keybase blank
   assert.deepEqual(b.users.map(u => [u.id, u.account, u.name, u.language, u.nodeInternal, u.epicbox_domain]), [
-    [1, 'w1', 'Alpha User', 'cz', false, 'epicbox.epiccash.com'],
+    [1, 'w1', 'Alpha User', 'de', false, 'epicbox.epiccash.com'],
     [2, 'w2', 'Beta User', 'en', false, 'epicbox.epiccash.com'],
   ]);
   assert.deepEqual(b.book.map(c => [c.user_id, c.name, c.onion, c.keybase]), [
@@ -237,6 +237,8 @@ test('importWallets: keeps an existing default and app locale; injected cleaners
     cleanNodeAddress: (url, opt) => { calls.push([url, opt.network]); return { url: 'https://cleaned.example:3413', changed: true, reason: 'format' }; },
     supportedLocale: (l) => l === 'cz' ? 'cz' : 'de',
   });
+  //not the first run, and a language the user chose: kept
+  b.settings.markScanned(0);
   b.settings.setApp({ locale: 'hi' });
   b.settings.addWallet({ id: 'w1', network: 'mainnet', configDir: '/x/w1', dataDir: '/x/w1' });
   const r = await b.importer.scan();
@@ -284,4 +286,43 @@ test('cleaning fallbacks: node URL, Epicbox domain, locale', () => {
   assert.equal(cleanEpicbox('my.box.org'), 'my.box.org');
   for (const l of ['bg', 'cz', 'de', 'en', 'fa', 'hi']) assert.equal(fallbackLocale(l), l);
   for (const l of ['ru', 'zh', '', null, 'DE ']) assert.equal(fallbackLocale(l), l === 'DE ' ? 'de' : 'en');
+});
+
+test('M1: the old app\'s language: config.json locale over User.language; sets the app language on the first run', async (t) => {
+  //alpha: config.json locale "de", User row language "en" (the old Setup Assistant's), as on a 5.3.1 home
+  const profiles = [{ app: '≤5.3.1', dir: '', users: [user(1, 'alpha', { name: 'Alpha', language: 'en' })], contacts: [] }];
+  const b = setup(t, { profiles });
+  //settings.json from the first start holds a locale already (an older build wrote "en"): the found screen still sets it
+  b.settings.setApp({ locale: 'en' });
+  assert.equal(b.settings.isFirstRun(), true);
+  const r = await b.importer.scan();
+  const alpha = r.wallets.find(w => w.account === 'alpha');
+  assert.equal(alpha.language, 'de');
+  await b.importer.importWallets([alpha.key]);
+  assert.equal(b.settings.app().locale, 'de');
+  assert.equal(b.users[0].language, 'de');
+
+  //later (Settings › Import): a language the user chose stays
+  const c = setup(t, { profiles });
+  c.settings.markScanned(0);
+  c.settings.setApp({ locale: 'hi' });
+  await c.importer.importWallets([(await c.importer.scan()).wallets.find(w => w.account === 'alpha').key]);
+  assert.equal(c.settings.app().locale, 'hi');
+  //'' (the OS language, nobody chose): the import sets it
+  const d = setup(t, { profiles });
+  d.settings.markScanned(0);
+  await d.importer.importWallets([(await d.importer.scan()).wallets.find(w => w.account === 'alpha').key]);
+  assert.equal(d.settings.app().locale, 'de');
+});
+
+test('M1: no language known (gamma: broken config.json, no User row): the app language is left as it is', async (t) => {
+  const b = setup(t, { profiles: [] });
+  const r = await b.importer.scan();
+  const gamma = r.wallets.find(w => w.account === 'gamma');
+  assert.equal(gamma.language, '');
+  const alpha = r.wallets.find(w => w.account === 'alpha');
+  //the first wallet with a language decides
+  await b.importer.importWallets([gamma.key, alpha.key]);
+  assert.equal(b.settings.app().locale, 'de');
+  assert.equal(b.users[0].language, undefined, 'no language passed: a new row gets the default');
 });

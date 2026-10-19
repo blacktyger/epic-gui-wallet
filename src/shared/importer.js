@@ -129,7 +129,10 @@ export function createImporter({ configService, userService, addressbookService,
       const cfg = readOldConfig(w.key);
       const name = str(acc.user.name).trim();
       const label = name || (w.account === 'default' ? '' : str(w.account));
-      const language = locale(str(acc.user.language) || cfg.locale);
+      //the old config.json's locale is what the old app showed (its Settings wrote it); the User
+      //row's language is often the Setup Assistant's 'en', never changed. '' = nothing known
+      const oldLang = str(cfg.locale).trim() || str(acc.user.language).trim();
+      const language = oldLang ? locale(oldLang) : '';
       const row = { ...w, label, contacts: acc.contacts.length, language, settings: settingsFor(w, acc.user, cfg) };
       rows.set(w.key, { ...row, contactRows: acc.contacts, user: acc.user });
       wallets.push(row);
@@ -137,6 +140,7 @@ export function createImporter({ configService, userService, addressbookService,
     return { wallets, chains };
   }
 
+  /* setLocale: this wallet's language becomes the app's (see importWallets) */
   async function importOne(row, { reuseChain, setLocale }) {
     const s = settings();
     //idempotent: a retry after a crash or a double click doesn't add the wallet twice
@@ -153,7 +157,7 @@ export function createImporter({ configService, userService, addressbookService,
     });
     try {
       const user = await userService.ensureUser(id, {
-        name: row.label, language: row.language,
+        name: row.label, language: row.language || undefined,
         nodeInternal: row.settings.nodeInternal, epicbox_domain: row.settings.epicbox_domain,
       });
       if (!user || typeof user.id !== 'number') throw new Error('no user row');
@@ -174,7 +178,7 @@ export function createImporter({ configService, userService, addressbookService,
       throw e;
     }
     s.setLegacyDecision(row.dir, 'imported');
-    if (setLocale && !s.app().locale && row.language) s.setApp({ locale: row.language });
+    if (setLocale && row.language) s.setApp({ locale: row.language });
     if (reuseChain && !s.nodeChainDir(row.network)) {
       const chain = (row.chainDir && chains.find(c => c.dir === row.chainDir)) || chains.find(c => c.network === row.network);
       if (chain) s.setNodeChainDir(row.network, chain.dir);
@@ -186,12 +190,17 @@ export function createImporter({ configService, userService, addressbookService,
     if (!rows.size) await scan();
     const s = settings();
     const hadDefault = !!s.defaultWalletId();
+    //the first imported wallet with a known language sets the app's, unless the user chose one:
+    //app.locale '' is the OS language, and on the first-run found screen nobody has chosen yet
+    let localeOpen = s.isFirstRun() || !s.app().locale;
     const imported = [], failed = [];
     for (const key of Array.isArray(keys) ? keys : []) {
       const row = rows.get(key);
       if (!row) { failed.push({ key, reason: 'not found' }); continue; }
       try {
-        const walletId = await importOne(row, { reuseChain, setLocale: imported.length === 0 });
+        const setLocale = localeOpen && !!row.language;
+        const walletId = await importOne(row, { reuseChain, setLocale });
+        if (setLocale) localeOpen = false;
         imported.push({ key, walletId });
       } catch (e) {
         failed.push({ key, reason: String(e && e.message || e) });
