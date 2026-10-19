@@ -8,7 +8,8 @@ import isPortReachable from 'is-port-reachable';
 import { createProcessRegistry, createPidCheck, describeSpawn, redactArgs } from './shared/processOwnership';
 import { spawnCommand, plainBin, epicCwd } from './shared/spawnCommand';
 import { parseListenerLine } from './shared/epicboxListener';
-import { createScopedFs } from './shared/security';
+import { createScopedFs, isInside } from './shared/security';
+import { checkSpawnArgs } from './shared/walletArgs';
 
 const moment = require('moment');
 const base32 = require('rfc-3548-b32');
@@ -99,8 +100,15 @@ const ownProcesses = createProcessRegistry({
 const liveChildren = new Map();
 
 /* only the app's own binaries in resources/bin/<platform> are started: epic (the node) or
-   epic-wallet, by name. Whatever else the page asks for is not run */
+   epic-wallet, by name, with the arguments the app gives them (walletArgs.checkSpawnArgs) and
+   their toml in the app's folder. Whatever else the page asks for is not run */
 const bundledBinDir = path.resolve(resourcePath, 'bin') + path.sep;
+function allowedSpawn(cmd, args, role){
+  if(!isBundledBin(cmd, [role === 'node' ? 'epic' : 'epic-wallet'])) return false;
+  let given;
+  try{ given = checkSpawnArgs(role, args); }catch(e){ return false; }
+  return Object.values(given).every(p => isInside(p, appPaths.root, path));
+}
 function isBundledBin(cmd, names){
   const b = path.resolve(plainBin(cmd));
   const win = process.platform === 'win32';
@@ -374,8 +382,8 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
     /* start node api */
     async execNode(cmd, args, platform){
 
-      if(!isBundledBin(cmd, ['epic'])){
-        log.warn('execNode: not the app\'s node binary, not started');
+      if(!allowedSpawn(cmd, args, 'node')){
+        log.warn('execNode: not the app\'s node or its arguments, not started');
         return false;
       }
       return new Promise(function(resolve, reject) {
@@ -407,8 +415,8 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
     /* start wallet api */
     async execStart(cmd, args, platform, emitOutput){
 
-      if(!isBundledBin(cmd, ['epic-wallet'])){
-        log.warn('execStart: not the app\'s wallet binary, not started');
+      if(!allowedSpawn(cmd, args, 'owner_api')){
+        log.warn('execStart: not the app\'s wallet or its arguments, not started');
         return false;
       }
       return new Promise(function(resolve, reject) {
@@ -623,7 +631,8 @@ const strings = (list) => list.filter(d => typeof d === 'string' && d);
 const readDirs = new Set(strings([resourcePath, legacy.epicDir, legacy.appConfigFile && path.dirname(legacy.appConfigFile),
   ...(Array.isArray(legacy.profiles) ? legacy.profiles.map(p => p && p.dir) : [])]));
 const writeDirs = new Set(strings([appPaths.root, appPaths.defaultRoot]));
-const scopedFs = createScopedFs({ fs, pathMod: path, dirs: () => ({ read: [...readDirs], write: [...writeDirs] }) });
+const scopedFs = createScopedFs({ fs, pathMod: path, copyFrom: [resourcePath],
+  dirs: () => ({ read: [...readDirs], write: [...writeDirs] }) });
 
 contextBridge.exposeInMainWorld('nodeSecp256k1', secp256k1);
 contextBridge.exposeInMainWorld('nodeAes256gcm', aes256gcm);
@@ -644,7 +653,8 @@ contextBridge.exposeInMainWorld('log', Object.fromEntries(['log', 'error', 'warn
   .map(level => [level, (...args) => log[level](...args)])));
 contextBridge.exposeInMainWorld('debug', debug);
 contextBridge.exposeInMainWorld('nodeFs', scopedFs);
-contextBridge.exposeInMainWorld('nodeQr', qr);
+//toCanvas only: qrcode's toFile writes to any path with Node's fs
+contextBridge.exposeInMainWorld('nodeQr', { toCanvas: (...args) => qr.toCanvas(...args) });
 contextBridge.exposeInMainWorld('nodePath', require('path'));
 contextBridge.exposeInMainWorld('config', {
 

@@ -575,7 +575,7 @@ if (isDevelopment) {
 
 
 ipcMain.handle('show-save-dialog', async (event, title, message, defaultPath) => {
-    // do stuff
+    if (!fromAppWindow(event)) return { canceled: true };
     let responce = await dialog.showSaveDialog({
       title: title,
       message: message,
@@ -585,7 +585,7 @@ ipcMain.handle('show-save-dialog', async (event, title, message, defaultPath) =>
 });
 
 ipcMain.handle('show-open-dialog', async (event, title, message, defaultPath) => {
-    // do stuff
+    if (!fromAppWindow(event)) return { canceled: true, filePaths: [] };
     let responce = await dialog.showOpenDialog({
       properties:["openDirectory", "showHiddenFiles", "createDirectory"]
     });
@@ -616,6 +616,7 @@ let leftoverImportCleanup = Promise.resolve(true);
 //one scan at a time: a second one would remove the first one's copy at its start
 let legacyScanRunning = Promise.resolve();
 ipcMain.handle('legacy-scan', (event, args) => {
+  if (!fromAppWindow(event)) return { wallets: [], chains: [], profiles: [] };
   const run = legacyScanRunning.catch(() => {}).then(() => legacyScan(args));
   legacyScanRunning = run;
   return run;
@@ -631,7 +632,8 @@ async function legacyScan({ known } = {}){
 }
 
 //start again, after another app folder was chosen (it is read only at start)
-ipcMain.handle('app-relaunch', async () => {
+ipcMain.handle('app-relaunch', async (event) => {
+  if (!fromAppWindow(event)) return;
   await shutdown.run();
   app.relaunch();
   app.exit(0);
@@ -642,8 +644,8 @@ ipcMain.handle('locale', async() => {
 });
 //after switching between the Modern and Classic interface: start the renderer again at index.html
 //(a reload of the current history-mode path would not resolve under app://)
-ipcMain.handle('reload-ui', () => {
-  if (!win) return;
+ipcMain.handle('reload-ui', (event) => {
+  if (!fromAppWindow(event)) return;
   if (process.env.WEBPACK_DEV_SERVER_URL) win.loadURL(process.env.WEBPACK_DEV_SERVER_URL);
   else win.loadURL('app://./index.html');
 });
@@ -672,7 +674,8 @@ ipcMain.handle('node-directory', async (event, chain) => {
   }
 });
 
-//only the app's own window may ask the main process to open things or send requests
+//only the app's own window may ask the main process to open things, send requests, show dialogs,
+//write the clipboard or restart (there is no other window: new windows and webviews are refused)
 const fromAppWindow = (event) => !!win && !win.isDestroyed() && event.sender === win.webContents;
 
 //a link from the page (About, Credits, the node notice and list): http(s) only, in the system browser
@@ -692,7 +695,9 @@ ipcMain.handle('open-folder', async (event, dir) => {
   const target = path.resolve(dir);
   let isDir = false;
   try { isDir = fs.statSync(target).isDirectory(); } catch (e) { /* not there */ }
-  if (!isDir || !known.some(d => isInside(target, d, path))) {
+  //a macOS bundle is a folder that openPath would launch, not show
+  const bundle = target.split(/[\\/]/).some(part => /\.(app|bundle|framework|plugin|prefpane|kext|workflow|action|saver|qlgenerator|mdimporter|appex)$/i.test(part));
+  if (!isDir || bundle || !known.some(d => isInside(target, d, path))) {
     log.info('open-folder: refused a path that is not an app or wallet folder');
     return false;
   }
@@ -703,20 +708,57 @@ ipcMain.handle('open-folder', async (event, dir) => {
 //a node API call for the page (shared/nodeFetch.js; what may be sent: shared/security.js
 //nodeRequest). The page's own CSP allows the wallet API on this machine only
 const NODE_REPLY_MAX = 1024 * 1024;
-ipcMain.handle('node-fetch', async (event, req) => {
+ipcMain.handle('node-fetch', (event, req) => {
   if (!fromAppWindow(event)) return { error: 'not allowed' };
   const r = nodeRequest(req);
-  if (r.error) return { error: r.error };
-  try {
-    const res = await net.fetch(r.url, { method: r.method, headers: r.headers, body: r.body, redirect: r.redirect,
-      signal: AbortSignal.timeout(r.timeoutMs), credentials: 'omit', cache: 'no-store' });
-    const text = (await res.text()).slice(0, NODE_REPLY_MAX);
-    return { status: res.status, text };
-  } catch (e) {
-    const timeout = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
-    return { error: timeout ? 'timeout' : 'not reachable', timeout };
-  }
+  return r.error ? { error: r.error } : nodeHttp(r);
 });
+
+/* {status, text} | {error, timeout}. net.request, not net.fetch: net.fetch rejects a redirect it is
+   told not to follow, net.request reports its status, so a node behind a redirect (http -> https)
+   reads as one (nodeVersion.js 'redirects elsewhere'), not as a node that doesn't answer */
+function nodeHttp(r){
+  return new Promise((resolve) => {
+    let settled = false;
+    let req = null;
+    const finish = (v) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(v);
+    };
+    const timer = setTimeout(() => {
+      finish({ error: 'timeout', timeout: true });
+      try { req.abort(); } catch (e) { /* done */ }
+    }, r.timeoutMs);
+    try {
+      //a request with the local node's secret never follows a redirect, wherever it points
+      const manual = r.redirect !== 'follow' || 'Authorization' in r.headers;
+      req = net.request({ url: r.url, method: r.method, redirect: manual ? 'manual' : 'follow', credentials: 'omit', useSessionCookies: false, cache: 'no-store' });
+      for (const [k, v] of Object.entries(r.headers)) req.setHeader(k, v);
+      //emitted in 'follow' mode too, where it is followed by itself
+      req.on('redirect', (statusCode) => {
+        if (!manual) return;
+        finish({ status: statusCode, text: '' });
+        req.abort();
+      });
+      req.on('response', (res) => {
+        const chunks = [];
+        let size = 0;
+        res.on('data', (c) => {
+          size += c.length;
+          if (size <= NODE_REPLY_MAX) chunks.push(c);
+        });
+        res.on('end', () => finish({ status: res.statusCode, text: Buffer.concat(chunks).toString('utf8') }));
+        res.on('error', () => finish({ error: 'not reachable', timeout: false }));
+      });
+      req.on('error', () => finish({ error: 'not reachable', timeout: false }));
+      req.end(r.body);
+    } catch (e) {
+      finish({ error: 'not reachable', timeout: false });
+    }
+  });
+}
 
 //the public IP (the Receive page's http address) and the EPIC price (the header): fixed URLs, asked
 //from here so the page's CSP needs neither host and the request carries no Origin, cookie or app
@@ -738,10 +780,12 @@ ipcMain.handle('lookup', async (event, which) => {
 
 //the clipboard module is not available in renderer processes since Electron 44
 ipcMain.handle('clipboard-write-text', (event, text) => {
+  if (!fromAppWindow(event)) return;
   return clipboard.writeText(String(text));
 });
 
 ipcMain.handle('resize', (event, width, height) => {
+  if (!fromAppWindow(event)) return;
 
   let browserWindow = BrowserWindow.fromWebContents(event.sender)
   browserWindow.setSize(width,height);

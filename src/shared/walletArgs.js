@@ -117,6 +117,33 @@ export function checkPtyArgs(kind, args) {
   return { dir: dirs['-t'] || dirs['-c'] };
 }
 
+/*
+ * The two processes the preload starts itself (not on a pseudo-terminal): the owner API, exactly as
+ * ownerApiArgs makes it, and the built-in node (nodeService.internalNodeStart: an optional network
+ * flag, server --config_file <toml> run). Returns the paths they are given ({configDir, startDir}
+ * or {configFile}) for the caller to check, or throws. So the page can't run another subcommand
+ * (send, finalize, clean) or point one at a file of its choice.
+ */
+export function checkSpawnArgs(role, args) {
+  if (!Array.isArray(args) || args.some(a => typeof a !== 'string')) throw new Error('args must be strings');
+  if (hasPassArg(args)) throw new Error('args must not carry a password');
+  let i = 0;
+  if (args[i] === '--floonet' || args[i] === '--usernet') i++;
+  const rest = args.slice(i);
+  if (role === 'owner_api') {
+    const ok = rest.length === 6 && rest[0] === '--offline_mode' && rest[1] === '-c' && rest[3] === '-t' && rest[5] === 'owner_api'
+      && isAbsolute(rest[2]) && isAbsolute(rest[4]);
+    if (!ok) throw new Error('not an owner_api command');
+    return { configDir: rest[2], startDir: rest[4] };
+  }
+  if (role === 'node') {
+    const ok = rest.length === 4 && rest[0] === 'server' && rest[1] === '--config_file' && rest[3] === 'run' && isAbsolute(rest[2]);
+    if (!ok) throw new Error('not a node command');
+    return { configFile: rest[2] };
+  }
+  throw new Error('unknown role');
+}
+
 /* fallback only (no pseudo-terminal on this platform): the args with `--pass <password>` before
    the first dir option, where epic-wallet reads its global options */
 export function withPassArg(args, password) {

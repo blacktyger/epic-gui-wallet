@@ -35,7 +35,10 @@ test('isInside: by path, .. resolved, Windows in any case', () => {
 
 function fakeFs() {
   const calls = [];
-  const fs = new Proxy({}, { get: (t, op) => (...args) => { calls.push([op, ...args]); return op === 'existsSync' ? true : 'ok'; } });
+  const fs = new Proxy({}, { get: (t, op) => (...args) => {
+    calls.push([op, ...args]);
+    return op === 'existsSync' ? true : op === 'realpathSync' ? args[0] : op === 'statSync' ? { mode: 0o100644 } : 'ok';
+  } });
   return { fs, calls };
 }
 
@@ -43,10 +46,10 @@ test('scoped fs: writes in the app folders, reads also in resources, refuses the
   const { fs, calls } = fakeFs();
   const write = ['/home/u/.epic-gui'];
   const read = ['/opt/app/resources'];
-  const sfs = createScopedFs({ fs, pathMod: path.posix, dirs: () => ({ read, write }) });
-  assert.equal(sfs.writeFileSync('/home/u/.epic-gui/settings.json', '{}'), 'ok');
+  const sfs = createScopedFs({ fs, pathMod: path.posix, copyFrom: read, dirs: () => ({ read, write }) });
+  sfs.writeFileSync('/home/u/.epic-gui/settings.json', '{}');
   assert.equal(sfs.readFileSync('/opt/app/resources/epic-wallet.toml', 'utf8'), 'ok');
-  assert.equal(sfs.copyFileSync('/opt/app/resources/foundation.json', '/home/u/.epic-gui/node/main/foundation.json'), 'ok');
+  sfs.copyFileSync('/opt/app/resources/foundation.json', '/home/u/.epic-gui/node/main/foundation.json');
   assert.throws(() => sfs.writeFileSync('/opt/app/resources/x', ''), { code: 'EACCES' });
   assert.throws(() => sfs.readFileSync('/home/u/.ssh/id_rsa'), { code: 'EACCES' });
   assert.throws(() => sfs.readdirSync('/home/u'), { code: 'EACCES' });
@@ -58,7 +61,26 @@ test('scoped fs: writes in the app folders, reads also in resources, refuses the
   //a folder picked later is allowed from then on
   write.push('/media/usb/new-root');
   assert.equal(sfs.mkdirSync('/media/usb/new-root', { recursive: true }), 'ok');
-  assert.deepEqual(calls.map(c => c[0]), ['writeFileSync', 'readFileSync', 'copyFileSync', 'existsSync', 'mkdirSync']);
+  //what was done, without the checks around it (where a write lands, its mode)
+  const ops = calls.map(c => c[0]).filter(o => !['existsSync', 'realpathSync', 'statSync'].includes(o));
+  assert.deepEqual(ops, ['writeFileSync', 'readFileSync', 'copyFileSync', 'mkdirSync']);
+});
+
+test('scoped fs: nothing written executable, copies only from the resources', () => {
+  const { fs, calls } = fakeFs();
+  const sfs = createScopedFs({ fs, pathMod: path.posix, copyFrom: ['/opt/app/resources'],
+    dirs: () => ({ read: ['/opt/app/resources', '/media/usb/picked'], write: ['/home/u/.epic-gui'] }) });
+  sfs.writeFileSync('/home/u/.epic-gui/run.sh', '#!/bin/sh', { encoding: 'utf8', mode: 0o755 });
+  sfs.writeFileSync('/home/u/.epic-gui/a.toml', 'x', { encoding: 'utf8', mode: 0o600 });
+  sfs.writeFileSync('/home/u/.epic-gui/b.txt', 'x', 'utf8');
+  const writes = calls.filter(c => c[0] === 'writeFileSync');
+  assert.equal(writes[0][3].mode, 0o644);
+  assert.equal(writes[1][3].mode, 0o600);
+  assert.equal(writes[2][3], 'utf8');
+  assert.throws(() => sfs.copyFileSync('/media/usb/picked/tool', '/home/u/.epic-gui/tool'), { code: 'EACCES' });
+  //settingsStore's backup, inside the app folder
+  sfs.copyFileSync('/home/u/.epic-gui/settings.json', '/home/u/.epic-gui/settings.json.bak');
+  assert.ok(calls.some(c => c[0] === 'copyFileSync' && c[2] === '/home/u/.epic-gui/settings.json.bak'));
 });
 
 test('scoped fs: only the sync calls the app uses', () => {
@@ -73,12 +95,19 @@ test('nodeRequest: node API paths, GET/POST, Authorization to this machine only'
   assert.deepEqual(r.headers, { 'Content-Type': 'application/json' });
   assert.equal(r.method, 'GET');
   assert.equal(r.redirect, 'manual');
-  const local = nodeRequest({ url: 'http://127.0.0.1:3413/v2/owner', method: 'post', headers: { authorization: 'Basic x' }, body: '{}' });
+  const rpc = (method, extra = {}) => JSON.stringify({ jsonrpc: '2.0', id: 1, method, params: [], ...extra });
+  const local = nodeRequest({ url: 'http://127.0.0.1:3413/v2/owner', method: 'post', headers: { authorization: 'Basic x' }, body: rpc('get_status') });
   assert.deepEqual(local.headers, { Authorization: 'Basic x' });
   assert.equal(local.method, 'POST');
-  assert.equal(local.body, '{}');
+  assert.equal(local.body, rpc('get_status'));
+  assert.equal(nodeRequest({ url: 'https://n:3413/v2/foreign', method: 'POST', body: rpc('get_tip') }).body, rpc('get_tip'));
   for (const bad of [{ url: 'file:///etc/passwd' }, { url: 'https://evil.example/upload' }, { url: 'https://n:3413/v1/status?x=1' },
-    { url: 'https://n:3413/v2/foreign', method: 'PUT' }, { url: 'https://n:3413/v2/foreign', method: 'POST', body: 'x'.repeat(5000) }, null]) {
+    { url: 'https://n:3413/v2/foreign', method: 'PUT' }, { url: 'https://n:3413/v2/foreign', method: 'POST', body: 'x'.repeat(5000) },
+    { url: 'https://n:3413/v2/foreign', method: 'POST', body: rpc('get_tip', { seed: 'twelve words' }) },
+    { url: 'https://n:3413/v2/foreign', method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'get_tip', params: ['secret'] }) },
+    { url: 'https://n:3413/v2/foreign', method: 'POST', body: rpc('push_transaction') },
+    { url: 'https://n:3413/v2/owner', method: 'POST', body: rpc('get_version') },
+    { url: 'https://n:3413/v2/foreign', method: 'GET' }, { url: 'https://n:3413/v1/status', method: 'POST', body: '{}' }, null]) {
     assert.ok(nodeRequest(bad).error, JSON.stringify(bad));
   }
 });
@@ -121,4 +150,50 @@ test('bridgedFetch: a Response-like reply, errors and aborts like fetch', async 
   const pending = bridgedFetch(() => new Promise(() => {}))('https://n/v1/version', { signal: c.signal });
   c.abort();
   await assert.rejects(pending, { name: 'AbortError' });
+});
+
+test('scoped fs: lstatSync as a plain object, in the read scope only', async () => {
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const dir = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), 'sfs-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'a'), 'x');
+    const sfs = createScopedFs({ fs, pathMod: path, dirs: () => ({ read: [], write: [dir] }) });
+    const st = sfs.lstatSync(path.join(dir, 'a'));
+    assert.equal(Object.getPrototypeOf(st), Object.prototype);
+    assert.deepEqual([st.isFile(), st.isDirectory(), st.isSymbolicLink(), st.size], [true, false, false, 1]);
+    assert.throws(() => sfs.lstatSync('/etc/passwd'), { code: 'EACCES' });
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('scoped fs (real files): a copy or a write loses its x bits; a symlink does not lead a write out', async (t) => {
+  if (process.platform === 'win32') return t.skip('POSIX modes and symlinks');
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const base = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), 'sfs-'));
+  try {
+    const res = path.join(base, 'resources');
+    const root = path.join(base, 'root');
+    const outside = path.join(base, 'outside');
+    for (const d of [res, root, outside]) fs.mkdirSync(d);
+    fs.writeFileSync(path.join(res, 'tool'), '#!/bin/sh', { mode: 0o755 });
+    fs.symlinkSync(outside, path.join(root, 'link'));
+    const sfs = createScopedFs({ fs, pathMod: path, copyFrom: [res], dirs: () => ({ read: [res], write: [root] }) });
+    sfs.copyFileSync(path.join(res, 'tool'), path.join(root, 'copy'));
+    assert.equal(fs.statSync(path.join(root, 'copy')).mode & 0o111, 0);
+    fs.chmodSync(path.join(root, 'copy'), 0o755);
+    sfs.writeFileSync(path.join(root, 'copy'), 'other');
+    assert.equal(fs.statSync(path.join(root, 'copy')).mode & 0o111, 0);
+    assert.throws(() => sfs.writeFileSync(path.join(root, 'link', 'x'), 'escape'), { code: 'EACCES' });
+    assert.throws(() => sfs.mkdirSync(path.join(root, 'link', 'a', 'b'), { recursive: true }), { code: 'EACCES' });
+    assert.equal(fs.existsSync(path.join(outside, 'x')), false);
+    //a root that is itself a symlink is fine: it is compared by where it leads too
+    const sfs2 = createScopedFs({ fs, pathMod: path, dirs: () => ({ read: [], write: [path.join(root, 'link')] }) });
+    sfs2.writeFileSync(path.join(root, 'link', 'ok'), 'in');
+    assert.equal(fs.readFileSync(path.join(outside, 'ok'), 'utf8'), 'in');
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
 });
