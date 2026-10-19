@@ -58,7 +58,7 @@ function guessApp(fs, pathMod, dir, layout30) {
   return '4.x–5.x';
 }
 
-/* approximate bytes of a chain: lmdb + txhashset, depth- and count-bounded;
+/* approximate bytes of a chain: lmdb + txhashset + header, depth- and count-bounded;
    each file is also told to onFile(sub, bytes) */
 function chainBytes(fs, pathMod, chainDir, onFile = () => {}) {
   let bytes = 0, seen = 0;
@@ -70,7 +70,7 @@ function chainBytes(fs, pathMod, chainDir, onFile = () => {}) {
       else if (d.isFile()) { const n = tryDo(() => fs.statSync(p).size, 0); bytes += n; onFile(sub, n); }
     }
   };
-  for (const sub of ['lmdb', 'txhashset']) walk(sub, pathMod.join(chainDir, sub), 0);
+  for (const sub of ['lmdb', 'txhashset', 'header']) walk(sub, pathMod.join(chainDir, sub), 0);
   return bytes;
 }
 
@@ -177,6 +177,9 @@ export function scanLegacy({ fs, pathMod, legacy, known = [] }) {
   return { wallets, chains };
 }
 
+//the header MMR's hashes: about 64 bytes per block header the node has
+const HEADER_HASHES = ['header', 'header_head', 'pmmr_hash.bin'];
+
 /* when a chain was written last: its lmdb (data.mdb changes with every block), else the folders */
 function chainModified(fs, pathMod, chainDir) {
   return Math.max(...[['lmdb', 'data.mdb'], ['lmdb'], ['txhashset']].map(p => mtime(fs, pathMod.join(chainDir, ...p))));
@@ -187,7 +190,7 @@ function chainModified(fs, pathMod, chainDir) {
  * offer of shared/chainOffer.js): every <wallet dir>/chain_data with lmdb/ and txhashset/, whether
  * or not the wallet is in 6.1's list or still has its seed, and ~/.epic/<net>/chain_data (CLI).
  * Read only, like scanLegacy.
- * → [{dir, network, bytes, txhashsetBytes, modified}]   (modified: ms, 0 when unknown)
+ * → [{dir, network, bytes, txhashsetBytes, headerBytes, modified}]   (modified: ms, 0 when unknown)
  */
 export function scanChains({ fs, pathMod, legacy }) {
   const win = pathMod.sep === '\\';
@@ -201,13 +204,16 @@ export function scanChains({ fs, pathMod, legacy }) {
   const consider = (dir, network) => {
     if (!NETS.includes(network)) return;
     const chainDir = pathMod.join(dir, 'chain_data');
-    if (!fs.existsSync(pathMod.join(chainDir, 'lmdb')) || !fs.existsSync(pathMod.join(chainDir, 'txhashset'))) return;
+    //what every node 3.0.0 – 4.1.0-1 writes (shared/chainOffer.js USABLE)
+    const parts = [['lmdb', 'data.mdb'], HEADER_HASHES, ['txhashset', 'kernel'], ['txhashset', 'output'], ['txhashset', 'rangeproof']];
+    if (!parts.every(p => fs.existsSync(pathMod.join(chainDir, ...p)))) return;
     const key = real(chainDir);
     if (seen.has(norm(key))) return;
     seen.add(norm(key));
     let txhashsetBytes = 0;
     const bytes = chainBytes(fs, pathMod, key, (sub, n) => { if (sub === 'txhashset') txhashsetBytes += n; });
-    chains.push({ dir: key, network, bytes, txhashsetBytes, modified: chainModified(fs, pathMod, key) });
+    const headerBytes = tryDo(() => fs.statSync(pathMod.join(key, ...HEADER_HASHES)).size, 0);
+    chains.push({ dir: key, network, bytes, txhashsetBytes, headerBytes, modified: chainModified(fs, pathMod, key) });
   };
   /* <home>/<net>, its 3.0-layout accounts <home>/<net>/<account>, and <home>/<account>/<net> */
   const underHome = (home, nets) => {
