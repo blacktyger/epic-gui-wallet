@@ -1,6 +1,7 @@
 /* check required files and folder on on app start */
 import { tomlString } from './tomlString.js';
 import { migrateNodeAddress } from './nodeAddressMigration.js';
+import { currentEpicboxDomain } from './setupDefaults.js';
 const defaultAppConfigDir = window.config.getUserHomedir();
 const defaultUserdir = 'epicguiwallet';
 const path = window.nodePath;
@@ -944,7 +945,13 @@ epicbox_port = 443
         //once per account: clean up a node address saved by an older GUI, before the toml gets it
         const migrated = await migrateNodeAddress(this.config, {network: this.defaultAccountNetwork});
         this.nodeAddressChange = migrated.change;
-        if(migrated.updated){
+        //an Epicbox domain of an older GUI that is gone (the toml gets the current one below): same here
+        const epicboxDomain = this.config ? currentEpicboxDomain(this.config.epicbox_domain, this.epicboxDomain) : undefined;
+        const epicboxChanged = !!this.config && epicboxDomain !== this.config.epicbox_domain;
+        if(epicboxChanged){
+          this.config.epicbox_domain = epicboxDomain;
+        }
+        if(migrated.updated || epicboxChanged){
           this.saveConfig();
         }
 

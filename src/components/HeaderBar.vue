@@ -44,7 +44,7 @@
                     <span class="externalnode">
                     <mdicon class="show-pointer" v-if="store.state.nodeType == 'internal' && !nodeRestarting" size=20 name="restart" @click.prevent="restartNode" />
                     <mdicon v-if="store.state.nodeType == 'internal' && nodeRestarting" size=20 />
-                    <span v-if="store.state.nodeType == 'internal' && !this.configService.config.nodesynced"><mdicon size=18 name="server-network" />{{ $t('msg.headerbar.node') }} ({{this.nodeFallBack}})</span>
+                    <span v-if="store.state.nodeType == 'internal' && !this.configService.config.nodesynced && (configService.defaultAccountNetwork || 'mainnet') == 'mainnet'"><mdicon size=18 name="server-network" />{{ $t('msg.headerbar.node') }} ({{this.nodeFallBack}})</span>
                     <span v-else><mdicon size=18 name="server-network" /> {{ $t('msg.headerbar.node') }} ({{store.state.nodeType}})</span>
                     </span>
                   </h3>

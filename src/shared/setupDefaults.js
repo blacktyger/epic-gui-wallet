@@ -39,9 +39,17 @@ export function initialNodeChoice({ user, address } = {}){
   return isLocalNodeAddress(saved) ? { select: 'internal', input: '' } : { select: 'external', input: saved };
 }
 
+//Epicbox domains of older GUIs that are gone; the wallet toml is already rewritten to the current one
+const RETIRED_EPICBOX_DOMAINS = ['epicbox.epic.tech'];
+
+/* a saved Epicbox domain, with a retired one replaced by the default */
+export function currentEpicboxDomain(domain, defaultDomain){
+  return typeof domain === 'string' && RETIRED_EPICBOX_DOMAINS.includes(domain.trim().toLowerCase()) ? defaultDomain : domain;
+}
+
 /* the Epicbox domain to prefill: a saved one, '' only when the user turned it off, else the default */
 export function initialEpicboxDomain({ config, defaultDomain } = {}){
-  const saved = config ? config.epicbox_domain : undefined;
+  const saved = config ? currentEpicboxDomain(config.epicbox_domain, defaultDomain) : undefined;
   if(typeof saved === 'string' && saved.trim()){
     return saved.trim();
   }

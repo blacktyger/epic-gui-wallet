@@ -10,7 +10,8 @@
   <!-- a warning, not an error: the user may keep the folder -->
   <article class="message is-warning" v-if="oneDriveRoot" role="status" style="margin-top: 0.75rem;">
     <div class="message-body">
-      <strong>{{ $t("msg.walletfolder.onedrive_title") }}</strong><br/>
+      <!-- the dark theme colours strong text light; here it must keep the message colour -->
+      <strong style="color: inherit">{{ $t("msg.walletfolder.onedrive_title") }}</strong><br/>
       {{ $t("msg.walletfolder.onedrive_warning", [chosenDir, configService.defaultWalletRoot]) }}
     </div>
   </article>

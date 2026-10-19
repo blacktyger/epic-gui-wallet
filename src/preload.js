@@ -14,6 +14,8 @@ const sha3_256 = require('js-sha3').sha3_256;
 const ps = require('ps-node');
 const fs = require('fs');
 const log = require('electron-log');
+//no wallet password in any log line (src/logRedact.js)
+require('./logRedact').installLogRedaction(log);
 
 const homedir = os.homedir();
 const rootdir = require('app-root-dir');
