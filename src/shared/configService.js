@@ -494,8 +494,10 @@ epicbox_port = 443
     this.allKilled = true;
     this.killedPorts = [];
 
-    //our listeners from before (e.g. an Epicbox listener kept running by an older version): stopped
-    const isListener = (p) => p.role == 'listen' || p.role == 'epicbox' || p.role == 'tor';
+    //our listeners of this wallet from before (e.g. an Epicbox listener kept running by an older
+    //version), and Tor: stopped. Those of another wallet (a second window) are asked about below
+    const isListener = (p) => p.role == 'tor'
+      || ((p.role == 'listen' || p.role == 'epicbox') && p.dir == this.defaultAccountWalletdir);
     const listeners = killPids.filter(isListener);
     if(listeners.length){
       const stopped = await nodeChildProcess.stopPids(listeners.map(p => p.pid));

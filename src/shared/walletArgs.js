@@ -54,9 +54,49 @@ export const PTY_KINDS = {
 
 const PASS_FLAGS = ['--pass', '--password', '-p'];
 
-/* do these args carry a password (they must not, except in withPassArg's fallback) */
+/* do these args carry a password (they must not, except in withPassArg's fallback); -pVALUE too */
 export function hasPassArg(args) {
-  return (Array.isArray(args) ? args : []).some(a => PASS_FLAGS.includes(String(a)) || PASS_FLAGS.some(f => String(a).startsWith(f + '=')));
+  return (Array.isArray(args) ? args : []).some(a => PASS_FLAGS.includes(String(a)) || PASS_FLAGS.some(f => String(a).startsWith(f + '='))
+    || /^-p./.test(String(a)));
+}
+
+//each kind's command after the global options, exactly as the builders above make it
+const PTY_COMMANDS = {
+  listen: [['listen', '--method', 'http'], ['listen', '--method', 'http', '--no_tor']],
+  epicbox: [['listen', '--method', 'epicbox', '--no_tor']],
+  init: [['init']],
+  recover: [['init', '-r']],
+};
+
+function isAbsolute(p) {
+  return typeof p === 'string' && (p.startsWith('/') || /^[a-z]:[\\/]/i.test(p) || /^\\\\[^\\]/.test(p));
+}
+
+/*
+ * The main process starts only what the builders above make: an optional network flag, then
+ * -t/-c with absolute dirs, then the kind's own command. Returns {dir} (the wallet dir: -t, else
+ * -c), or throws. So a request can't run another subcommand (recover, send) with the password.
+ */
+export function checkPtyArgs(kind, args) {
+  const cmds = PTY_COMMANDS[kind];
+  if (!cmds) throw new Error('unknown kind');
+  if (!Array.isArray(args) || args.some(a => typeof a !== 'string')) throw new Error('args must be strings');
+  if (hasPassArg(args)) throw new Error('args must not carry a password');
+  let i = 0;
+  if (args[i] === '--floonet' || args[i] === '--usernet') i++;
+  const dirs = {};
+  while (args[i] === '-t' || args[i] === '-c') {
+    const flag = args[i];
+    const dir = args[i + 1];
+    if (dirs[flag] !== undefined || !isAbsolute(dir)) throw new Error('bad ' + flag + ' dir');
+    dirs[flag] = dir;
+    i += 2;
+  }
+  const rest = args.slice(i);
+  if (!cmds.some(c => c.length === rest.length && c.every((x, j) => x === rest[j]))) throw new Error('not a ' + kind + ' command');
+  const listener = kind === 'listen' || kind === 'epicbox';
+  if (listener ? !(dirs['-t'] && dirs['-c']) : !dirs['-c']) throw new Error('missing dir');
+  return { dir: dirs['-t'] || dirs['-c'] };
 }
 
 /* fallback only (no pseudo-terminal on this platform): the args with `--pass <password>` before

@@ -97,12 +97,13 @@ test('listener on a pty: no password in its args, prompt answered once with the 
   assert.ok(!t.args.some(a => a.includes(PASS) || a === '--pass'));
   t.emit('data', 'INFO Node is synced, proceeding...\r\nPassword: ');
   assert.deepEqual(t.written, [PASS + '\r']);
-  assert.ok(pw.every(x => x === 0), 'the host copy is zeroed once answered');
+  assert.ok(!pw.every(x => x === 0), 'kept until the end, to recognise an echo');
   t.emit('data', '\r\nWARN HTTP Foreign listener started.\r\n');
   //asked again (it would hang): stopped, nothing more written
   t.emit('data', 'Password: ');
   assert.equal(t.written.length, 1);
   t.emit('exit', { exitCode: 1, signal: 0 });
+  assert.ok(pw.every(x => x === 0), 'the host copy is zeroed at exit');
   assert.ok(!lines.join('\n').includes(PASS));
   assert.ok(lines.includes('WARN HTTP Foreign listener started.'));
   assert.equal(exit.fail, 'unexpected_prompt');
@@ -213,4 +214,50 @@ test('fallback: node-pty loads but cannot start the process → the --pass spawn
   const r = h.start({ cmd: BIN, args: epicboxArgs({ network: 'mainnet', dir: DIR }), kind: 'epicbox', password: Buffer.from(PASS) });
   assert.equal(r.mode, 'pipe');
   assert.equal(spawned[0][spawned[0].indexOf('--pass') + 1], PASS);
+});
+
+test('review: an echo of the password after the answer is still left out', () => {
+  const { h, p } = host();
+  const lines = [];
+  h.start({ cmd: BIN, args: listenArgs({ network: 'mainnet', dir: DIR }), kind: 'listen', password: Buffer.from('hunter22'), onLines: (l) => lines.push(...l) });
+  const t = p.terms[0];
+  t.emit('data', 'Password: ');
+  t.emit('data', 'hunter22\r\n');
+  t.emit('data', 'x hunter22 y\r\nWARN HTTP Foreign listener started.\r\n');
+  assert.deepEqual(lines, ['WARN HTTP Foreign listener started.']);
+});
+
+test('review: only the kind\'s own command, the app\'s binary and the session\'s wallet', () => {
+  const { h, p } = host({ isAllowedBin: (c) => c === BIN });
+  const pw = () => Buffer.from(PASS);
+  assert.throws(() => h.start({ cmd: BIN, args: ['-t', DIR, '-c', DIR, 'recover'], kind: 'listen', password: pw() }), /listen command/);
+  assert.throws(() => h.start({ cmd: BIN, args: ['-t', DIR, '-c', DIR, 'send', '-d', 'x'], kind: 'epicbox', password: pw() }), /epicbox command/);
+  assert.throws(() => h.start({ cmd: BIN, args: ['-t', 'rel', '-c', DIR, 'listen', '--method', 'http'], kind: 'listen', password: pw() }), /dir/);
+  assert.throws(() => h.start({ cmd: '/tmp/x/epic-wallet', args: listenArgs({ network: 'mainnet', dir: DIR }), kind: 'listen', password: pw() }), /binary/);
+  assert.throws(() => h.start({ cmd: BIN, args: listenArgs({ network: 'mainnet', dir: '/other' }), kind: 'listen', password: pw(), dir: DIR }), /session/);
+  assert.throws(() => h.start({ cmd: BIN, args: ['-psecret', ...listenArgs({ network: 'mainnet', dir: DIR })], kind: 'listen', password: pw() }), /password/);
+  assert.equal(p.terms.length, 0);
+  h.start({ cmd: BIN, args: listenArgs({ network: 'floonet', dir: DIR, tor: false }), kind: 'listen', password: pw(), dir: DIR });
+  h.start({ cmd: BIN, args: initArgs({ network: 'usernet', dir: DIR, recover: true }), kind: 'recover', password: pw(), phrase: PHRASE });
+  assert.equal(p.terms.length, 2);
+});
+
+test('review: a prompt never recognised stops the process after the timeout', async () => {
+  const { h, p, killed } = host({ answerTimeoutMs: 20 });
+  let exit;
+  h.start({ cmd: BIN, args: listenArgs({ network: 'mainnet', dir: DIR }), kind: 'listen', password: Buffer.from(PASS), onExit: (e) => { exit = e; } });
+  p.terms[0].emit('data', 'Something else? ');
+  await new Promise((r) => setTimeout(r, 50));
+  assert.deepEqual(killed, [p.terms[0].pid]);
+  p.terms[0].emit('exit', { exitCode: null, signal: 15 });
+  assert.equal(exit.fail, 'no_prompt');
+});
+
+test('review: a password with a control character is not typed into a terminal', () => {
+  const spawned = [];
+  const { h, p } = host({ spawn: (cmd, args) => { spawned.push(args.slice()); const c = new EventEmitter(); c.pid = 5; return c; } });
+  const r = h.start({ cmd: BIN, args: listenArgs({ network: 'mainnet', dir: DIR }), kind: 'listen', password: Buffer.from('a\u0003b') });
+  assert.equal(r.mode, 'pipe');
+  assert.equal(p.terms.length, 0);
+  assert.equal(spawned[0][spawned[0].indexOf('--pass') + 1], 'a\u0003b');
 });
