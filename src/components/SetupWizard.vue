@@ -179,6 +179,7 @@
   import NodeserverField from "@/components/form/nodeserverField";
   import TextField from "@/components/form/textField";
   import StartupProgress from "@/components/layout/StartupProgress.vue";
+  import { supportedLocale, initialNodeChoice, initialEpicboxDomain } from "@/shared/setupDefaults";
   import useFormValidation from "@/modules/useFormValidation";
   import { useRouter } from '@/router';
   import { useRoute } from 'vue-router';
@@ -256,22 +257,26 @@
 
       this.store.dispatch('toggleFullPage', true);
       this.store.commit('asideStateToggle', false);
-      this.locale = this.configService.config['locale'];
-      this.localeSelected = this.configService.config['locale'];
+      const config = this.configService.config;
       this.langs = this.configService.langs;
+      //a language an old GUI saved that is no longer offered (ru, zh): English, not a blank list
+      this.locale = supportedLocale(config['locale'], this.langs);
+      this.localeSelected = this.locale;
 
-      //an existing setup opens with its saved values, a first run with the defaults
-      this.isExistingSetup = !!(user && user[0] && !this.configService.config['firstTime']);
-      if(this.isExistingSetup){
-        const config = this.configService.config;
-        this.epicboxDomain.input = config['epicbox_domain'] ? config['epicbox_domain'] : '';
-        this.nodeserverField.select = user[0].nodeInternal ? 'internal' : 'external';
-        if(!user[0].nodeInternal){
-          this.nodeserverField.input = config['check_node_api_http_addr'] ? config['check_node_api_http_addr'] : '';
-        }
-      }else{
-        this.epicboxDomain.input = this.configService.epicboxDomain;
+      //an existing setup opens with its saved values, a first run with the defaults. A config left
+      //by an older GUI counts as existing too: its node address and Epicbox domain are kept
+      this.isExistingSetup = !!(user && user[0] && !config['firstTime']);
+      const node = initialNodeChoice({
+        user: user && user[0],
+        address: config['firstTime'] ? '' : config['check_node_api_http_addr'],
+      });
+      this.nodeserverField.select = node.select;
+      if(node.select == 'external'){
+        this.nodeserverField.input = node.input;
       }
+      this.epicboxDomain.input = config['firstTime']
+        ? this.configService.epicboxDomain
+        : initialEpicboxDomain({config, defaultDomain: this.configService.epicboxDomain});
 
       if(user && user[0]){
         this.textField.input = user[0].name ? user[0].name : '';
