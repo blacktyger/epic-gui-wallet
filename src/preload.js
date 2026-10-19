@@ -167,8 +167,13 @@ async function spawnPty(cmd, args, kind, secrets){
   ptyChildren.set(token, {deliver: (what, v) => queue ? queue.push([what, v]) : emit(what, v)});
   let r;
   try{
-    //in the wallet's config dir (-c), as spawnEpic: epic-wallet 4.1.0 reads an epic-wallet.toml in its working dir first
-    const cwd = epicCwd(args) || undefined;
+    //in the wallet's config dir (-c): epic-wallet 4.1.0 reads an epic-wallet.toml in its working
+    //dir before the one in -c. init creates that dir itself: it is made first, to run in it
+    const i = (args || []).indexOf('-c');
+    const cwd = i >= 0 && args[i + 1] ? String(args[i + 1]) : undefined;
+    if(cwd && (kind === 'init' || kind === 'recover')){
+      try{ fs.mkdirSync(cwd, {recursive: true}); }catch(e){ /* the main process says why it can't start */ }
+    }
     r = await ipcRenderer.invoke('pty-start', Object.assign({token, cmd: plainBin(cmd), args: (args || []).map(String), kind, cwd}, secrets || {}));
   }catch(e){
     r = {ok: false, error: e && e.message ? e.message : 'start failed'};
