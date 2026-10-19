@@ -54,3 +54,14 @@ test('with the real electron-log: nothing with the password reaches a transport'
   assert.equal(seen.length, 1)
   assert.equal(JSON.stringify(seen[0].data).includes('S3cret'), false)
 })
+
+test('plain console output (main process stdout) is redacted too', () => {
+  const out = []
+  const con = { log: (...a) => out.push(a), info: (...a) => out.push(a) }
+  const { installConsoleRedaction } = require('../src/logRedact')
+  installConsoleRedaction(con); installConsoleRedaction(con)
+  con.log('process kill all background', { pid: 9, cmd: '/c/epic-wallet --pass hunter2 listen' })
+  con.info('epic-wallet --pass hunter2')
+  assert.equal(JSON.stringify(out).includes('hunter2'), false)
+  assert.equal(out.length, 2)
+})

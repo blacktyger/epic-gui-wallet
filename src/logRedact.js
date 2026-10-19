@@ -50,4 +50,17 @@ function installLogRedaction(log) {
   return log
 }
 
-module.exports = { redactString, redactValue, redactHook, installLogRedaction, REDACTED }
+//the same for plain console output (stdout of the main process: a desktop launcher sends it to the
+//journal or ~/.xsession-errors). Patches console.log/info/warn/error/debug once
+function installConsoleRedaction(con) {
+  if (!con || con.__epicRedacted) return con
+  for (const level of ['log', 'info', 'warn', 'error', 'debug']) {
+    const orig = con[level]
+    if (typeof orig !== 'function') continue
+    con[level] = function (...args) { return orig.apply(this, args.map((a) => redactValue(a))) }
+  }
+  Object.defineProperty(con, '__epicRedacted', { value: true })
+  return con
+}
+
+module.exports = { redactString, redactValue, redactHook, installLogRedaction, installConsoleRedaction, REDACTED }

@@ -85,7 +85,10 @@ class NodeService {
 
   /* ok | too_old | status_locked | unreachable | not_epic for the saved node (shared/nodeVersion.js) */
   async classifyNode(address){
-    return classifyNode(address, {apiSecret: this.configService.apisecret, referenceHeight: () => this.referenceHeight()});
+    const check = await classifyNode(address, {apiSecret: this.configService.apisecret, referenceHeight: () => this.referenceHeight()});
+    //for the status polls: a status read via get_tip has no user agent, the panel shows this version
+    this.nodeVersion = check.version || '';
+    return check;
   }
 
   /* the height a node with only a tip (POST /v2/foreign get_tip) is compared with to call it synced:
@@ -113,7 +116,7 @@ class NodeService {
 
     //GET /v1/status; on a 401 (plain node 4.1.0) the same status from POST /v2/owner get_status,
     //else the tip from POST /v2/foreign get_tip. The node secret is sent to the local node only
-    const res = await fetchNodeStatus(baseURL, {apiSecret: this.configService.apisecret, timeoutMs: 10000, referenceHeight: () => this.referenceHeight()});
+    const res = await fetchNodeStatus(baseURL, {apiSecret: this.configService.apisecret, timeoutMs: 10000, referenceHeight: () => this.referenceHeight(), version: this.nodeVersion || ''});
     if(!res.ok){
       window.log ? console.log('NodeService.fetch', res.reason) : null;
     }
