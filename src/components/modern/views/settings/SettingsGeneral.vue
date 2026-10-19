@@ -129,7 +129,7 @@
 
     <!-- ============================================================ save -->
     <!-- only while something differs from what is saved -->
-    <div v-if="dirty" class="e-stg-savebar" role="region" :aria-label="$t('msg.modern.settings.unsaved')">
+    <div v-if="dirty" v-toast-lift class="e-stg-savebar" role="region" :aria-label="$t('msg.modern.settings.unsaved')">
       <EIcon name="pencil" size="sm" />
       <span role="status">{{ $t('msg.modern.settings.unsaved') }}</span>
       <button type="button" class="e-btn e-btn-ghost e-sm e-right" :disabled="nodeserverField.checking" @click="discard">{{ $t('msg.modern.settings.discard') }}</button>
@@ -148,8 +148,11 @@
   import SettingsFrame from '@/components/modern/settings/SettingsFrame.vue';
   import { resetNotice } from '@/shared/theme';
   import { epicboxStatus } from '@/shared/epicboxStatus';
+  import { toastLift } from '@/components/modern/ui/toastLift';
   export default reskin(Settings, {
     components: { EIcon, NodeserverField, SettingsFrame },
+    //toasts (Settings saved, the node check) appear above the bar, never over its Save button
+    directives: { toastLift },
     data() {
       //the saved values, to tell whether the form has unsaved changes
       return { saved: null };

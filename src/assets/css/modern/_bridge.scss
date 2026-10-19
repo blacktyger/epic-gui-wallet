@@ -13,6 +13,12 @@ html[data-ui='modern'] nav.navbar {
 
 /* Toasts: @meforma/vue-toaster stays; restyled like the prototype's .toast */
 html[data-ui='modern'] .c-toast-container { padding: var(--sp-6); }
+/* above a bar pinned to the bottom (Settings' unsaved changes; ui/toastLift.js sets the lift):
+   a toast never covers its buttons, at any interface scale or window width */
+html[data-ui='modern'] .c-toast-container--bottom {
+  padding-bottom: max(var(--sp-6), calc(var(--e-toast-lift, 0px) + var(--sp-3)));
+  transition: padding-bottom var(--dur) var(--ease);
+}
 html[data-ui='modern'] .c-toast {
   width: auto;
   min-width: 300px;
