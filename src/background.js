@@ -12,6 +12,7 @@ import { readLegacyProfiles } from './legacyProfile'
 import { cleanLeftoverImport, cleanImportNow, importCopyNames, spawnAfterExitCleaner } from './shared/tmpCleanup.js'
 import { createPtyHost } from './shared/ptyHost'
 import { createSessionSecret } from './shared/sessionSecret'
+import { createShutdown, SIGNALS } from './shared/shutdown'
 import { registerSessionIpc, wipeWithWindow, wipeWithApp } from './shared/sessionIpc'
 
 
@@ -170,6 +171,15 @@ async function stopOwnProcesses(){
   await ptyHost.killAll().catch(() => {});
 }
 
+//stopOwnProcesses once, on every way out (shared/shutdown.js): quit events and signals
+const shutdown = createShutdown({ stop: stopOwnProcesses, quit: () => app.quit(), exit: (c) => app.exit(c),
+  log: (m) => log.info(m) });
+if (primaryInstance) {
+  app.on('before-quit', (event) => shutdown.onQuitEvent(event));
+  app.on('will-quit', (event) => shutdown.onQuitEvent(event));
+  for (const signal of SIGNALS) process.on(signal, () => shutdown.onSignal(signal));
+}
+
 //[13088:0215/073859.040:ERROR:gpu_init.cc(454)] Passthrough is not supported, GL is disabled, ANGLE is
 app.disableHardwareAcceleration();
 
@@ -262,7 +272,7 @@ async function createWindow() {
                       label:'Quit',
                       accelerator: "CmdOrCtrl+Q",
                       async click() {
-                          await stopOwnProcesses();
+                          await shutdown.run();
                           app.quit()
                       }
                   },
@@ -308,7 +318,7 @@ async function createWindow() {
                       label:'Quit',
                       accelerator: "CmdOrCtrl+Q",
                       async click() {
-                        await stopOwnProcesses();
+                        await shutdown.run();
                         app.quit()
                       }
                   },
@@ -356,7 +366,7 @@ app.on('window-all-closed', async() => {
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== 'darwin') {
 
-    if (primaryInstance) await stopOwnProcesses();
+    if (primaryInstance) await shutdown.run();
     app.quit()
   }
 
@@ -418,7 +428,8 @@ autoUpdater.on('error', (err) => {
 //(this run's, and any left now), never one a next start of the app is reading
 const importCopies = new Set();
 app.on('will-quit', () => {
-  if (!primaryInstance) return;
+  //once the processes are stopped (shutdown holds the first will-quit until then)
+  if (!primaryInstance || !shutdown.done) return;
   try {
     const left = importCopyNames({ fs, path, root: appLayout.root });
     if (!cleanImportNow({ fs, path, root: appLayout.root }) || importCopies.size) {
@@ -499,12 +510,8 @@ if (isDevelopment) {
         app.quit()
       }
     })
-  } else {
-    process.on('SIGTERM', () => {
-
-      app.quit()
-    })
   }
+  //SIGTERM: shutdown above
 }
 
 
@@ -566,7 +573,7 @@ async function legacyScan({ known } = {}){
 
 //start again, after another app folder was chosen (it is read only at start)
 ipcMain.handle('app-relaunch', async () => {
-  await stopOwnProcesses();
+  await shutdown.run();
   app.relaunch();
   app.exit(0);
 });
