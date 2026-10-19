@@ -5,8 +5,8 @@ import { parseEpicboxToml, normalizeEpicbox, sameServer, serverUrl, serverFromUr
 import { createOldServerCheck, oldServerCheckStep, CHECK_TIMES } from '@/shared/epicboxListener';
 import { EPICBOX_CHECK_DIR, isEpicboxCheckDir } from '@/shared/processOwnership';
 import { ownerApiArgs, listenArgs, epicboxArgs as buildEpicboxArgs, initArgs, statusMessageText, OWNER_API_START_DIR } from '@/shared/walletArgs';
+import { WALLET_API_ORIGIN, isWalletApiUrl } from '@/shared/security';
 const Buffer = require('buffer').Buffer;
-const crypto = window.nodeCrypto;
 
 require('promise.prototype.finally').shim();
 
@@ -157,7 +157,7 @@ class WalletService {
           }
 
           const aesCipher = window.nodeAes256gcm(this.shared_key);
-          const nonce = new Buffer.from(crypto.randomBytes(12));
+          const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(12)));
           let enc = aesCipher.encrypt(JSON.stringify(body), nonce);
 
           let encParams = {

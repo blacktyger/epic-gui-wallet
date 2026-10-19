@@ -8,6 +8,7 @@ import isPortReachable from 'is-port-reachable';
 import { createProcessRegistry, createPidCheck, describeSpawn, redactArgs } from './shared/processOwnership';
 import { spawnCommand, plainBin, epicCwd } from './shared/spawnCommand';
 import { parseListenerLine } from './shared/epicboxListener';
+import { createScopedFs } from './shared/security';
 
 const moment = require('moment');
 const base32 = require('rfc-3548-b32');
@@ -51,7 +52,6 @@ if(fs.existsSync(path.join(appPaths.root, 'debug.log'))){
 }
 
 const spawn = require('child_process').spawn;
-const exec = require('child_process').exec;
 const execFile = require('child_process').execFile;
 const validChannels = ['firstscan-stdout', 'scan-stdout', 'scan-finish', 'scan-error', 'walletExisted', 'walletCreated', 'walletCreateFailed', 'nodeBackground'];
 
@@ -97,6 +97,16 @@ const ownProcesses = createProcessRegistry({
 
 //the children this window started that still run: pid → {role, dir}
 const liveChildren = new Map();
+
+/* only the app's own binaries in resources/bin/<platform> are started: epic (the node) or
+   epic-wallet, by name. Whatever else the page asks for is not run */
+const bundledBinDir = path.resolve(resourcePath, 'bin') + path.sep;
+function isBundledBin(cmd, names){
+  const b = path.resolve(plainBin(cmd));
+  const win = process.platform === 'win32';
+  const inside = win ? b.toLowerCase().startsWith(bundledBinDir.toLowerCase()) : b.startsWith(bundledBinDir);
+  return inside && names.includes(path.basename(win ? b.toLowerCase() : b).replace(/\.exe$/, ''));
+}
 
 /* start an epic binary without a shell (shared/spawnCommand.js), in the wallet's config dir or the
    node's folder: epic-wallet 4.1.0 reads an epic-wallet.toml in its working dir first */
@@ -328,17 +338,6 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
     async stopPids(pids){
       return ownProcesses.stopPids(pids);
     },
-    async spawn(cmd, args){
-      const child = await spawn(cmd, args);
-      child.stdout.setEncoding('utf8');
-      child.stdout.on('data',function(data){
-        debug ? console.log('spawn.stdout', data) : null;
-      });
-
-      return child;
-
-    },
-
     /* init: a new wallet; the password goes to the main process for this one process only and
        answers epic-wallet's prompts there (shared/ptyHost.js). Resolves {success, msg: phrase | error} */
     async execNew(cmd, args, platform, password){
@@ -375,9 +374,11 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
     /* start node api */
     async execNode(cmd, args, platform){
 
+      if(!isBundledBin(cmd, ['epic'])){
+        log.warn('execNode: not the app\'s node binary, not started');
+        return false;
+      }
       return new Promise(function(resolve, reject) {
-
-
 
           let node_server = track(spawnEpic(cmd, args), cmd, args);
 
@@ -406,6 +407,10 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
     /* start wallet api */
     async execStart(cmd, args, platform, emitOutput){
 
+      if(!isBundledBin(cmd, ['epic-wallet'])){
+        log.warn('execStart: not the app\'s wallet binary, not started');
+        return false;
+      }
       return new Promise(function(resolve, reject) {
 
           let ownerAPI = track(spawnEpic(cmd, args), cmd, args);
@@ -607,26 +612,38 @@ const aes256gcm = (shared_secret) => {
   };
 };
 
-//contextBridge.exposeInMainWorld('nodeFetch', useFetch);
-contextBridge.exposeInMainWorld('nodeCrypto', require('crypto'));
+/*
+ * What the page can reach of the file system (shared/security.js createScopedFs): the app's own
+ * folders, read and write; its resources and an older GUI's folders, read only; and the folders and
+ * files the user picked in a dialog or dropped on the page. No child_process, no plain fs: the
+ * processes are started by nodeChildProcess above, only the app's own binaries.
+ */
+const legacy = appPaths.legacy || {};
+const strings = (list) => list.filter(d => typeof d === 'string' && d);
+const readDirs = new Set(strings([resourcePath, legacy.epicDir, legacy.appConfigFile && path.dirname(legacy.appConfigFile),
+  ...(Array.isArray(legacy.profiles) ? legacy.profiles.map(p => p && p.dir) : [])]));
+const writeDirs = new Set(strings([appPaths.root, appPaths.defaultRoot]));
+const scopedFs = createScopedFs({ fs, pathMod: path, dirs: () => ({ read: [...readDirs], write: [...writeDirs] }) });
+
 contextBridge.exposeInMainWorld('nodeSecp256k1', secp256k1);
 contextBridge.exposeInMainWorld('nodeAes256gcm', aes256gcm);
-contextBridge.exposeInMainWorld('nodeSpawnSync', require('child_process').spawnSync);
-contextBridge.exposeInMainWorld('nodeSpawn', require('child_process').spawn);
-contextBridge.exposeInMainWorld('nodeExec', require('child_process').exec);
-contextBridge.exposeInMainWorld('nodeExecSync', require('child_process').execSync);
-contextBridge.exposeInMainWorld('nodeExecFile', require('child_process').execFile);
 contextBridge.exposeInMainWorld('clipboard', {
   writeText: (text) => ipcRenderer.invoke('clipboard-write-text', text),
 });
-//File.path was removed in Electron 32
+//File.path was removed in Electron 32. A file dropped on or picked in the page (a File the page
+//can't make up for a path of its choice) may be read
 contextBridge.exposeInMainWorld('nodeWebUtils', {
-  getPathForFile: (file) => webUtils.getPathForFile(file),
+  getPathForFile: (file) => {
+    const p = webUtils.getPathForFile(file);
+    if(p) readDirs.add(p);
+    return p;
+  },
 });
-contextBridge.exposeInMainWorld('log', log);
+//the log functions only, not electron-log's transports (its file path, its writers)
+contextBridge.exposeInMainWorld('log', Object.fromEntries(['log', 'error', 'warn', 'info', 'verbose', 'debug', 'silly']
+  .map(level => [level, (...args) => log[level](...args)])));
 contextBridge.exposeInMainWorld('debug', debug);
-contextBridge.exposeInMainWorld('nodeFs', fs);
-contextBridge.exposeInMainWorld('nodeFsExtra', require('fs-extra'));
+contextBridge.exposeInMainWorld('nodeFs', scopedFs);
 contextBridge.exposeInMainWorld('nodeQr', qr);
 contextBridge.exposeInMainWorld('nodePath', require('path'));
 contextBridge.exposeInMainWorld('config', {
@@ -678,9 +695,14 @@ contextBridge.exposeInMainWorld('config', {
   appPaths(){
     return JSON.parse(JSON.stringify(appPaths));
   },
-  /* older GUIs' wallets and profiles (read only, background.js 'legacy-scan'); known: dirs to skip */
-  legacyScan(known){
-    return ipcRenderer.invoke('legacy-scan', { known });
+  /* older GUIs' wallets and profiles (read only, background.js 'legacy-scan'); known: dirs to skip.
+     The importer may read the wallets' folders it finds (their config.json) */
+  async legacyScan(known){
+    const scan = await ipcRenderer.invoke('legacy-scan', { known });
+    for(const w of (scan && Array.isArray(scan.wallets) ? scan.wallets : [])){
+      for(const d of strings([w && w.key, w && w.dir])) readDirs.add(d);
+    }
+    return scan;
   },
   getPlatform(){
     switch (os.platform()) {
@@ -741,11 +763,17 @@ contextBridge.exposeInMainWorld('openepichidden', {
 
 // Adds an object 'api' to the global window object:
 contextBridge.exposeInMainWorld('api', {
+    //the file the user chose may then be written (window.nodeFs)
     showSaveDialog: async (title, message, defaultPath) => {
-        return await ipcRenderer.invoke('show-save-dialog', title, message, defaultPath);
+        const r = await ipcRenderer.invoke('show-save-dialog', title, message, defaultPath);
+        if(r && !r.canceled && typeof r.filePath === 'string' && r.filePath) writeDirs.add(r.filePath);
+        return r;
     },
+    //a folder the user chose: a wallet folder to open, or another app folder (configService.setRoot)
     showOpenDialog: async () => {
-        return await ipcRenderer.invoke('show-open-dialog');
+        const r = await ipcRenderer.invoke('show-open-dialog');
+        if(r && !r.canceled && Array.isArray(r.filePaths)) strings(r.filePaths).forEach(d => writeDirs.add(d));
+        return r;
     },
     quit: () => {
       ipcRenderer.invoke('quit');
