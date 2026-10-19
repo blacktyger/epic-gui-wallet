@@ -209,7 +209,6 @@ const messages = {
       name: 'नाम',
       country: 'देश',
       city: 'शहर',
-      tor_onion_address: 'Tor-Onion एड्रेस',
       external_one: 'बाहरी एड्रेस 1',
       external_two: 'बाहरी एड्रेस 2',
       proof_address: 'सबूत एड्रेस',
@@ -228,8 +227,6 @@ const messages = {
     login: {
       listener_started: 'वॉलेट लीस्टेनर शुरू हो गया',
       error_listener_started: 'वॉलेट लीस्टेनर प्रारंभ करने में त्रुटि',
-      tor_started: 'Tor शुरू कर दिया',
-      error_tor_started: 'Tor शुरू नहीं हुआ'
     },
     seed:{
       errorGetMnemonic: 'Mnemonic प्राप्त करने में त्रुटि। क्या पासवर्ड सही है?',
@@ -377,12 +374,10 @@ const messages = {
       current_ngrok_address: 'Current Ngrok Address',
       local_address: 'Local address',
       session_end: 'You are using ngrok without an account. Your session will end in {0} hour, {1} minutes',
-      tor_onion_address: 'Tor onion Address',
       proof_address: 'Proof Address',
       epicbox_address: 'Your public Epic address',
       your_qrcode: 'Your QRcode for your "{0}" address',
       click_qrcode_icon: 'Click the qr code icon',
-      tor_not_available: 'Tor not available. Try to restart the wallet listener',
       epicbox_not_available: 'Epicbox not available. Wait for the Node to be synced or try to restart the wallet listener',
       epicbox_off: 'Your epicbox is not configured. Update your settings and define a epicbox domain',
       check_port_open_done: 'Recheck done!',

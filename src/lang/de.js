@@ -204,7 +204,6 @@ const messages = {
       name: 'Name',
       country: 'Land',
       city: 'Stadt',
-      tor_onion_address: 'Tor-Onion Adresse',
       external_one: 'Epicbox Adresse',
       external_two: 'Externe Adresse 2',
       proof_address: 'Adresse für Zahlungsnachweis',
@@ -223,8 +222,6 @@ const messages = {
     login: {
       listener_started: 'Wallet-Empfänger gestartet',
       error_listener_started: 'Fehler beim Starten des Wallet-Empfängers',
-      tor_started: 'Tor gestartet',
-      error_tor_started: 'Tor nicht gestartet',
       epicbox_started: 'Epicbox gestartet',
     },
     seed:{
@@ -373,11 +370,9 @@ const messages = {
       current_ngrok_address: 'Aktuelle ngrok-Adresse',
       local_address: 'Lokale Adresse',
       session_end: 'Sie benutzen ngrok ohne ein Konto. Ihre Sitzung endet in {0} h, {1} min',
-      tor_onion_address: 'Tor-Onion Adresse',
       proof_address: 'Zahlungsnachweis Adresse',
       your_qrcode: 'Ihr QRcode für Ihre "{0}" Adresse',
       click_qrcode_icon: 'Klicken Sie auf das qr-Code-Symbol',
-      tor_not_available: 'Tor nicht verfügbar. Versuchen Sie, den Wallet-Empfänger neu zu starten',
       epicbox_address: 'Your public Epic address',
       epicbox_not_available: 'Epicbox not available. Wait for the Node to be synced or try to restart the wallet listener',
       epicbox_off: 'Your epicbox is not configured. Update your settings and define a epicbox domain',

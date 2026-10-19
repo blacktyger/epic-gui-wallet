@@ -3,13 +3,13 @@ const messages = [
     title: 'Poslat mince',
     text: `Příkaz Poslat je prvním krokem při vytváření interaktivní transakce.<br/>
     <br/>
-    Transakci lze provést buď okamžitě pomocí sítě Tor nebo http(s) adresy, nebo ručně prostřednictvím výměny souborů.<br/>
+    Transakci lze buď okamžitě odeslat na adresu Epicbox nebo http(s), nebo provést ručně prostřednictvím výměny souborů.<br/>
     <br/>
     Chcete-li zahájit novou transakci, ujistěte se, že je Váš node server plně synchronizován 
     do sítě Epic Cash.<br/></br>
     Stav vašeho node serveru by měl být „synchronizován“.<br/>
     <br/>
-    Adresa příjemce může být buď adresa Tor onion, nebo jakákoli externí adresa http(s).<br/>
+    Adresa příjemce může být adresa Epicbox nebo jakákoli externí adresa http(s).<br/>
     <br/>
     Chcete-li mít proof o provedení transakce, zadejte proof adresu poskytnutou příjemcem.<br/>`,
   },
@@ -103,11 +103,6 @@ const messages = [
     Pomocí proof je možné, aby ostatní ověřili, že transakce byla provedena mezi odesílatelem a příjemcem.<br/>
     <br/>
     K ověření proof potřebuje uživatel proof data a částku.<br/>`
-  },
-  {
-    title: 'Tor',
-    text: `Ve výchozím nastavení můžete odesílat a přijímat transakce prostřednictvím adresy tor.<br/><br/>
-    Svou adresu tor najdete na "Obdržet" page.<br/>`
   },
   {
     title: 'Ngrok',

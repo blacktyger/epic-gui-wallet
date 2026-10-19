@@ -45,12 +45,6 @@
 
           <ul v-if="foundAddress.length" class="e-found" :aria-label="$t('msg.modern.send.found_label')">
             <template v-for="found in foundAddress" :key="found.id">
-              <li v-if="found.onion">
-                <button type="button" class="e-found-item" @click="fillAddressField(found, 'onion')">
-                  <b>{{ found.name }}</b><span class="e-tag"><EIcon name="tor" />{{ $t('msg.modern.send.kind_tor') }}</span>
-                  <span class="e-mono e-dim e-truncate" translate="no">{{ found.onion }}</span>
-                </button>
-              </li>
               <li v-if="found.externalOne">
                 <button type="button" class="e-found-item" @click="fillAddressField(found, 'externalOne')">
                   <b>{{ found.name }}</b><span class="e-tag e-gold"><EIcon name="antenna" />{{ $t('msg.modern.send.kind_epicbox') }}</span>
@@ -219,6 +213,7 @@
   import ProofAddressField from '@/components/modern/form/ProofAddressField.vue';
   import { formatEpic, nodeSyncPercent } from '@/components/modern/format';
   import { epicToNano, nanoToEpic } from '@/shared/sendMath';
+  import { isOnionAddress } from '@/shared/sendForm';
 
   const HEAD = 6;
   /* how many decimals a typed amount or a number has, 4 to 8 */
@@ -253,7 +248,8 @@
     },
     watch: {
       //a message about a field goes away when the field changes (Classic keeps it until the next send)
-      'addressField.input'() { this.clearError(this.addressField, 'address'); },
+      //(the Tor address message stays while the field holds one: HttpSend's watcher sets it)
+      'addressField.input'(v) { if (!isOnionAddress(v)) this.clearError(this.addressField, 'address'); },
       'amountField.input'() { this.clearError(this.amountField, 'amount'); },
       'proofAddressField.input'() { this.clearError(this.proofAddressField, 'proof_address'); },
     },
@@ -304,22 +300,22 @@
         return !!(s && !s.error && s.sync_status && s.sync_status !== 'synced');
       },
       syncPercent() { return nodeSyncPercent(this.store.state.nodeStatus, this.locale); },
-      /* epicbox | tor | http, or '' while the field says nothing yet */
+      /* epicbox | http, or '' while the field says nothing yet (or holds a Tor address, which the
+         field's error refuses) */
       recipientKind() {
         const v = this.toValue;
-        if (!v) return '';
+        if (!v || isOnionAddress(v)) return '';
         if (this.epicboxSelected) return 'epicbox';
-        if (/\.onion/i.test(v)) return 'tor';
         if (/^https?:/i.test(v)) return 'http';
         return '';
       },
-      kindIcon() { return { epicbox: 'antenna', tor: 'tor', http: 'web' }[this.recipientKind] || 'web'; },
+      kindIcon() { return { epicbox: 'antenna', http: 'web' }[this.recipientKind] || 'web'; },
       /* the address book entry the field still holds the address of */
       contact() {
         const a = this.address;
         const v = this.toValue;
         if (!this.addressSelected || !a || !a.name || !v) return null;
-        return [a.onion, a.externalOne, a.externalTwo].some(x => x && String(x).trim() === v) ? a : null;
+        return [a.externalOne, a.externalTwo].some(x => x && String(x).trim() === v) ? a : null;
       },
       contactInitials() {
         const words = String((this.contact && this.contact.name) || '').trim().split(/\s+/).filter(Boolean);
@@ -363,7 +359,7 @@
           return;
         }
         const to = this.addressField.defaultValue;
-        const kind = (this.epicboxSelected) ? 'epicbox' : /\.onion/i.test(to) ? 'tor' : 'http';
+        const kind = (this.epicboxSelected) ? 'epicbox' : 'http';
         const amountNano = this.amountField.amountNano;
         const feeNano = this.amountField.feeNano > 0 ? this.amountField.feeNano : 0;
         const amount = nanoToEpic(amountNano);

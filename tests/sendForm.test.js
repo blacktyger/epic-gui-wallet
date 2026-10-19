@@ -1,7 +1,7 @@
 // Tests for src/shared/sendForm.js: the Send form is cleared after a successful send. `npm test`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clearSendForm, inputAfterSend, isEpicboxAddress, sendMethod, proofAllowed, proofRequest } from '../src/shared/sendForm.js';
+import { clearSendForm, inputAfterSend, isEpicboxAddress, isOnionAddress, sendMethod, proofAllowed, proofRequest } from '../src/shared/sendForm.js';
 
 function field(v) {
   return { input: v, setValue(x) { this.input = x; } };
@@ -53,6 +53,18 @@ test('an Epicbox address is recognised (key@domain, bare es… key)', () => {
   assert.equal(isEpicboxAddress(null), false);
 });
 
+test('a Tor address is recognised (the Send form refuses it): .onion host, with or without http(s), port, path', () => {
+  const v3 = 'esxk2ozzbdq7r5dz3ad7i5lafdvrtq4wbvz7bcejzfsiipcdrmqi4yd.onion';
+  for (const a of [v3, '  ' + v3 + '  ', 'http://' + v3, 'https://' + v3, 'http://' + v3 + '/', 'http://' + v3 + ':80',
+    'http://' + v3.toUpperCase() + '/v2/foreign', 'abcdef.onion', 'sub.abcdef.onion:3415']) {
+    assert.equal(isOnionAddress(a), true, a);
+  }
+  for (const a of ['', null, undefined, 'http://1.2.3.4:3415', 'https://node.example.com', 'esAbc@epicbox.epiccash.com',
+    'esAbc', 'http://onion.example.com', 'http://example.com/a.onion.txt', 'abc.onion@epicbox.epiccash.com', 'onion']) {
+    assert.equal(isOnionAddress(a), false, String(a));
+  }
+});
+
 test('the send method: Epicbox by choice or by address, else the chosen one', () => {
   assert.equal(sendMethod('epicbox', ''), 'epicbox');
   assert.equal(sendMethod('http', 'esAbc@epicbox.epiccash.com'), 'epicbox');
@@ -60,12 +72,11 @@ test('the send method: Epicbox by choice or by address, else the chosen one', ()
   assert.equal(sendMethod(undefined, 'http://1.2.3.4:3415'), 'http');
 });
 
-test('no payment proof over Epicbox; HTTP and Tor allow one', () => {
+test('no payment proof over Epicbox; HTTP allows one', () => {
   assert.equal(proofAllowed('epicbox', ''), false);
   assert.equal(proofAllowed('epicbox', 'http://1.2.3.4:3415'), false);
   assert.equal(proofAllowed('http', 'esAbc@epicbox.epiccash.com'), false);
   assert.equal(proofAllowed('http', 'http://1.2.3.4:3415'), true);
-  assert.equal(proofAllowed('http', 'http://abcdef.onion'), true);
   assert.equal(proofAllowed('http', ''), true);
 });
 

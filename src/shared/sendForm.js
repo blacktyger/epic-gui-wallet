@@ -29,15 +29,22 @@ export function inputAfterSend(vm, value) {
  * Payment proofs and Epicbox. epic-wallet 4.1.0 sends over Epicbox as a V2 slate
  * (impls/src/adapters/epicbox.rs: VersionedSlate::into_version(slate, SlateVersion::V2)), and V2
  * has no payment_proof field, so a requested proof is dropped silently: the EPIC goes out without
- * one. HTTP, Tor (http to an .onion) and transaction files keep the V3 slate with the proof.
+ * one. HTTP and transaction files keep the V3 slate with the proof.
  * So the Send form offers no proof over Epicbox, and a request that gets through anyway (a stale
  * form state) is refused before it reaches the wallet.
  */
 
+/* a Tor address (an .onion host, with or without http(s)://, a port or a path): the wallet has no
+   Tor, so the Send form refuses it with a message and never sends to it */
+export function isOnionAddress(address) {
+  const v = String(address == null ? '' : address).trim();
+  return /^(https?:\/\/)?[^\s/@]+\.onion(:\d+)?(\/\S*)?$/i.test(v);
+}
+
 /* an Epicbox address (key@domain, or the bare key that starts with "es"), as the Send form reads it */
 export function isEpicboxAddress(address) {
   const v = String(address == null ? '' : address).trim();
-  if (/^https?:\/\//i.test(v) || /\.onion(?::\d+)?\/?$/i.test(v)) return false;
+  if (/^https?:\/\//i.test(v) || isOnionAddress(v)) return false;
   return v.includes('@') || v.startsWith('es') || v.startsWith('epicbox');
 }
 

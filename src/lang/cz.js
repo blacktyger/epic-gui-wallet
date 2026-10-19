@@ -206,7 +206,6 @@ const messages = {
       name: 'Jméno',
       country: 'Země',
       city: 'Město',
-      tor_onion_address: 'Tor-Onion adresa',
       external_one: 'Externí adresa 1',
       external_two: 'Externí adresa 2',
       proof_address: 'Proof adresa',
@@ -225,8 +224,6 @@ const messages = {
     login: {
       listener_started: 'Wallet listener byl spuštěn',
       error_listener_started: 'Chyba při spouštění wallet listener',
-      tor_started: 'Tor spuštěn',
-      error_tor_started: 'Tor nespuštěn'
     },
     seed:{
       errorGetMnemonic: 'Chyba při získávání Mnemonic slov. Je heslo správné?',
@@ -372,12 +369,10 @@ const messages = {
       current_ngrok_address: 'Aktuální adresa Ngrok',
       local_address: 'Místní adresa',
       session_end: 'Používáte ngrok bez účtu. Vaše relace skončí za {0} h, {1} min',
-      tor_onion_address: 'Tor onion adresa',
       proof_address: 'Proof adresa',
       epicbox_address: 'Your public Epic address',
       your_qrcode: 'Váš QR kód pro Vaši "{0}" adresu',
       click_qrcode_icon: 'Klikněte na ikonu QR kódu',
-      tor_not_available: 'Tor není k dispozici. Zkuste restartovat listener peněženky',
       epicbox_not_available: 'Epicbox not available. Wait for the Node to be synced or try to restart the wallet listener',
       epicbox_off: 'Your epicbox is not configured. Update your settings and define a epicbox domain',
       check_port_open_done: 'Recheck done!',

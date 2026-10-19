@@ -256,7 +256,7 @@
           return;
         }
         const session = this.loginSession;
-        //Epicbox does not wait for the HTTP listener (Tor can take a while), only for the node
+        //Epicbox does not wait for the HTTP listener, only for the node
         if(this.configService.config['epicbox_domain'] != undefined && this.configService.config['epicbox_domain'] != '' ){
           this.emitter.emit('app.startEpicbox');
         }
@@ -264,7 +264,7 @@
         const started = performance.now();
         let isListen;
         try{
-          isListen = await this.$walletService.startListen(true, 'http');
+          isListen = await this.$walletService.startListen('http');
         }finally{
           this.store.commit('listenerStarting', false);
         }
@@ -279,8 +279,6 @@
           }
           return;
         }
-        //Tor state only, no toast: Tor is not configurable and fails to bootstrap on most setups
-        this.store.commit('torService', !!(isListen && isListen.tor));
       });
 
       this.emitter.on('app.startRefreshNodeStatus', () => {
@@ -481,7 +479,7 @@
           immature: 0,
           locked: 0,
         });
-        //one process scan for listener, Tor, wallet and node (walletService.stopAll)
+        //one process scan for listener, wallet and node (walletService.stopAll)
         const started = performance.now();
         const cfg = this.configService.config || {};
         //switching: the built-in node stays, it serves every wallet of its network

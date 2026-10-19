@@ -302,7 +302,7 @@ test('cwd per start: the -c dir, absolute and existing, reaches the pty spawn; a
     assert.deepEqual(spawned[0], { shell: false, windowsHide: true, cwd: conf });
     //Windows paths: drive and UNC are absolute, a drive-relative one is not
     const w = host({ win: true, isDir: () => true });
-    const wl = (c) => ['-t', 'C:\\Users\\jane\\.epic\\main', '-c', c, 'listen', '--method', 'http'];
+    const wl = (c) => ['-t', 'C:\\Users\\jane\\.epic\\main', '-c', c, 'listen', '--method', 'http', '--no_tor'];
     for (const c of ['C:\\Users\\Jane Doe\\.epic-gui\\wallets\\w1', '\\\\server\\share\\w1']) {
       w.h.start({ cmd: BIN, args: wl(c), kind: 'listen', password: pw(), cwd: c });
     }

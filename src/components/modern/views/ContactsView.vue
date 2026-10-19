@@ -79,10 +79,6 @@
             </div>
           </div>
           <div class="e-field">
-            <label class="e-label" for="con-f-tor">{{ $t('msg.addressbook.tor_onion_address') }}</label>
-            <input id="con-f-tor" class="e-input e-mono" type="text" spellcheck="false" autocomplete="off" translate="no" v-model="onion" />
-          </div>
-          <div class="e-field">
             <label class="e-label" for="con-f-proof">{{ $t('msg.addressbook.proof_address') }}</label>
             <input id="con-f-proof" class="e-input e-mono" type="text" spellcheck="false" autocomplete="off" translate="no" v-model="proofaddr" />
           </div>
@@ -128,10 +124,6 @@
           <div v-if="externalTwo">
             <dt>{{ $t('msg.addressbook.external_two') }}</dt>
             <dd class="e-addr"><code translate="no">{{ externalTwo }}</code><button type="button" class="e-icon-btn e-sm" :aria-label="$t('msg.modern.settings.copy_field', { what: $t('msg.addressbook.external_two') })" @click="copy(externalTwo)"><EIcon name="copy" size="sm" /></button></dd>
-          </div>
-          <div v-if="onion">
-            <dt>{{ $t('msg.addressbook.tor_onion_address') }}</dt>
-            <dd class="e-addr"><code translate="no">{{ onion }}</code><button type="button" class="e-icon-btn e-sm" :aria-label="$t('msg.modern.settings.copy_field', { what: $t('msg.addressbook.tor_onion_address') })" @click="copy(onion)"><EIcon name="copy" size="sm" /></button></dd>
           </div>
           <div v-if="proofaddr">
             <dt>{{ $t('msg.addressbook.proof_address') }}</dt>
@@ -205,7 +197,7 @@
       },
       //the line under the name in the list: the first address the contact has
       summary(address) {
-        return address.externalOne || address.externalTwo || address.onion || address.proofaddr || '';
+        return address.externalOne || address.externalTwo || address.proofaddr || '';
       },
     },
   });

@@ -72,12 +72,6 @@
               </div>
             </div>
 
-            <div class="field">
-              <div class="control">
-                <label>{{ $t("msg.addressbook.tor_onion_address") }}</label>
-                <input class="input" type="text" v-model="onion" >
-              </div>
-            </div>
 
             <div class="field">
               <div class="control">
@@ -144,7 +138,6 @@
 
             <p class="block" v-if="country"><label class="label">{{ $t("msg.addressbook.country") }}</label>{{country}}</p>
             <p class="block" v-if="city"><label class="label">{{ $t("msg.addressbook.city") }}</label> {{city}}</p>
-            <p class="block" v-if="onion"><label class="label">{{ $t("msg.addressbook.tor_onion_address") }}</label><span>{{onion}}</span>&nbsp;<mdicon @click="copy(onion)" name="content-copy" size=16 /></p>
             <p class="block" v-if="externalOne"><label class="label">{{ $t("msg.addressbook.external_one") }}</label> {{externalOne}}&nbsp;<mdicon @click="copy(externalOne)" name="content-copy" size=16 /></p>
             <p class="block" v-if="externalTwo"><label class="label">{{ $t("msg.addressbook.external_two") }}</label> {{externalTwo}}&nbsp;<mdicon @click="copy(externalTwo)" name="content-copy" size=16 /></p>
 
@@ -196,6 +189,7 @@ export default {
     const country = ref('');
     const city = ref('');
 
+    //a Tor address an older version stored: no longer shown or edited, but kept on save
     const onion = ref('');
     const alwaysproof = ref(false);
     const proofaddr = ref('');

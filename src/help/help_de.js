@@ -3,12 +3,12 @@ const messages = [
     title: 'Coins versenden',
     text: `Der Sendebefehl ist der erste Schritt beim Aufbau einer interaktiven Transaktion.<br/>
     <br/>
-    Eine Transaktion kann entweder sofort über das Tor-Netzwerk oder die http(s)-Adresse oder manuell durch den Austausch von Dateien erfolgen.<br/>
+    Eine Transaktion kann entweder sofort an eine Epicbox- oder http(s)-Adresse gesendet oder manuell durch den Austausch von Dateien erfolgen.<br/>
     <br/>
     Um eine neue Transaktion zu starten, stellen Sie sicher, dass Ihr Netzwerkknoten vollständig mit dem Epic Cash-Netzwerk synchronisiert ist..<br/></br>
     Der Status Ihres Netzwerkknotens sollte 'synced' lauten. <br/>
     <br/>
-    Die Empfängeradresse kann entweder eine Tor-Onion-Adresse oder eine beliebige externe http(s)-Adresse sein.<br/>
+    Die Empfängeradresse kann eine Epicbox-Adresse oder eine beliebige externe http(s)-Adresse sein.<br/>
     <br/>
     Um einen Nachweis für die Durchführung der Transaktion zu erhalten, geben Sie die vom Empfänger angegebene Zahlungsnachweis Adresse ein.<br/>`,
   },
@@ -109,11 +109,6 @@ const messages = [
 <br/>
     <br/>
     Zur Verifizierung eines Nachweises benötigt der Nutzer die Zahlungsnachweis Daten und den Betrag.<br/>`
-  },
-  {
-    title: 'Tor',
-    text: `Sie können Transaktionen standardmäßig über eine Tor-Adresse senden und empfangen.<br/><br/>
-    Sie finden Ihre Tor-Adresse auf der Seite "Empfangen".<br/>`
   },
   {
     title: 'Ngrok',

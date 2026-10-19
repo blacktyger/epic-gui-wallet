@@ -93,6 +93,7 @@ test('wallet toml per network: chain, ports, local node, every path ours', () =>
     assert.equal(r.wallet.api_secret_path, '/r/wallets/w1/.owner_api_secret');
     assert.ok(!('node_api_secret_path' in r.wallet), 'no node secret for a node that is not the built-in one');
     assert.equal(r.tor.send_config_dir, '/r/wallets/w1');
+    assert.equal(r.tor.use_tor_listener, false);
     assert.equal(r.epicbox.epicbox_domain, 'epicbox.epiccash.com');
     assert.equal(r.epicbox.epicbox_port, 443);
     assert.equal(r.logging.stdout_log_level, 'Debug');
@@ -110,12 +111,28 @@ test('wallet toml matches what epic-wallet 4.1.0 itself writes, apart from the k
   const r = readToml(renderWalletToml({ template: WALLET_TEMPLATE, network: 'floonet', configDir: '/r/w', dataDir: '/r/w' }));
   const t = readToml(WALLET_TEMPLATE);
   const set = { wallet: ['chain_type', 'api_listen_port', 'api_secret_path', 'node_api_secret_path', 'check_node_api_http_addr', 'owner_api_include_foreign', 'data_file_dir'],
-    tor: ['send_config_dir'], epicbox: ['epicbox_domain', 'epicbox_port'], logging: ['stdout_log_level', 'log_file_path'] };
+    tor: ['use_tor_listener', 'send_config_dir'], epicbox: ['epicbox_domain', 'epicbox_port'], logging: ['stdout_log_level', 'log_file_path'] };
   assert.deepEqual(Object.keys(r), Object.keys(t));
   for (const sec of Object.keys(t)) {
     assert.deepEqual(Object.keys(r[sec]), Object.keys(t[sec]).filter(k => k !== 'node_api_secret_path'), sec);
     for (const k of Object.keys(t[sec])) if (!(set[sec] || []).includes(k)) assert.deepEqual(r[sec][k], t[sec][k], sec + '.' + k);
   }
+});
+
+test('no Tor: use_tor_listener is false in the template and in every toml written, also from an older true one', () => {
+  assert.equal(readToml(WALLET_TEMPLATE).tor.use_tor_listener, false);
+  //an older wallet's toml (6.1.2 and before: true) is rendered whole again from the template when it
+  //is opened; even a template that still says true renders false
+  const old = WALLET_TEMPLATE.replace(/^use_tor_listener = false$/m, 'use_tor_listener = true');
+  assert.notEqual(old, WALLET_TEMPLATE);
+  for (const network of ['mainnet', 'floonet', 'usernet']) {
+    const text = renderWalletToml({ template: old, network, configDir: '/r/w', dataDir: '/old/main' });
+    assert.equal(readToml(text).tor.use_tor_listener, false, network);
+    assert.equal(text.match(/^\s*use_tor_listener\s*=/gm).length, 1);
+  }
+  //a template without the key gets it
+  const none = WALLET_TEMPLATE.replace(/^use_tor_listener = false\r?\n/m, '');
+  assert.equal(readToml(renderWalletToml({ template: none, network: 'mainnet', configDir: '/r/w', dataDir: '/r/w' })).tor.use_tor_listener, false);
 });
 
 test('wallet toml, Windows: an imported wallet whose data stays in its old folder, hard characters', () => {

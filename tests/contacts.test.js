@@ -24,8 +24,14 @@ test('search ignores case, also for non-ASCII letters', () => {
 test('search takes the text literally: regex characters and backslashes neither throw nor match everything', () => {
   assert.deepEqual(searchContacts([zoe, bob], 'C:\\path').map(c => c.id), [1]);
   assert.deepEqual(searchContacts([zoe, bob], '(').map(c => c.id), []);
-  assert.deepEqual(searchContacts([zoe, bob], '.').map(c => c.id), [1, 2]);
+  assert.deepEqual(searchContacts([zoe, bob], '.').map(c => c.id), [1]);
   assert.deepEqual(searchContacts([zoe, bob], 'a.o').map(c => c.id), []);
+});
+
+test('a Tor address an older version stored: kept on save, not searched (it is not shown any more)', () => {
+  assert.equal(contactFields(bob).onion, 'abc.onion');
+  assert.deepEqual(searchContacts([zoe, bob], 'abc.onion').map(c => c.id), []);
+  assert.deepEqual(searchContacts([zoe, bob], 'bob').map(c => c.id), [2]);
 });
 
 test('an empty or blank search shows all contacts; no match shows none', () => {

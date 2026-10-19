@@ -80,18 +80,6 @@
 
             <div class="e-set-row e-rcv-row">
               <div>
-                <b>{{ $t('msg.modern.send.rcv_tor') }}</b>
-                <div v-if="store.state.torService" class="e-rcv-line"><code class="e-mono" translate="no">{{ onionAddress }}</code></div>
-                <p v-else class="e-rcv-check"><EIcon name="circleoff" size="sm" class="e-faint" /><span>{{ $t('msg.httpReceive.tor_not_available') }}</span></p>
-              </div>
-              <div v-if="store.state.torService" class="e-ctl">
-                <button type="button" class="e-icon-btn" :aria-label="$t('msg.modern.send.rcv_copy_tor')" @click="copy(onionAddress)"><EIcon name="copy" size="sm" /></button>
-                <button type="button" class="e-icon-btn" :aria-label="$t('msg.modern.send.rcv_qr_tor')" @click="showQr(onionAddress, 'TOR')"><EIcon name="qr" size="sm" /></button>
-              </div>
-            </div>
-
-            <div class="e-set-row e-rcv-row">
-              <div>
                 <b>{{ $t('msg.modern.send.rcv_proof') }}</b>
                 <div class="e-rcv-line"><code class="e-mono" translate="no">{{ proofAddress || '…' }}</code></div>
                 <p>{{ $t('msg.modern.send.rcv_proof_text') }}</p>

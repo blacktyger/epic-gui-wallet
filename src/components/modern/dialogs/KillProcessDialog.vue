@@ -1,5 +1,5 @@
 <template>
-  <!-- Shown by configService.killEpicProcess (through the emitter) when wallet, node or Tor processes
+  <!-- Shown by configService.killEpicProcess (through the emitter) when wallet or node processes
        from an earlier run are still alive. Cancel and Close answer through window.killRunningEpicPids. -->
   <EDialog
     :open="isModalActive"
@@ -49,13 +49,11 @@
       roleOf(proc) {
         const cmd = (proc && proc.cmd) || '';
         if (/owner_api|listen|scan/.test(cmd) && /epic-wallet/.test(cmd)) return this.$t('msg.modern.unlock.role_wallet');
-        if (/torrc/.test(cmd)) return this.$t('msg.modern.unlock.role_tor');
         if (/server/.test(cmd)) return this.$t('msg.modern.unlock.role_node');
         return '';
       },
       iconOf(proc) {
         const cmd = (proc && proc.cmd) || '';
-        if (/torrc/.test(cmd)) return 'tor';
         return /epic-wallet/.test(cmd) ? 'wallet' : 'server';
       },
     },

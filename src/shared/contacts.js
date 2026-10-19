@@ -3,11 +3,12 @@
  * search shows. Pure functions, unit-tested in tests/contacts.test.js.
  */
 
-//every text column of a contact; NOT NULL in the stored schema, so never null or undefined
+//every text column of a contact; NOT NULL in the stored schema, so never null or undefined. onion:
+//a Tor address an older version stored; not shown or edited any more, but kept as it is
 export const CONTACT_TEXT_FIELDS = ['name', 'country', 'city', 'onion', 'proofaddr', 'externalOne', 'externalTwo', 'notice'];
 
-//the columns a search looks in (as before: not the gender or the proof switch)
-const SEARCH_FIELDS = ['name', 'country', 'city', 'onion', 'proofaddr', 'externalOne', 'externalTwo', 'notice'];
+//the columns a search looks in (not the gender, the proof switch or the hidden Tor address)
+const SEARCH_FIELDS = ['name', 'country', 'city', 'proofaddr', 'externalOne', 'externalTwo', 'notice'];
 
 /* the columns a save writes: each text column a string ('' when missing, e.g. a contact saved by an
    older version without it), alwaysproof a boolean */

@@ -25,10 +25,6 @@
                 <div className="dropdown-menu" id="dropdown-menu" role="menu">
                   <div v-for="address in foundAddress" :key="address.id" class="dropdown-content">
 
-                    <a v-if="address.onion" @click="fillAddressField(address, 'onion')" class="dropdown-item" data-address-id="{{address.id}}">
-                      {{ address.name }} - TOR <span class="paste-address">{{ address.onion }}</span>
-                    </a>
-
                     <a v-if="address.externalOne" @click="fillAddressField(address, 'externalOne')" class="dropdown-item" data-address-id="{{address.id}}">
                       {{ address.name }} - EPICBOX <span class="paste-address">{{ address.externalOne }}</span>
                     </a>
@@ -106,7 +102,7 @@ import AmountField from "@/components/form/amountField";
 import ProofAddressField from "@/components/form/proofAddressField";
 import AddressField from "@/components/form/addressField";
 import useFormValidation from "@/modules/useFormValidation";
-import { clearSendForm, inputAfterSend, sendMethod, proofAllowed as proofAllowedFor, proofRequest } from "@/shared/sendForm";
+import { clearSendForm, inputAfterSend, sendMethod, proofAllowed as proofAllowedFor, proofRequest, isOnionAddress } from "@/shared/sendForm";
 
 export default {
   name: "http-send",
@@ -123,6 +119,15 @@ export default {
       message: function (newVal) { inputAfterSend(this, newVal); },
       'addressField.input': function (newVal) {
         inputAfterSend(this, newVal);
+        //a Tor address: said at once, not only on Send (no Tor in this wallet)
+        const onionMsg = this.$t("msg.validators.onion_address");
+        if(this.addressField && this.addressField.errors){
+          if(isOnionAddress(newVal)){
+            this.addressField.errors.address = onionMsg;
+          }else if(this.addressField.errors.address == onionMsg){
+            this.addressField.errors.address = null;
+          }
+        }
         if(newVal == ''){
           this.addressSelected = false;
           this.withproof = false;
@@ -130,7 +135,7 @@ export default {
           this.method = 'http';
           this.address = {};
 
-        }else if(this.addressSelected && ![this.address.onion, this.address.externalOne, this.address.externalTwo].some(x => x && String(x).trim() == String(newVal).trim())){
+        }else if(this.addressSelected && ![this.address.externalOne, this.address.externalTwo].some(x => x && String(x).trim() == String(newVal).trim())){
           //the picked contact's address was edited away: its method (Epicbox) no longer applies
           this.addressSelected = false;
           this.method = 'http';
@@ -218,11 +223,7 @@ export default {
     fillAddressField(address, type){
       this.address = address;
       if(!this.addressSelected){
-        if(type == 'onion'){
-          this.addressField.setValue(address.onion.trim());
-          this.method = 'http';
-
-        }else if(type == 'externalOne'){
+        if(type == 'externalOne'){
           this.addressField.setValue(address.externalOne.trim());
           this.method = 'epicbox';
         }else if(type == 'externalTwo'){
@@ -247,8 +248,8 @@ export default {
         if(value != ''){
 
           let found = await this.$addressBookService.findAddress(this.store.state.user.id, value);
-          //only entries with an address that can be sent to (onion, Epicbox or HTTP)
-          this.foundAddress = found.filter(a => a.onion || a.externalOne || a.externalTwo);
+          //only entries with an address that can be sent to (Epicbox or HTTP)
+          this.foundAddress = found.filter(a => a.externalOne || a.externalTwo);
         }else{
           this.foundAddress = [];
         }

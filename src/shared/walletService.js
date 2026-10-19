@@ -341,14 +341,6 @@ class WalletService {
         }, false);
     }
 
-    async getProofAddressFromOnionV3(address_v3){
-      return this.jsonRPC(
-        'proof_address_from_onion_v3',
-        {
-          "address_v3": address_v3
-        }, false);
-    }
-
     async getMnemonic(password){
 
       return this.jsonRPC(
@@ -782,12 +774,10 @@ class WalletService {
       });
     }
 
-    /* start a epic wallet in listen mode; the main process answers its prompt with the session password */
-    async startListen(tor, method){
+    /* start a epic wallet in listen mode (no Tor: --no_tor); the main process answers its prompt
+       with the session password */
+    async startListen(method){
 
-
-        let args = [];
-        let torBooted = false;
         let walletIsListen = await window.nodeChildProcess.ownedProcesses(['listen'], {dir: this.configService.walletConfigDir});
 
         if(!walletIsListen.length){
@@ -795,7 +785,7 @@ class WalletService {
           //another program holds the listener port: say so, don't touch it
           const port = this.configService.walletListenerPort;
           if(await window.config.isPortReachable('127.0.0.1', port)){
-            return {success:false, tor: torBooted, portInUse: port};
+            return {success:false, portInUse: port};
           }
 
           let walletListenId = 0;
@@ -805,22 +795,20 @@ class WalletService {
             network: this.configService.defaultAccountNetwork,
             configDir: this.configService.walletConfigDir,
             dataDir: this.configService.walletDataDir,
-            tor: tor,
           });
 
           walletListenId = await window.nodeChildProcess.execListen(this.configService.epicPath, args, this.configService.platform);
 
           if(walletListenId && walletListenId.msg > 0){
               this.walletIsListen = true;
-              torBooted = walletListenId.tor;
               //the listener started here (none when one was already running)
-              return {success:true, tor: torBooted, pid: walletListenId.msg};
+              return {success:true, pid: walletListenId.msg};
           }else{
-            return {success:false, tor: torBooted, noSession: !!(walletListenId && walletListenId.noSession)};
+            return {success:false, noSession: !!(walletListenId && walletListenId.noSession)};
           }
         }
 
-        return {success:true, tor: torBooted};
+        return {success:true};
     }
 
     async isListen(){
@@ -829,14 +817,13 @@ class WalletService {
       return walletIsListen.length > 0;
     }
 
-    /* the current wallet's processes only (its config dir) and its Tor (in its data dir): another
-       wallet's listener is never stopped here; the built-in node is shared, never filtered by dir */
+    /* the current wallet's processes only (its config dir): another wallet's listener is never
+       stopped here; the built-in node is shared, never filtered by dir */
     ownedOpts(){
-      const cs = this.configService;
-      return {dir: cs.walletConfigDir, tor: true, torDirs: [cs.walletDataDir].filter(Boolean)};
+      return {dir: this.configService.walletConfigDir};
     }
 
-    /* stop our listeners and their Tor */
+    /* stop our listeners */
     async stopListen(){
 
       const roles = ['listen', 'epicbox'];
@@ -845,7 +832,7 @@ class WalletService {
       return true;
     }
 
-    /* logout: stop our listeners (http and Epicbox), their Tor, our
+    /* logout: stop our listeners (http and Epicbox), our
        owner API and, unless it runs in the background, our built-in node, in one call (one
        process scan). Only processes the app started (shared/processOwnership.js). Lock and the
        interface switch used to run stopListen + stopWallet + nodeService.stopNode one after
