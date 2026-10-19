@@ -29,6 +29,7 @@
 
           <!-- the QR code: hidden until asked for, like the balance hide/show (Seed.vue toggleQr draws it) -->
           <div v-if="seeds.length > 0" class="e-stg-qr">
+            <button type="button" class="e-btn e-btn-ghost e-btn-sm" @click="copyPhrase"><EIcon name="copy" />{{ $t('msg.modern.unlock.phrase_copy') }}</button>
             <button type="button" class="e-btn e-btn-ghost e-btn-sm" :aria-expanded="qrShown ? 'true' : 'false'" aria-controls="e-stg-qr-box" @click="toggleQr"><EIcon :name="qrShown ? 'eyeoff' : 'eye'" />{{ qrShown ? $t('msg.modern.unlock.phrase_qr_hide') : $t('msg.modern.unlock.phrase_qr') }}</button>
             <div v-if="qrShown" id="e-stg-qr-box"><canvas id="qrcodeCanvas" role="img" :aria-label="$t('msg.modern.settings.qr_label')"></canvas></div>
           </div>

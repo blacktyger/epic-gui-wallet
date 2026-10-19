@@ -1,29 +1,30 @@
-// Tests for src/shared/nodeLoad.js, when the built-in node's "heavy" toast shows: `npm test`.
+// Tests for src/shared/nodeLoad.js, when the "heavy action" toast shows: `npm test`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nodeLoadWarning } from '../src/shared/nodeLoad.js';
+import { nodeLoadWarning, savedNode } from '../src/shared/nodeLoad.js';
 
-test('switching the built-in node on warns', () => {
-  assert.equal(nodeLoadWarning({ internal: false, background: false }, { internal: true, background: false }), true);
-  assert.equal(nodeLoadWarning({ internal: false, background: false }, { internal: true, background: true }), true);
+test('a heavy action with the built-in node warns', () => {
+  assert.equal(nodeLoadWarning('check', { internal: true }), true);
+  assert.equal(nodeLoadWarning('restore', { internal: true, address: 'http://127.0.0.1:3413' }), true);
 });
 
-test('switching background sync on while the built-in node is used warns', () => {
-  assert.equal(nodeLoadWarning({ internal: true, background: false }, { internal: true, background: true }), true);
+test('a heavy action with a node on this computer warns', () => {
+  assert.equal(nodeLoadWarning('check', { internal: false, address: 'http://localhost:3413' }), true);
 });
 
 test('an external node never warns', () => {
-  assert.equal(nodeLoadWarning({ internal: true, background: true }, { internal: false, background: false }), false);
-  assert.equal(nodeLoadWarning({ internal: false, background: false }, { internal: false, background: true }), false);
-  assert.equal(nodeLoadWarning({ internal: false }, null), false);
+  assert.equal(nodeLoadWarning('check', { internal: false, address: 'https://node.example.org:3413' }), false);
+  assert.equal(nodeLoadWarning('restore', { internal: false, address: '' }), false);
+  assert.equal(nodeLoadWarning('check', null), false);
 });
 
-test('a save that changes neither does not warn again', () => {
-  assert.equal(nodeLoadWarning({ internal: true, background: false }, { internal: true, background: false }), false);
-  assert.equal(nodeLoadWarning({ internal: true, background: true }, { internal: true, background: true }), false);
-  assert.equal(nodeLoadWarning({ internal: true, background: true }, { internal: true, background: false }), false);
+test('normal actions never warn', () => {
+  for (const a of ['send', 'receive', 'open', 'settings', undefined]) {
+    assert.equal(nodeLoadWarning(a, { internal: true }), false);
+  }
 });
 
-test('an unknown earlier state counts as external', () => {
-  assert.equal(nodeLoadWarning(undefined, { internal: true }), true);
+test('savedNode reads the store user and the config', () => {
+  assert.deepEqual(savedNode({ nodeInternal: 1 }, { check_node_api_http_addr: 'x' }), { internal: true, address: 'x' });
+  assert.deepEqual(savedNode(null, null), { internal: false, address: '' });
 });

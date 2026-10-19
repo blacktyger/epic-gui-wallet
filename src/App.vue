@@ -457,6 +457,8 @@
       async logoutApp(opts = {}){
         //first: the main process forgets the password, whatever happens below
         window.nodeChildProcess.clearSessionPassword().catch(() => {});
+        //a copied recovery phrase leaves the clipboard on lock
+        window.clipboard.wipeSecret().catch(() => {});
         this.stopRefreshNode();
         this.stopRefresh();
         this.loginSession = (this.loginSession || 0) + 1;

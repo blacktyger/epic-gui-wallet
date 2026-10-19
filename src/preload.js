@@ -618,6 +618,8 @@ contextBridge.exposeInMainWorld('nodeExecSync', require('child_process').execSyn
 contextBridge.exposeInMainWorld('nodeExecFile', require('child_process').execFile);
 contextBridge.exposeInMainWorld('clipboard', {
   writeText: (text) => ipcRenderer.invoke('clipboard-write-text', text),
+  copySecret: (text) => ipcRenderer.invoke('clipboard-copy-secret', text),
+  wipeSecret: () => ipcRenderer.invoke('clipboard-wipe-secret'),
 });
 //File.path was removed in Electron 32
 contextBridge.exposeInMainWorld('nodeWebUtils', {

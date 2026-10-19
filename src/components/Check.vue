@@ -78,6 +78,7 @@ const log = window.log
 
 import { ref } from 'vue';
 import useFormValidation from "@/modules/useFormValidation";
+import { nodeLoadWarning, savedNode } from "@/shared/nodeLoad";
 export default {
   name: "check",
   components: {
@@ -106,6 +107,9 @@ export default {
 
       //the unlocked wallet is checked: no password prompt
       {
+        if(nodeLoadWarning('check', savedNode(this.$store.state.user, this.configService.config))){
+          this.$toast.warning(this.$t("msg.settings.node_load_warning"), {duration: 10000});
+        }
         this.checking = true;
         this.checkOutputs = [];
 

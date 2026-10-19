@@ -72,6 +72,8 @@ export default {
   phrase_reveal_hint: 'Check that nobody can see your screen.',
   phrase_reveal_first: 'Reveal the phrase first',
   phrase_hide: 'Hide phrase',
+  phrase_copy: 'Copy',
+  phrase_copied: 'Copied. The clipboard is cleared in 60 s.',
   phrase_written_q: 'All {n} words on paper?',
   phrase_qr: 'Show the phrase as a QR code',
   phrase_qr_hide: 'Hide the QR code',
