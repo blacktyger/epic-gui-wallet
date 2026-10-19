@@ -35,6 +35,7 @@
 
   import { ref, computed } from "vue";
   import useFormValidation from "@/modules/useFormValidation";
+  import { isPrivateHost } from "@/shared/nodeAddress";
 
   export default {
     setup() {
@@ -52,9 +53,11 @@
         defaultValue.value = input.value.trim();
         if(select.value == 'external'){
           nodeInternal.value = false;
-          //no scheme given: assume https, keep any port
+          //no scheme given: http for this computer or the LAN (nodeAddress.isPrivateHost), else https; keep any port
           if(defaultValue.value && !/^[a-z][a-z0-9+.-]*:\/\//i.test(defaultValue.value)){
-            defaultValue.value = 'https://' + defaultValue.value;
+            let host = '';
+            try{ host = new URL('http://' + defaultValue.value).hostname; }catch(e){ host = ''; }
+            defaultValue.value = (isPrivateHost(host) ? 'http://' : 'https://') + defaultValue.value;
           }
           defaultValue.value = defaultValue.value.replace(/\/+$/, '');
           input.value = defaultValue.value;

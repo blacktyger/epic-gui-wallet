@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { cleanNodeAddress, probeNodeAddress, MAINNET_FALLBACK_NODE, LOCAL_NODE } from '../src/shared/nodeAddress.js';
+import { cleanNodeAddress, probeNodeAddress, isPrivateHost, MAINNET_FALLBACK_NODE, LOCAL_NODE } from '../src/shared/nodeAddress.js';
 import { migrateNodeAddress, NODE_ADDRESS_FLAG } from '../src/shared/nodeAddressMigration.js';
 
 const replies = JSON.parse(fs.readFileSync(new URL('./fixtures/nodeReplies.json', import.meta.url), 'utf8'));
@@ -23,12 +23,29 @@ const table = [
   ['node.epiccash.com:3413', 'mainnet', 'https://node.epiccash.com:3413', 'scheme_added', ['http://node.epiccash.com:3413']],
   ['127.0.0.1:3413', 'mainnet', 'http://127.0.0.1:3413', 'scheme_added', []],
   ['localhost:3413/', 'usernet', 'http://localhost:3413', 'scheme_added', []],
-  ['192.168.1.20:3413', 'mainnet', 'https://192.168.1.20:3413', 'scheme_added', ['http://192.168.1.20:3413']],
+  ['192.168.1.20:3413', 'mainnet', 'http://192.168.1.20:3413', 'scheme_added', []],
   ['node.btlabs.uk', 'mainnet', 'https://node.btlabs.uk', 'scheme_added',
     ['https://node.btlabs.uk:3413', 'http://node.btlabs.uk', 'http://node.btlabs.uk:3413']],
-  //https to the local node -> http
-  ['https://127.0.0.1:3413', 'mainnet', 'http://127.0.0.1:3413', 'local_http', []],
-  ['https://localhost:13413/', 'floonet', 'http://localhost:13413', 'local_http', []],
+  //https to this computer or the LAN: kept as typed; http only tried if it gives no answer
+  ['https://127.0.0.1:3413', 'mainnet', 'https://127.0.0.1:3413', '', ['http://127.0.0.1:3413']],
+  ['https://localhost:13413/', 'floonet', 'https://localhost:13413', 'format', ['http://localhost:13413']],
+  ['https://192.168.0.123:3413', 'mainnet', 'https://192.168.0.123:3413', '', ['http://192.168.0.123:3413']],
+  //LAN, Tailscale/CGNAT, mDNS and IPv6 private hosts without a scheme -> http, as for loopback
+  ['192.168.0.123:3413', 'mainnet', 'http://192.168.0.123:3413', 'scheme_added', []],
+  ['10.1.2.3:3413', 'mainnet', 'http://10.1.2.3:3413', 'scheme_added', []],
+  ['172.20.0.9:3413', 'mainnet', 'http://172.20.0.9:3413', 'scheme_added', []],
+  ['169.254.10.1:3413', 'mainnet', 'http://169.254.10.1:3413', 'scheme_added', []],
+  ['100.101.102.103:3413', 'mainnet', 'http://100.101.102.103:3413', 'scheme_added', []],
+  ['epicnode.local:3413', 'mainnet', 'http://epicnode.local:3413', 'scheme_added', []],
+  ['nas.lan', 'mainnet', 'http://nas.lan', 'scheme_added', ['http://nas.lan:3413']],
+  ['[fd12:3456::7]:3413', 'mainnet', 'http://[fd12:3456::7]:3413', 'scheme_added', []],
+  ['[fe80::1]:3413', 'mainnet', 'http://[fe80::1]:3413', 'scheme_added', []],
+  //...and a LAN node on http is never upgraded to https
+  ['http://192.168.0.123:3413', 'mainnet', 'http://192.168.0.123:3413', '', []],
+  ['http://192.168.0.123', 'mainnet', 'http://192.168.0.123', '', ['http://192.168.0.123:3413']],
+  //not private: just outside the ranges -> https as for any remote host
+  ['172.32.0.1:3413', 'mainnet', 'https://172.32.0.1:3413', 'scheme_added', ['http://172.32.0.1:3413']],
+  ['100.128.0.1:3413', 'mainnet', 'https://100.128.0.1:3413', 'scheme_added', ['http://100.128.0.1:3413']],
   //dead fallbacks of older GUIs, any scheme or port -> the current fallback (mainnet)
   ['https://fastepic.eu:3413', 'mainnet', MAINNET_FALLBACK_NODE, 'dead_fallback', []],
   ['http://fastepic.eu:3413', 'mainnet', MAINNET_FALLBACK_NODE, 'dead_fallback', []],
@@ -48,7 +65,7 @@ const table = [
   //the user's own host is kept, also on floonet (a floonet node of their own)
   ['https://my-node.example.org:3413', 'mainnet', 'https://my-node.example.org:3413', '', []],
   ['https://my-floonet-node.example.org:13413', 'floonet', 'https://my-floonet-node.example.org:13413', '', []],
-  ['http://10.0.0.5:3413', 'mainnet', 'http://10.0.0.5:3413', '', ['https://10.0.0.5:3413']],
+  ['http://10.0.0.5:3413', 'mainnet', 'http://10.0.0.5:3413', '', []],
   //a path is kept (a node behind a proxy path); query and hash are not node addresses
   ['https://proxy.example.org/epic/', 'mainnet', 'https://proxy.example.org/epic', 'format', ['https://proxy.example.org:3413/epic']],
   //left alone
@@ -150,7 +167,9 @@ test('probe: the user\'s own http node that answers is kept', async () => {
     'https://10.0.0.5:3413': rec('local 4.1.0-1 (bundled) with api secret'),
   });
   const c = cleanNodeAddress('http://10.0.0.5:3413');
-  assert.deepEqual(await probeNodeAddress(c.url, c.suggest, n), { url: 'http://10.0.0.5:3413', changed: false, reason: 'answers' });
+  //a LAN http node is not questioned at all: no https suggestion, no network
+  assert.deepEqual(await probeNodeAddress(c.url, c.suggest, n), { url: 'http://10.0.0.5:3413', changed: false, reason: 'skipped' });
+  assert.equal(n.asked.length, 0);
 });
 
 test('probe: an old node with a secret (401) is an Epic node: kept', async () => {
@@ -261,4 +280,64 @@ test('migrate: offline at the first logins -> the network step is tried again, a
   await migrateNodeAddress(c2, offline);
   assert.equal(c2[NODE_ADDRESS_FLAG], 1);
   assert.equal(c2.check_node_api_http_addr, 'http://node.epiccash.com:3413');
+});
+
+test('isPrivateHost: this computer, LAN, Tailscale/CGNAT, mDNS, IPv6 private and link-local', () => {
+  for (const h of ['127.0.0.1', '127.8.9.10', 'localhost', '10.0.0.1', '10.255.255.255', '172.16.0.1', '172.31.255.255',
+    '192.168.0.123', '169.254.1.1', '100.64.0.1', '100.127.255.255', 'epicnode.local', 'NAS.LAN', 'nas.lan.',
+    '[::1]', '::1', '[fd12:3456::7]', 'fc00::1', '[fe80::1]', 'febf::1']) {
+    assert.equal(isPrivateHost(h), true, h);
+  }
+  for (const h of ['node.epiccash.com', '8.8.8.8', '172.15.0.1', '172.32.0.1', '192.169.0.1', '100.63.0.1', '100.128.0.1',
+    '169.255.0.1', 'local.example.com', 'lan.example.org', '[2001:db8::1]', 'fec0::1', '', undefined]) {
+    assert.equal(isPrivateHost(h), false, String(h));
+  }
+});
+
+test('https on this computer or the LAN that answers is kept as typed (no forced http)', async () => {
+  for (const url of ['https://127.0.0.1:3413', 'https://192.168.0.123:3413']) {
+    const n = network({ [url]: rec('local 4.1.0-1 (bundled) with api secret'), [url.replace('https', 'http')]: rec('local 4.1.0-1 (bundled) with api secret') });
+    const config = { check_node_api_http_addr: url };
+    assert.deepEqual(await migrateNodeAddress(config, { fetch: n.fetch }), { updated: true, change: null });
+    assert.equal(config.check_node_api_http_addr, url);
+  }
+});
+
+test('https on the LAN that does not answer, but http does -> http', async () => {
+  const n = network({ 'http://192.168.0.123:3413': rec('local 4.1.0-1 (bundled) with api secret') });
+  const config = { check_node_api_http_addr: 'https://192.168.0.123:3413' };
+  const r = await migrateNodeAddress(config, { fetch: n.fetch });
+  assert.equal(config.check_node_api_http_addr, 'http://192.168.0.123:3413');
+  assert.equal(r.change.reason, 'answered');
+});
+
+test('a remote address that answers keeps its scheme, even http', async () => {
+  const n = network({
+    'http://node.example.org:3413': rec('local 4.1.0-1 (bundled) with api secret'),
+    'https://node.example.org:3413': rec('https://node.epiccash.com:3413'),
+  });
+  const config = { check_node_api_http_addr: 'http://node.example.org:3413' };
+  assert.deepEqual(await migrateNodeAddress(config, { fetch: n.fetch }), { updated: true, change: null });
+  assert.equal(config.check_node_api_http_addr, 'http://node.example.org:3413');
+});
+
+test('nothing answers (node off during the cleanup): exactly what the user had, not a guessed scheme', async () => {
+  const offline = { fetch: network({}).fetch, timeoutMs: 100 };
+  //a remote address without scheme: https was guessed, then nothing answered -> kept as saved
+  const a = { check_node_api_http_addr: 'node.example.org:3413' };
+  assert.deepEqual(await migrateNodeAddress(a, offline), { updated: true, change: null });
+  assert.equal(a.check_node_api_http_addr, 'node.example.org:3413');
+  assert.equal(a[NODE_ADDRESS_FLAG], undefined, 'tried again at the next login');
+  //...and when it answers later, it gets its scheme
+  const n = network({ 'https://node.example.org:3413': rec('https://node.epiccash.com:3413') });
+  await migrateNodeAddress(a, { fetch: n.fetch });
+  assert.equal(a.check_node_api_http_addr, 'https://node.example.org:3413');
+  //a LAN address without scheme gets http offline (no guess to undo: http is the LAN default)
+  const b = { check_node_api_http_addr: '192.168.0.123:3413' };
+  await migrateNodeAddress(b, offline);
+  assert.equal(b.check_node_api_http_addr, 'http://192.168.0.123:3413');
+  //LAN https, nothing answers: kept
+  const c = { check_node_api_http_addr: 'https://192.168.0.123:3413' };
+  await migrateNodeAddress(c, offline);
+  assert.equal(c.check_node_api_http_addr, 'https://192.168.0.123:3413');
 });
