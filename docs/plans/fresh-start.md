@@ -106,6 +106,12 @@ with `chainsOnly`) looks for older chain data; the most recently written usable 
 ("Use this data" / "Download fresh"). The answer is kept as `node.<net>.chainOffer` {checkedAt,
 answer: used | declined | none, dir}; `none` (nothing usable) shows no prompt. Which chains count
 as usable, and the evidence that node 4.1.0-1 opens chains of nodes 3.0.0 – 3.6.0: `src/shared/chainOffer.js`.
+A chain folder still used by a running node can't be told from the files (`epic.lock` stays after the
+node exits), so it is offered too. To undo "Use this data" (or the found screen's reuse), or when that
+folder's node is still running, Settings shows "Blockchain data: <folder>" with *Download the blockchain
+again*: after a confirm, `settingsStore.forgetChainDir` clears `chainDir` (the offer stays `declined`),
+the node toml is written again and a running built-in node restarts (`app.restartNode`). The older
+folder is never deleted.
 Open a wallet folder works out what was picked (`src/shared/walletFolder.js`): wallet_data or
 chain_data → the wallet around it, `~/.epic` or a userhomedir → the wallets in it.
 
