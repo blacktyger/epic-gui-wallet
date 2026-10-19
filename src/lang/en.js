@@ -370,7 +370,7 @@ const messages = {
       WrongTxData: 'Failed to build transaction',
       success: 'Transaction success',
       TxFailed: 'Send transaction failed',
-      proofEpicbox: 'Payment proofs aren\'t available over Epicbox. Use HTTP, Tor or a transaction file if you need one.',
+      proofEpicbox: 'Payment proofs aren\'t available over Epicbox. Use HTTP or a transaction file if you need one.',
       TxResponseFailed: 'Failed to get right respose from receiver',
       TxCreateFailed: 'Create transaction failed',
       salteVersion: 'Slate file version',

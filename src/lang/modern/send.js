@@ -27,7 +27,7 @@ export default {
   proof_title: 'Request a payment proof',
   proof_hint: 'The recipient signs a receipt you can show later.',
   proof_address: 'Recipient proof address',
-  proof_epicbox: 'Payment proofs aren’t available over Epicbox. Use HTTP, Tor or a transaction file if you need one.',
+  proof_epicbox: 'Payment proofs aren’t available over Epicbox. Use HTTP or a transaction file if you need one.',
   summary: 'Summary',
   fee: 'Network fee',
   total: 'Total',
