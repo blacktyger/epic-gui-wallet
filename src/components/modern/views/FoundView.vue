@@ -88,6 +88,12 @@
           </button>
         </div>
         <p class="e-oldw-note">{{ $t('msg.wallets.found_note') }}</p>
+        <p class="e-oldw-other">
+          {{ $t('msg.wallets.found_or') }}
+          <button type="button" class="e-link-btn" :disabled="busy" @click="otherWay('create')">{{ $t('msg.wallets.found_or_create') }}</button>
+          <span aria-hidden="true">·</span>
+          <button type="button" class="e-link-btn" :disabled="busy" @click="otherWay('restore')">{{ $t('msg.wallets.found_or_restore') }}</button>
+        </p>
       </form>
     </div>
     <AuthFoot />

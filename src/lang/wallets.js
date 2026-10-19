@@ -35,6 +35,10 @@ export default {
   found_legacy_db: 'Made with an older wallet version: the balance comes back with a rescan, older history may not show.',
   found_use: 'Use selected wallet | Use selected wallets',
   found_not_now: 'Not now',
+  //below the found wallets: the Welcome screen's two ways
+  found_or: 'Or:',
+  found_or_create: 'Create a new wallet',
+  found_or_restore: 'Restore from recovery phrase',
   found_reuse_chain: 'Reuse the downloaded blockchain',
   found_last_used: 'last used {0}',
   found_contacts: 'no contacts | {n} contact | {n} contacts',
