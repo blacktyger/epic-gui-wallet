@@ -1,5 +1,5 @@
 require('promise.prototype.finally').shim();
-import { fetchNodeVersion } from './nodeVersion.js';
+import { fetchNodeVersion, fetchNodeStatus, classifyNode } from './nodeVersion.js';
 
 const log = window.log;
 console.log = log.log;
@@ -119,38 +119,24 @@ class NodeService {
     return fetchNodeVersion(address);
   }
 
+  /* ok | too_old | status_locked | unreachable | not_epic for the saved node (shared/nodeVersion.js) */
+  async classifyNode(address){
+    return classifyNode(address, {apiSecret: this.configService.apisecret});
+  }
+
   async getNodeStatus(internal){
 
     let baseURL = this.configService.config['check_node_api_http_addr'] ? this.configService.config['check_node_api_http_addr'] : this.configService.defaultEpicNode;
-    let password = this.configService.apisecret;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    let headers = { 'Content-Type': 'application/json' };
-    //the node secret belongs to the local node only
-    let isLocalNode = false;
-    try{
-      isLocalNode = ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(baseURL).hostname);
-    }catch(e){
-      //invalid address: send no credentials
+    //GET /v1/status; on a 401 (plain node 4.1.0) the same status from POST /v2/owner get_status.
+    //The node secret is sent to the local node only
+    const res = await fetchNodeStatus(baseURL, {apiSecret: this.configService.apisecret, timeoutMs: 10000});
+    if(!res.ok){
+      window.log ? console.log('NodeService.fetch', res.reason) : null;
     }
-    if(isLocalNode){
-      headers['Authorization'] = 'Basic ' + btoa('epic:' + password);
-    }
-
-    let response = await fetch(baseURL +'/v1/status', {
-      method:'GET',
-      headers: headers,
-      signal: controller.signal
-    }).then(function(res){
-      if (!res.ok) { throw Error(res) }
-      return res.json();
-    }).catch(function(error){
-      window.log ? console.log('NodeService.fetch', error) : null;
-      return false;
-    });
-    clearTimeout(timeoutId);
+    //how the status was read last: 'v1', 'owner' or null
+    this.statusVia = res.ok ? res.via : null;
+    let response = res.ok ? res.status : false;
 
     /* check if node status is ok or need a restart because is stalled */
     if(internal){
