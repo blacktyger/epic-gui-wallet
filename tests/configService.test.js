@@ -1,0 +1,318 @@
+// Tests for src/shared/configService.js on a fake file system (POSIX and Windows paths): `npm test`.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import realFs from 'node:fs';
+import path from 'node:path';
+import ConfigService from '../src/shared/configService.js';
+import { layout } from '../src/shared/appPaths.js';
+
+const RES = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'resources');
+const TEMPLATES = Object.fromEntries(['epic-wallet.toml', 'epic-server.toml', 'foundation.json'].map(f => [f, realFs.readFileSync(path.join(RES, f), 'utf8')]));
+
+/* an in-memory fs with the sync calls configService and settingsStore use; writes need the parent dir */
+function fakeFs(P) {
+  const files = new Map(), dirs = new Set();
+  const k = (p) => P.resolve(String(p));
+  const err = (code, p) => Object.assign(new Error(code + ': ' + p), { code });
+  const parentOk = (p) => dirs.has(P.dirname(k(p)));
+  const fs = {
+    files, dirs, writes: [],
+    existsSync: (p) => files.has(k(p)) || dirs.has(k(p)),
+    readFileSync: (p) => { if (!files.has(k(p))) throw err('ENOENT', p); return files.get(k(p)); },
+    writeFileSync: (p, data) => { if (!parentOk(p)) throw err('ENOENT', p); files.set(k(p), String(data)); fs.writes.push(k(p)); },
+    mkdirSync: (p) => { let d = k(p); while (!dirs.has(d)) { dirs.add(d); const up = P.dirname(d); if (up === d) break; d = up; } },
+    renameSync: (a, b) => { if (!files.has(k(a))) throw err('ENOENT', a); files.set(k(b), files.get(k(a))); files.delete(k(a)); fs.writes.push(k(b)); },
+    copyFileSync: (a, b) => fs.writeFileSync(b, fs.readFileSync(a)),
+    unlinkSync: (p) => { if (!files.delete(k(p))) throw err('ENOENT', p); },
+    readdirSync: (p) => {
+      if (!dirs.has(k(p))) throw err('ENOENT', p);
+      return [...files.keys(), ...dirs].filter(x => x !== k(p) && P.dirname(x) === k(p)).map(x => P.basename(x));
+    },
+    rmdirSync: (p) => { if (fs.readdirSync(p).length) throw err('ENOTEMPTY', p); dirs.delete(k(p)); },
+    put(p, data = '') { fs.mkdirSync(P.dirname(p)); files.set(k(p), data); },
+  };
+  return fs;
+}
+
+function setup({ P = path.posix, root = '/home/jane/.epic-gui', resourcePath = '/opt/epic/resources', source = 'default', platform = 'linux' } = {}) {
+  const fs = fakeFs(P);
+  for (const [f, text] of Object.entries(TEMPLATES)) fs.put(P.join(resourcePath, f), text);
+  const l = layout(root, P);
+  const paths = { root, source, defaultRoot: source === 'env' ? undefined : root, settingsFile: l.settingsFile, walletsDir: l.walletsDir, userData: l.userData, logsDir: l.logsDir, processesFile: l.processesFile };
+  const events = [];
+  const emitter = { emit: (name, data) => events.push([name, data]) };
+  const killed = [];
+  const nodeChildProcess = {
+    owned: [],
+    ownedProcesses: async (roles, opts) => { nodeChildProcess.lastScan = { roles, opts }; return nodeChildProcess.owned; },
+    stopPids: async (pids) => { killed.push(...pids); return pids.map(() => true); },
+  };
+  const cs = new ConfigService(emitter, { fs, pathMod: P, paths, resourcePath, platform, arch: 'x64', nodeChildProcess, isPortReachable: async () => false });
+  return { cs, fs, P, root, events, nodeChildProcess, killed };
+}
+
+/* key = "value" of a rendered toml */
+const tomlStr = (text, key) => { const m = new RegExp('^' + key + ' = (.*)$', 'm').exec(text); return m ? JSON.parse(m[1]) : undefined; };
+
+test('a fresh root: nothing is written by starting, no wallet, binaries from resources', () => {
+  const { cs, fs } = setup();
+  assert.deepEqual(fs.writes, []);
+  assert.equal(cs.settings.isFirstRun(), true);
+  assert.equal(cs.walletId, '');
+  assert.equal(cs.wallet, null);
+  assert.deepEqual(cs.config, { locale: '' });
+  assert.equal(cs.epicPath, '/opt/epic/resources/bin/linux/epic-wallet');
+  assert.equal(cs.epicNodePath, '/opt/epic/resources/bin/linux/epic');
+  assert.equal(cs.walletListenerPort, 3415);
+  assert.ok(![...fs.dirs].some(d => d.includes('.epic/') || d.endsWith('.epic')), 'no ~/.epic');
+});
+
+test('a new wallet: folders, register, toml with every path in its own folder, startCheck', () => {
+  const { cs, fs, root } = setup();
+  const dirs = cs.newWalletDirs('usernet');
+  assert.deepEqual(dirs, { id: 'w1', configDir: root + '/wallets/w1', dataDir: root + '/wallets/w1' });
+  assert.ok(fs.dirs.has(dirs.configDir));
+  assert.deepEqual(fs.readdirSync(dirs.configDir), []);
+  //init would run here; then the seed exists
+  fs.put(dirs.dataDir + '/wallet_data/wallet.seed', 'seed');
+  const w = cs.registerWallet({ ...dirs, network: 'usernet', origin: 'created', label: '' });
+  assert.equal(w.id, 'w1');
+  assert.equal(cs.settings.defaultWalletId(), 'w1');
+  const toml = fs.readFileSync(dirs.configDir + '/epic-wallet.toml');
+  assert.equal(tomlStr(toml, 'chain_type'), 'UserTesting');
+  assert.equal(tomlStr(toml, 'data_file_dir'), root + '/wallets/w1/wallet_data');
+  assert.equal(tomlStr(toml, 'api_secret_path'), root + '/wallets/w1/.owner_api_secret');
+  assert.equal(tomlStr(toml, 'check_node_api_http_addr'), 'https://node.epiccash.com:3413');
+  //not the current wallet until startCheck
+  assert.equal(cs.walletId, '');
+
+  assert.equal(cs.startCheck('w1'), 'login');
+  assert.equal(cs.walletId, 'w1');
+  assert.equal(cs.defaultAccountNetwork, 'usernet');
+  assert.equal(cs.walletListenerPort, 23415);
+  assert.equal(cs.getNodeApiPort(), 23413);
+  assert.equal(cs.walletConfigDir, dirs.configDir);
+  assert.equal(cs.walletDataDir, dirs.dataDir);
+  assert.equal(cs.walletTOMLPath, dirs.configDir + '/epic-wallet.toml');
+  assert.equal(cs.walletNodeAddr, 'https://node.epiccash.com:3413');
+  //secrets are read when used: epic-wallet writes them at its first start
+  assert.equal(cs.ownerApisecret, '');
+  fs.put(dirs.configDir + '/.owner_api_secret', 'abc\n');
+  assert.equal(cs.ownerApisecret, 'abc');
+  assert.equal(cs.config.walletlisten_on_startup, true);
+
+  //the next id; a folder left with files (a removed wallet) is skipped
+  fs.put(root + '/wallets/w2/wallet_data/wallet.seed', 'old');
+  assert.equal(cs.newWalletDirs('mainnet').id, 'w3');
+  assert.throws(() => cs.newWalletDirs('testnet'));
+  cs.resetConfig();
+  assert.equal(cs.walletId, '');
+  assert.equal(cs.walletListenerPort, 3415);
+});
+
+test('startCheck: missing seed, unknown id, toml not writable', () => {
+  const { cs, fs, root } = setup();
+  const d = cs.newWalletDirs('mainnet');
+  fs.put(d.dataDir + '/wallet_data/wallet.seed');
+  cs.registerWallet({ ...d, network: 'mainnet', origin: 'created' });
+  assert.equal(cs.startCheck('w9'), 'missing');
+  fs.unlinkSync(d.dataDir + '/wallet_data/wallet.seed');
+  assert.equal(cs.startCheck('w1'), 'missing');
+  assert.equal(cs.walletId, '');
+  fs.put(d.dataDir + '/wallet_data/wallet.seed');
+  const write = fs.writeFileSync;
+  fs.writeFileSync = (p, data, o) => { if (String(p).includes('epic-wallet.toml')) throw new Error('EACCES'); return write(p, data, o); };
+  assert.equal(cs.startCheck('w1'), 'toml');
+  fs.writeFileSync = write;
+  assert.equal(cs.startCheck('w1'), 'login');
+  assert.ok(root);
+});
+
+test('updateConfig: locale to the app, wallet keys to the wallet, unknown keys dropped, toml rendered again', () => {
+  const { cs, fs } = setup();
+  const d = cs.newWalletDirs('mainnet');
+  fs.put(d.dataDir + '/wallet_data/wallet.seed');
+  cs.registerWallet({ ...d, network: 'mainnet', origin: 'created' });
+  cs.startCheck('w1');
+  assert.equal(cs.updateConfig({ locale: 'de', epicbox_domain: 'epicbox.example.org', check_node_api_http_addr: 'https://n.example:3413', firstTime: false, version: '6.0.0' }), true);
+  assert.equal(cs.settings.app().locale, 'de');
+  assert.equal(cs.config.locale, 'de');
+  const s = cs.settings.wallet('w1').settings;
+  assert.equal(s.epicbox_domain, 'epicbox.example.org');
+  assert.ok(!('firstTime' in s) && !('version' in s) && !('locale' in s));
+  const toml = fs.readFileSync(d.configDir + '/epic-wallet.toml');
+  assert.equal(tomlStr(toml, 'epicbox_domain'), 'epicbox.example.org');
+  assert.equal(tomlStr(toml, 'check_node_api_http_addr'), 'https://n.example:3413');
+  //the built-in node, not synced yet: the wallet uses the public node meanwhile, and the node's secret
+  cs.updateConfig({ nodeInternal: true, nodesynced: false, check_node_api_http_addr: 'http://127.0.0.1:3413' });
+  const t2 = fs.readFileSync(d.configDir + '/epic-wallet.toml');
+  assert.equal(tomlStr(t2, 'check_node_api_http_addr'), 'https://node.epiccash.com:3413');
+  assert.equal(tomlStr(t2, 'node_api_secret_path'), cs.nodeDir('mainnet') + '/.api_secret');
+  cs.updateConfig({ nodesynced: true });
+  assert.equal(tomlStr(fs.readFileSync(d.configDir + '/epic-wallet.toml'), 'check_node_api_http_addr'), 'http://127.0.0.1:3413');
+  assert.equal(cs.apiSecretPath, cs.nodeDir('mainnet') + '/.api_secret');
+  assert.match(cs.apisecret, /^[A-Za-z0-9]{20}$/);
+  //no current wallet: only the locale is stored
+  cs.resetConfig();
+  assert.equal(cs.updateConfig({ locale: 'en', epicbox_domain: 'x' }), true);
+  assert.equal(cs.settings.wallet('w1').settings.epicbox_domain, 'epicbox.example.org');
+});
+
+test('built-in node: its folder, toml with absolute paths, foundation, secret; reused chain data', () => {
+  const { cs, fs, root } = setup();
+  const d = cs.newWalletDirs('floonet');
+  fs.put(d.dataDir + '/wallet_data/wallet.seed');
+  cs.registerWallet({ ...d, network: 'floonet', origin: 'created', settings: { nodeInternal: true } });
+  assert.equal(cs.startCheck('w1'), 'login');
+  assert.equal(cs.nodeTOMLPath, root + '/node/floo/epic-server.toml');
+  const t = fs.readFileSync(cs.nodeTOMLPath);
+  assert.equal(tomlStr(t, 'db_root'), root + '/node/floo/chain_data');
+  assert.equal(tomlStr(t, 'chain_type'), 'Floonet');
+  assert.equal(tomlStr(t, 'api_secret_path'), root + '/node/floo/.api_secret');
+  assert.equal(tomlStr(t, 'foundation_path'), root + '/node/floo/foundation.json');
+  assert.ok(fs.existsSync(root + '/node/floo/foundation.json'));
+  const secret = fs.readFileSync(root + '/node/floo/.api_secret');
+  assert.match(secret, /^[A-Za-z0-9]{20}$/);
+  //written again: the secret stays
+  assert.equal(cs.startCheckNode(), true);
+  assert.equal(fs.readFileSync(root + '/node/floo/.api_secret'), secret);
+  cs.settings.setNodeChainDir('floonet', '/home/jane/.epic/floo/chain_data');
+  assert.equal(cs.nodeChainDir('floonet'), '/home/jane/.epic/floo/chain_data');
+  cs.startCheckNode();
+  assert.equal(tomlStr(fs.readFileSync(cs.nodeTOMLPath), 'db_root'), '/home/jane/.epic/floo/chain_data');
+  assert.equal(cs.nodeChainDir('mainnet'), root + '/node/main/chain_data');
+});
+
+test('an imported wallet (the importer calls newWalletDirs + registerWallet): nothing written in the old folder', () => {
+  const { cs, fs, root } = setup();
+  const old = '/home/jane/.epic/alpha/main';
+  fs.put(old + '/wallet_data/wallet.seed', 'seed');
+  fs.put(old + '/epic-wallet.toml', 'old toml');
+  fs.writes.length = 0;
+  const d = cs.newWalletDirs('mainnet');
+  const w = cs.registerWallet({ ...d, dataDir: old, network: 'mainnet', origin: 'imported', label: 'Alpha',
+    importedFrom: { app: '5.3.1', account: 'alpha', dir: old } });
+  assert.equal(w.dataDir, old);
+  assert.equal(cs.startCheck(w.id), 'login');
+  assert.equal(cs.walletDataDir, old);
+  assert.equal(cs.walletConfigDir, root + '/wallets/w1');
+  assert.ok(fs.writes.every(p => p.startsWith(root + '/')), fs.writes.join('\n'));
+  assert.equal(fs.readFileSync(old + '/epic-wallet.toml'), 'old toml');
+  assert.equal(tomlStr(fs.readFileSync(d.configDir + '/epic-wallet.toml'), 'data_file_dir'), old + '/wallet_data');
+  assert.throws(() => cs.registerWallet({ ...d, dataDir: old, network: 'mainnet' }), /exists/);
+});
+
+test('openExistingWallet: seed needed, network from the arg, folder name or its toml, no duplicates', () => {
+  const { cs, fs } = setup();
+  assert.deepEqual(cs.openExistingWallet('/nowhere'), { ok: false, reason: 'noseed' });
+  assert.deepEqual(cs.openExistingWallet('relative/dir'), { ok: false, reason: 'noseed' });
+  fs.put('/media/usb/backup/floo/wallet_data/wallet.seed');
+  const r = cs.openExistingWallet('/media/usb/backup/floo');
+  assert.equal(r.ok, true);
+  assert.equal(r.wallet.network, 'floonet');
+  assert.equal(r.wallet.origin, 'opened');
+  assert.equal(r.wallet.dataDir, '/media/usb/backup/floo');
+  assert.deepEqual(cs.openExistingWallet('/media/usb/backup/floo/'), { ok: false, reason: 'listed' });
+  fs.put('/media/usb/mine/wallet_data/wallet.seed');
+  assert.deepEqual(cs.openExistingWallet('/media/usb/mine'), { ok: false, reason: 'network' });
+  //no folder made for a wallet that wasn't listed
+  assert.equal(fs.existsSync(cs.layout.walletDir('w2')), false);
+  fs.put('/media/usb/mine/epic-wallet.toml', '[wallet]\nchain_type = "UserTesting"\n');
+  assert.equal(cs.openExistingWallet('/media/usb/mine').wallet.network, 'usernet');
+  fs.put('/media/usb/third/wallet_data/wallet.seed');
+  assert.equal(cs.openExistingWallet('/media/usb/third', 'mainnet').wallet.network, 'mainnet');
+  assert.deepEqual(cs.settings.wallets().map(w => w.id), ['w1', 'w2', 'w3']);
+});
+
+test('discardWalletDirs: only an empty new folder, never once wallet_data exists', () => {
+  const { cs, fs } = setup();
+  const a = cs.newWalletDirs('mainnet');
+  fs.put(a.configDir + '/epic-wallet.toml');
+  fs.put(a.configDir + '/.owner_api_secret');
+  assert.equal(cs.discardWalletDirs(a), true);
+  assert.equal(fs.existsSync(a.configDir), false);
+  const b = cs.newWalletDirs('mainnet');
+  fs.mkdirSync(b.configDir + '/wallet_data');
+  fs.put(b.configDir + '/.api_secret');
+  assert.equal(cs.discardWalletDirs(b), false);
+  assert.ok(fs.existsSync(b.configDir + '/.api_secret'));
+  const c = cs.newWalletDirs('mainnet');
+  fs.put(c.configDir + '/someone-else.txt');
+  assert.equal(cs.discardWalletDirs(c), false);
+  assert.ok(fs.existsSync(c.configDir + '/someone-else.txt'));
+});
+
+test('setRoot / clearRoot: location.json in the default root, only while the list is empty', () => {
+  const { cs, fs, root } = setup();
+  assert.equal(cs.setRoot('relative'), false);
+  assert.equal(cs.setRoot('/media/usb/epic gui'), true);
+  assert.deepEqual(JSON.parse(fs.readFileSync(root + '/location.json')), { root: '/media/usb/epic gui' });
+  assert.ok(!fs.existsSync(root + '/location.json.tmp'));
+  assert.equal(cs.clearRoot(), true);
+  assert.equal(fs.existsSync(root + '/location.json'), false);
+  cs.setRoot('/media/usb/x');
+  assert.equal(cs.setRoot(root), true, 'the default root: the file goes');
+  assert.equal(fs.existsSync(root + '/location.json'), false);
+  const d = cs.newWalletDirs('mainnet');
+  cs.registerWallet({ ...d, network: 'mainnet' });
+  assert.equal(cs.setRoot('/media/usb/y'), false);
+  assert.equal(cs.clearRoot(), false);
+  //EPIC_GUI_HOME wins over location.json: nothing to set
+  assert.equal(setup({ source: 'env' }).cs.setRoot('/media/usb/z'), false);
+});
+
+test('a broken settings file: nothing is registered or written', () => {
+  const P = path.posix;
+  const fs0 = fakeFs(P);
+  const { cs, fs } = (() => {
+    const s = setup();
+    s.fs.put(s.cs.paths.settingsFile, '{ broken');
+    s.cs.settings.load();
+    return s;
+  })();
+  assert.equal(cs.settings.readOnly, true);
+  assert.throws(() => cs.newWalletDirs('mainnet'), /not readable/);
+  assert.throws(() => cs.registerWallet({ id: 'w1', network: 'mainnet', configDir: '/a', dataDir: '/a' }), /not readable/);
+  assert.deepEqual(cs.openExistingWallet('/x'), { ok: false, reason: 'readonly' });
+  assert.equal(cs.setRoot('/media/x'), false);
+  assert.equal(fs.readFileSync(cs.paths.settingsFile), '{ broken');
+  assert.ok(fs0);
+});
+
+test('Windows: paths with spaces and quotes reach the tomls intact', () => {
+  const W = path.win32;
+  const root = 'C:\\Users\\Jane "JD" Doe\\AppData\\Local\\EpicCash\\Wallet';
+  const { cs, fs } = setup({ P: W, root, resourcePath: 'C:\\Program Files\\Epic Wallet\\resources', platform: 'win' });
+  assert.equal(cs.epicPath, 'C:\\Program Files\\Epic Wallet\\resources\\bin\\win\\epic-wallet.exe');
+  const old = 'D:\\Old $& Epic\\.epic\\alpha\\main';
+  fs.put(old + '\\wallet_data\\wallet.seed');
+  const d = cs.newWalletDirs('mainnet');
+  cs.registerWallet({ ...d, dataDir: old, network: 'mainnet', origin: 'imported', settings: { nodeInternal: true } });
+  assert.equal(cs.startCheck('w1'), 'login');
+  const t = fs.readFileSync(root + '\\wallets\\w1\\epic-wallet.toml');
+  assert.equal(tomlStr(t, 'data_file_dir'), old + '\\wallet_data');
+  assert.equal(tomlStr(t, 'log_file_path'), root + '\\wallets\\w1\\epic-wallet.log');
+  assert.equal(tomlStr(t, 'node_api_secret_path'), root + '\\node\\main\\.api_secret');
+  assert.equal(tomlStr(fs.readFileSync(root + '\\node\\main\\epic-server.toml'), 'db_root'), root + '\\node\\main\\chain_data');
+});
+
+test('killEpicProcess: our processes, Tor in the data dir, background roles kept; the ports to wait for', async () => {
+  const { cs, fs, events, nodeChildProcess, killed } = setup();
+  const old = '/home/jane/.epic/alpha/main';
+  fs.put(old + '/wallet_data/wallet.seed');
+  const d = cs.newWalletDirs('mainnet');
+  cs.registerWallet({ ...d, dataDir: old, network: 'mainnet', settings: { epicbox_background: true, node_background: true } });
+  cs.startCheck('w1');
+  assert.equal(await cs.killEpicProcess(), null);
+  assert.deepEqual(nodeChildProcess.lastScan, { roles: ['owner_api', 'listen', 'scan'], opts: { tor: true, torDirs: [old] } });
+  nodeChildProcess.owned = [{ pid: 5, role: 'owner_api' }, { pid: 6, role: 'listen' }];
+  const p = cs.killEpicProcess();
+  await new Promise(r => setTimeout(r, 0));
+  const [name, data] = events.find(e => e[0] === 'killEpicProcess');
+  assert.equal(name, 'killEpicProcess');
+  await data.callback(true);
+  assert.equal(await p, true);
+  assert.deepEqual(killed, [5, 6]);
+  assert.deepEqual(cs.killedPorts, [3420, 3415]);
+  assert.equal(await cs.waitForKilledPorts(), true);
+});

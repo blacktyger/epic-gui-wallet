@@ -6,7 +6,7 @@ import path from 'path';
 import * as secp256k1 from "@noble/secp256k1";
 import isPortReachable from 'is-port-reachable';
 import { createProcessRegistry, createPidCheck, describeSpawn, redactArgs } from './shared/processOwnership';
-import { spawnCommand, plainBin } from './shared/spawnCommand';
+import { spawnCommand, plainBin, epicCwd } from './shared/spawnCommand';
 
 const moment = require('moment');
 const base32 = require('rfc-3548-b32');
@@ -17,10 +17,8 @@ const ps = require('ps-node');
 const fs = require('fs');
 const log = require('electron-log');
 
-const homedir = os.homedir();
-const rootdir = require('app-root-dir');
-export const ewalletPath = path.join(homedir, '.epic')
-export const logDir = path.join(ewalletPath, 'log')
+//GUI 6.1's folders (shared/appPaths.js), resolved once by the main process (background.js)
+const appPaths = ipcRenderer.sendSync('app-paths');
 
 
 
@@ -31,7 +29,7 @@ const resourcePath =
 
 
 let logFile = `${moment(new Date()).format('YYYY_MM_D')}.log`
-let logPath = join(logDir, logFile);
+let logPath = join(appPaths.logsDir, logFile);
 let processes = {};
 log.transports.file.resolvePath = () => logPath
 log.transports.file.format = '{y}-{m}-{d} {h}:{i}:{s}:{ms} [{level}] {text}';
@@ -41,10 +39,9 @@ log.transports.file.streamConfig = {flags: 'w'};
 log.transports.console.format = '{y}-{m}-{d} {h}:{i}:{s}:{ms} [{level}] {text}'
 log.transports.console.level = process.env.NODE_ENV === 'production' ? 'info' : 'debug'
 
-//add debug mode for production
-//user must create a file "debug" in ./epic folder
+//debug mode for production: the user creates a file "debug.log" in the app folder (<root>)
 let debug = false;//process.env.NODE_ENV !== 'production';
-if(fs.existsSync(path.join(ewalletPath, 'debug.log'))){
+if(fs.existsSync(path.join(appPaths.root, 'debug.log'))){
   debug = true;
   console.log = log.log;
 }
@@ -84,7 +81,7 @@ function killPid(pid){
 //the processes this app started (see shared/processOwnership.js): only these are ever stopped or reused
 const ownProcesses = createProcessRegistry({
   fs,
-  file: path.join(ewalletPath, 'gui_processes.json'),
+  file: appPaths.processesFile,
   findProcess: require('find-process'),
   kill: killPid,
   win: process.platform === 'win32',
@@ -97,9 +94,10 @@ const ownProcesses = createProcessRegistry({
 //the children this window started that still run: pid → {role, dir}
 const liveChildren = new Map();
 
-/* start an epic binary without a shell (shared/spawnCommand.js) */
+/* start an epic binary without a shell (shared/spawnCommand.js), in the wallet's config dir or the
+   node's folder: epic-wallet 4.1.0 reads an epic-wallet.toml in its working dir first */
 function spawnEpic(cmd, args){
-  const c = spawnCommand(cmd, args);
+  const c = spawnCommand(cmd, args, {cwd: epicCwd(args)});
   return spawn(c.cmd, c.args, c.options);
 }
 
@@ -127,13 +125,6 @@ function liveChildOf(role, dir){
   return 0;
 }
 
-//only the app's own binaries in resources/bin may be adopted
-const bundledBinDir = path.resolve(resourcePath, 'bin') + path.sep;
-function isBundled(bin){
-  const b = path.resolve(String(bin || '').replace(/"/g, ''));
-  return process.platform === 'win32' ? b.toLowerCase().startsWith(bundledBinDir.toLowerCase()) : b.startsWith(bundledBinDir);
-}
-
 contextBridge.exposeInMainWorld('nodeChildProcess', {
 
     /* stop a process by pid, only if the app started it; resolves false if it was not stopped */
@@ -155,16 +146,6 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
     /* stop these pids, if they are (still) ours: one boolean per pid */
     async stopPids(pids){
       return ownProcesses.stopPids(pids);
-    },
-    /* first start of this version (no record file yet): record the previous version's processes
-       that run the bundled binaries on this account (opts: {walletBin, nodeBin, dir, nodeConfig, network});
-       resolves the adopted ones as {pid, role} */
-    async adopt(opts){
-      const o = Object.assign({}, opts);
-      if(!isBundled(o.walletBin)) delete o.walletBin;
-      if(!isBundled(o.nodeBin)) delete o.nodeBin;
-      const adopted = await ownProcesses.adopt(o);
-      return adopted.map(e => ({pid: e.pid, role: e.role}));
     },
     async spawn(cmd, args){
       const child = await spawn(cmd, args);
@@ -570,8 +551,10 @@ contextBridge.exposeInMainWorld('config', {
   getResourcePath(){
     return resourcePath;
   },
-  getUserHomedir () {
-    return homedir;
+  /* GUI 6.1's folders: {root, source, defaultRoot, settingsFile, walletsDir, userData, logsDir,
+     processesFile, legacy: {epicDir, appConfigFile, profiles}} (shared/appPaths.js) */
+  appPaths(){
+    return JSON.parse(JSON.stringify(appPaths));
   },
   getPlatform(){
     switch (os.platform()) {
@@ -621,12 +604,9 @@ contextBridge.exposeInMainWorld('openlink', {
 
 contextBridge.exposeInMainWorld('openepichidden', {
 
-  open(user_homedir = ''){
-      let dir = path.join(homedir, ".epic");
-      if(user_homedir != ''){
-        dir = user_homedir;
-      }
-      shell.openPath(dir)
+  //a wallet's folder, else the app folder
+  open(dir = ''){
+      shell.openPath(dir || appPaths.root)
   }
 });
 
@@ -665,6 +645,8 @@ contextBridge.exposeInMainWorld('api', {
     },
     //live public nodes from status.btlabs.uk, fetched by the main process (null when unavailable)
     nodeDirectory: (chain) => ipcRenderer.invoke('node-directory', chain),
+    //start the app again: after choosing another app folder (configService.setRoot), which is read at start
+    relaunch: () => ipcRenderer.invoke('app-relaunch'),
     
 
 });
