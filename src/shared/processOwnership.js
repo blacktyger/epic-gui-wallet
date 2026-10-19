@@ -28,6 +28,16 @@ export const SCAN_PATTERN = /epic|torrc/i;
 
 const PASS_FLAGS = ['--pass', '--password', '-p'];
 
+//the Epicbox server of a recorded epicbox listener
+const SERVER_URL = /^wss?:\/\/[A-Za-z0-9.-]+(:\d+)?$/;
+
+/* the dir (inside the wallet dir) of the short-lived listener that checks the old Epicbox server
+   after a server change: it is never a background listener, so it is stopped at lock and quit */
+export const EPICBOX_CHECK_DIR = 'epicbox_check';
+export function isEpicboxCheckDir(dir) {
+  return String(dir || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop() === EPICBOX_CHECK_DIR;
+}
+
 //the only executables a record may name
 const BIN_NAME = /^(epic|epic-wallet|tor)(\.exe)?$/i;
 
@@ -232,7 +242,7 @@ export function findOwned(entries, procs, opts = {}) {
       if (seen.has(p.pid)) continue;
       seen.add(p.pid);
       owned.push({ pid: p.pid, ppid: p.ppid, role: entry.role, dir: entry.dir, entryPid: entry.pid,
-        name: baseName(entry.bin) + ' (' + entry.role + ')' });
+        name: baseName(entry.bin) + ' (' + entry.role + ')', server: entry.server || '' });
     }
   }
 
@@ -399,11 +409,16 @@ export function createProcessRegistry({ fs, file, findProcess, kill, win = false
     return next ? write(next) : true;
   }
 
-  /* after a spawn: cmd and args as passed to spawn(); untracked commands are ignored */
-  function record(pid, cmd, args) {
+  /* after a spawn: cmd and args as passed to spawn(); untracked commands are ignored.
+     extra.server: the Epicbox server an epicbox listener was started with (wss://host:port), so a
+     listener that outlives the app (Epicbox in background) is still known to be on it at the next login */
+  function record(pid, cmd, args, extra = {}) {
     const desc = describeSpawn(cmd, args);
     if (!desc || !(pid > 0)) return null;
     const entry = Object.assign({ pid, at: now() }, desc);
+    if (desc.role === 'epicbox' && extra && typeof extra.server === 'string' && SERVER_URL.test(extra.server)) {
+      entry.server = extra.server;
+    }
     if (!validEntry(entry, win)) return null;
     update(entries => entries.filter(e => e.pid != pid).concat(entry));
     return entry;

@@ -46,6 +46,24 @@
             <input id="stg-relay" class="e-input e-mono e-stg-w" type="text" required spellcheck="false" autocomplete="off" translate="no" aria-describedby="stg-relay-h" v-model="epicboxDomain" />
             <p id="stg-relay-h" class="e-help">{{ $t('msg.settings.epicbox_domain_hint') }}</p>
           </div>
+          <p v-if="listenerServerLine" class="e-help e-stg-relay-now" role="status"><EIcon :name="listenerServerLine.icon" size="sm" /><span>{{ listenerServerLine.text }}</span></p>
+          <!-- a server change while this session can't restart the listener by itself -->
+          <form v-if="store.state.epicboxNeedsPassword" class="e-notice e-gold e-stg-boxpw" novalidate @submit.prevent="applyEpicboxWithPassword">
+            <EIcon name="lock" />
+            <div role="group" aria-labelledby="stg-boxpw-t" aria-describedby="stg-boxpw-h">
+              <b id="stg-boxpw-t">{{ $t('msg.settings.epicbox_password_title') }}</b>
+              <p id="stg-boxpw-h">{{ $t('msg.settings.epicbox_password_text') }}</p>
+              <p v-if="store.state.epicboxNeedsPassword.wrong" class="e-error-msg" role="alert"><EIcon name="alertc" /><span>{{ $t('msg.app.epicbox_wrong_password') }}</span></p>
+              <div class="e-field" ref="boxPwWrap">
+                <label class="e-label" for="stg-boxpw">{{ $t('msg.password') }}</label>
+                <PasswordField ref="epicboxPasswordField" :placeholder="$t('msg.modern.send.rcv_password_ph')" required="true" name="password" />
+              </div>
+              <div class="e-actions">
+                <button type="submit" class="e-btn e-btn-primary e-sm">{{ $t('msg.settings.epicbox_apply') }}</button>
+                <button type="button" class="e-btn e-btn-ghost e-sm" @click="dismissEpicboxPassword">{{ $t('msg.settings.epicbox_apply_later') }}</button>
+              </div>
+            </div>
+          </form>
         </div>
         <div class="e-set-row">
           <div>
@@ -156,10 +174,12 @@
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import NodeserverField from '@/components/modern/form/NodeserverField.vue';
+  import PasswordField from '@/components/modern/form/PasswordField.vue';
   import SettingsFrame from '@/components/modern/settings/SettingsFrame.vue';
   import { resetNotice } from '@/shared/theme';
+  import { epicboxStatus } from '@/shared/epicboxStatus';
   export default reskin(Settings, {
-    components: { EIcon, NodeserverField, SettingsFrame },
+    components: { EIcon, NodeserverField, PasswordField, SettingsFrame },
     data() {
       //the saved values, to tell whether the form has unsaved changes
       return { saved: null };
@@ -173,11 +193,24 @@
       dirty() {
         return this.saved !== null && this.saved !== this.current;
       },
+      /* the server our listener is really on, below the setting */
+      listenerServerLine() {
+        const st = epicboxStatus(this.store.state.epicbox, this.store.state.walletEpicboxService);
+        const t = (k, a) => this.$t('msg.httpReceive.' + k, a);
+        if (st.kind == 'checking') return { icon: 'sync', text: t('epicbox_checking_old', [st.checking]) };
+        if (!st.server) return null;
+        if (st.kind == 'listening') return { icon: 'okc', text: t('epicbox_listening_on', [st.server]) };
+        if (st.kind == 'paused') return { icon: 'alert', text: t('epicbox_paused_on', [st.server]) };
+        if (st.kind == 'connecting') return { icon: 'sync', text: t('epicbox_connecting_to', [st.server]) };
+        if (st.kind == 'starting') return { icon: 'sync', text: t('epicbox_starting_on', [st.server]) };
+        return null;
+      },
     },
     mounted() {
       //Settings.vue fills the form in its own mounted, which runs first
       this.$nextTick(() => { this.saved = this.current; });
     },
+
     methods: {
       /* Settings.vue's save; the form counts as saved once the config holds what the form shows */
       async saveChanges() {

@@ -22,6 +22,8 @@
                 <code v-else>{{ $t("msg.httpReceive.epicbox_off") }}</code>
 
               </p>
+              <!-- the server the Epicbox listener is really on -->
+              <p v-if="epicboxLine" class="help" role="status">{{ epicboxLine.text }}</p>
               <p>&nbsp;</p>
 
               <p>
@@ -124,6 +126,8 @@ import { ref,onMounted } from 'vue';
 import { useStore } from '@/store';
 import PasswordField from "@/components/form/passwordField";
 import useFormValidation from "@/modules/useFormValidation";
+import { epicboxStatus } from '@/shared/epicboxStatus';
+import { serverFromUrl, serverLabel, PORT_SECURE } from '@/shared/epicboxConfig';
 
 
 const clipboard = window.clipboard;
@@ -140,6 +144,8 @@ export default {
     const localAddress = ref('');
     const onionAddress = ref('');
     const epicboxAddress = ref('');
+    //the public key of the Epicbox address; the domain is the listener's (see epicboxDomainNow)
+    const epicboxKey = ref('');
     const proofAddress = ref('');
     const passwordField = ref('');
     const { resetFormErrors } = useFormValidation();
@@ -155,6 +161,7 @@ export default {
 
       onionAddress,
       epicboxAddress,
+      epicboxKey,
       proofAddress,
       passwordField,
       resetFormErrors,
@@ -166,6 +173,28 @@ export default {
     }
   },
 
+  computed: {
+    /* the server the Epicbox listener is really on (its own output), for the status line */
+    epicboxLine(){
+      const st = epicboxStatus(this.store.state.epicbox, this.store.state.walletEpicboxService);
+      const t = (k, a) => this.$t('msg.httpReceive.' + k, a);
+      if(st.kind == 'checking') return {tone: 'busy', text: t('epicbox_checking_old', [st.checking])};
+      if(st.kind == 'off') return null;
+      if(!st.server) return st.kind == 'listening' ? {tone: 'ok', text: t('epicbox_listening')} : null;
+      if(st.kind == 'listening') return {tone: 'ok', text: t('epicbox_listening_on', [st.server])};
+      if(st.kind == 'paused') return {tone: 'warn', text: t('epicbox_paused_on', [st.server])};
+      if(st.kind == 'connecting') return {tone: 'busy', text: t('epicbox_connecting_to', [st.server])};
+      return {tone: 'busy', text: t('epicbox_starting_on', [st.server])};
+    },
+  },
+  watch: {
+    //the listener moved to another server: the address follows it
+    'store.state.epicbox.server'(){
+      if(this.epicboxKey){
+        this.epicboxAddress = this.epicboxKey + '@' + this.epicboxDomainNow();
+      }
+    },
+  },
   async mounted(){
 
 
@@ -201,10 +230,19 @@ export default {
     async getEpicboxAddress(){
       let epicboxAddress = await this.$walletService.getEpicboxAddress();
       if(epicboxAddress && epicboxAddress.result && epicboxAddress.result.Ok){
-        return this.epicboxAddress = epicboxAddress.result.Ok.public_key + '@' + (this.configService.config['epicbox_domain'] != '' ? this.configService.config['epicbox_domain'] : this.configService.epicboxDomain);
+        this.epicboxKey = epicboxAddress.result.Ok.public_key;
+        return this.epicboxAddress = this.epicboxKey + '@' + this.epicboxDomainNow();
       }
       return '';
 
+    },
+    /* the domain of our Epicbox address: the server the listener connected to, else the setting */
+    epicboxDomainNow(){
+      const s = serverFromUrl(this.store.state.epicbox && this.store.state.epicbox.server);
+      if(s && s.domain){
+        return s.domain + (s.port != PORT_SECURE ? ':' + s.port : '');
+      }
+      return this.configService.config['epicbox_domain'] != '' ? this.configService.config['epicbox_domain'] : this.configService.epicboxDomain;
     },
     async getOnionAndProofAddress(){
       let addressRes = await this.$walletService.getPubliProofAddress();
@@ -267,6 +305,10 @@ export default {
           this.epicboxAddress = await this.getEpicboxAddress();
           this.$toast.success(this.$t("msg.login.epicbox_started"));
           this.store.commit('walletEpicboxService', true);
+        }else if(isEpicbox && isEpicbox.pending){
+          //it runs and keeps trying to connect: its events turn it on (App.onEpicboxEvent)
+          this.epicboxAddress = await this.getEpicboxAddress();
+          this.$toast.warning(this.$t("msg.app.epicbox_connecting", [serverLabel(isEpicbox.server)]));
         }else{
           this.$toast.error(this.$t("msg.login.error_epicbox_started"));
           this.store.commit('walletEpicboxService', false);

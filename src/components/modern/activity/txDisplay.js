@@ -77,7 +77,8 @@ export default {
       switch (s.state) {
         case 'waiting': {
           let text = t('st_wait_sign');
-          if (tx.tx_type == 'TxReceived') text = t('st_wait_finalize');
+          if (tx.waitingReply) text = t('st_wait_reply');
+          else if (tx.tx_type == 'TxReceived') text = t('st_wait_finalize');
           else if (tx.tx_type == 'TxSentMempool') text = t('st_wait_mined');
           else if (this.finalizable(tx)) text = t('st_wait_file');
           return { state: 'waiting', ring: { state: 'waiting', confirmations: null }, icon: '', tone: '', text };

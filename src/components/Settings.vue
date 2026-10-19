@@ -64,6 +64,24 @@
             </div>
           </div>
 
+          <!-- a server change while this session can't restart the listener by itself -->
+          <form v-if="store.state.epicboxNeedsPassword" class="message is-warning" novalidate @submit.prevent="applyEpicboxWithPassword">
+            <div class="message-body">
+              <label class="label" style="color: inherit;" for="settingsEpicboxPassword">{{ $t("msg.settings.epicbox_password_title") }}</label>
+              <p class="mb-2">{{ $t("msg.settings.epicbox_password_text") }}</p>
+              <p v-if="store.state.epicboxNeedsPassword.wrong" class="has-text-danger mb-2" role="alert">{{ $t("msg.app.epicbox_wrong_password") }}</p>
+              <div class="field has-addons">
+                <div class="control is-expanded has-icons-right" ref="epicboxPwWrap">
+                  <PasswordField ref="epicboxPasswordField" placeholder="********" required="true" name="password" />
+                </div>
+                <div class="control">
+                  <button type="submit" class="button is-primary">{{ $t("msg.settings.epicbox_apply") }}</button>
+                </div>
+              </div>
+              <a href="#" @click.prevent="dismissEpicboxPassword">{{ $t("msg.settings.epicbox_apply_later") }}</a>
+            </div>
+          </form>
+
           <div class="field">
             <label class="label">{{ $t("msg.settings.wallet_listener") }}</label>
             <div class="control">
@@ -101,6 +119,7 @@
 import { ref, onUnmounted } from 'vue';
 import { useStore } from '@/store';
 import NodeserverField from "@/components/form/nodeserverField";
+import PasswordField from "@/components/form/passwordField";
 import useFormValidation from "@/modules/useFormValidation";
 import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } from '@/shared/theme';
 
@@ -108,11 +127,13 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
     name: "settings",
     components: {
       NodeserverField,
+      PasswordField,
     },
     setup(){
 
       const { resetFormErrors } = useFormValidation();
       const nodeserverField = ref('');
+      const epicboxPasswordField = ref('');
       const store = useStore();
       const localeSelected = ref('en');
       const epicboxDomain = ref('');
@@ -128,6 +149,7 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
       return{
         store,
         nodeserverField,
+        epicboxPasswordField,
         resetFormErrors,
         localeSelected,
         epicboxDomain,
@@ -157,6 +179,22 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
     },
     beforeUnmount(){
       this.emitter.off('settings.nodeserverFieldChanged');
+    },
+    updated(){
+      this.tagEpicboxPassword();
+    },
+    watch: {
+      //the prompt appeared (or said the password was wrong): its field gets the focus
+      'store.state.epicboxNeedsPassword'(v){
+        if(v){
+          this.$nextTick(() => {
+            this.tagEpicboxPassword();
+            const wrap = this.$refs.epicboxPwWrap || this.$refs.boxPwWrap;
+            const i = wrap && wrap.querySelector('input');
+            if(i) i.focus();
+          });
+        }
+      },
     },
     mounted(){
       this.nodeInternal = this.store.state.user.nodeInternal;
@@ -229,6 +267,8 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
 
         if(!isFormAllValid.includes(false)){
 
+          //the Epicbox config the wallet uses until now, to see what the save changes
+          const savedEpicbox = this.$walletService.readEpicboxConfig();
 
           this.configService.updateConfig({
 
@@ -255,6 +295,10 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
             this.$toast.success(this.$t("msg.settings.settings_saved"));
             this.emitter.emit('app.nodeStart');
             this.emitter.emit('app.selectLocale', this.localeSelected);
+            //a new Epicbox server: our listener moves to it (App.vue, walletService.applyEpicboxChange)
+            if(this.$walletService.token){
+              this.emitter.emit('app.applyEpicbox', {saved: savedEpicbox});
+            }
 
           }else{
             this.$toast.error(this.$t("msg.settings.error_save"));
@@ -266,6 +310,29 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
           return;
         }
 
+      },
+
+      /* the listener can't be started again on the new server without the password (this session
+         did not start it): from the prompt, used for this one start, not kept by the page */
+      applyEpicboxWithPassword(){
+        if(!this.epicboxPasswordField.validInput()){
+          return;
+        }
+        const password = this.epicboxPasswordField.defaultValue;
+        this.epicboxPasswordField.input = '';
+        this.emitter.emit('app.applyEpicbox', {saved: this.store.state.epicboxNeedsPassword, password});
+      },
+      /* the password field renders a bare input: give the prompt's label something to point at */
+      tagEpicboxPassword(){
+        const wrap = this.$refs.epicboxPwWrap || this.$refs.boxPwWrap;
+        const i = wrap && wrap.querySelector('input');
+        if(i && !i.id){
+          i.id = this.$refs.boxPwWrap ? 'stg-boxpw' : 'settingsEpicboxPassword';
+        }
+      },
+      dismissEpicboxPassword(){
+        this.epicboxPasswordField.input = '';
+        this.store.commit('epicboxNeedsPassword', null);
       },
 
     }

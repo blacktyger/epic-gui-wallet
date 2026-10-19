@@ -1,6 +1,7 @@
 import { createStore } from 'vuex';
 import axios from 'axios';
 import { getUi, getScheme } from '@/shared/theme';
+import { waitingForReply } from '@/shared/txWaiting';
 
 export const store = createStore({
   state: {
@@ -53,6 +54,13 @@ export const store = createStore({
     /* which service are running */
     walletListenerService: false,
     walletEpicboxService: false,
+    /* our Epicbox listener, from its own output (App.onEpicboxEvent) and walletService:
+       state: '' | starting | connecting | listening | paused | switching | checking_old | off;
+       server: the wss:// url it connected to (or is starting on); checking: the old server being
+       checked after a server change; address: the address it listens for */
+    epicbox: {state: '', server: '', address: '', checking: '', pid: 0},
+    //a server change needs the password to restart the listener: the config before the save, else null
+    epicboxNeedsPassword: null,
     torService: false,
     nodeType: '',
     nodeStatus: {
@@ -100,6 +108,13 @@ export const store = createStore({
     },
     walletEpicboxService(state, payload){
       state.walletEpicboxService = payload;
+    },
+    /* merge into state.epicbox; null resets it (logout) */
+    epicbox(state, payload){
+      state.epicbox = payload ? Object.assign({}, state.epicbox, payload) : {state: '', server: '', address: '', checking: '', pid: 0};
+    },
+    epicboxNeedsPassword(state, payload){
+      state.epicboxNeedsPassword = payload || null;
     },
     walletListenerService(state, payload){
       state.walletListenerService = payload;
@@ -361,6 +376,8 @@ rproofs_total: 64579
 
           x.address = hasAddress;
         }
+        //a send whose reply has not come for a few minutes: the list says so, next to Cancel
+        x.waitingReply = waitingForReply(x, Date.now());
 
         return x
       })

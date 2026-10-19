@@ -1,6 +1,9 @@
 
 import axios from 'axios';
 import { REFRESH_CALL_TIMEOUT } from '@/shared/walletSync';
+import { parseEpicboxToml, normalizeEpicbox, sameServer, serverUrl, serverFromUrl, ownerApiEpicboxParams, withEpicboxSection, epicboxSwitchPlan } from '@/shared/epicboxConfig';
+import { createOldServerCheck, oldServerCheckStep, CHECK_TIMES } from '@/shared/epicboxListener';
+import { EPICBOX_CHECK_DIR, isEpicboxCheckDir } from '@/shared/processOwnership';
 const Buffer = require('buffer').Buffer;
 const crypto = window.nodeCrypto;
 
@@ -24,6 +27,20 @@ class WalletService {
         this.shared_key;
         this.token;
         this.debug = window.debug;
+        //Epicbox: one job at a time; listener events go to epicboxEventFns and to the emitter
+        //('epicbox.event'); epicboxSession changes at lock, so a job of the last session stops
+        this.epicboxQueue = Promise.resolve();
+        this.epicboxEventFns = new Set();
+        this.epicboxSession = 0;
+        this.cancelEpicboxCheck = null;
+        if(window.nodeChildProcess && window.nodeChildProcess.onEpicboxEvent){
+          window.nodeChildProcess.onEpicboxEvent((ev) => {
+            for(const fn of this.epicboxEventFns){
+              fn(ev);
+            }
+            this.emitter.emit('epicbox.event', ev);
+          });
+        }
     }
 
     logoutClient(){
@@ -32,6 +49,9 @@ class WalletService {
       this.token = undefined;
       this.walletIsListen = false;
       this.walletIsEpicbox = false;
+      //lock: no password is kept for restarting the Epicbox listener
+      this.epicboxSession++;
+      window.nodeChildProcess.forgetEpicboxSpecs();
     }
     async initSecure(url) {
 
@@ -399,43 +419,365 @@ class WalletService {
         return {success:false, msg:'wallet start unknown error'};
     }
 
-    /* start a epic wallet in listen mode */
+    /* ------------------------------------------------------------------ Epicbox
+     * epic-wallet 4.1.0 reads [epicbox] from epic-wallet.toml once, at start: after a server change
+     * the app restarts its own listener (only ever its own: processOwnership), tells the owner API
+     * (set_epicbox_config) and checks the old server once for slates sent to the old address
+     * (shared/epicboxConfig.js). One Epicbox job at a time (epicboxQueue). */
+
+    /* run one Epicbox job after the previous one */
+    epicboxJob(fn){
+      const run = this.epicboxQueue.then(fn, fn);
+      this.epicboxQueue = run.catch(() => {});
+      return run;
+    }
+
+    epicboxState(state){
+      this.emitter.emit('epicbox.state', state);
+    }
+
+    /* the Epicbox config the wallet uses now: [epicbox] of its epic-wallet.toml; domain '' when
+       Epicbox is turned off in the settings (the toml then still names the default server) */
+    readEpicboxConfig(){
+      let text = '';
+      try{
+        text = window.nodeFs.readFileSync(this.epicboxTomlPath(), {encoding: 'utf8'});
+      }catch(e){
+        //no toml: the wallet's defaults
+      }
+      const cfg = normalizeEpicbox(parseEpicboxToml(text));
+      const domain = this.configService.config ? this.configService.config['epicbox_domain'] : undefined;
+      if(domain !== undefined && String(domain).trim() == ''){
+        cfg.domain = '';
+      }
+      return cfg;
+    }
+
+    epicboxTomlPath(dir){
+      return window.nodePath.join(dir || this.configService.defaultAccountWalletdir, this.configService.walletTOMLName || 'epic-wallet.toml');
+    }
+
+    epicboxArgs(password){
+      return [
+        ...(this.configService.defaultAccountNetwork != 'mainnet' ? ['--' + this.configService.defaultAccountNetwork] : []),
+        '--pass', password,
+        '-t', this.configService.defaultAccountWalletdir,
+        '-c', this.configService.defaultAccountWalletdir,
+        'listen',
+        '--method',
+        'epicbox',
+        '--no_tor'
+      ];
+    }
+
+    /* tell the owner API (used for our own address when sending) */
+    async setEpicboxConfig(cfg){
+      const res = await this.jsonRPC('set_epicbox_config', ownerApiEpicboxParams(cfg), false);
+      const ok = !!(res && res.result && Object.prototype.hasOwnProperty.call(res.result, 'Ok'));
+      console.log('[epicbox] owner API config ' + (ok ? 'set to ' : 'NOT set to ') + serverUrl(cfg) + (ok ? '' : ': ' + (this.lastError || (res && res.error ? res.error.message : 'no answer'))));
+      return ok;
+    }
+
+    /* the wallet's Epicbox listener of ours that runs now: {owned, live, server} — server is what it
+       connected to (its output, when this window started it), else what it was started with (the
+       record), else {unknown: true}; null when none runs */
+    async epicboxListenerNow(){
+      const dir = this.configService.defaultAccountWalletdir;
+      const owned = await window.nodeChildProcess.ownedProcesses(['epicbox'], {dir: dir});
+      if(!owned.length){
+        return null;
+      }
+      const live = await window.nodeChildProcess.liveEpicbox(dir);
+      const ours = live && owned.some(p => p.pid == live.pid || p.entryPid == live.pid) ? live : null;
+      const server = (ours && ours.url ? serverFromUrl(ours.url) : null)
+        || (owned[0].server ? serverFromUrl(owned[0].server) : null)
+        || {unknown: true};
+      return {owned, live: ours, server};
+    }
+
+    /* start the wallet's listener (or the old-server check: meta.configDir, meta.check); without a
+       password, the way this session started it last (preload keeps it) */
+    async spawnEpicbox(password, meta){
+      const m = Object.assign({}, meta);
+      if(password){
+        let args = this.epicboxArgs(password);
+        if(m.configDir){
+          args[args.indexOf('-c') + 1] = m.configDir;
+        }
+        return window.nodeChildProcess.execEpicbox(this.configService.epicPath, args, this.configService.platform, password, m);
+      }
+      return window.nodeChildProcess.respawnEpicbox(this.configService.defaultAccountWalletdir, m);
+    }
+
+    async stopEpicboxPids(owned){
+      const pids = owned.map(p => p.entryPid || p.pid);
+      const res = await window.nodeChildProcess.stopPids(pids);
+      console.log('[epicbox] stopped listener ' + pids.join(', ') + (res.every(r => r) ? '' : ' (not all)'));
+      //this window sees it end (its exit event) before a new one starts: else that one would be
+      //taken for the old one, which still runs
+      const dir = this.configService.defaultAccountWalletdir;
+      for(let i = 0; i < 50 && await window.nodeChildProcess.liveEpicbox(dir); i++){
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      //still there after 5 s: a new one would be taken for it
+      if(await window.nodeChildProcess.liveEpicbox(dir)){
+        console.log('[epicbox] listener still running after stop');
+        return false;
+      }
+      return res.every(r => r);
+    }
+
+    /* old-server checks of ours that still run (a crash, a quit during a check): stopped before a
+       listener of the wallet starts, so there are never two */
+    async stopEpicboxChecks(){
+      const checks = (await window.nodeChildProcess.ownedProcesses(['epicbox'])).filter(p => isEpicboxCheckDir(p.dir));
+      if(checks.length){
+        await window.nodeChildProcess.stopPids(checks.map(p => p.entryPid || p.pid));
+        console.log('[epicbox] stopped a leftover old-server check ' + checks.map(p => p.pid).join(', '));
+      }
+    }
+
+    /*
+     * Check the old server once: a listener of this wallet on it, until what was queued there is
+     * handled (shared/epicboxListener.js oldServerCheckStep), then stopped by its pid. It reads its
+     * config from <wallet dir>/epicbox_check (a copy of epic-wallet.toml with the old [epicbox]),
+     * its wallet from the wallet dir (-t). Never at the same time as the wallet's own listener.
+     */
+    async checkOldEpicbox(server, password, session){
+      const fs = window.nodeFs;
+      const walletDir = this.configService.defaultAccountWalletdir;
+      const checkDir = window.nodePath.join(walletDir, EPICBOX_CHECK_DIR);
+      const started = Date.now();
+      //locked since the job began: no check for a closed session
+      if(session !== this.epicboxSession){
+        return {why: 'cancelled'};
+      }
+      const cleanup = () => {
+        try{
+          fs.rmSync(checkDir, {recursive: true, force: true});
+        }catch(e){
+          console.log('[epicbox] could not remove ' + checkDir + ': ' + (e.code || e.message));
+        }
+      };
+      try{
+        fs.mkdirSync(checkDir, {recursive: true});
+        const text = fs.readFileSync(this.epicboxTomlPath(), {encoding: 'utf8'});
+        fs.writeFileSync(this.epicboxTomlPath(checkDir), withEpicboxSection(text, server), {encoding: 'utf8', mode: 0o600});
+      }catch(e){
+        console.log('[epicbox] old server check not started: ' + (e.code || e.message));
+        cleanup();
+        return {why: 'not_started'};
+      }
+
+      this.epicboxState({state: 'checking_old', checking: serverUrl(server)});
+      console.log('[epicbox] checking the old server ' + serverUrl(server) + ' once');
+      //the check's events are followed from before it is spawned: its first lines (connected,
+      //subscribed, a queued slate) come with the answer to the spawn
+      let st = createOldServerCheck(Date.now());
+      let finished = null;
+      let resolveWait = () => {};
+      const waited = new Promise((resolve) => { resolveWait = resolve; });
+      let timer = 0;
+      const finish = (r) => {
+        if(finished) return;
+        finished = r;
+        clearInterval(timer);
+        this.epicboxEventFns.delete(onEvent);
+        this.cancelEpicboxCheck = null;
+        resolveWait(r);
+      };
+      const step = (ev) => {
+        if(finished) return;
+        const r = oldServerCheckStep(st, ev, Date.now());
+        st = r.state;
+        if(r.done) finish({why: r.why, handled: st.handled});
+      };
+      const onEvent = (ev) => { if(ev && ev.check && ev.dir === checkDir) step(ev); };
+      this.epicboxEventFns.add(onEvent);
+      this.cancelEpicboxCheck = () => finish({why: 'cancelled', handled: st.handled});
+      timer = setInterval(() => step(null), 1000);
+
+      const res = await this.spawnEpicbox(password, {configDir: checkDir, server: serverUrl(server), check: true, timeoutMs: CHECK_TIMES.connect});
+      const pid = res && res.pid ? Number(res.pid) : 0;
+      if(!(res && res.success && pid) || session !== this.epicboxSession){
+        finish({why: res && res.exited ? 'exited' : (session !== this.epicboxSession ? 'cancelled' : 'not_started'), handled: st.handled});
+      }
+      const result = await waited;
+      //whatever the answer was, a check that may still run is stopped by its pid
+      if(pid && result.why != 'exited'){
+        await window.nodeChildProcess.stopPids([pid]);
+      }
+      cleanup();
+      console.log('[epicbox] old server ' + serverUrl(server) + ' checked: ' + result.why + (result.handled ? ', ' + result.handled + ' slate(s)' : '') + ', ' + Math.round((Date.now() - started) / 1000) + ' s');
+      return result;
+    }
+
+    /* the wallet's listener on the configured server; callers hold the Epicbox queue */
+    async startEpicboxNow(password, cfg, session){
+      if(session !== this.epicboxSession){
+        return {success: false, cancelled: true};
+      }
+      await this.stopEpicboxChecks();
+      this.epicboxState({state: 'starting', server: serverUrl(cfg), address: ''});
+      const res = await this.spawnEpicbox(password, {server: serverUrl(cfg), timeoutMs: 45000});
+      const pid = res && res.pid ? Number(res.pid) : 0;
+      if(res && res.success && pid > 0){
+        this.walletIsEpicbox = true;
+        return {success: true, pid, server: cfg};
+      }
+      //started, but no connection yet: it keeps trying (its events say when it is on)
+      if(res && res.pending){
+        return {success: false, pending: true, pid, server: cfg};
+      }
+      if(res && res.noSpec){
+        return {success: false, needPassword: true};
+      }
+      this.epicboxState({state: 'off'});
+      return {success: false};
+    }
+
+    /* start the wallet's Epicbox listener (login, Receive page). One of ours that this window
+       started and that is on the configured server is reused. One left from an earlier start of
+       the app (Epicbox in background: its output does not reach this window, so neither its
+       server nor its slates can be seen) or on another server is started again, after a check
+       of the server it was on. */
     async startEpicbox(password){
-
-
-        let args = [];
-        let torBooted = false;
-        //our Epicbox listener for this wallet may still run (epicbox_background, or the previous version's,
-        //adopted at login): reuse it. execEpicbox doesn't start a second one either while ours runs
-        let walletIsEpicbox = await window.nodeChildProcess.ownedProcesses(['epicbox'], {dir: this.configService.defaultAccountWalletdir});
-
-        if(!walletIsEpicbox.length){
-
-
-          let walletListenId = 0;
-
-          let args = [
-            ...(this.configService.defaultAccountNetwork != 'mainnet' ? ['--' + this.configService.defaultAccountNetwork] : []),
-            '--pass', password,
-            '-t', this.configService.defaultAccountWalletdir,
-            '-c', this.configService.defaultAccountWalletdir,
-            'listen',
-            '--method',
-            'epicbox',
-            '--no_tor'
-          ];
-
-          walletListenId = await window.nodeChildProcess.execEpicbox(this.configService.epicPath, args, this.configService.platform, password);
-
-          if(walletListenId && walletListenId.msg > 0){
-              this.walletIsEpicbox = true;
-
-          }else{
-            return {success:false};
+      return this.epicboxJob(async () => {
+        const session = this.epicboxSession;
+        const cfg = this.readEpicboxConfig();
+        if(!cfg.domain){
+          return {success: false, off: true};
+        }
+        const now = await this.epicboxListenerNow();
+        if(session !== this.epicboxSession){
+          return {success: false, cancelled: true};
+        }
+        if(now && now.live && sameServer(now.server, cfg)){
+          window.nodeChildProcess.rememberEpicboxSpec(this.configService.epicPath, this.epicboxArgs(password), password);
+          this.walletIsEpicbox = true;
+          this.epicboxState({state: now.live.state == 'paused' ? 'paused' : 'listening', server: now.live.url || serverUrl(cfg), address: now.live.address, pid: now.live.pid});
+          return {success: true, reused: true, server: cfg};
+        }
+        if(now){
+          console.log('[epicbox] restarting our listener (' + (now.live ? 'on ' + serverUrl(now.server) : 'started earlier, ' + (now.server.unknown ? 'server unknown' : 'on ' + serverUrl(now.server))) + '), configured: ' + serverUrl(cfg));
+          this.epicboxState({state: 'switching', server: serverUrl(cfg), address: ''});
+          if(!await this.stopEpicboxPids(now.owned)){
+            return {success: false};
+          }
+          if(!now.server.unknown && !sameServer(now.server, cfg)){
+            await this.checkOldEpicbox(now.server, password, session);
+            this.setPendingEpicboxCheck(null);
           }
         }
+        //a server change that was not applied then ("Not now", a lock during the switch): the
+        //server the listener was on is checked once now
+        const pending = this.pendingEpicboxCheck();
+        if(pending && !sameServer(pending, cfg)){
+          await this.checkOldEpicbox(pending, password, session);
+        }
+        if(pending && session === this.epicboxSession){
+          this.setPendingEpicboxCheck(null);
+        }
+        return this.startEpicboxNow(password, cfg, session);
+      });
+    }
 
-        return {success:true};
+    /* the old server still to be checked once (a server change the listener did not follow yet),
+       in this account's config: a wss:// url, no secret */
+    pendingEpicboxCheck(){
+      const url = this.configService.config ? this.configService.config['epicbox_check_pending'] : '';
+      return url ? serverFromUrl(url) : null;
+    }
+    setPendingEpicboxCheck(server){
+      const url = server ? serverUrl(server) : '';
+      if((this.configService.config || {})['epicbox_check_pending'] || url){
+        this.configService.updateConfig({epicbox_check_pending: url});
+      }
+    }
+
+    /* is this the wallet's password: true, false, or null when the wallet API did not answer.
+       The open wallet answers get_mnemonic only with the right one; the phrase it returns is
+       dropped here at once, never kept, shown or logged */
+    async passwordIsRight(password){
+      const res = await this.jsonRPC('get_mnemonic', {name: '', password: password}, false);
+      if(res && res.result && res.result.Ok){
+        return true;
+      }
+      return res && (res.error || (res.result && res.result.Err)) ? false : null;
+    }
+
+    /*
+     * After the Epicbox settings were saved (epic-wallet.toml rewritten): saved is the config
+     * before. Tells the owner API, restarts our listener on the new server and checks the old one
+     * once (epicboxSwitchPlan). password: optional; without it the listener is started the way
+     * this session started it. Resolves {needPassword: true} (nothing changed but the owner API)
+     * when that is not known.
+     */
+    async applyEpicboxChange(saved, password){
+      return this.epicboxJob(async () => {
+        const session = this.epicboxSession;
+        const next = this.readEpicboxConfig();
+        const now = await this.epicboxListenerNow();
+        const plan = epicboxSwitchPlan({saved, next, listener: now ? now.server : null});
+        console.log('[epicbox] settings saved: ' + (saved && saved.domain ? serverUrl(saved) : 'off') + ' -> ' + (next.domain ? serverUrl(next) : 'off')
+          + '; listener ' + (now ? (now.server.unknown ? 'on an unknown server' : 'on ' + serverUrl(now.server)) : 'not running')
+          + '; plan ' + JSON.stringify({setOwnerConfig: plan.setOwnerConfig, restart: plan.restart, checkOld: plan.checkOld ? serverUrl(plan.checkOld) : null, start: plan.start}));
+        const out = {plan, ownerConfig: null};
+        if(plan.setOwnerConfig){
+          out.ownerConfig = await this.setEpicboxConfig(next);
+        }
+        if(!plan.restart){
+          return out;
+        }
+        //a listener is started (the check or the new one): it needs the password, or the way
+        //this session started the last one; only stopping it (Epicbox turned off) needs neither
+        const spawns = plan.start || !!plan.checkOld;
+        //until the switch is done, the old server is remembered for one check at the next start
+        if(plan.checkOld && !this.pendingEpicboxCheck()){
+          this.setPendingEpicboxCheck(plan.checkOld);
+        }
+        if(spawns && !password && !window.nodeChildProcess.hasEpicboxSpec(this.configService.defaultAccountWalletdir)){
+          out.needPassword = true;
+          return out;
+        }
+        //a password from the prompt: checked before the running listener is stopped (a wrong one
+        //would leave none)
+        if(spawns && password){
+          const right = await this.passwordIsRight(password);
+          if(right !== true){
+            out.needPassword = true;
+            out.badPassword = right === false;
+            out.noAnswer = right === null;
+            return out;
+          }
+        }
+        if(session !== this.epicboxSession){
+          return out;
+        }
+        this.epicboxState({state: 'switching', server: next.domain ? serverUrl(next) : '', address: ''});
+        if(!await this.stopEpicboxPids(now.owned)){
+          out.stopFailed = true;
+          return out;
+        }
+        this.walletIsEpicbox = false;
+        if(plan.checkOld){
+          out.checked = await this.checkOldEpicbox(plan.checkOld, password, session);
+          if(out.checked && out.checked.why != 'cancelled' && out.checked.why != 'not_started'){
+            this.setPendingEpicboxCheck(null);
+          }
+        }
+        //locked meanwhile: no listener for a closed session
+        if(session !== this.epicboxSession){
+          out.cancelled = true;
+          return out;
+        }
+        if(plan.start){
+          out.started = await this.startEpicboxNow(password, next, session);
+        }else{
+          this.epicboxState({state: 'off'});
+        }
+        return out;
+      });
     }
 
     /* start a epic wallet in listen mode */
@@ -507,9 +849,21 @@ class WalletService {
        another, and each scan starts PowerShell on Windows. */
     async stopAll(epicbox_background, node_background){
 
+      //an Epicbox job of this session ends here: a check of the old server stops now
+      this.epicboxSession++;
+      if(this.cancelEpicboxCheck){
+        this.cancelEpicboxCheck();
+      }
       const roles = ['owner_api', 'listen', ...(epicbox_background ? [] : ['epicbox']), ...(node_background ? [] : ['node'])];
       const res = await window.nodeChildProcess.stopOwned(roles, {tor: true, torDirs: [this.configService.defaultAccountWalletdir]});
       this.debug ? console.log('WalletService.stopAll', JSON.stringify(res.stopped)) : null;
+      //the old-server check is never a background listener
+      if(epicbox_background){
+        const checks = (await window.nodeChildProcess.ownedProcesses(['epicbox'])).filter(p => isEpicboxCheckDir(p.dir));
+        if(checks.length){
+          await window.nodeChildProcess.stopPids(checks.map(p => p.entryPid || p.pid));
+        }
+      }
       return true;
     }
 

@@ -7,6 +7,7 @@ import * as secp256k1 from "@noble/secp256k1";
 import isPortReachable from 'is-port-reachable';
 import { createProcessRegistry, createPidCheck, describeSpawn, redactArgs } from './shared/processOwnership';
 import { spawnCommand, plainBin } from './shared/spawnCommand';
+import { createLineSplitter, parseListenerLine } from './shared/epicboxListener';
 
 const moment = require('moment');
 const base32 = require('rfc-3548-b32');
@@ -103,11 +104,11 @@ function spawnEpic(cmd, args){
   return spawn(c.cmd, c.args, c.options);
 }
 
-function track(child, cmd, args){
+function track(child, cmd, args, extra){
   cmd = plainBin(cmd);
   debug ? console.log('spawn', cmd, redactArgs(args).join(' ')) : null;
   if(child.pid){
-    const entry = ownProcesses.record(child.pid, cmd, args);
+    const entry = ownProcesses.record(child.pid, cmd, args, extra);
     if(entry){
       liveChildren.set(child.pid, {role: entry.role, dir: entry.dir});
     }
@@ -132,6 +133,127 @@ const bundledBinDir = path.resolve(resourcePath, 'bin') + path.sep;
 function isBundled(bin){
   const b = path.resolve(String(bin || '').replace(/"/g, ''));
   return process.platform === 'win32' ? b.toLowerCase().startsWith(bundledBinDir.toLowerCase()) : b.startsWith(bundledBinDir);
+}
+
+/*
+ * Epicbox listeners started by this window: what their output says (shared/epicboxListener.js),
+ * pid → {dir, check, url, address, state}. check: the short-lived listener on the old server
+ * after a server change.
+ */
+const epicboxLive = new Map();
+//the renderer's callbacks for listener events (App.vue, walletService)
+const epicboxSubscribers = new Set();
+/*
+ * How to start a wallet's Epicbox listener again after a server change: its spawn arguments,
+ * password included, exactly as the listener running now got them. Kept in this preload's memory
+ * only (never written, logged or handed to the renderer) while that session is unlocked; dropped
+ * at lock (forgetEpicboxSpecs). wallet dir → {cmd, args, password}
+ */
+const epicboxSpecs = new Map();
+//bumped at lock: a listener started before it does not put its spec (and password) back
+let epicboxSpecGen = 0;
+
+function emitEpicbox(ev){
+  for(const fn of epicboxSubscribers){
+    try{ fn(ev); }catch(e){ /* a closed view */ }
+  }
+}
+
+//the args with the -c (config dir) value replaced: the old-server check reads its own toml
+function withConfigDir(args, configDir){
+  const out = args.slice();
+  const i = out.indexOf('-c');
+  if(i >= 0 && i + 1 < out.length) out[i + 1] = configDir;
+  return out;
+}
+
+/* start an Epicbox listener; meta: {server: the wss:// url it is started with, check: the old-server check} */
+function startEpicboxListener(cmd, args, password, meta = {}){
+
+  //one Epicbox listener per wallet dir: a second one (a scan that missed ours, two starts at once) reuses it
+  const desc = describeSpawn(cmd, args);
+  const running = desc ? liveChildOf('epicbox', desc.dir) : 0;
+  if(running){
+    debug ? console.log('execEpicbox: already running', running) : null;
+    return Promise.resolve({success: true, msg: running, reused: true});
+  }
+
+  return new Promise(function(resolve) {
+
+      const check = !!meta.check;
+      const specGen = epicboxSpecGen;
+      let listenProcess = track(spawnEpic(cmd, args), cmd, args, {server: meta.server});
+      const pid = listenProcess.pid;
+      const dir = desc ? desc.dir : '';
+      const live = {dir, check, url: '', address: '', state: 'starting'};
+      if(pid) epicboxLive.set(pid, live);
+      const split = createLineSplitter();
+      let settled = false;
+      //every answer names the pid and how far the listener got (state: its last event)
+      const done = (res) => {
+        if(settled) return;
+        settled = true;
+        //the wallet's own listener (not the check): it can be started again after a server change,
+        //unless the session was locked since it was started
+        if((res.success || res.pending) && !check && desc && specGen === epicboxSpecGen){
+          epicboxSpecs.set(desc.dir, {cmd, args: args.slice(), password});
+        }
+        resolve(Object.assign({pid: pid || 0, state: live.state}, res));
+      };
+
+      listenProcess.stdout.setEncoding('utf8');
+      listenProcess.stdout.on('data', (data) => {
+
+          debug ? console.log('execEpicbox.stdout', data) : null;
+          if(data.includes('Password:')){
+            listenProcess.stdin.write(password+"\n");
+          }
+
+          for(const line of split(data)){
+            const ev = parseListenerLine(line);
+            if(!ev) continue;
+            if(ev.type == 'connecting'){ live.url = ev.url; live.state = 'connecting'; }
+            else if(ev.type == 'listening'){ live.address = ev.address; live.state = 'listening'; }
+            else if(ev.type == 'subscribed'){ live.state = 'listening'; }
+            else if(ev.type == 'paused'){ live.state = 'paused'; }
+            else if(ev.type == 'disconnected'){ live.state = 'disconnected'; }
+            emitEpicbox(Object.assign({pid, dir, check}, ev, {url: ev.url || live.url}));
+          }
+
+          if(data.includes('Starting epicbox listener') || data.includes('Epicbox listener started.')){
+
+            done({success: true, msg: pid});
+          }
+
+          if(data.includes('Failed to check node sync status')){
+            done({success: false, msg: 'node not synced', tor: false});
+          }
+
+      });
+
+      listenProcess.stderr.setEncoding('utf8');
+      listenProcess.stderr.on('data', (data) => {
+          debug ? console.log('execEpicbox.stderr', data) : null;
+
+          done({success: false, msg: data});
+      });
+
+      //no connection within timeoutMs: the check gives up; the wallet's listener keeps trying
+      //(epic-wallet reconnects 5 times, 20 s apart) and its events say when it is on
+      if(meta.timeoutMs > 0){
+        setTimeout(() => done(check ? {success: false, msg: 'timeout'} : {success: false, pending: true, msg: pid}), meta.timeoutMs);
+      }
+
+      listenProcess.on('exit', (code) => {
+        epicboxLive.delete(pid);
+        emitEpicbox({type: 'exit', pid, dir, check, code});
+        done({success: false, msg: 'exited', exited: true});
+      });
+      listenProcess.on('error', (e) => {
+        done({success: false, msg: e && e.message ? e.message : 'spawn failed'});
+      });
+
+  });
 }
 
 contextBridge.exposeInMainWorld('nodeChildProcess', {
@@ -395,48 +517,55 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
       });
     },
 
-    /* start wallet epicbox */
-    async execEpicbox(cmd, args, platform, password){
+    /* start wallet epicbox; meta: {server: the wss:// url from its toml, check: the old-server check} */
+    async execEpicbox(cmd, args, platform, password, meta){
+      return startEpicboxListener(cmd, args, password, meta || {});
+    },
 
-      //one Epicbox listener per wallet dir: a second one (a scan that missed ours, two starts at once) reuses it
-      const desc = describeSpawn(cmd, args);
-      const running = desc ? liveChildOf('epicbox', desc.dir) : 0;
-      if(running){
-        debug ? console.log('execEpicbox: already running', running) : null;
-        return {success: true, msg: running};
+    /* start the wallet's Epicbox listener again as it was started last in this session (its
+       password stays here); meta.configDir: read the toml from there (the old-server check).
+       {success: false, noSpec: true} when this session started none */
+    async respawnEpicbox(dir, meta){
+      const spec = epicboxSpecs.get(dir);
+      if(!spec){
+        return {success: false, noSpec: true};
       }
-
-      return new Promise(function(resolve, reject) {
-
-          let listenProcess = track(spawnEpic(cmd, args), cmd, args);
-          listenProcess.stdout.setEncoding('utf8');
-          listenProcess.stdout.on('data', (data) => {
-
-              debug ? console.log('execEpicbox.stdout', data) : null;
-              if(data.includes('Password:')){
-                listenProcess.stdin.write(password+"\n");
-              }
-
-
-              if(data.includes('Starting epicbox listener') || data.includes('Epicbox listener started.')){
-
-                resolve({success: true, msg: listenProcess.pid});
-              }
-
-              if(data.includes('Failed to check node sync status')){
-                resolve({success: false, msg: 'node not synced', tor: false});
-              }
-
-          });
-
-          listenProcess.stderr.setEncoding('utf8');
-          listenProcess.stderr.on('data', (data) => {
-              debug ? console.log('execEpicbox.stderr', data) : null;
-
-              resolve({success: false, msg: data});
-          })
-
-      });
+      const m = meta || {};
+      const args = m.configDir ? withConfigDir(spec.args, m.configDir) : spec.args;
+      return startEpicboxListener(spec.cmd, args, spec.password, m);
+    },
+    /* can respawnEpicbox start this wallet's listener without asking for the password */
+    hasEpicboxSpec(dir){
+      return epicboxSpecs.has(dir);
+    },
+    /* a listener of ours runs already (reused at login): keep how it is started, for a server change */
+    rememberEpicboxSpec(cmd, args, password){
+      const desc = describeSpawn(cmd, args);
+      if(desc && desc.role == 'epicbox'){
+        epicboxSpecs.set(desc.dir, {cmd, args: args.slice(), password});
+      }
+    },
+    /* lock: no password is kept */
+    forgetEpicboxSpecs(){
+      epicboxSpecGen++;
+      epicboxSpecs.clear();
+    },
+    /* the wallet's Epicbox listener started by this window, if it runs: {pid, url (the server it
+       connected to), address, state}; null otherwise (e.g. one left running by an earlier start) */
+    liveEpicbox(dir){
+      for(const [pid, l] of epicboxLive){
+        if(l.dir === dir && !l.check && liveChildren.has(pid)){
+          return {pid, url: l.url, address: l.address, state: l.state};
+        }
+      }
+      return null;
+    },
+    /* listener events (shared/epicboxListener.js parseListenerLine, plus {type: 'exit'}), with
+       {pid, dir, check}; resolves nothing */
+    onEpicboxEvent(fn){
+      if(typeof fn === 'function'){
+        epicboxSubscribers.add(fn);
+      }
     },
 
     async execRecover(cmd, args, platform, seeds, password){
@@ -704,4 +833,4 @@ contextBridge.exposeInMainWorld('api', {
     
 
 });
-
+

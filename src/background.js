@@ -6,7 +6,7 @@ import { exec, execFile } from 'child_process'
 import { pathToFileURL } from 'url'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 import { createDirectory } from './shared/nodeDirectory'
-import { createProcessRegistry, createPidCheck } from './shared/processOwnership'
+import { createProcessRegistry, createPidCheck, isEpicboxCheckDir } from './shared/processOwnership'
 
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -88,13 +88,14 @@ const ownProcesses = createProcessRegistry({
 });
 
 /* on quit: stop the wallet, listener, scan, node and Tor processes the app started, except the
-   node and the Epicbox listener when they run in the background. Nothing the app did not start. */
+   node and the Epicbox listener when they run in the background (the short-lived listener that
+   checks an old Epicbox server is stopped either way). Nothing the app did not start. */
 async function stopOwnProcesses(){
-  const roles = ['owner_api', 'listen', 'scan',
-    ...(epicboxruninbackground ? [] : ['epicbox']),
+  const roles = ['owner_api', 'listen', 'scan', 'epicbox',
     ...(noderuninbackground ? [] : ['node'])];
   try{
-    const owned = await ownProcesses.list(roles, {tor: true});
+    const owned = (await ownProcesses.list(roles, {tor: true}))
+      .filter(p => p.role != 'epicbox' || !epicboxruninbackground || isEpicboxCheckDir(p.dir));
     const results = await ownProcesses.stop(owned);
     log.info('quit: stopped ' + owned.map((p, i) => p.pid + ' ' + p.name + (results[i] ? '' : ' (failed)')).join(', '));
   }catch(e){

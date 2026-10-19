@@ -353,6 +353,9 @@
       },
       /* what an unconfirmed tx waits for */
       waitingText(tx){
+        if(tx.waitingReply){
+          return this.$t("msg.sent_waiting_reply");
+        }
         if(tx.tx_type=='TxReceived'){
           return this.$t("msg.received_unconfirmed");
         }
