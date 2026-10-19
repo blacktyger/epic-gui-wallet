@@ -273,21 +273,39 @@ export const walletFolder = {
     async pickWalletFolder() {
       this.folderError = '';
       this.folderAsk = null;
+      //Choose another folder: the picker closes, so focus goes back to the screen's button
+      const hadPick = !!this.folderPick;
       this.folderPick = null;
       let r;
       try {
         r = await window.api.pickWalletFolder(t('msg.chaindata.folder_dialog_title'));
       } catch (e) {
         this.folderError = e && e.message ? e.message : String(e);
+        if (hadPick) this.focusFolderButton();
         return;
       }
-      if (!r || r.canceled) return;
+      if (!r || r.canceled) {
+        if (hadPick) this.focusFolderButton();
+        return;
+      }
       const wallets = Array.isArray(r.wallets) ? r.wallets.filter(w => w && typeof w.dir === 'string' && w.dir) : [];
       if (wallets.length === 1 && !r.chainOnly) {
         await this.openWalletFolder(wallets[0].dir, wallets[0].network || undefined);
         return;
       }
       this.folderPick = { picked: String(r.picked || ''), wallets, chainOnly: !!r.chainOnly };
+    },
+    /* WalletFolderPick's Cancel */
+    folderPickCancel() {
+      this.folderPick = null;
+      this.focusFolderButton();
+    },
+    /* the screen's Open a wallet folder button (ref folderButton) */
+    focusFolderButton() {
+      this.$nextTick(() => {
+        const b = this.$refs.folderButton;
+        if (b && b.focus) b.focus();
+      });
     },
     /* WalletFolderPick: the wallet chosen from what was picked */
     async folderPicked(w) {

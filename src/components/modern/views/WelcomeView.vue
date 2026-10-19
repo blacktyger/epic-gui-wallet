@@ -17,7 +17,7 @@
         <summary><EIcon name="chevr" />{{ $t('msg.wallets.advanced') }}</summary>
         <div class="e-tech-body">
           <div class="e-adv-row">
-            <button type="button" class="e-btn e-btn-sm" :aria-busy="folderBusy ? 'true' : null" @click="pickWalletFolder">
+            <button ref="folderButton" type="button" class="e-btn e-btn-sm" :aria-busy="folderBusy ? 'true' : null" @click="pickWalletFolder">
               <span v-if="folderBusy" class="e-spinner" aria-hidden="true"></span><EIcon v-else name="folderopen" />{{ $t('msg.wallets.open_wallet_folder') }}
             </button>
             <p class="e-help">{{ $t('msg.wallets.open_wallet_folder_hint') }}</p>
@@ -36,7 +36,7 @@
               </div>
             </div>
             <p v-if="folderError" class="e-error-msg" role="alert"><EIcon name="alertc" /><span>{{ folderError }}</span></p>
-            <WalletFolderPick v-if="folderPick" modern :pick="folderPick" :busy="folderBusy" @open="folderPicked" @again="pickWalletFolder" @cancel="folderPick = null" />
+            <WalletFolderPick v-if="folderPick" modern :pick="folderPick" :busy="folderBusy" @open="folderPicked" @again="pickWalletFolder" @cancel="folderPickCancel" />
           </div>
 
           <div class="e-adv-row">

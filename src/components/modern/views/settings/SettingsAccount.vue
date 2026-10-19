@@ -94,7 +94,7 @@
           <div class="e-add-wallet" role="group" aria-labelledby="stg-add-l">
             <button type="button" class="e-btn" @click="addCreate"><EIcon name="plus" />{{ $t('msg.wallets.create') }}</button>
             <button type="button" class="e-btn" @click="addRestore"><EIcon name="backup" />{{ $t('msg.wallets.restore') }}</button>
-            <button type="button" class="e-btn" :aria-busy="folderBusy ? 'true' : null" @click="pickWalletFolder">
+            <button ref="folderButton" type="button" class="e-btn" :aria-busy="folderBusy ? 'true' : null" @click="pickWalletFolder">
               <span v-if="folderBusy" class="e-spinner" aria-hidden="true"></span><EIcon v-else name="folderopen" />{{ $t('msg.wallets.open_wallet_folder') }}
             </button>
             <button type="button" class="e-btn" @click="addImport"><EIcon name="download" />{{ $t('msg.wallets.import_older') }}</button>
@@ -114,7 +114,7 @@
             </div>
           </div>
           <p v-if="folderError" class="e-error-msg" role="alert"><EIcon name="alertc" /><span>{{ folderError }}</span></p>
-          <WalletFolderPick v-if="folderPick" modern :pick="folderPick" :busy="folderBusy" @open="folderPicked" @again="pickWalletFolder" @cancel="folderPick = null" />
+          <WalletFolderPick v-if="folderPick" modern :pick="folderPick" :busy="folderBusy" @open="folderPicked" @again="pickWalletFolder" @cancel="folderPickCancel" />
         </div>
       </div>
     </section>

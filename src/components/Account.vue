@@ -50,7 +50,7 @@
         <div class="buttons">
           <button type="button" class="button is-small" @click="addCreate">{{ $t('msg.wallets.create') }}</button>
           <button type="button" class="button is-small" @click="addRestore">{{ $t('msg.wallets.restore') }}</button>
-          <button type="button" class="button is-small" :class="{ 'is-loading': folderBusy }" @click="pickWalletFolder">{{ $t('msg.wallets.open_wallet_folder') }}</button>
+          <button ref="folderButton" type="button" class="button is-small" :class="{ 'is-loading': folderBusy }" @click="pickWalletFolder">{{ $t('msg.wallets.open_wallet_folder') }}</button>
           <button type="button" class="button is-small" @click="addImport">{{ $t('msg.wallets.import_older') }}</button>
         </div>
         <div v-if="folderAsk" class="field is-grouped">
@@ -61,7 +61,7 @@
           <div class="control"><button type="button" class="button is-small is-primary" @click="folderWithNetwork">{{ $t('msg.wallets.open') }}</button></div>
         </div>
         <p v-if="folderError" class="help is-danger" role="alert">{{ folderError }}</p>
-        <WalletFolderPick v-if="folderPick" :pick="folderPick" :busy="folderBusy" @open="folderPicked" @again="pickWalletFolder" @cancel="folderPick = null" />
+        <WalletFolderPick v-if="folderPick" :pick="folderPick" :busy="folderBusy" @open="folderPicked" @again="pickWalletFolder" @cancel="folderPickCancel" />
 
       </div>
     </div>
