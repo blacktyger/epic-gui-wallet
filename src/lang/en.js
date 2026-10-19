@@ -2,6 +2,8 @@ import modern from './modern/en';
 import nodedir from './nodedir';
 import epicboxdir from './epicboxdir';
 import wallets from './wallets';
+import removal from './removal';
+import chaindata from './chaindata';
 
 const messages = {
   msg: {
@@ -11,6 +13,10 @@ const messages = {
     epicboxdir,
     //wallet list, first start and the found screen (6.1), see lang/wallets.js
     wallets,
+    //removing a wallet: the three choices and their confirmations, see lang/removal.js
+    removal,
+    //existing blockchain data found for the built-in node, and opening an older wallet's folder, see lang/chaindata.js
+    chaindata,
 
     title: '',
     password: 'Password',

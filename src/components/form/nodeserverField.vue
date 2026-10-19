@@ -44,7 +44,7 @@
   import { ref, computed, getCurrentInstance } from "vue";
   import useFormValidation from "@/modules/useFormValidation";
   import NodeDirectory from "@/components/form/NodeDirectory.vue";
-  import { isPrivateHost } from "@/shared/nodeAddress";
+  import { nodeFieldAddress } from "@/shared/nodeAddress";
 
   export default {
     components: { NodeDirectory },
@@ -66,17 +66,11 @@
       const validInput = () => {
 
 
-        defaultValue.value = input.value.trim();
         if(select.value == 'external'){
           nodeInternal.value = false;
-          //no scheme given: http for this computer or the LAN (nodeAddress.isPrivateHost), else https; keep any port
-          if(defaultValue.value && !/^[a-z][a-z0-9+.-]*:\/\//i.test(defaultValue.value)){
-            let host = '';
-            try{ host = new URL('http://' + defaultValue.value).hostname; }catch(e){ host = ''; }
-            defaultValue.value = (isPrivateHost(host) ? 'http://' : 'https://') + defaultValue.value;
-          }
-          defaultValue.value = defaultValue.value.replace(/\/+$/, '');
-          input.value = defaultValue.value;
+          //the address to save (nodeAddress.nodeFieldAddress: scheme added, trailing "/" dropped);
+          //the field keeps the text as typed, so nothing changes under the cursor (a "/" vanished on Save)
+          defaultValue.value = nodeFieldAddress(input.value);
           return validateAddressField("nodeaddress", defaultValue.value, true);
         }else{
           nodeInternal.value = true;

@@ -9,6 +9,7 @@
  *   "firstRun": { "scannedAt": "<ISO>", "found": 2 },        // absent until the first-start scan ran
  *   "legacy": { "<old wallet dir>": "imported" | "fresh" },  // what the user chose per found wallet
  *   "node": { "mainnet": { "chainDir": "<dir>" } },          // built-in node; absent = <root>/node/main/chain_data
+ *           (and "chainOffer": {checkedAt, answer, dir}: Settings asked once about old chain data)
  *   "defaultWallet": "w1",
  *   "nextId": 2,                        // the next wallet id's number: only grows, so an id is never reused
  *   "wallets": [{
@@ -180,6 +181,15 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
     return true;
   }
 
+  /* node.<net> patched and saved, or left as it was when the save fails */
+  function saveNode(network, patch) {
+    const had = Object.prototype.hasOwnProperty.call(data.node, network), before = data.node[network];
+    data.node[network] = { ...(before || {}), ...patch };
+    if (save()) return true;
+    if (had) data.node[network] = before; else delete data.node[network];
+    return false;
+  }
+
   function find(id) {
     const w = data.wallets.find(x => x.id === id);
     if (!w) throw new Error('no wallet ' + id);
@@ -211,8 +221,27 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
       data.node[network] = { ...(data.node[network] || {}), chainDir: dir || '' };
       return save();
     },
+    /* the one-time chain data offer of Settings (shared/chainOffer.js); 'used' also sets chainDir.
+       False when not saved: then nothing changed, also in memory (a chainDir only in memory would
+       go into the node's toml while Settings says the node downloads the blockchain) */
+    chainOffer(network) { const o = data.node[network] && data.node[network].chainOffer; return o ? { ...o } : null; },
+    setChainOffer(network, offer) {
+      const patch = { chainOffer: { ...offer } };
+      if (offer.answer === 'used' && offer.dir) patch.chainDir = offer.dir;
+      return saveNode(network, patch);
+    },
+    /* Settings' Download the blockchain again: the built-in node uses its own folder again, the offer
+       counts as declined (not asked again) and keeps the folder it showed; nothing on disk is deleted.
+       False when not saved: then nothing changed */
+    forgetChainDir(network, now = new Date()) {
+      const before = data.node[network] || {};
+      const dir = before.chainDir || (before.chainOffer && before.chainOffer.dir) || '';
+      return saveNode(network, { chainDir: '', chainOffer: { checkedAt: now.toISOString(), answer: 'declined', dir } });
+    },
 
     wallets() { return data.wallets.map(w => ({ ...w, settings: { ...w.settings } })); },
+    /* the records that could not be read (kept in the file as they are): copies */
+    invalidWallets() { return JSON.parse(JSON.stringify(data.invalidWallets || [])); },
     wallet(id) { const w = find(id); return { ...w, settings: { ...w.settings } }; },
     defaultWalletId() { return data.defaultWallet; },
     setDefaultWallet(id) { find(id); data.defaultWallet = id; return save(); },
@@ -247,12 +276,33 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
       w.settings = { ...w.settings, ...patch };
       return save();
     },
-    /* the list entry only: no file of the wallet is touched */
+    /* the list entry, and its 'imported' decision (legacy[importedFrom.dir or dataDir]), so Import
+       from an older Epic Wallet lists that folder again; no file of the wallet is touched here
+       (walletRemoval.js). nextId stays: the id is never used again. False when not saved: then
+       nothing changed, also in memory (a removal that isn't on disk would come back at the next start) */
     removeWallet(id) {
-      find(id);
-      data.wallets = data.wallets.filter(w => w.id !== id);
+      const w = find(id);
+      const before = { wallets: data.wallets, defaultWallet: data.defaultWallet, legacy: { ...data.legacy } };
+      data.wallets = data.wallets.filter(x => x.id !== id);
       if (data.defaultWallet === id) data.defaultWallet = data.wallets.length ? data.wallets[0].id : '';
-      return save();
+      const win = pathMod && pathMod.sep === '\\';
+      const same = (a, b) => {
+        if (a === b) return true;
+        if (!pathMod || !a || !b) return false;
+        const ra = pathMod.resolve(a), rb = pathMod.resolve(b);
+        return win ? ra.toLowerCase() === rb.toLowerCase() : ra === rb;
+      };
+      const dirs = [w.importedFrom && w.importedFrom.dir, w.dataDir].filter(d => typeof d === 'string' && d);
+      //another wallet in the list from the same folder keeps the decision
+      const stillListed = (d) => data.wallets.some(x => same(x.dataDir, d) || (x.importedFrom && same(x.importedFrom.dir, d)));
+      for (const k of Object.keys(data.legacy)) {
+        if (data.legacy[k] === 'imported' && dirs.some(d => same(k, d)) && !stillListed(k)) delete data.legacy[k];
+      }
+      if (!save()) {
+        Object.assign(data, before);
+        return false;
+      }
+      return true;
     },
   };
   return api;

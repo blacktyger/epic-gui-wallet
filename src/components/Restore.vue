@@ -142,7 +142,7 @@
   import PasswordField from "@/components/form/passwordField";
   import StartupProgress from "@/components/layout/StartupProgress.vue";
   import useFormValidation from "@/modules/useFormValidation";
-  import { walletOpen, walletList, networkBadge, isLoggedIn } from '@/components/wallets';
+  import { walletOpen, walletList, networkBadge, isLoggedIn, clearStaleUser } from '@/components/wallets';
   import { splitPhrase } from '@/shared/phraseWords';
 
   const NETWORKS = ['mainnet', 'floonet', 'usernet'];
@@ -333,6 +333,7 @@
             this.$toast.error(recovered && recovered.msg ? String(recovered.msg.message || recovered.msg) : this.$t('msg.wallets.restore_failed'), {duration:false});
             return;
           }
+          await clearStaleUser(this.$userService, recovered.wallet.id);
           this.wallet = recovered.wallet;
           //the phrase is not needed any more: drop it from the form
           this.clearup();

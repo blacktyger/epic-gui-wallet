@@ -8,7 +8,7 @@ import { createDirectory } from './shared/nodeDirectory'
 import { createReleaseLink } from './shared/releaseLink'
 import { createProcessRegistry, createPidCheck } from './shared/processOwnership'
 import { resolveRoot, layout, legacyPaths } from './shared/appPaths'
-import { scanLegacy } from './shared/legacyScan'
+import { scanLegacy, scanChains, resolveWalletFolder } from './shared/legacyScan'
 import { readLegacyProfiles } from './legacyProfile'
 import { cleanLeftoverImport, cleanImportNow, importCopyNames, spawnAfterExitCleaner } from './shared/tmpCleanup.js'
 import { createPtyHost } from './shared/ptyHost'
@@ -622,15 +622,32 @@ ipcMain.handle('legacy-scan', (event, args) => {
   legacyScanRunning = run;
   return run;
 });
-async function legacyScan({ known } = {}){
+async function legacyScan({ known, chainsOnly } = {}){
   await leftoverImportCleanup;
   const legacy = legacyPaths({ platform: process.platform, env: process.env, home: os.homedir(), appData: app.getPath('appData'), pathMod: path });
+  //Settings, the built-in node switched on: only the chain data, no wallets and no profile copy
+  if (chainsOnly) return { chains: scanChains({ fs, pathMod: path, legacy }) };
   const scan = scanLegacy({ fs, pathMod: path, legacy, known: Array.isArray(known) ? known.filter(k => typeof k === 'string') : [] });
   //the old IndexedDB is read (from a copy) only when there is something to import
   const profiles = scan.wallets.length ? await readLegacyProfiles({ session, BrowserWindow, fs, path, root: appLayout.root,
     tmpDir: path.join(appLayout.root, 'tmp', 'import'), profiles: legacy.profiles, log: (m) => log.info(m), onCopy: (n) => importCopies.add(n) }) : [];
   return { ...scan, profiles };
 }
+
+//Open a wallet folder: the dialog starts in ~/.epic when there is one, and what was picked is worked
+//out here to the wallet folder(s) it means (shared/walletFolder.js). title: the renderer's, localized
+//→ {canceled, picked, wallets: [{dir, network}], chainOnly}
+ipcMain.handle('pick-wallet-folder', async (event, title) => {
+  if (!fromAppWindow(event)) return { canceled: true, wallets: [] };
+  const { epicDir } = legacyPaths({ platform: process.platform, env: process.env, home: os.homedir(), appData: app.getPath('appData'), pathMod: path });
+  const res = await dialog.showOpenDialog({
+    title: typeof title === 'string' && title ? title.slice(0, 200) : undefined,
+    defaultPath: fs.existsSync(epicDir) ? epicDir : undefined,
+    properties: ['openDirectory', 'showHiddenFiles'],
+  });
+  if (res.canceled || !res.filePaths || !res.filePaths[0]) return { canceled: true, picked: '', wallets: [], chainOnly: false };
+  return resolveWalletFolder({ fs, pathMod: path, picked: res.filePaths[0] });
+});
 
 //start again, after another app folder was chosen (it is read only at start)
 ipcMain.handle('app-relaunch', async (event) => {

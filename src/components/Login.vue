@@ -33,7 +33,7 @@
                     <div class="message-body">
                       <p>{{ $t('msg.wallets.missing', [missing.dir]) }}</p>
                       <div class="buttons" style="margin-top: 0.5rem;">
-                        <button type="button" class="button is-small" @click="askRemove">{{ $t('msg.wallets.remove_from_list') }}</button>
+                        <button type="button" class="button is-small" @click="askRemove">{{ $t('msg.removal.open') }}</button>
                         <button type="button" class="button is-small is-primary" @click="retry">{{ $t('msg.wallets.try_again') }}</button>
                       </div>
                     </div>
@@ -63,17 +63,7 @@
       <div class="logo"></div>
     </div>
 
-    <div class="modal" :class="{ 'is-active': !!removeTarget }" role="dialog" aria-modal="true" aria-labelledby="loginRemoveTitle">
-      <div class="modal-background" @click="removeTarget = null"></div>
-      <div class="modal-card">
-        <header class="modal-card-head"><p id="loginRemoveTitle" class="modal-card-title">{{ $t('msg.wallets.remove_title', [removeTarget ? removeTarget.name : '']) }}</p></header>
-        <section class="modal-card-body">{{ $t('msg.wallets.remove_text') }}</section>
-        <footer class="modal-card-foot">
-          <button type="button" class="button" @click="removeTarget = null">{{ $t('msg.cancel') }}</button>
-          <button type="button" class="button is-danger" @click="confirmRemove">{{ $t('msg.wallets.remove_from_list') }}</button>
-        </footer>
-      </div>
-    </div>
+    <RemoveWalletDialog v-if="removing" :wallet="removing.wallet" :name="removing.name" folder-missing @close="removing = null" @done="removed" />
 
   </section>
 </template>
@@ -84,6 +74,7 @@
 import { ref } from 'vue';
 import PasswordField from "@/components/form/passwordField";
 import StartupProgress from "@/components/layout/StartupProgress.vue";
+import RemoveWalletDialog from "@/components/layout/RemoveWalletDialog.vue";
 import useFormValidation from "@/modules/useFormValidation";
 import { useRouter } from '@/router';
 import { useStore } from '@/store';
@@ -91,8 +82,8 @@ import { walletOpen, walletList, walletName, folderTail, networkBadge } from '@/
 
 /*
  * Unlock: the password of a wallet in the list. With several wallets a picker (the default one
- * chosen, or route query wallet). A wallet whose folder is gone can be removed from the list
- * (its files, if they come back, are not touched).
+ * chosen, or route query wallet). A wallet whose folder is gone can be removed: from the list
+ * only, or with this app's files for it (RemoveWalletDialog; its data folder is never touched).
  */
 export default {
   name: "login",
@@ -100,6 +91,7 @@ export default {
   components: {
     PasswordField,
     StartupProgress,
+    RemoveWalletDialog,
   },
   setup() {
 
@@ -123,8 +115,8 @@ export default {
       selectedId: '',
       //startCheck said the folder is gone: {id, name, dir}
       missing: null,
-      //asking before Remove from list: {id, name}
-      removeTarget: null,
+      //the wallet being removed (RemoveWalletDialog): {wallet, name}
+      removing: null,
     };
   },
   computed: {
@@ -198,23 +190,13 @@ export default {
       this.login();
     },
     askRemove(){
-      if(this.missing){
-        this.removeTarget = { id: this.missing.id, name: this.missing.name };
+      const wallet = this.missing && this.wallets.find(w => w.id === this.missing.id);
+      if(wallet){
+        this.removing = { wallet, name: this.missing.name };
       }
     },
-    /* the list entry only: no file of the wallet is touched */
-    confirmRemove(){
-      const target = this.removeTarget;
-      this.removeTarget = null;
-      if(!target){
-        return;
-      }
-      try{
-        this.configService.settings.removeWallet(target.id);
-      }catch(e){
-        this.$toast.error(e && e.message ? e.message : String(e));
-        return;
-      }
+    removed(){
+      this.removing = null;
       this.missing = null;
       this.loadWallets();
       if(!this.wallets.length){

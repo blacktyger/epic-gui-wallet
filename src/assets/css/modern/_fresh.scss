@@ -110,3 +110,24 @@
 .e-add-wallet .e-btn .e-icon { flex: none; }
 .e-stg-origin { display: flex; gap: 6px; align-items: flex-start; margin-top: var(--sp-1); color: var(--dim); font-size: var(--fs-sm); }
 .e-stg-origin .e-icon { flex: none; margin-top: 2px; color: var(--faint); }
+
+/* ---------------------------------------------------------------- Remove a wallet (settings/RemoveWalletDialog) */
+.e-rm-dialog { width: min(560px, calc(100vw - 32px)); }
+.e-rm-dialog .e-dialog-foot { flex-wrap: wrap; }
+.e-rm-checking { display: flex; align-items: center; gap: var(--sp-2); margin: 0 0 var(--sp-3); color: var(--dim); }
+.e-rm-choices { margin-bottom: 0; }
+.e-rm-choices .e-wpick-list { max-height: none; overflow: visible; }
+.e-rm-choices label { align-items: flex-start; padding-block: var(--sp-2); }
+.e-rm-choices .e-dot { margin-top: 3px; }
+.e-rm-choices .e-wpick-name { white-space: normal; }
+.e-rm-hint { font-size: var(--fs-sm); color: var(--dim); overflow-wrap: anywhere; margin-top: 2px; }
+.e-rm-reason { display: flex; gap: 6px; align-items: flex-start; font-size: var(--fs-sm); color: var(--text); overflow-wrap: anywhere; margin-top: var(--sp-1); }
+.e-rm-reason .e-icon { flex: none; margin-top: 2px; color: var(--faint); }
+.e-rm-choices label.e-rm-off { cursor: not-allowed; background: transparent; border-style: dashed; }
+.e-rm-choices label.e-rm-off input { cursor: not-allowed; }
+.e-rm-choices label.e-rm-off .e-wpick-name { color: var(--faint); }
+.e-rm-choices label.e-rm-danger:has(input:checked) { border-color: var(--risk); background: var(--risk-soft); }
+.e-rm-choices label.e-rm-danger:has(input:checked) .e-dot { border-color: var(--risk); background: var(--risk); }
+.e-rm-confirm { display: flex; flex-direction: column; gap: var(--sp-4); margin-top: var(--sp-5); }
+.e-rm-confirm .e-field { margin: 0; }
+.e-rm-confirm .e-label { overflow-wrap: anywhere; }
