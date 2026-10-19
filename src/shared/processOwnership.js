@@ -9,10 +9,8 @@
  * the app started (same executable, same dir, same role), so a reused pid is never touched.
  *
  * Tor is started by the http listener, not by the app: a Tor process counts as ours when its torrc
- * is in one of our wallet dirs and its parent is ours or no epic-wallet at all (orphaned).
- *
- * The first start of this version finds no file: the previous version's background node or Epicbox
- * listener is adopted once, if it runs the app's own bundled binary on this account (adopt()).
+ * is in the top level dir (-t, the wallet's data dir) of one of our listeners, or in torDirs, and its
+ * parent is ours or no epic-wallet at all (orphaned).
  *
  * Also: redaction of passwords in command lines, for anything that is logged.
  *
@@ -21,7 +19,6 @@
  */
 
 export const ROLES = ['owner_api', 'listen', 'epicbox', 'scan', 'node'];
-const WALLET_ROLES = ['owner_api', 'listen', 'epicbox', 'scan'];
 
 //one scan for everything we may own: wallet and node binaries (and cmd.exe wrappers of them) and Tor
 export const SCAN_PATTERN = /epic|torrc/i;
@@ -88,7 +85,8 @@ function argAfter(args, flag) {
 /*
  * What a spawn of the wallet or node binary is, from its arguments: {role, bin, dir, network},
  * or null for commands that are not tracked (init, recover: they end by themselves).
- * dir is the wallet dir (-c, else -t) or, for the node, its --config_file.
+ * dir is the wallet's config dir (-c, else -t) or, for the node, its --config_file; topDir the -t
+ * dir when it differs from dir.
  */
 export function describeSpawn(cmd, args) {
   const a = stripPassArgs(Array.isArray(args) ? args : []);
@@ -102,7 +100,11 @@ export function describeSpawn(cmd, args) {
   const dir = role === 'node' ? argAfter(a, '--config_file') : (argAfter(a, '-c') || argAfter(a, '-t'));
   //without a dir there is nothing that tells our process from another one
   if (!dir) return null;
-  return { role, bin: unquote(cmd), dir, network: networkOf(plain) };
+  const desc = { role, bin: unquote(cmd), dir, network: networkOf(plain) };
+  //the wallet's data dir, when it is not the config dir (an imported wallet): Tor's files are there
+  const top = role === 'node' ? '' : argAfter(a, '-t');
+  if (top && top !== dir) desc.topDir = top;
+  return desc;
 }
 
 function networkOf(plainArgs) {
@@ -113,7 +115,8 @@ function networkOf(plainArgs) {
 export function validEntry(e, win) {
   return !!e && typeof e === 'object' && Number.isInteger(Number(e.pid)) && Number(e.pid) > 0
     && ROLES.includes(e.role) && typeof e.bin === 'string' && typeof e.dir === 'string'
-    && isAbsPath(e.bin, win) && isAbsPath(e.dir, win) && BIN_NAME.test(baseName(e.bin));
+    && isAbsPath(e.bin, win) && isAbsPath(e.dir, win) && BIN_NAME.test(baseName(e.bin))
+    && (e.topDir === undefined || (typeof e.topDir === 'string' && isAbsPath(e.topDir, win)));
 }
 
 //a whole argument (paths may contain spaces, so compare with the quotes removed and spaces around)
@@ -203,10 +206,10 @@ export function torrcPaths(dir, win) {
  * The running processes that are ours, from one process list (find-process entries).
  *   roles:   which recorded roles to return (default all)
  *   dir:     only wallet/node processes of this dir; network: only nodes of this network
- *   tor:     also return our Tor processes (torrc in a dir of a recorded http listener or in torDirs)
+ *   tor:     also return our Tor processes (torrc in the data dir of a recorded http listener or in torDirs)
  * A recorded pid matches the process with that pid. The app starts the binaries without a shell, so
- * that is epic-wallet.exe / epic.exe itself; only a cmd.exe wrapper recorded by 6.0.0 (shell: true)
- * or adopted from it also matches its direct epic child.
+ * that is epic-wallet.exe / epic.exe itself; only a cmd.exe wrapper (6.0.0 spawned with shell: true)
+ * also matches its direct epic child.
  * Returns {owned: [{pid, ppid, role, dir, entryPid, name}], live: entries that still run}. No
  * command line: it may hold a password (with spaces, past what redaction can see), and owned is logged.
  */
@@ -237,7 +240,7 @@ export function findOwned(entries, procs, opts = {}) {
   }
 
   if (opts.tor) {
-    const dirs = [...(opts.torDirs || []), ...recorded.filter(e => e.role === 'listen').map(e => e.dir)].filter(Boolean);
+    const dirs = [...(opts.torDirs || []), ...recorded.filter(e => e.role === 'listen').map(e => e.topDir || e.dir)].filter(Boolean);
     const torrcs = [...new Set(dirs.flatMap(d => torrcPaths(d, win).map(t => norm(t, win))))];
     const allOurs = new Set(live.flatMap(e => list.filter(p => p.pid == e.pid || p.ppid == e.pid).map(p => p.pid)));
     for (const p of list) {
@@ -252,44 +255,6 @@ export function findOwned(entries, procs, opts = {}) {
     }
   }
   return { owned, live };
-}
-
-/* the path, if it is the app's own bundled `name` binary (…/resources/bin/<platform>/name), else '' */
-function bundledBin(bin, name, win) {
-  const b = unquote(bin).trim();
-  const m = b.match(/[\\/]resources[\\/]bin[\\/][^\\/]+[\\/]([^\\/]+)$/i);
-  const exe = m ? m[1].toLowerCase() : '';
-  return b && isAbsPath(b, win) && (exe === name || exe === name + '.exe') ? b : '';
-}
-
-/*
- * Leftovers of the previous version (which recorded nothing) that are surely ours, as records to
- * adopt: the app's bundled wallet binary on this account's wallet dir, the bundled node binary on
- * this account's node config and network. Never a binary outside the app's resources/bin.
- *   opts: {walletBin, nodeBin, dir, nodeConfig, network, win}
- * Windows: of a cmd.exe wrapper and its epic child only the wrapper (taskkill /t takes the tree).
- */
-export function pickAdoptable(procs, opts = {}) {
-  const win = !!opts.win;
-  const list = Array.isArray(procs) ? procs : [];
-  const kinds = [
-    { bin: bundledBin(opts.walletBin, 'epic-wallet', win), dir: opts.dir, roles: WALLET_ROLES },
-    { bin: bundledBin(opts.nodeBin, 'epic', win), dir: opts.nodeConfig, roles: ['node'] },
-  ].filter(k => k.bin && k.dir && isAbsPath(k.dir, win));
-  const picked = [];
-  for (const p of list) {
-    if (!(p && p.pid > 0) || picked.some(e => e.pid == p.pid)) continue;
-    for (const k of kinds) {
-      const c = liveArgs(p.cmd, k.bin, win);
-      if (c == null) continue;
-      const network = networkOf(c.trim().split(/\s+/));
-      const role = k.roles.find(r => cmdMatchesEntry({ role: r, bin: k.bin, dir: unquote(k.dir) }, p.cmd, win));
-      if (!role || (role === 'node' && opts.network && network !== opts.network)) continue;
-      picked.push({ pid: p.pid, ppid: p.ppid, role, bin: k.bin, dir: unquote(k.dir), network });
-      break;
-    }
-  }
-  return picked.filter(e => !win || !picked.some(q => q !== e && q.pid == e.ppid)).map(({ pid, role, bin, dir, network }) => ({ pid, role, bin, dir, network }));
 }
 
 /*
@@ -449,22 +414,6 @@ export function createProcessRegistry({ fs, file, findProcess, kill, win = false
     return (await scan(roles, opts)).owned;
   }
 
-  /*
-   * Once, when there is no record file yet (first start of this version): record the previous
-   * version's processes that pickAdoptable finds. opts: {walletBin, nodeBin, dir, nodeConfig, network}.
-   * Resolves the adopted records.
-   */
-  async function adopt(opts = {}) {
-    if (fs.existsSync(file)) return [];
-    const procs = await findProcess('name', SCAN_PATTERN).catch(() => null);
-    //an empty or failed scan may hide them: try again next start (any record creates the file first)
-    if (!Array.isArray(procs) || !procs.length) return [];
-    const at = now();
-    const picked = pickAdoptable(procs, Object.assign({}, opts, { win })).map(e => Object.assign({ at }, e)).filter(e => validEntry(e, win));
-    update(entries => entries.filter(e => !picked.some(p => p.pid == e.pid)).concat(picked));
-    return picked;
-  }
-
   /* stop processes returned by list(); resolves one boolean per process (true: it is gone) */
   async function stop(owned) {
     const procs = Array.isArray(owned) ? owned : [];
@@ -498,5 +447,5 @@ export function createProcessRegistry({ fs, file, findProcess, kill, win = false
     }));
   }
 
-  return { load, record, forget, list, adopt, stop, stopPids };
+  return { load, record, forget, list, stop, stopPids };
 }
