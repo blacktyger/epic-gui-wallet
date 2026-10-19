@@ -178,7 +178,9 @@ export default {
         //the account's folder is gone (moved or deleted by hand): say so, start nothing.
         //Going on would start epic-wallet in ~/.epic and hang at "Starting the wallet service"
         if(action === 'init'){
-          throw new Error(this.$t('msg.login.folder_missing', [this.accountField.defaultValue, this.configService.missingWalletDir]));
+          const dir = this.configService.missingWalletDir;
+          throw new Error(dir ? this.$t('msg.login.folder_missing', [this.accountField.defaultValue, dir])
+            : this.$t('msg.login.folder_unknown', [this.accountField.defaultValue]));
         }
 
         //App has started - first close running wallet and node server process

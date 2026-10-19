@@ -68,6 +68,7 @@ test('tomlString escapes what a TOML basic string needs', () => {
   assert.equal(tomlString('we"ird'), '"we\\"ird"');
   assert.equal(tomlString('Łukasz'), '"Łukasz"');
   assert.equal(tomlString('$&'), '"$&"');
+  assert.equal(tomlString('a\x7fb'), '"a\\u007Fb"');
 });
 
 for (const name of ODD) {

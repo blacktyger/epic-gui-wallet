@@ -1,3 +1,11 @@
+function isLocal(address){
+  try{
+    return ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(address).hostname);
+  }catch(e){
+    return false;
+  }
+}
+
 /*
  * Which Epic node version answers at an address, without the node's api secret.
  *
@@ -26,7 +34,11 @@ export async function fetchNodeVersion(address, {fetch: fetchFn = (...args) => f
       return {ok: false, reason: 'HTTP ' + res.status};
     }
 
-    //an older node with an api secret
+    //an older node with an api secret. Only a local node: the GUI sends the secret to no other host,
+    //so a remote node that needs it can't be used anyway
+    if(!isLocal(base)){
+      return {ok: false, reason: 'HTTP 401'};
+    }
     const rpc = await fetchFn(base + '/v2/foreign', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -38,7 +50,7 @@ export async function fetchNodeVersion(address, {fetch: fetchFn = (...args) => f
     return version ? {ok: true, version} : {ok: false, reason: 'HTTP 401'};
 
   }catch(e){
-    return {ok: false, reason: e && e.name === 'AbortError' ? 'no reply within ' + Math.round(timeoutMs / 1000) + ' s' : 'not reachable'};
+    return {ok: false, reason: e && e.name === 'AbortError' ? 'no reply within ' + Math.ceil(timeoutMs / 1000) + ' s' : 'not reachable'};
   }finally{
     clearTimeout(timeoutId);
   }

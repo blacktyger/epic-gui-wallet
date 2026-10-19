@@ -7,5 +7,6 @@
  * `$&`, `$1` or `$'` in a folder name are not taken as replacement patterns.
  */
 export function tomlString(value){
-  return JSON.stringify(String(value));
+  //DEL is the one character TOML needs escaped that JSON leaves as it is
+  return JSON.stringify(String(value)).replace(/\x7f/g, '\\u007F');
 }

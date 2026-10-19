@@ -34,6 +34,15 @@ test('4.0.x or 3.x with an api secret: 401, then the version from /v2/foreign ge
   assert.equal(n.calls[1].body.method, 'get_version');
 });
 
+test('a remote node that answers 401 is not asked again (its secret is never sent)', async () => {
+  const n = node({
+    'GET /v1/version': reply(401, null),
+    'POST /v2/foreign': reply(200, { result: { Ok: { node_version: '4.0.3' } } }),
+  });
+  assert.deepEqual(await fetchNodeVersion('https://node.example.org:3413', n), { ok: false, reason: 'HTTP 401' });
+  assert.deepEqual(n.calls.map(c => c.key), ['GET /v1/version']);
+});
+
 test('401 everywhere is reported as HTTP 401', async () => {
   const n = node({ 'GET /v1/version': reply(401, null), 'POST /v2/foreign': reply(401, null) });
   assert.deepEqual(await fetchNodeVersion('http://127.0.0.1:3413', n), { ok: false, reason: 'HTTP 401' });
@@ -52,5 +61,5 @@ test('unreachable and timeout', async () => {
   const slow = { fetch: (url, opts) => new Promise((resolve, reject) => opts.signal.addEventListener('abort', () => {
     const e = new Error('aborted'); e.name = 'AbortError'; reject(e);
   })), timeoutMs: 20 };
-  assert.deepEqual(await fetchNodeVersion('https://slow.example', slow), { ok: false, reason: 'no reply within 0 s' });
+  assert.deepEqual(await fetchNodeVersion('https://slow.example', slow), { ok: false, reason: 'no reply within 1 s' });
 });

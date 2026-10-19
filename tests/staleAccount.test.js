@@ -68,3 +68,10 @@ test('a new wallet still defaults to ~/.epic after another account was checked',
   assert.equal(cs.defaultAccountWalletdir, path.join(home, 'main'));
   assert.equal(cs.defaultWalletRoot, path.join(root, '.epic'));
 });
+
+test('an entry with no saved folder gives init and no folder name', async () => {
+  const cs = new ConfigService({ emit() {} });
+  cs.appConfig = { account_dirs: [{ account: 'blank', userhomedir: '', network: 'mainnet', isdefault: false }] };
+  assert.equal(await cs.startCheck('blank'), 'init');
+  assert.equal(cs.missingWalletDir, '');
+});

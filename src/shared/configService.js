@@ -855,13 +855,13 @@ epicbox_port = 443
       //check if user home dir exist.
       //if home dir is not found then user have to select one
 
-      //the folder of this account, or '' when it exists (for the login error)
+      //for the login error: the saved folder of this account that is not there ('' when no folder is saved)
       this.missingWalletDir = '';
       if (window.nodeFs.existsSync(userHomedir)) {
           this.emitter.emit('checkSuccess', 'user wallet dir exist');
       } else {
           initWallet = true;
-          this.missingWalletDir = userHomedir;
+          this.missingWalletDir = userHomedir == defaultUserdir ? '' : userHomedir;
           this.emitter.emit('checkFail', 'user wallet dir does not exist');
           return 'init';
       }
