@@ -55,6 +55,7 @@ function emptyData() {
 export const LABEL_MAX = 32;
 export function cleanLabel(label) {
   return typeof label === 'string'
+    //eslint-disable-next-line no-control-regex -- control characters are exactly what is removed
     ? Array.from(label.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim()).slice(0, LABEL_MAX).join('').trim() : '';
 }
 
