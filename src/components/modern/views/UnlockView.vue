@@ -10,15 +10,44 @@
           <p>{{ $t('msg.modern.unlock.unlock_lead') }}</p>
         </div>
         <form class="e-panel" novalidate @submit.prevent>
-          <div class="e-field">
-            <label class="e-label" data-field>{{ $t('msg.modern.unlock.wallet') }}</label>
-            <AccountField ref="accountField" placeholder="default" required="true" />
-          </div>
+          <!-- several wallets: which one -->
+          <fieldset v-if="wallets.length > 1" class="e-wpick">
+            <legend class="e-label">{{ $t('msg.wallets.wallet') }}</legend>
+            <div class="e-wpick-list">
+              <label v-for="w in wallets" :key="w.id" :title="w.dataDir">
+                <input type="radio" name="unlock-wallet" :value="w.id" v-model="selectedId" :aria-describedby="'unlock-wf-' + w.id" @change="missing = null" />
+                <span class="e-dot" aria-hidden="true"></span>
+                <span class="e-wpick-text">
+                  <span class="e-wpick-name">{{ nameOf(w) }}</span>
+                  <small :id="'unlock-wf-' + w.id" class="e-mono e-wpick-dir" translate="no">{{ folderOf(w) }}</small>
+                </span>
+                <span v-if="badge(w.network)" class="e-tag e-warn">{{ badge(w.network) }}</span>
+              </label>
+            </div>
+          </fieldset>
+          <p v-else-if="selected && (selected.label || badge(selected.network))" class="e-unlock-single">
+            <EIcon name="wallet" size="sm" /><span>{{ selectedName }}</span>
+            <span v-if="badge(selected.network)" class="e-tag e-warn">{{ badge(selected.network) }}</span>
+          </p>
           <div class="e-field">
             <label class="e-label" data-field>{{ $t('msg.password') }}</label>
             <PasswordField ref="passwordField" placeholder="********" required="true" name="password" />
             <p v-if="unlockError" class="e-error-msg" role="alert"><EIcon name="alertc" /><span>{{ unlockError }}</span></p>
           </div>
+
+          <!-- startCheck: the wallet's folder is gone -->
+          <div v-if="missing" class="e-notice e-risk e-missing" role="alert">
+            <EIcon name="alertc" />
+            <div>
+              <b>{{ $t('msg.wallets.missing_title') }}</b>
+              <p>{{ $t('msg.wallets.missing_lead') }} <span class="e-mono" translate="no">{{ missing.dir }}</span></p>
+              <div class="e-row">
+                <button type="button" class="e-btn e-btn-sm e-btn-danger" @click="askRemove"><EIcon name="trash" />{{ $t('msg.wallets.remove_from_list') }}</button>
+                <button type="button" class="e-btn e-btn-sm" @click="retry"><EIcon name="refresh" />{{ $t('msg.wallets.try_again') }}</button>
+              </div>
+            </div>
+          </div>
+
           <button
             type="submit"
             class="e-btn e-btn-primary e-btn-block e-btn-lg e-unlock-go"
@@ -27,8 +56,7 @@
           ><EIcon name="lockopen" />{{ $t('msg.modern.unlock.unlock') }}</button>
         </form>
         <div class="e-auth-alt">
-          <router-link to="/create">{{ $t('msg.modern.unlock.welcome_create') }}</router-link>
-          <router-link to="/restore">{{ $t('msg.modern.unlock.restore_link') }}</router-link>
+          <router-link to="/new">{{ $t('msg.wallets.create_or_add') }}</router-link>
         </div>
       </div>
 
@@ -67,6 +95,21 @@
       </div>
     </div>
     <AuthFoot />
+
+    <EDialog
+      :open="!!removeTarget"
+      role="alertdialog"
+      icon="trash"
+      tone="risk"
+      :title="$t('msg.wallets.remove_title', [removeTarget ? removeTarget.name : ''])"
+      :description="$t('msg.wallets.remove_text')"
+      @update:open="(v) => { if (!v) removeTarget = null; }"
+    >
+      <template #foot>
+        <button type="button" class="e-btn e-btn-ghost" @click="removeTarget = null">{{ $t('msg.cancel') }}</button>
+        <button type="button" class="e-btn e-btn-danger" @click="confirmRemove"><EIcon name="trash" />{{ $t('msg.wallets.remove_from_list') }}</button>
+      </template>
+    </EDialog>
   </div>
 </template>
 
@@ -74,15 +117,15 @@
   import Login from '@/components/Login.vue';
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
+  import EDialog from '@/components/modern/ui/EDialog.vue';
   import StageList from '@/components/modern/ui/StageList.vue';
-  import AccountField from '@/components/modern/form/AccountField.vue';
   import PasswordField from '@/components/modern/form/PasswordField.vue';
   import BrandTile from '@/components/modern/onboarding/BrandTile.vue';
   import AuthFoot from '@/components/modern/onboarding/AuthFoot.vue';
   import { captureToast, fieldLabels } from '@/components/modern/onboarding/helpers';
 
   export default reskin(Login, {
-    components: { EIcon, StageList, AccountField, PasswordField, BrandTile, AuthFoot },
+    components: { EIcon, EDialog, StageList, PasswordField, BrandTile, AuthFoot },
     mixins: [fieldLabels],
     data() {
       return {
@@ -95,8 +138,7 @@
     },
     computed: {
       accountName() {
-        const a = this.accountField && this.accountField.defaultValue;
-        return a || this.$t('msg.modern.unlock.this_wallet');
+        return this.selectedName || this.$t('msg.modern.unlock.this_wallet');
       },
     },
     watch: {
@@ -142,6 +184,7 @@
       },
       retry() {
         this.failure = null;
+        this.missing = null;
         this.login();
       },
       passwordInput() {

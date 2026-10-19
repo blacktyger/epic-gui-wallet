@@ -230,23 +230,31 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
         if(!isFormAllValid.includes(false)){
 
 
-          this.configService.updateConfig({
-
-            check_node_api_http_addr: this.nodeserverField.defaultValue.trim(),
-            locale: this.localeSelected,
-            walletlisten_on_startup: this.walletlisten_on_startup,
-            node_background: this.node_background,
-            epicbox_background: this.epicbox_background,
-            epicbox_domain: this.epicboxDomain.trim(),
-
-          });
-          this.configService.checkTomlFile();
-
-          let updated = 0;
-          if(this.nodeserverField.select == 'external'){
-            updated = await this.$userService.updateUserByAccount(this.configService.configAccount, {nodeInternal:false, epicbox_domain: this.epicboxDomain.trim()});
-          }else{
-            updated = await this.$userService.updateUserByAccount(this.configService.configAccount, {nodeInternal:true, epicbox_domain: this.epicboxDomain.trim()});
+          const nodeInternal = this.nodeserverField.select != 'external';
+          const epicboxDomain = this.epicboxDomain.trim();
+          let updated = false;
+          try{
+            //the wallet's settings (and the app's language) in settings.json; the toml is rendered again
+            updated = this.configService.updateConfig({
+              check_node_api_http_addr: this.nodeserverField.defaultValue.trim(),
+              locale: this.localeSelected,
+              walletlisten_on_startup: this.walletlisten_on_startup,
+              node_background: this.node_background,
+              epicbox_background: this.epicbox_background,
+              epicbox_domain: epicboxDomain,
+              nodeInternal: nodeInternal,
+            }) !== false;
+            //the User row the store reads (nodeInternal, Epicbox)
+            const wallet = this.configService.wallet || {};
+            await this.$userService.ensureUser(this.configService.walletId, {
+              name: wallet.label || '',
+              language: this.localeSelected,
+              nodeInternal: nodeInternal,
+              epicbox_domain: epicboxDomain,
+            });
+          }catch(e){
+            console.log('[settings] not saved: ' + (e && e.message ? e.message : e));
+            updated = false;
           }
 
           /*todo simple node restart user update wallet restart here*/

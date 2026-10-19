@@ -8,14 +8,14 @@
     :step-key="step"
   >
     <template #side-foot>
-      <button v-if="fromRoute == 'navbar' && step === 'step1'" type="button" class="e-btn e-btn-ghost e-btn-sm" @click="backToDashbaord()"><EIcon name="arrowl" />{{ $t('msg.modern.unlock.back_to_wallet') }}</button>
+      <button v-if="step === 'step1'" type="button" class="e-btn e-btn-ghost e-btn-sm" @click="backToDashbaord()"><EIcon name="arrowl" />{{ $t('msg.modern.unlock.back_to_wallet') }}</button>
     </template>
 
     <!-- step 1: name and language -->
     <div v-show="step === 'step1'">
       <div class="e-onb-two">
         <div class="e-field">
-          <label class="e-label" data-field>{{ $t('msg.modern.unlock.setup_name') }}</label>
+          <label class="e-label" data-field>{{ $t('msg.wallets.label') }} <span class="e-faint e-small">{{ $t('msg.wallets.optional') }}</span></label>
           <TextField ref="textField" fieldname="name" />
         </div>
         <div class="e-field">
@@ -25,7 +25,7 @@
           </select>
         </div>
       </div>
-      <p class="e-help e-setup-help">{{ $t('msg.modern.unlock.setup_name_help') }}</p>
+      <p class="e-help e-setup-help">{{ $t('msg.wallets.label_hint') }}</p>
     </div>
 
     <!-- step 2: the node -->
@@ -53,7 +53,7 @@
         <section>
           <h2 class="e-onb-rv-h">{{ $t('msg.modern.unlock.step_prefs') }}</h2>
           <dl class="e-facts">
-            <dt>{{ $t('msg.modern.unlock.review_name') }}</dt><dd>{{ textField.defaultValue }}</dd>
+            <dt>{{ $t('msg.wallets.label') }}</dt><dd>{{ labelValue || $t('msg.wallets.no_label') }}</dd>
             <dt>{{ $t('msg.modern.unlock.review_language') }}</dt><dd>{{ langs[localeSelected] || localeSelected }}</dd>
           </dl>
           <button type="button" class="e-link-btn" :aria-label="$t('msg.modern.unlock.change_prefs')" @click="prevStep('step1')">{{ $t('msg.modern.unlock.change') }}</button>
@@ -79,12 +79,6 @@
         </section>
       </div>
       <p class="e-onb-later"><EIcon name="settings" /><span>{{ $t('msg.modern.unlock.setup_later') }}</span></p>
-
-      <!-- after Open wallet: the login opens the wallet, its steps show here (loginStage) -->
-      <div v-if="isSaving && store.state.loginStage" class="e-panel e-progress-card e-setup-opening">
-        <h2 class="e-rs-h">{{ $t('msg.modern.unlock.setup_opening') }}</h2>
-        <StageList :stages="openStages" :current="store.state.loginStage" :label="$t('msg.modern.unlock.setup_opening')" />
-      </div>
     </div>
 
     <template #actions>
@@ -100,7 +94,7 @@
       ><span v-if="nodeserverField.checking" class="e-spinner" aria-hidden="true"></span>{{ $t('msg.modern.unlock.continue') }}<EIcon name="arrowr" /></button>
       <button v-else-if="step === 'step3'" type="button" class="e-btn e-btn-primary" @click="nextStep('step4')">{{ $t('msg.modern.unlock.continue') }}<EIcon name="arrowr" /></button>
       <button v-else type="button" class="e-btn e-btn-primary" :aria-disabled="isSaving ? 'true' : null" @click="save">
-        <span v-if="isSaving" class="e-spinner" aria-hidden="true"></span><EIcon v-else :name="isExistingSetup ? 'check' : 'lockopen'" />{{ isExistingSetup ? $t('msg.modern.unlock.setup_save') : $t('msg.modern.unlock.setup_open') }}
+        <span v-if="isSaving" class="e-spinner" aria-hidden="true"></span><EIcon v-else name="check" />{{ $t('msg.modern.unlock.setup_save') }}
       </button>
     </template>
   </OnboFrame>
@@ -110,7 +104,6 @@
   import SetupWizard from '@/components/SetupWizard.vue';
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
-  import StageList from '@/components/modern/ui/StageList.vue';
   import TextField from '@/components/modern/form/TextField.vue';
   import NodeserverField from '@/components/modern/form/NodeserverField.vue';
   import OnboFrame from '@/components/modern/onboarding/OnboFrame.vue';
@@ -121,7 +114,7 @@
   const PREVIOUS = { step2: 'step1', step3: 'step2', step4: 'step3' };
 
   export default reskin(SetupWizard, {
-    components: { EIcon, StageList, TextField, NodeserverField, OnboFrame },
+    components: { EIcon, TextField, NodeserverField, OnboFrame },
     mixins: [fieldLabels],
     computed: {
       groups() {

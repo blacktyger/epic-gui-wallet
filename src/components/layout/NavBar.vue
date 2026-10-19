@@ -85,6 +85,12 @@
                 </span>
               </a>
               <hr class="navbar-divider">
+              <a v-if="canSwitch" @click="switchWallet" class="navbar-item">
+                <span class="button__text">
+                  <span class="icon"><mdicon name="swap-horizontal" /></span>
+                  <span>{{ $t("msg.wallets.switch") }}</span>
+                </span>
+              </a>
               <a :class="{ 'button__loader': isLoading }" @click="logout" class="navbar-item">
                 <span class="button__text">
                   <span class="icon"><mdicon name="logout" /></span>
@@ -114,6 +120,7 @@ import { computed, ref } from 'vue';
 import { useStore } from '@/store';
 import { useRouter } from '@/router';
 import NavBarMenu from '@/components/layout/NavBarMenu.vue';
+import { walletName, walletList } from '@/components/wallets';
 
 export default {
   name: 'NavBar',
@@ -161,7 +168,6 @@ export default {
 
     const router = useRouter()
     const isLoading = ref(false);
-    const accountName = ref('default');
 
     router.afterEach(() => {
       isMenuNavBarActive.value = false
@@ -206,18 +212,37 @@ export default {
     }
   },
   
-  async created() {
-
-    this.accountName = this.configService.configAccount;
+  computed: {
+    //the open wallet: its label (the User row's name, so a new label shows at once), else "Wallet 2"
+    accountName() {
+      const name = this.store.state.user && this.store.state.user.name;
+      if (name) return name;
+      return walletName(this.configService.wallet, walletList(this.configService));
+    },
+    //Switch wallet: only with more than one wallet in the list
+    canSwitch() {
+      return walletList(this.configService).length > 1;
+    },
   },
 
   methods: {
+    //the folder that holds the wallet's data (wallet_data)
     async openepichidden(){
-     await window.openepichidden.open(this.configService.defaultAccountWalletdir);
+      const dir = this.configService.walletDataDir;
+      if (dir) await window.openepichidden.open(dir);
     },
     async logout(){
       this.isLoading = true;
       this.emitter.emit('app.logout')
+    },
+    /* lock this wallet as Log out does, but also stop its Epicbox listener even when it runs in the
+       background; then Unlock shows the wallet picker. One wallet is open at a time */
+    async switchWallet(){
+      if(this.isLoading){
+        return;
+      }
+      this.isLoading = true;
+      this.emitter.emit('app.logout', {switching: true})
     },
     
   }

@@ -1,0 +1,288 @@
+/*
+ * The wallet list of GUI 6.1 (configService.settings, shared/settingsStore.js) as the screens
+ * show it, and the logic the first-run screens share: opening a wallet with its password,
+ * opening a wallet folder, removing a wallet from the list. Used by the Classic components;
+ * their Modern reskins inherit it.
+ */
+import { i18n } from '@/i18n';
+
+const t = (...a) => i18n.global.t(...a);
+
+/* the wallets in the list, [] while the settings can't be read */
+export function walletList(configService) {
+  try {
+    return configService && configService.settings ? configService.settings.wallets() : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+/* what a wallet is called: its label, else "Wallet 1", "Wallet 2"… by its place in the list */
+export function walletName(wallet, list) {
+  if (!wallet) return '';
+  if (wallet.label && String(wallet.label).trim()) return String(wallet.label).trim();
+  const i = (list || []).findIndex(w => w.id === wallet.id);
+  return t('msg.wallets.wallet_n', [i >= 0 ? i + 1 : 1]);
+}
+
+/* the network as a badge: nothing for mainnet */
+export function networkBadge(network) {
+  return network && network !== 'mainnet' ? network.charAt(0).toUpperCase() + network.slice(1) : '';
+}
+
+/* the last two segments of a folder (…/alpha/main), Windows or POSIX separators */
+export function pathTail(dir, segments = 2) {
+  const parts = String(dir || '').split(/[\\/]+/).filter(Boolean);
+  return parts.slice(-segments).join('/');
+}
+
+/* a folder for a secondary line: its last segments, '…/' in front when shortened */
+export function folderTail(dir, segments = 3) {
+  const parts = String(dir || '').split(/[\\/]+/).filter(Boolean);
+  return (parts.length > segments ? '…/' : '') + parts.slice(-segments).join('/');
+}
+
+/* labels need not be unique: when another wallet shows the same name, its folder tells them apart */
+export function walletHint(wallet, list) {
+  if (!wallet) return '';
+  const name = walletName(wallet, list);
+  const same = (list || []).some(w => w.id !== wallet.id && walletName(w, list) === name);
+  return same ? pathTail(wallet.dataDir) : '';
+}
+
+/* a long folder path, shortened in the middle (the full one goes in a title attribute) */
+export function shortPath(dir, max = 46) {
+  const s = String(dir || '');
+  if (s.length <= max) return s;
+  const keep = max - 1;
+  const head = Math.ceil(keep * 0.4);
+  return s.slice(0, head) + '…' + s.slice(s.length - (keep - head));
+}
+
+/* a path under the user's home as ~/… (the home is the folder that holds .epic) */
+export function homeShort(dir, configService) {
+  const s = String(dir || '');
+  const epicDir = configService && configService.paths && configService.paths.legacy && configService.paths.legacy.epicDir;
+  if (!epicDir) return s;
+  const home = epicDir.replace(/[\\/]\.epic[\\/]?$/, '');
+  if (home && home !== epicDir && s.startsWith(home) && /[\\/]/.test(s.charAt(home.length))) {
+    return '~' + s.slice(home.length);
+  }
+  return s;
+}
+
+export function formatBytes(bytes) {
+  const n = Number(bytes) || 0;
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let i = 0, v = n;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return (i === 0 ? String(v) : v.toFixed(v < 10 ? 1 : 0)) + ' ' + units[i];
+}
+
+/* a date (ISO string or ms) as the user's locale writes it; '' when unknown */
+export function formatDate(value, locale) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '';
+  try {
+    return d.toLocaleDateString(locale || undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch (e) {
+    return d.toISOString().slice(0, 10);
+  }
+}
+
+/* the first-start scan App.vue ran, handed to the found screen so it does not scan twice */
+let firstRunScan = null;
+export function keepScan(scan) { firstRunScan = scan; }
+export function takeScan() { const s = firstRunScan; firstRunScan = null; return s; }
+
+/* a wallet is open in this window (the store holds its User row) */
+export function isLoggedIn(store) {
+  const u = store && store.state && store.state.user;
+  return !!(u && Object.keys(u).length);
+}
+
+/* the language a new User row gets: the app's choice, else the language the window runs in */
+export function appLocale(configService) {
+  try {
+    const app = configService.settings.app();
+    if (app && app.locale) return app.locale;
+  } catch (e) { /* settings unreadable */ }
+  return i18n.global.locale || 'en';
+}
+
+/*
+ * Opening a wallet with its password: Login, and Create / Restore right after they made the
+ * wallet. The stages show in store.state.loginStage (StartupProgress, StageList).
+ */
+export const walletOpen = {
+  data() {
+    //old wallet processes were found and are being closed: show that step too
+    return { closingProcesses: false };
+  },
+  computed: {
+    //what has to happen before the dashboard; the node, listeners and balance refresh follow in the background
+    stages() {
+      return [
+        { key: 'check', label: this.$t('msg.login.stage_check') },
+        { key: 'processes', label: this.$t('msg.login.stage_processes') },
+        ...(this.closingProcesses ? [{ key: 'closing', label: this.$t('msg.login.stage_closing') }] : []),
+        { key: 'wallet', label: this.$t('msg.login.stage_wallet') },
+        { key: 'unlock', label: this.$t('msg.login.stage_unlock') },
+      ];
+    },
+  },
+  methods: {
+    /* check the wallet's files, close leftover processes, then open the wallet.
+       'opened' | 'missing' (its folder is gone) | 'failed' (the reason was shown in a toast) */
+    async openWallet(walletId, password) {
+      const started = performance.now();
+      const lap = (step) => console.log('[login] ' + step + ' +' + Math.round(performance.now() - started) + ' ms');
+      const store = this.$store;
+      this.closingProcesses = false;
+
+      store.commit('loginStage', 'check');
+      const action = await this.configService.startCheck(walletId);
+      lap('config checked: ' + action);
+      if (action === 'missing') {
+        store.commit('loginStage', '');
+        return 'missing';
+      }
+      if (action !== 'login') {
+        store.commit('loginStage', '');
+        throw new Error(this.$t('msg.wallets.check_failed', [action]));
+      }
+
+      //App has started - first close running wallet and node server process
+      store.commit('loginStage', 'processes');
+      const processKilled = await this.configService.killEpicProcess();
+      lap('process scan');
+      //no owner_api is left, so walletService.start can skip its own scan: nothing was found, or
+      //everything found was killed and its ports are free; otherwise (kept or not killed) it scans again
+      let knownNotRunning = processKilled === null;
+      if (processKilled) {
+        //wait until the closed processes released their ports, not a fixed 5 s
+        this.closingProcesses = true;
+        store.commit('loginStage', 'closing');
+        const portsFree = await this.configService.waitForKilledPorts();
+        knownNotRunning = this.configService.allKilled && portsFree;
+        lap('old processes closed');
+      }
+
+      //the User row (store, contacts) of this wallet, made on its first login
+      const cfg = this.configService.config || {};
+      const wallet = this.configService.wallet || {};
+      const user = await this.$userService.ensureUser(walletId, {
+        name: wallet.label || '',
+        language: appLocale(this.configService),
+        nodeInternal: !!cfg.nodeInternal,
+        epicbox_domain: cfg.epicbox_domain || '',
+      });
+      if (user) store.commit('user', user);
+
+      if (!(await this.startWallet(password, knownNotRunning, lap))) return 'failed';
+      //the wallet used last is the one Unlock offers next time
+      try {
+        if (this.configService.settings.defaultWalletId() !== walletId) this.configService.settings.setDefaultWallet(walletId);
+      } catch (e) { /* the list changed meanwhile: keep the old default */ }
+      return 'opened';
+    },
+
+    /* start the node and the wallet api, then log in.
+       Only opening the wallet is waited for: the node check, the listeners and the first balance
+       refresh run after the dashboard is shown, with their status there (App.vue). */
+    async startWallet(password, knownNotRunning, lap = () => {}) {
+      const store = this.$store;
+      //the node starts (or is checked) alongside, it is not waited for
+      this.emitter.emit('app.nodeStart');
+
+      store.commit('loginStage', 'wallet');
+      const canLogin = await this.$walletService.start(password, false, knownNotRunning, (stage) => {
+        store.commit('loginStage', stage);
+        lap('wallet service started');
+      });
+      lap('wallet opened');
+      store.commit('loginStage', '');
+
+      if (canLogin && canLogin.success) {
+        this.emitter.emit('app.accountLoggedIn');
+        //HTTP listener, then Epicbox once the node has synced
+        this.emitter.emit('app.startListeners', password);
+        return true;
+      }
+      this.$walletService.stopWallet();
+      const msg = canLogin && canLogin.msg;
+      this.$toast.error(canLogin && canLogin.portInUse ? this.$t('msg.login.port_in_use', [canLogin.portInUse])
+        : (msg && msg.message ? msg.message : String(msg || this.$t('msg.wallets.open_failed'))));
+      return false;
+    },
+
+    /* a wallet is open (Settings › Add another wallet): close it the way Lock does, staying on this page */
+    logoutCurrent() {
+      if (!isLoggedIn(this.$store)) return Promise.resolve();
+      return new Promise((resolve) => this.emitter.emit('app.logout', { stay: true, done: resolve }));
+    },
+  },
+};
+
+/*
+ * Open a wallet folder (Welcome › Advanced, Settings › Add another wallet): pick a folder,
+ * configService.openExistingWallet; when its network can't be told, ask for it and try again.
+ * folderOpened(wallet) is called on success (each screen decides where to go).
+ */
+export const walletFolder = {
+  data() {
+    return {
+      folderError: '',
+      //the folder whose network has to be chosen: {dir}
+      folderAsk: null,
+      folderNetwork: 'mainnet',
+      folderBusy: false,
+    };
+  },
+  methods: {
+    async pickWalletFolder() {
+      this.folderError = '';
+      this.folderAsk = null;
+      const picked = await window.api.showOpenDialog();
+      if (!picked || picked.canceled || !picked.filePaths || !picked.filePaths[0]) return;
+      await this.openWalletFolder(picked.filePaths[0]);
+    },
+    async openWalletFolder(dir, network) {
+      this.folderBusy = true;
+      this.folderError = '';
+      try {
+        const r = await this.configService.openExistingWallet(dir, network);
+        if (r && r.ok && r.wallet) {
+          this.folderAsk = null;
+          await this.folderOpened(r.wallet);
+          return;
+        }
+        const reason = r && r.reason || '';
+        if (reason === 'network' && !network) {
+          this.folderAsk = { dir };
+          return;
+        }
+        this.folderError = this.folderReason(reason, dir);
+      } catch (e) {
+        this.folderError = e && e.message ? e.message : String(e);
+      } finally {
+        this.folderBusy = false;
+      }
+    },
+    folderWithNetwork() {
+      if (this.folderAsk) this.openWalletFolder(this.folderAsk.dir, this.folderNetwork);
+    },
+    folderReason(reason, dir) {
+      switch (reason) {
+        case 'noseed': return this.$t('msg.wallets.folder_noseed', [dir]);
+        case 'listed': return this.$t('msg.wallets.folder_listed');
+        case 'network': return this.$t('msg.wallets.folder_network');
+        case 'readonly': return this.$t('msg.wallets.settings_readonly');
+        default: return this.$t('msg.wallets.folder_failed', [reason || '?']);
+      }
+    },
+    //override in the screen
+    async folderOpened() {},
+  },
+};

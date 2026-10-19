@@ -55,6 +55,7 @@
   import { useStore } from '@/store';
   import { useRouter } from '@/router';
   import { reloadUi, getUi, markRestart, takeRestart } from '@/shared/theme';
+  import { keepScan } from '@/components/wallets';
   import AsideRight from '@/components/layout/AsideRight.vue'
   import ModalNodeBox from '@/components/layout/NodesyncedModalBox.vue'
   import ModalFirstsyncBox from '@/components/layout/FirstsyncModalBox.vue'
@@ -260,7 +261,7 @@
         this.requestRefresh();
       });
 
-      this.emitter.on('app.logout', () => this.logoutApp());
+      this.emitter.on('app.logout', (opts) => this.logoutApp(opts || {}));
 
       /* switch between the Modern and Classic interface: log out cleanly, then start the
          renderer again with the other stylesheet (shared/theme.js) */
@@ -294,7 +295,8 @@
       this.emitter.on('app.accountLoggedIn', async () => {
 
         //load user selected locale
-        this.locale = this.configService.config && this.configService.config.locale ? this.configService.config.locale : 'en';
+        //"" = the OS language, already set at start
+        this.locale = this.configService.config && this.configService.config.locale ? this.configService.config.locale : this.locale;
 
         window.debug ? console.log('accountLoggedIn') : null;
 
@@ -327,29 +329,49 @@
       window.api.resize(1024, 768);
 
 
-      if(this.configService.appHasAccounts()){
-        //upgrade wallet 3.0 paths to 4.0 paths
-        if(await !this.configService.checkAccountsFolderStructure()){
-
-          console.log('checking accounts folder structure has issues');
-
-        }else{
-
-          //continue to login page
-          this.$router.push('/login');
-        }
-
-
-      } else {
-
-        window.debug ? console.log('app has no accounts') : null;
-        this.$router.push('/new');
-      }
+      await this.routeAtStart();
 
     },
     methods: {
 
-      async logoutApp(){
+      /* where the app opens: an error screen when settings.json can't be read (nothing is
+         written then), the found screen once when an older Epic Wallet left wallets, else
+         Unlock when there are wallets and Welcome when there are none */
+      async routeAtStart(){
+        const settings = this.configService.settings;
+        if(settings.readOnly){
+          console.log('[start] settings file unreadable: ' + settings.loadError);
+          this.$router.push({name: 'settingsError'});
+          return;
+        }
+        if(settings.isFirstRun()){
+          const started = performance.now();
+          let scan = null;
+          try{
+            scan = await this.$importer.scan();
+          }catch(e){
+            console.log('[start] scan for older wallets failed: ' + (e && e.message ? e.message : e));
+          }
+          const wallets = scan && scan.wallets ? scan.wallets.length : 0;
+          const chains = scan && scan.chains ? scan.chains.length : 0;
+          console.log('[start] older wallets: ' + wallets + ', chain data: ' + chains + ' +' + Math.round(performance.now() - started) + ' ms');
+          if(wallets || chains){
+            keepScan(scan);
+            this.$router.push({name: 'found'});
+            return;
+          }
+          //a failed scan is not recorded: it runs again on the next start
+          if(scan){
+            settings.markScanned(0);
+          }
+        }
+        this.$router.push(settings.wallets().length ? '/login' : '/new');
+      },
+
+      /* opts.stay: the caller (Add another wallet) goes on from its own page; opts.done: called once closed;
+         opts.switching: Switch wallet, so this wallet's Epicbox listener stops even when it runs in the
+         background (the built-in node stays as set) */
+      async logoutApp(opts = {}){
         this.stopRefreshNode();
         this.stopRefresh();
         this.loginSession = (this.loginSession || 0) + 1;
@@ -370,7 +392,7 @@
         //one process scan for listener, Tor, wallet and node (walletService.stopAll)
         const started = performance.now();
         const cfg = this.configService.config || {};
-        await this.$walletService.stopAll(cfg.epicbox_background, cfg.node_background != false);
+        await this.$walletService.stopAll(opts.switching ? false : cfg.epicbox_background, cfg.node_background != false);
         this.store.commit('walletEpicboxService', false);
         console.log('[logout] processes stopped +' + Math.round(performance.now() - started) + ' ms');
 
@@ -381,7 +403,12 @@
 
         this.store.dispatch('toggleFullPage', true);
         this.store.commit('asideStateToggle', false);
-        this.$router.push('/login');
+        if(!opts.stay){
+          this.$router.push('/login');
+        }
+        if(typeof opts.done === 'function'){
+          opts.done();
+        }
       },
 
       waitForNodesynced (variable, timeoutMs = 10*60*1000) {
@@ -493,8 +520,7 @@
                 nodesynced: true,
                 check_node_api_http_addr: 'http://127.0.0.1:3413'
               });
-
-              this.configService.checkTomlFile();
+              //updateConfig renders the wallet's toml again
               this.nodesyncedModalOpen();
 
             }
