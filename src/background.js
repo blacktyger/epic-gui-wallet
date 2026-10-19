@@ -800,6 +800,8 @@ const secretClipboard = createSecretClipboard({ clipboard, platform: process.pla
 ipcMain.handle('clipboard-copy-secret', (event, text) => fromAppWindow(event) && secretClipboard.copy(String(text)));
 ipcMain.handle('clipboard-wipe-secret', (event) => fromAppWindow(event) && secretClipboard.wipe());
 app.on('will-quit', () => secretClipboard.wipe());
+//app.exit() (relaunch after a new app folder, the shutdown's grace exit) skips will-quit
+process.on('exit', () => secretClipboard.wipe());
 
 ipcMain.handle('resize', (event, width, height) => {
   if (!fromAppWindow(event)) return;
@@ -836,6 +838,7 @@ ipcMain.on('walletCreateFailed', (event, data) => {
 });
 
 ipcMain.on('nodeBackground', (event, data) => {
+  if (!fromAppWindow(event)) return;
   noderuninbackground = data;
 });
 
