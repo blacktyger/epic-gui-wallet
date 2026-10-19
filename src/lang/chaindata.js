@@ -8,6 +8,7 @@ export default {
   folder_chain_only: 'That folder holds blockchain data (chain_data), not a wallet.',
   folder_chain_wallet: 'The wallet that uses it is in the folder above it:',
   folder_none: 'No wallet was found in {0}.',
+  folder_none_more: 'What a wallet folder looks like',
   folder_none_what: 'A wallet’s folder holds a folder named wallet_data, with a file named wallet.seed in it.',
   folder_none_where: 'Older Epic Wallets keep their wallets in {0}, or in a folder next to it.',
   folder_open: 'Open this wallet',
