@@ -19,7 +19,7 @@ label), a "go back" export to the old format.
 
 | What | Linux / macOS | Windows |
 |---|---|---|
-| 6.1 root | `~/.epic-gui` | `%LOCALAPPDATA%\EpicCash\Wallet` |
+| 6.1 root | `~/.epic-gui` | `%USERPROFILE%\.epic-gui` |
 | Settings, wallet list | `<root>/settings.json` (+ `.bak`) | same |
 | A wallet's config (toml, secrets, log) | `<root>/wallets/<id>/` | same |
 | A wallet made in 6.1 (seed) | `<root>/wallets/<id>/wallet_data` | same |
@@ -31,11 +31,12 @@ Why these names:
 - No version and no package name in any path. `epic_3-0-0_config.json` outlived its version, and the
   userData rename `EpicWallet` → `epic-desktop-wallet` is what lost 5.x contacts in 6.0. The root is
   fixed in code (`src/shared/appPaths.js`) and set as `userData` before anything reads it.
-- `~/.epic-gui` sits next to `~/.epic` (the CLI's and old GUIs' folder), so support can find it and the
-  name says whose it is. One rule for Linux and macOS keeps docs short.
-- Windows: `%LOCALAPPDATA%`, not `%APPDATA%` (the brief's suggestion). Roaming profiles copy `%APPDATA%`
-  to a server at logoff; that must not happen to seeds, wallet databases or GBs of chain data. Neither is
-  moved by OneDrive Known Folder Move. `EpicCash\Wallet` is the usual vendor\product form.
+- `.epic-gui` in the user's home on every platform (Patryk, 2026-10-19), next to `.epic` (the CLI's and
+  old GUIs' folder, `%USERPROFILE%\.epic` on Windows), so support can find it, the name says whose it is,
+  and one rule and one layout cover Linux, macOS and Windows. Trade-off accepted: on a Windows domain with
+  roaming profiles the folder (seeds, wallet databases, chain data) roams with the profile, exactly as
+  `%USERPROFILE%\.epic` always has; `%LOCALAPPDATA%` would not roam. OneDrive Known Folder Move does not
+  move it (it moves Desktop, Documents and Pictures only).
 - Everything 6.1 owns is under one folder: one thing to back up, one thing the uninstaller option may
   remove (never `<root>\wallets`).
 
@@ -244,13 +245,16 @@ importer.markFresh(keys)
 - The old profile is read from a copy while an old app may be running: a half-written log can drop recent
   contacts. The found screen asks to close the older app first.
 - Windows: covered by unit tests on `path.win32` and code reading only; the uninstaller option
-  (fix/userdata-migration) must add `<root>\app` and never remove `<root>\wallets` or `settings.json`.
+  "also remove app settings" (fix/userdata-migration) may remove only `%USERPROFILE%\.epic-gui\app`
+  (6.1's Chromium profile: contacts, caches), `\logs` and `\gui_processes.json`, and never `\wallets`,
+  `\node` (chain data), `settings.json` (the list of wallets, incl. imported ones) or `location.json`.
 - Users who look in `~/.epic` for new wallets won't find them; release note and the Settings page show the
   folder.
 
 ## Decisions (approved by Patryk, 2026-10-19)
 
-1. `%LOCALAPPDATA%\EpicCash\Wallet` instead of `%APPDATA%` (reason above).
+1. `.epic-gui` in the home folder on every platform (`%USERPROFILE%\.epic-gui` on Windows); replaces the
+   earlier `%LOCALAPPDATA%\EpicCash\Wallet`.
 2. Reuse old chain data in place (default) rather than copy.
 3. New wallets default to the public node `node.epiccash.com` (built-in node one switch away in Settings).
 4. Labels, switching and the Unlock picker as in "Several wallets" above.
