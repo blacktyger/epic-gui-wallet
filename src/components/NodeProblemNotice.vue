@@ -12,7 +12,7 @@
         </h2>
       </div>
       <div class="message-body">
-        <p class="node-problem-address">{{ $t('msg.node_problem.address_changed', [addressChange.from, addressChange.to]) }}</p>
+        <p class="node-problem-change">{{ $t('msg.node_problem.address_changed', [addressChange.from, addressChange.to]) }}</p>
         <div class="buttons node-problem-actions">
           <button type="button" class="button is-small is-dark is-outlined" @click="store.commit('nodeAddressChange', null)">{{ $t('msg.node_problem.ok') }}</button>
         </div>
@@ -141,6 +141,9 @@
   .node-problem-address {
     overflow-wrap: anywhere;
     font-family: monospace;
+  }
+  .node-problem-change {
+    overflow-wrap: anywhere;
   }
   .node-problem .message-body p + p,
   .node-problem-epicbox {
