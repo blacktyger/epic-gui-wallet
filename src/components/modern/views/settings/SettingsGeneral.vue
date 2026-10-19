@@ -8,6 +8,27 @@
           <p class="e-stg-lede">{{ $t('msg.modern.settings.node_hint') }}</p>
           <NodeserverField ref="nodeserverField" />
         </div>
+        <!-- the built-in node uses chain data of an older app (Settings.vue resetChainData) -->
+        <div v-if="chainDirInUse" class="e-set-row e-stacked">
+          <div class="e-stg-paths">
+            <b id="stg-chain-l">{{ $t('msg.chaindata.in_use_label') }}</b>
+            <p>{{ $t('msg.chaindata.in_use_hint') }}</p>
+            <p class="e-mono e-stg-path" translate="no">{{ chainDirInUse }}</p>
+          </div>
+          <div v-if="!chainResetAsk" class="e-ctl">
+            <button ref="chainResetButton" type="button" class="e-btn e-sm" :disabled="saving" aria-describedby="stg-chain-l" @click="askChainReset"><EIcon name="download" />{{ $t('msg.chaindata.reset') }}</button>
+          </div>
+          <div v-else class="e-notice e-gold" role="group" aria-labelledby="stg-chain-ask">
+            <EIcon name="info" />
+            <div>
+              <p id="stg-chain-ask">{{ $t('msg.chaindata.reset_confirm') }}</p>
+              <div class="e-row e-notice-actions">
+                <button type="button" class="e-btn e-btn-sm e-btn-ghost" :disabled="saving" @click="cancelChainReset">{{ $t('msg.cancel') }}</button>
+                <button ref="chainResetGo" type="button" class="e-btn e-btn-sm e-btn-primary" :disabled="saving" @click="resetChainData">{{ $t('msg.chaindata.reset_go') }}</button>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="e-set-row">
           <div>
             <b id="stg-bg-l">{{ $t('msg.modern.settings.node_bg_label') }}</b>
@@ -132,9 +153,10 @@
     <div v-if="dirty" v-toast-lift class="e-stg-savebar" role="region" :aria-label="$t('msg.modern.settings.unsaved')">
       <EIcon name="pencil" size="sm" />
       <span role="status">{{ $t('msg.modern.settings.unsaved') }}</span>
-      <span v-if="chainChecking" class="e-small e-dim" role="status">{{ $t('msg.chaindata.checking') }}</span>
-      <button type="button" class="e-btn e-btn-ghost e-sm e-right" :disabled="nodeserverField.checking || chainChecking" @click="discard">{{ $t('msg.modern.settings.discard') }}</button>
-      <button ref="saveButton" type="button" class="e-btn e-btn-primary e-sm" :class="{ 'e-is-busy': nodeserverField.checking || chainChecking }" :disabled="nodeserverField.checking || chainChecking" :aria-busy="nodeserverField.checking || chainChecking ? 'true' : null" @click="saveChanges">
+      <!-- always rendered, so the text change is announced -->
+      <span class="e-small e-dim" role="status">{{ chainChecking ? $t('msg.chaindata.checking') : '' }}</span>
+      <button type="button" class="e-btn e-btn-ghost e-sm e-right" :disabled="nodeserverField.checking || saving" @click="discard">{{ $t('msg.modern.settings.discard') }}</button>
+      <button ref="saveButton" type="button" class="e-btn e-btn-primary e-sm" :class="{ 'e-is-busy': nodeserverField.checking || chainChecking }" :disabled="nodeserverField.checking || saving" :aria-busy="nodeserverField.checking || chainChecking ? 'true' : null" @click="saveChanges">
         <EIcon name="check" />{{ $t('msg.save') }}
       </button>
     </div>
@@ -214,7 +236,7 @@
     methods: {
       /* Settings.vue's save; the form counts as saved once the config holds what the form shows */
       async saveChanges() {
-        //false: the chain data prompt was closed, nothing was saved
+        //false: nothing was saved (the chain data prompt was closed, or a save already runs)
         if (await this.save() === false) return;
         const c = this.configService.config || {};
         if (c.locale === this.localeSelected && (c.epicbox_domain || '') === String(this.epicboxDomain || '').trim()

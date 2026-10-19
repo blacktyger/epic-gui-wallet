@@ -7,6 +7,20 @@
 
 
           <NodeserverField ref="nodeserverField" class="is-fullwidth" />
+          <!-- the built-in node uses chain data of an older app (Use this data, or the found screen) -->
+          <div v-if="chainDirInUse" class="field chain-in-use">
+            <p class="label" id="chainInUseLabel">{{ $t('msg.chaindata.in_use_label') }}</p>
+            <p class="is-family-monospace chain-offer-dir" translate="no">{{ chainDirInUse }}</p>
+            <p class="help">{{ $t('msg.chaindata.in_use_hint') }}</p>
+            <button v-if="!chainResetAsk" ref="chainResetButton" type="button" class="button is-small" :disabled="saving" aria-describedby="chainInUseLabel" @click="askChainReset">{{ $t('msg.chaindata.reset') }}</button>
+            <div v-else class="chain-reset-ask" role="group" aria-labelledby="chainResetText">
+              <p id="chainResetText" class="help">{{ $t('msg.chaindata.reset_confirm') }}</p>
+              <div class="buttons">
+                <button type="button" class="button is-small" :disabled="saving" @click="cancelChainReset">{{ $t('msg.cancel') }}</button>
+                <button ref="chainResetGo" type="button" class="button is-small is-warning" :disabled="saving" @click="resetChainData">{{ $t('msg.chaindata.reset_go') }}</button>
+              </div>
+            </div>
+          </div>
           <div class="field">
 
             <div class="control">
@@ -78,8 +92,9 @@
           <div class="field">
             <div class="control">
               <p>&nbsp;</p>
-              <button ref="saveButton" class="button is-primary" :class="{'is-loading': nodeserverField.checking || chainChecking}" :disabled="nodeserverField.checking || chainChecking" @click="save" >{{ $t("msg.save") }}</button>
-              <p v-if="chainChecking" class="help" role="status">{{ $t('msg.chaindata.checking') }}</p>
+              <button ref="saveButton" class="button is-primary" :class="{'is-loading': nodeserverField.checking || chainChecking}" :disabled="nodeserverField.checking || saving" @click="save" >{{ $t("msg.save") }}</button>
+              <!-- always rendered, so the text change is announced -->
+              <p class="help" role="status">{{ chainChecking ? $t('msg.chaindata.checking') : '' }}</p>
             </div>
           </div>
 
@@ -87,8 +102,9 @@
       </div>
     </div>
     <!-- the built-in node switched on: older chain data found, asked once (shared/chainOffer.js) -->
-    <div class="modal" :class="{ 'is-active': !!chainOffer }" role="dialog" aria-modal="true" aria-labelledby="chainOfferTitle" aria-describedby="chainOfferLead" @keydown.esc="answerChainOffer('cancel')">
-      <div class="modal-background" @click="answerChainOffer('cancel')"></div>
+    <!-- a native modal <dialog> (as RemoveWalletDialog): the page behind is inert, focus stays inside;
+         Esc and the backdrop close it without an answer, as in Modern (EDialog) -->
+    <dialog ref="chainOfferDlg" class="chain-offer-dlg" aria-labelledby="chainOfferTitle" aria-describedby="chainOfferLead" @cancel.prevent="answerChainOffer('cancel')" @click="onChainOfferBackdrop">
       <div v-if="chainOffer" class="modal-card chain-offer">
         <header class="modal-card-head"><p id="chainOfferTitle" class="modal-card-title">{{ $t('msg.chaindata.offer_title') }}</p></header>
         <section class="modal-card-body content">
@@ -107,7 +123,7 @@
           <button ref="chainOfferUse" type="button" class="button is-primary" @click="answerChainOffer('used')">{{ $t('msg.chaindata.offer_use') }}</button>
         </footer>
       </div>
-    </div>
+    </dialog>
   </section>
 
 
@@ -160,7 +176,10 @@ import { formatBytes, formatDate } from "@/components/wallets";
       //the interface (Modern / Classic) and the Modern colour scheme, app-wide (shared/theme.js)
       //chainOffer: the chain data offered ({chain, others}, shared/chainOffer.js pickOffer) while asked
       return { uiSelected: getUi(), uiSaved: getUi(), schemeSelected: getScheme(), scaleSelected: getScale(), scales: SCALES,
-        chainChecking: false, chainOffer: null, chainOfferResolve: null };
+        chainChecking: false, chainOffer: null, chainOfferResolve: null,
+        //saving: a save runs (scan and prompt included); Save and Download again do nothing meanwhile
+        //chainDirInUse: the older chain folder the built-in node uses (settings nodeChainDir), or ''
+        saving: false, chainDirInUse: '', chainResetAsk: false };
     },
     computed: {
       chainOfferSize() {
@@ -180,8 +199,22 @@ import { formatBytes, formatDate } from "@/components/wallets";
         this.changeNodeBackgroundSetting();
       });
     },
+    watch: {
+      //the Classic prompt; Modern's template has its own (EDialog)
+      chainOffer(v){
+        const d = this.$refs.chainOfferDlg;
+        if (!d) return;
+        if (v && !d.open && d.showModal) d.showModal();
+        if (!v && d.open) d.close();
+      },
+    },
     beforeUnmount(){
       this.emitter.off('settings.nodeserverFieldChanged');
+      //Settings left during the scan or the prompt: the save stops, nothing is saved
+      this.leaving = true;
+      this.answerChainOffer('cancel');
+      const d = this.$refs.chainOfferDlg;
+      if (d && d.open) d.close();
     },
     mounted(){
       this.nodeInternal = this.store.state.user.nodeInternal;
@@ -193,6 +226,7 @@ import { formatBytes, formatDate } from "@/components/wallets";
       this.epicboxDomain = this.configService.config['epicbox_domain'];
       this.walletlisten_on_startup = this.configService.config['walletlisten_on_startup'];
       this.node_background = this.configService.config['node_background'];
+      this.readChainDirInUse();
 
 
 
@@ -261,8 +295,9 @@ import { formatBytes, formatDate } from "@/components/wallets";
         try {
           chains = await this.$importer.scanChains();
         } finally {
-          this.chainChecking = false;
+          if (!this.leaving) this.chainChecking = false;
         }
+        if (this.leaving) return false;
         //the scan failed: nothing is kept, so it runs again at the next save
         if (!chains) return true;
         const offer = pickOffer(chains, network);
@@ -275,20 +310,78 @@ import { formatBytes, formatDate } from "@/components/wallets";
           this.chainOffer = offer;
           this.$nextTick(() => { if (this.$refs.chainOfferUse) this.$refs.chainOfferUse.focus(); });
         });
-        this.chainOffer = null;
         this.chainOfferResolve = null;
+        if (this.leaving) return false;
+        this.chainOffer = null;
         if (this.$refs.saveButton) this.$refs.saveButton.focus();
-        if (answer === 'cancel') return false;
+        if (answer === 'cancel') {
+          this.$toast.show(this.$t('msg.chaindata.offer_cancelled'));
+          return false;
+        }
+        //not saved: nothing changed (settingsStore.setChainOffer), so the node keeps its own folder
         if (!cs.settings.setChainOffer(network, offerRecord(answer, offer.chain.dir)) && answer === 'used') {
           this.$toast.error(this.$t('msg.chaindata.offer_not_saved'));
         }
+        this.readChainDirInUse();
         return true;
       },
       answerChainOffer(answer){
         if (this.chainOfferResolve) this.chainOfferResolve(answer);
       },
+      onChainOfferBackdrop(e){
+        //a click on the backdrop lands on the <dialog> element itself
+        if (e.target === this.$refs.chainOfferDlg) this.answerChainOffer('cancel');
+      },
 
+      readChainDirInUse(){
+        try {
+          this.chainDirInUse = this.configService.settings.nodeChainDir(this.configService.defaultAccountNetwork) || '';
+        } catch (e) {
+          this.chainDirInUse = '';
+        }
+      },
+      askChainReset(){
+        this.chainResetAsk = true;
+        this.$nextTick(() => { if (this.$refs.chainResetGo) this.$refs.chainResetGo.focus(); });
+      },
+      cancelChainReset(){
+        this.chainResetAsk = false;
+        this.$nextTick(() => { if (this.$refs.chainResetButton) this.$refs.chainResetButton.focus(); });
+      },
+      /*
+       * Download the blockchain again: the built-in node goes back to its own folder
+       * (<root>/node/<net>/chain_data), the offer is not made again (settingsStore.forgetChainDir),
+       * and a built-in node in use restarts with it (App.vue app.restartNode: stop, then start).
+       * The older folder is never deleted: it belongs to the older app (or the user's own node).
+       */
+      resetChainData(){
+        if (this.saving) return;
+        const cs = this.configService;
+        const dir = this.chainDirInUse;
+        if (!cs.settings.forgetChainDir(cs.defaultAccountNetwork)) {
+          this.$toast.error(this.$t('msg.chaindata.reset_failed'));
+          return;
+        }
+        this.chainResetAsk = false;
+        this.readChainDirInUse();
+        //the toml with the node's own db_root (nodeStart writes it again too)
+        cs.startCheckNode();
+        this.$toast.success(this.$t('msg.chaindata.reset_done', [dir]));
+        if (this.store.state.user.nodeInternal) this.emitter.emit('app.restartNode');
+        this.$nextTick(() => { if (this.$refs.saveButton) this.$refs.saveButton.focus(); });
+      },
+
+      /* false: nothing was saved (the chain data prompt was closed, Settings left, or a save runs) */
       async save(){
+        if (this.saving) return false;
+        this.saving = true;
+        try {
+          return await this.saveForm();
+        } finally {
+          this.saving = false;
+        }
+      },
+      async saveForm(){
 
         this.resetFormErrors();
         let isFormAllValid = [];
@@ -303,28 +396,31 @@ import { formatBytes, formatDate } from "@/components/wallets";
           //the Epicbox config the wallet uses until now, to see what the save changes
           const savedEpicbox = this.$walletService.readEpicboxConfig();
 
-          const nodeInternal = this.nodeserverField.select != 'external';
+          //the form as it is now, read once: a change during the scan or the prompt isn't mixed in
+          const nodeType = this.nodeserverField.select;
+          const nodeInternal = nodeType != 'external';
+          const form = {
+            check_node_api_http_addr: String(this.nodeserverField.defaultValue || '').trim(),
+            locale: this.localeSelected,
+            walletlisten_on_startup: this.walletlisten_on_startup,
+            node_background: this.node_background,
+            epicbox_domain: String(this.epicboxDomain || '').trim(),
+            nodeInternal: nodeInternal,
+          };
           //before the node's toml is written: it may get an older chain folder (db_root)
           if(nodeInternal && !(await this.offerChainData())){
             return false;
           }
-          const epicboxDomain = this.epicboxDomain.trim();
+          const epicboxDomain = form.epicbox_domain;
           let updated = false;
           try{
             //the wallet's settings (and the app's language) in settings.json; the toml is rendered again
-            updated = this.configService.updateConfig({
-              check_node_api_http_addr: this.nodeserverField.defaultValue.trim(),
-              locale: this.localeSelected,
-              walletlisten_on_startup: this.walletlisten_on_startup,
-              node_background: this.node_background,
-              epicbox_domain: epicboxDomain,
-              nodeInternal: nodeInternal,
-            }) !== false;
+            updated = this.configService.updateConfig(form) !== false;
             //the User row the store reads (nodeInternal, Epicbox)
             const wallet = this.configService.wallet || {};
             await this.$userService.ensureUser(this.configService.walletId, {
               name: wallet.label || '',
-              language: this.localeSelected,
+              language: form.locale,
               nodeInternal: nodeInternal,
               epicbox_domain: epicboxDomain,
             });
@@ -335,10 +431,10 @@ import { formatBytes, formatDate } from "@/components/wallets";
 
           /*todo simple node restart user update wallet restart here*/
           if(updated){
-            this.store.commit('nodeType', this.nodeserverField.select);
+            this.store.commit('nodeType', nodeType);
             this.$toast.success(this.$t("msg.settings.settings_saved"));
             this.emitter.emit('app.nodeStart');
-            this.emitter.emit('app.selectLocale', this.localeSelected);
+            this.emitter.emit('app.selectLocale', form.locale);
             //a new Epicbox server: our listener moves to it (App.vue, walletService.applyEpicboxChange)
             if(this.$walletService.token){
               this.emitter.emit('app.applyEpicbox', {saved: savedEpicbox});
@@ -347,11 +443,10 @@ import { formatBytes, formatDate } from "@/components/wallets";
           }else{
             this.$toast.error(this.$t("msg.settings.error_save"));
           }
-
-
+          return updated;
 
         }else{
-          return;
+          return false;
         }
 
       },
@@ -361,7 +456,11 @@ import { formatBytes, formatDate } from "@/components/wallets";
 </script>
 
 <style scoped>
-  .chain-offer { width: min(640px, calc(100vw - 32px)); }
+  .chain-offer-dlg { padding: 0; border: 0; background: transparent; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: visible; }
+  .chain-offer-dlg::backdrop { background: rgba(10, 10, 10, 0.86); }
+  .chain-offer { width: 100%; max-height: calc(100vh - 32px); margin: 0; }
+  .chain-in-use .chain-offer-dir { margin-bottom: 0.25rem; }
+  .chain-reset-ask .buttons { margin-top: 0.5rem; }
   .chain-offer-facts { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; margin: 0.75rem 0; }
   .chain-offer-facts dt { font-weight: 600; }
   .chain-offer-facts dd { margin: 0; min-width: 0; }

@@ -26,4 +26,14 @@ export default {
   offer_use: 'Use this data',
   offer_fresh: 'Download fresh',
   offer_not_saved: 'Your choice could not be saved. The built-in node will download the blockchain.',
+  offer_cancelled: 'Settings not saved. Press Save again and choose Use this data or Download fresh.',
+
+  //Settings: the built-in node uses an older app's chain data (settingsStore nodeChainDir)
+  in_use_label: 'Blockchain data',
+  in_use_hint: 'The built-in node uses blockchain data from this folder, which an older Epic Wallet made.',
+  reset: 'Download the blockchain again',
+  reset_confirm: 'The built-in node will use its own folder and download the whole blockchain again, which takes hours. The data in the folder above stays where it is: nothing is deleted.',
+  reset_go: 'Download again',
+  reset_done: 'The built-in node will download the blockchain again. The older data stays in {0}.',
+  reset_failed: 'The settings could not be saved, so the built-in node still uses this folder.',
 };
