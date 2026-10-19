@@ -37,6 +37,7 @@ export function inputAfterSend(vm, value) {
 /* an Epicbox address (key@domain, or the bare key that starts with "es"), as the Send form reads it */
 export function isEpicboxAddress(address) {
   const v = String(address == null ? '' : address).trim();
+  if (/^https?:\/\//i.test(v) || /\.onion(?::\d+)?\/?$/i.test(v)) return false;
   return v.includes('@') || v.startsWith('es') || v.startsWith('epicbox');
 }
 

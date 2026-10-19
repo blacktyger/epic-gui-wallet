@@ -97,7 +97,7 @@ export default {
   rcv_finalize_text: 'You sent a transaction file and got a response back. Finalize it to post the payment.',
   rcv_open: 'Open',
   rcv_listener: 'Listener',
-  rcv_listener_on_text: 'Epicbox and HTTP are listening. If you stop it, Epicbox payments wait at the relay until you start it again, HTTP payments to you fail, and transaction files still work.',
+  rcv_listener_on_text: 'Epicbox and HTTP are listening. If you stop it, Epicbox payments wait at the relay for a while, HTTP payments to you fail, and transaction files still work.',
 
   //Sign / finalize a transaction file
   file_choose: 'Choose file…',

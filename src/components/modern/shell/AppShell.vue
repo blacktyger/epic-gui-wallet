@@ -11,7 +11,7 @@
         <div>
           <b>Epic Cash</b><br>
           <a v-if="version" class="e-side-version" :href="releasesUrl" :title="$t('msg.modern.version_link')" @click.prevent="openRelease" @auxclick.prevent>
-            {{ $t('msg.modern.wallet_version', { v: version }) }}<span class="e-sr-only"> {{ $t('msg.modern.version_link') }}</span>
+            {{ $t('msg.modern.wallet_version', { v: version }) }}
           </a>
         </div>
       </div>
@@ -126,8 +126,10 @@
     },
     methods: {
       /* this version's release on GitHub (or the releases page), in the browser */
-      openRelease() {
-        openRelease(window.api, (url) => window.openlink.open(url));
+      async openRelease() {
+        if (this.releaseOpening) return;
+        this.releaseOpening = true;
+        try { await openRelease(window.api, (url) => window.openlink.open(url)); } finally { this.releaseOpening = false; }
       },
       isCurrent(item) {
         return this.$route.path == item.to || (SECTIONS[item.to] || []).includes(this.$route.name);

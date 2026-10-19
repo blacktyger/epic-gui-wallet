@@ -130,6 +130,11 @@ export default {
           this.method = 'http';
           this.address = {};
 
+        }else if(this.addressSelected && ![this.address.onion, this.address.externalOne, this.address.externalTwo].some(x => x && String(x).trim() == String(newVal).trim())){
+          //the picked contact's address was edited away: its method (Epicbox) no longer applies
+          this.addressSelected = false;
+          this.method = 'http';
+          this.address = {};
         }
       },
       //no payment proof over Epicbox (shared/sendForm.js): untick it whenever it is on there

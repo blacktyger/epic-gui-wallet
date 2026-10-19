@@ -36,7 +36,7 @@ function isPlainObject(v) {
 function cleanText(v, max) {
   if (typeof v !== 'string') return null;
   // eslint-disable-next-line no-control-regex
-  const s = v.replace(/[\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩]/g, '').trim();
+  const s = v.replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '').trim();
   return s && s.length <= max ? s : null;
 }
 function fraction(v) {

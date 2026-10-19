@@ -46,6 +46,9 @@ test('an Epicbox address is recognised (key@domain, bare es… key)', () => {
   assert.equal(isEpicboxAddress('  esAbc  '), true);
   assert.equal(isEpicboxAddress('http://1.2.3.4:3415'), false);
   assert.equal(isEpicboxAddress('abcdef.onion'), false);
+  //a Tor address that happens to start with "es"
+  assert.equal(isEpicboxAddress('esxk2ozzbdq7r5dz3ad7i5lafdvrtq4wbvz7bcejzfsiipcdrmqi4yd.onion'), false);
+  assert.equal(isEpicboxAddress('http://esxk2ozzbdq7r5dz3ad7i5lafdvrtq4wbvz7bcejzfsiipcdrmqi4yd.onion'), false);
   assert.equal(isEpicboxAddress(''), false);
   assert.equal(isEpicboxAddress(null), false);
 });

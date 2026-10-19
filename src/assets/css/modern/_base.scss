@@ -304,6 +304,7 @@ button.e-svc:hover { background: var(--hover); }
 .e-switch input:checked + .e-track::after { transform: translateX(16px); background: var(--accent-ink); }
 .e-switch input:focus-visible + .e-track { outline: 2px solid var(--accent); outline-offset: 2px; }
 .e-switch input:disabled + .e-track { opacity: 0.4; }
+.e-switch:has(input:disabled) { cursor: not-allowed; }
 
 /* Choice cards: a radio group where each option needs a sentence. */
 .e-choices { display: grid; gap: var(--sp-3); }
