@@ -41,6 +41,8 @@ export default function useFormValidation() {
           const amount = epicToNano(raw);
           if(problem == 'decimals'){
             message = i18n.global.t("msg.validators.decimals", [fieldName]);
+          }else if(problem == 'large'){
+            message = i18n.global.t("msg.validators.spendable");
           }else if(problem){
             message = i18n.global.t("msg.validators.number", [fieldName]);
           }else if(amount === 0){

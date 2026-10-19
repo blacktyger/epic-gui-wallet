@@ -154,6 +154,8 @@ test('typed amounts convert to nanoepic exactly', () => {
   assert.equal(amountProblem('1.123456789'), 'decimals');
   assert.equal(amountProblem('abc'), 'number');
   assert.equal(amountProblem('0.5'), null);
+  assert.equal(amountProblem('99999999999'), 'large');   //more than exists: not "must be a number" (QA T07)
+  assert.equal(amountProblem('1,5'), 'number');
 });
 
 test('nanoepic back to EPIC', () => {

@@ -51,7 +51,11 @@ export function amountProblem(value){
   if(/^\d*\.\d{9,}$/.test(s)){
     return 'decimals';
   }
-  return epicToNano(s) === null ? 'number' : null;
+  if(epicToNano(s) === null){
+    //a well-formed number that is just too big (more EPIC than exists): 'large', not "must be a number"
+    return /^\d+(\.\d*)?$/.test(s) ? 'large' : 'number';
+  }
+  return null;
 }
 
 /* 88900000 -> "0.889": the shortest exact EPIC string, for the amount input */
