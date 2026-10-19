@@ -651,41 +651,14 @@ contextBridge.exposeInMainWorld('config', {
   async isPortReachable(host, port){
     return await isPortReachable(port, {host: host});
   },
-  async getPublicIp(){
-    let response = await fetch('https://api.ipify.org?format=json', {
-      method:'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    }).then(function(res){
-
-      if (!res.ok) { throw Error(res) }
-      return res.json();
-    }).catch(function(error){
-
-      let msg = 'Error connecting api.ipify.org ';
-      return false;
-    });
-    return response;
+  /* the public IP (api.ipify.org) and the EPIC price (CoinGecko): asked by the main process
+     (background.js 'lookup'), which sends no Origin and no app name; the JSON reply, else false */
+  getPublicIp(){
+    return ipcRenderer.invoke('lookup', 'ip');
   },
 
-  async getPrice(){
-
-    let response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=epic-cash', {
-      method:'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    }).then(function(res){
-
-      if (!res.ok) { throw Error(res) }
-      return res.json();
-    }).catch(function(error){
-
-      let msg = 'Error connecting coingecko ';
-      return false;
-    });
-    return response;
+  getPrice(){
+    return ipcRenderer.invoke('lookup', 'price');
   },
   getResourcePath(){
     return resourcePath;
@@ -796,6 +769,9 @@ contextBridge.exposeInMainWorld('api', {
     },
     //live public nodes from status.btlabs.uk, fetched by the main process (null when unavailable)
     nodeDirectory: (chain) => ipcRenderer.invoke('node-directory', chain),
+    //a node API call (shared/nodeFetch.js), sent by the main process: {url, method, headers, body,
+    //redirect, timeoutMs} → {ok, status, text} | {error}
+    nodeFetch: (req) => ipcRenderer.invoke('node-fetch', req),
     //start the app again: after choosing another app folder (configService.setRoot), which is read at start
     relaunch: () => ipcRenderer.invoke('app-relaunch'),
     

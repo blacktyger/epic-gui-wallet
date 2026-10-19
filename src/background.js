@@ -14,6 +14,7 @@ import { createPtyHost } from './shared/ptyHost'
 import { createSessionSecret } from './shared/sessionSecret'
 import { createShutdown, SIGNALS } from './shared/shutdown'
 import { registerSessionIpc, wipeWithWindow, wipeWithApp } from './shared/sessionIpc'
+import { httpUrl, isAppUrl, isInside, nodeRequest, contentSecurityPolicy } from './shared/security'
 
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -55,6 +56,14 @@ autoUpdater.allowPrerelease = false;
 autoUpdater.autoDownload = false;
 let win;
 let noderuninbackground = false;
+
+//requests from the main process (the node list, node checks) and the page don't name the app or
+//its version: a plain browser user agent, as the preload's price and IP lookups send
+app.userAgentFallback = 'Mozilla/5.0';
+
+//the dev server in development (electron:serve), else '' (the app is served on app://)
+const devServer = process.env.WEBPACK_DEV_SERVER_URL || '';
+const csp = contentSecurityPolicy({ dev: !!devServer, devServer: devServer ? new URL(devServer).origin : '' });
 
 
 contextMenu({
@@ -191,7 +200,7 @@ protocol.registerSchemesAsPrivileged([
 
 //serve the app files on app:// (replaces the plugin's createProtocol, which uses the deprecated registerBufferProtocol)
 function createProtocol(scheme){
-  protocol.handle(scheme, (req) => {
+  protocol.handle(scheme, async (req) => {
     let reqPath = path.normalize(new URL(req.url).pathname);
     if(reqPath === '/' || reqPath === '\\'){
       reqPath = '/index.html';
@@ -200,8 +209,56 @@ function createProtocol(scheme){
     if(!filePath.startsWith(__dirname + path.sep)){
       return new Response(null, {status: 404});
     }
-    return net.fetch(pathToFileURL(filePath).toString());
+    //every file with the page's Content-Security-Policy (shared/security.js)
+    const res = await net.fetch(pathToFileURL(filePath).toString());
+    const headers = new Headers(res.headers);
+    headers.set('Content-Security-Policy', csp);
+    return new Response(res.body, {status: res.status, statusText: res.statusText, headers});
   });
+}
+
+/*
+ * The window shows the app and nothing else: no navigation away from it (a link without a handler,
+ * a redirect), no new windows, no <webview>, no permission prompts (camera, notifications...).
+ * An http(s) link goes to the system browser instead (openExternal below).
+ */
+function openExternal(url){
+  const u = httpUrl(url);
+  if (!u) {
+    log.info('open-external: refused a link that is not http(s)');
+    return false;
+  }
+  shell.openExternal(u).catch((e) => log.info('open-external failed: ' + (e && e.message)));
+  return true;
+}
+app.on('web-contents-created', (event, contents) => {
+  const guard = (e, url) => {
+    if (isAppUrl(url, devServer)) return;
+    e.preventDefault();
+    openExternal(url);
+  };
+  contents.on('will-navigate', guard);
+  contents.on('will-redirect', guard);
+  contents.on('will-attach-webview', (e) => e.preventDefault());
+  //a link that would open a new app window (target=_blank, middle-click, window.open) opens in the
+  //browser instead; the new window would have this window's preload and powers
+  contents.setWindowOpenHandler(({ url }) => {
+    openExternal(url);
+    return { action: 'deny' };
+  });
+});
+
+/* the page's Content-Security-Policy on the dev server's files too (app:// sets it in createProtocol);
+   no permission is ever granted to the page (it asks for none: the clipboard goes through IPC) */
+function secureSession(ses){
+  if (devServer) {
+    const origin = new URL(devServer).origin;
+    ses.webRequest.onHeadersReceived({ urls: [origin + '/*'] }, (details, callback) => {
+      callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [csp] } });
+    });
+  }
+  ses.setPermissionRequestHandler((wc, permission, callback) => callback(false));
+  ses.setPermissionCheckHandler(() => false);
 }
 
 async function createWindow() {
@@ -221,20 +278,21 @@ async function createWindow() {
       // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
       nodeIntegration: false,
       contextIsolation: true,
-      //the preload script uses Node.js (child processes, fs); renderers are sandboxed by default since Electron 20
+      /* not sandboxed: the preload is the app's process layer. It starts and stops epic, epic-wallet
+         and Tor and keeps the record of them (shared/processOwnership.js), reads and writes the
+         settings and the wallets' tomls for configService (sync calls, all through the renderer),
+         checks ports and writes the log file: a sandboxed preload has no Node.js modules for any of
+         that. Turning the sandbox on means moving all of it into this process behind IPC.
+         What the page can reach instead is limited: the preload exposes no child_process and no
+         plain fs (window.nodeFs is limited to the app's folders, shared/security.js), starts only
+         the app's own binaries, and the page can only run the app's own code (CSP below, no
+         navigation, no new windows, no remote content) */
       sandbox: false,
-      //enableRemoteModule: true,
       preload: path.join(__dirname, 'preload.js'),
-      webSecurity: false
+      webSecurity: true,
+      allowRunningInsecureContent: false,
     }
   });
-
-  //a link that would open a new app window (target=_blank, middle-click, window.open) opens in the
-  //browser instead, http(s) only; the new window would have this window's preload and powers
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//i.test(url)) shell.openExternal(url)
-    return { action: 'deny' }
-  })
 
   //a reload (the interface switch) or a crashed renderer: that session is over
   wipeWithWindow(win.webContents, sessionSecret);
@@ -459,6 +517,7 @@ app.on('activate', () => {
 // Some APIs can only be used after this event occurs.
 app.on('ready', async (event) => {
   if (!primaryInstance) return;
+  secureSession(session.defaultSession);
   //a temp copy of an old profile that couldn't be removed at quit (Windows file locks: the reading
   //session holds its leveldb until the app exits); a scan waits for this, so a retry never meets a new copy
   leftoverImportCleanup = cleanLeftoverImport({ fs, path, root: appLayout.root, log: (m) => log.info(m) }).catch(() => false);
@@ -610,6 +669,70 @@ ipcMain.handle('node-directory', async (event, chain) => {
     return await nodeDirectory.get(String(chain));
   } catch (e) {
     return null;
+  }
+});
+
+//only the app's own window may ask the main process to open things or send requests
+const fromAppWindow = (event) => !!win && !win.isDestroyed() && event.sender === win.webContents;
+
+//a link from the page (About, Credits, the node notice and list): http(s) only, in the system browser
+ipcMain.handle('open-external', (event, url) => fromAppWindow(event) && openExternal(url));
+
+//a folder from the page (the wallet location, Settings): an existing folder of the app or of a
+//listed wallet, in the file manager. Never a file: shell.openPath would run a program
+ipcMain.handle('open-folder', async (event, dir) => {
+  if (!fromAppWindow(event) || typeof dir !== 'string' || !path.isAbsolute(dir)) return false;
+  const known = [appLayout.root, rootInfo.defaultRoot, appLayout.logsDir];
+  try {
+    const s = JSON.parse(fs.readFileSync(appLayout.settingsFile, 'utf8'));
+    for (const w of Array.isArray(s && s.wallets) ? s.wallets : []) {
+      for (const d of [w && w.configDir, w && w.dataDir]) if (typeof d === 'string' && d) known.push(d);
+    }
+  } catch (e) { /* no settings yet: the app's folders only */ }
+  const target = path.resolve(dir);
+  let isDir = false;
+  try { isDir = fs.statSync(target).isDirectory(); } catch (e) { /* not there */ }
+  if (!isDir || !known.some(d => isInside(target, d, path))) {
+    log.info('open-folder: refused a path that is not an app or wallet folder');
+    return false;
+  }
+  const err = await shell.openPath(target);
+  return !err;
+});
+
+//a node API call for the page (shared/nodeFetch.js; what may be sent: shared/security.js
+//nodeRequest). The page's own CSP allows the wallet API on this machine only
+const NODE_REPLY_MAX = 1024 * 1024;
+ipcMain.handle('node-fetch', async (event, req) => {
+  if (!fromAppWindow(event)) return { error: 'not allowed' };
+  const r = nodeRequest(req);
+  if (r.error) return { error: r.error };
+  try {
+    const res = await net.fetch(r.url, { method: r.method, headers: r.headers, body: r.body, redirect: r.redirect,
+      signal: AbortSignal.timeout(r.timeoutMs), credentials: 'omit', cache: 'no-store' });
+    const text = (await res.text()).slice(0, NODE_REPLY_MAX);
+    return { status: res.status, text };
+  } catch (e) {
+    const timeout = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
+    return { error: timeout ? 'timeout' : 'not reachable', timeout };
+  }
+});
+
+//the public IP (the Receive page's http address) and the EPIC price (the header): fixed URLs, asked
+//from here so the page's CSP needs neither host and the request carries no Origin, cookie or app
+//name (userAgentFallback above). The JSON reply, else false
+const LOOKUPS = {
+  ip: 'https://api.ipify.org?format=json',
+  price: 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=epic-cash',
+};
+ipcMain.handle('lookup', async (event, which) => {
+  if (!fromAppWindow(event) || !Object.prototype.hasOwnProperty.call(LOOKUPS, which)) return false;
+  try {
+    const res = await net.fetch(LOOKUPS[which], { headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(10000), credentials: 'omit', cache: 'no-store' });
+    return res.ok ? await res.json() : false;
+  } catch (e) {
+    return false;
   }
 });
 
