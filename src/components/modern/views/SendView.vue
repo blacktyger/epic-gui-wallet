@@ -150,6 +150,8 @@
           type="submit"
           form="e-send-form"
           class="e-btn e-btn-primary e-btn-block e-send-review"
+          :class="{ 'e-is-busy': reviewing }"
+          :aria-busy="reviewing ? 'true' : null"
           :disabled="!canSend"
         >{{ $t('msg.modern.send.review') }}</button>
         <p class="e-help e-send-hint" role="status" aria-live="polite">{{ hint }}</p>
@@ -214,6 +216,7 @@
   import AddressField from '@/components/modern/form/AddressField.vue';
   import ProofAddressField from '@/components/modern/form/ProofAddressField.vue';
   import { formatEpic, nodeSyncPercent } from '@/components/modern/format';
+  import { epicToNano, nanoToEpic } from '@/shared/sendMath';
 
   const HEAD = 6;
   /* how many decimals a typed amount or a number has, 4 to 8 */
@@ -235,6 +238,8 @@
         //the review dialog and what it shows (a snapshot taken when it opens)
         reviewOpen: false,
         rv: null,
+        //"Review send" is checking the amount with the wallet
+        reviewing: false,
       };
     },
     mounted() {
@@ -254,20 +259,27 @@
       locale() { return this.$i18n ? this.$i18n.locale : 'en'; },
       /* what the user typed, as the Classic code sees it */
       toValue() { return ((this.addressField && this.addressField.input) || '').trim(); },
-      amountNum() {
-        const raw = String((this.amountField && this.amountField.input) || '').trim();
-        const n = raw === '' ? 0 : Number(raw);
-        return Number.isFinite(n) && n > 0 ? n : 0;
+      /* the summary works in nanoepic (exact) and shows EPIC */
+      amountNano() {
+        const n = this.amountField ? this.amountField.amountNano : null;
+        return n > 0 ? n : 0;
       },
-      feeNum() {
-        const f = this.amountField && this.amountField.fee;
-        return this.amountNum > 0 && f > 0 ? Number(f) : 0;
+      feeNano() {
+        const f = this.amountField && this.amountField.feeNano;
+        return this.amountNano > 0 && f > 0 ? f : 0;
       },
-      totalNum() { return this.amountNum + this.feeNum; },
-      leftNum() { return this.store.state.summary.spendable - this.totalNum; },
+      spendableNano() { return epicToNano(Number(this.store.state.summary.spendable) || 0) || 0; },
+      amountNum() { return nanoToEpic(this.amountNano); },
+      feeNum() { return nanoToEpic(this.feeNano); },
+      totalNum() { return nanoToEpic(this.amountNano + this.feeNano); },
+      leftNum() { return nanoToEpic(this.spendableNano - this.amountNano - this.feeNano); },
       amountBad() {
         const err = this.amountField && this.amountField.errors && this.amountField.errors.amount;
-        return !!err || this.totalNum > this.store.state.summary.spendable;
+        //the wallet said it has not enough for this amount and its fee
+        const short = !!(this.feeNano && this.amountField.feeShort);
+        //with a fee from the wallet, the wallet's answer counts (the balance on screen may be older)
+        if (this.feeNano) return !!err || short;
+        return !!err || this.amountNano > this.spendableNano;
       },
       summaryReady() { return this.amountNum > 0 && !this.amountBad; },
       unconfirmedText() { return formatEpic(this.store.state.summary.unconfirmed, { locale: this.locale }); },
@@ -277,7 +289,7 @@
         const p = this.withproof && this.proofAddressField && this.proofAddressField.errors && this.proofAddressField.errors.proof_address;
         return !!(a || t || p);
       },
-      canSend() { return this.nodeSynced && !(this.epicboxSelected && !this.epicboxConnected); },
+      canSend() { return this.nodeSynced && !(this.epicboxSelected && !this.epicboxConnected) },
       hint() {
         if (!this.nodeSynced) return this.$t('msg.modern.send.hint_sync');
         if (this.epicboxSelected && !this.epicboxConnected) return this.$t('msg.modern.send.hint_epicbox');
@@ -330,23 +342,29 @@
       },
       /* "Review send": the same checks the Classic Send button runs, then the confirmation */
       async review() {
-        if (!this.canSend || this.isLoadingSend) return;
+        if (!this.canSend || this.isLoadingSend || this.reviewing) return;
         this.resetFormErrors();
         const valid = [];
-        valid.push(this.amountField.validInput(this.store.state.summary.spendable));
+        //the amount check asks the wallet for the fee of exactly this amount (and, after "All",
+        //of spending every coin): that fee is the one shown below and charged by the send
+        this.reviewing = true;
+        try {
+          valid.push(await this.amountField.validInput(this.store.state.summary.spendable));
+        } finally {
+          this.reviewing = false;
+        }
         this.withproof ? valid.push(this.proofAddressField.validInput()) : null;
         valid.push(this.addressField.validInput());
         if (valid.includes(false)) {
           if (this.withproof && this.proofAddressField.errors && this.proofAddressField.errors.proof_address) this.advOpen = true;
           return;
         }
-        //the fee estimate only follows keyup: ask again for exactly this amount
-        this.amountField.fee = 0;
-        try { await this.amountField.getFee(); } catch (e) { /* no fee shown then */ }
         const to = this.addressField.defaultValue;
         const kind = (this.epicboxSelected) ? 'epicbox' : /\.onion/i.test(to) ? 'tor' : 'http';
-        const amount = Number(this.amountField.defaultValue);
-        const fee = Number(this.amountField.fee) > 0 ? Number(this.amountField.fee) : 0;
+        const amountNano = this.amountField.amountNano;
+        const feeNano = this.amountField.feeNano > 0 ? this.amountField.feeNano : 0;
+        const amount = nanoToEpic(amountNano);
+        const fee = nanoToEpic(feeNano);
         //an Epicbox address is compared on its key (before the @), any other address as a whole
         const at = kind == 'epicbox' ? to.indexOf('@') : -1;
         const key = at > 0 ? to.slice(0, at) : to;
@@ -361,7 +379,7 @@
           kind,
           amount,
           fee,
-          total: amount + fee,
+          total: nanoToEpic(amountNano + feeNano),
           dec: Math.max(decimalsOf(this.amountField.defaultValue), decimalsOf(fee)),
           message: this.message,
           proof: this.withproof,

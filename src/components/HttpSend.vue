@@ -99,6 +99,7 @@ const fs = window.nodeFs;
 import { ref } from 'vue';
 import { useStore } from '@/store';
 import { MIN_CONFIRMATIONS } from '@/shared/confirmations';
+import { MAX_OUTPUTS } from '@/shared/sendMath';
 import AmountField from "@/components/form/amountField";
 import ProofAddressField from "@/components/form/proofAddressField";
 import AddressField from "@/components/form/addressField";
@@ -232,30 +233,37 @@ export default {
 
     async sendFile(){
 
-      if(!this.nodeSynced) return;
+      if(!this.nodeSynced || this.isLoadingSendFile) return;
       this.resetFormErrors();
       let isFormAllValid = [];
 
-      isFormAllValid.push(this.amountField.validInput(this.store.state.summary.spendable));
+      //the amount check asks the wallet for the fee of exactly this amount: busy from here
+      this.isLoadingSendFile = true;
+      let amountValid = false;
+      try {
+        amountValid = await this.amountField.validInput(this.store.state.summary.spendable);
+      } catch (e) {
+        amountValid = false;
+      }
+      isFormAllValid.push(amountValid);
       this.withproof ? isFormAllValid.push(this.proofAddressField.validInput()) : null;
 
 
       if(!isFormAllValid.includes(false)){
-        this.isLoadingSendFile = true;
 
-        let tx_data = {
+        let tx_data = Object.assign({
           "src_acct_name": null,
-          "amount": this.amountField.defaultValue * 100000000,
+          //nanoepic, exact (0.29 * 100000000 is not an integer)
+          "amount": this.amountField.amountNano,
           "minimum_confirmations": MIN_CONFIRMATIONS,
-          "max_outputs": 500,
-          "num_change_outputs": 1,
-          "selection_strategy_is_use_all": false,
+          "max_outputs": MAX_OUTPUTS,
           "message": this.message,
           "payment_proof_recipient_address": this.withproof ? this.proofAddressField.defaultValue : null,
           "target_slate_version": null,
           "ttl_blocks": null,
           "send_args": null
-        }
+        //the coins the fee was worked out for (after "All": every coin, no change)
+        }, this.amountField.txSelection());
 
         let res = await this.$walletService.issueSendTransaction(tx_data);
 
@@ -275,6 +283,7 @@ export default {
                 });
               }catch(err){
                 this.$toast.error(err.message);
+                this.isLoadingSendFile = false;
                 return;
               }
 
@@ -309,6 +318,7 @@ export default {
 
         this.isLoadingSendFile = false;
       }else{
+        this.isLoadingSendFile = false;
         return;
       }
 
@@ -318,11 +328,20 @@ export default {
 
     async send(){
 
-      if(!this.nodeSynced || (this.epicboxSelected && !this.epicboxConnected)) return;
+      if(!this.nodeSynced || (this.epicboxSelected && !this.epicboxConnected) || this.isLoadingSend) return;
       this.resetFormErrors();
       let isFormAllValid = [];
 
-      isFormAllValid.push(this.amountField.validInput(this.store.state.summary.spendable));
+      //the amount check asks the wallet for the fee of exactly this amount: busy from here
+      //(the Modern review dialog keeps its busy state through the check and the send)
+      this.isLoadingSend = true;
+      let amountValid = false;
+      try {
+        amountValid = await this.amountField.validInput(this.store.state.summary.spendable);
+      } catch (e) {
+        amountValid = false;
+      }
+      isFormAllValid.push(amountValid);
       this.withproof ? isFormAllValid.push(this.proofAddressField.validInput()) : null;
       isFormAllValid.push(this.addressField.validInput());
 
@@ -333,17 +352,15 @@ export default {
 
 
       if(!isFormAllValid.includes(false)){
-        this.isLoadingSend = true;
 
-        let tx_data = {
+        let tx_data = Object.assign({
 
           "src_acct_name": null,
-          "amount": this.amountField.defaultValue * 100000000,
+          //nanoepic, exact (0.29 * 100000000 is not an integer)
+          "amount": this.amountField.amountNano,
           "message": this.message,
           "minimum_confirmations": MIN_CONFIRMATIONS,
-          "max_outputs": 500,
-          "num_change_outputs": 1,
-          "selection_strategy_is_use_all": false,
+          "max_outputs": MAX_OUTPUTS,
           "target_slate_version": null,
           "ttl_blocks": null,
           "payment_proof_recipient_address": this.withproof ? this.proofAddressField.defaultValue : null,
@@ -355,7 +372,8 @@ export default {
             "fluff": this.dandelion.checked ? false : true
           }
 
-        }
+        //the coins the fee was worked out for (after "All": every coin, no change)
+        }, this.amountField.txSelection());
 
         let res = await this.$walletService.issueSendTransaction(tx_data)
 
@@ -380,9 +398,11 @@ export default {
         }else{
 
 
+          //no answer at all (false) has no error to show
+          const text = (res && res.error && res.error.message) || this.$walletService.lastError || this.$t('msg.httpSend.TxFailed');
           this.store.commit('updates', {
                 "status": "is-danger",
-                "text":   res.error.message,
+                "text":   text,
                 "icon":   "information"
           });
 
@@ -392,6 +412,7 @@ export default {
 
         this.isLoadingSend = false;
       }else{
+        this.isLoadingSend = false;
         return;
       }
 
