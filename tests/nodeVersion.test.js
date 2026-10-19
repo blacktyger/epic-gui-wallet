@@ -2,7 +2,7 @@
 // Replies are the ones recorded from real nodes 3.0.0 to 4.1.0-1 (upgrade-path research, 2026-10-19).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fetchNodeVersion } from '../src/shared/nodeVersion.js';
+import { fetchNodeVersion, withoutUserinfo } from '../src/shared/nodeVersion.js';
 
 const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
 
@@ -84,9 +84,14 @@ function recorded(name) {
       key += ' ' + JSON.parse(opts.body).method;
     }
     const auth = !!(opts.headers && opts.headers.Authorization);
-    calls.push({ key, auth });
+    calls.push({ key, auth, redirect: opts.redirect });
     const rec = (auth && r[key + ' (auth)']) || r[key];
     if (!rec) return { ok: false, status: 404, json: async () => null };
+    //what Chromium's fetch does: follow a redirect unless told 'manual' (then an opaque reply)
+    if (rec.status >= 300 && rec.status < 400) {
+      if (opts.redirect == 'manual') return { ok: false, status: 0, type: 'opaqueredirect', json: async () => null };
+      throw new Error('this fake fetch does not follow redirects: pass redirect manual');
+    }
     if (rec.error) {
       const e = new TypeError('fetch failed');
       if (/Timeout/.test(rec.error)) e.name = 'TimeoutError';
@@ -155,9 +160,11 @@ for (const [name, address, apiSecret, kind, version, statusReadable, statusVia] 
 }
 
 test('the http:// 301 of node.btlabs.uk is not an Epic node when redirects are not followed', async () => {
-  const c = await classifyNode('http://node.btlabs.uk', recorded('http://node.btlabs.uk'));
+  const rec = recorded('http://node.btlabs.uk');
+  const c = await classifyNode('http://node.btlabs.uk', rec);
   assert.equal(c.kind, 'not_epic');
-  assert.equal(c.reason, 'HTTP 301');
+  assert.equal(c.reason, 'redirects elsewhere');
+  assert.ok(rec.calls.length && rec.calls.every(call => call.redirect == 'manual'));
 });
 
 test('ownerStatusToV1 gives the /v1/status shape (recorded stackwallet and local 4.1.0)', () => {
@@ -193,7 +200,7 @@ test('fetchNodeStatus: /v1/status first, /v2/owner only after a 401', async () =
   assert.equal(r2.via, 'owner');
   assert.equal(r2.locked, true);
   assert.equal(r2.status.sync_status, 'no_sync');
-  assert.deepEqual(locked.calls, [{ key: 'GET /v1/status', auth: false }, { key: 'POST /v2/owner get_status', auth: false }]);
+  assert.deepEqual(locked.calls, [{ key: 'GET /v1/status', auth: false, redirect: 'manual' }, { key: 'POST /v2/owner get_status', auth: false, redirect: 'manual' }]);
 
   //4.0.3 with a secret the GUI doesn't have: both 401
   const old = recorded('local 4.0.3 with api secret');
@@ -201,4 +208,11 @@ test('fetchNodeStatus: /v1/status first, /v2/owner only after a 401', async () =
 
   const dead = recorded('https://fastepic.eu:3413');
   assert.deepEqual(await fetchNodeStatus('https://fastepic.eu:3413', { fetch: dead.fetch }), { ok: false, reason: 'not reachable', locked: false });
+});
+
+test('withoutUserinfo: credentials in a saved address never reach the log', () => {
+  assert.equal(withoutUserinfo('https://user:pw@node.example.org:3413'), 'https://node.example.org:3413');
+  assert.equal(withoutUserinfo('http://user@127.0.0.1:3413/x'), 'http://127.0.0.1:3413/x');
+  assert.equal(withoutUserinfo('https://node.epiccash.com:3413'), 'https://node.epiccash.com:3413');
+  assert.equal(withoutUserinfo(undefined), '');
 });

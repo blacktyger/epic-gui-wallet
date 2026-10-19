@@ -466,7 +466,7 @@ const messages = {
       fix_other: 'Use another node',
       fix_upgrade: 'Update your node',
       opens_browser: '(opens in your browser)',
-      switched: 'Now using the built-in node',
+      switched: 'Switched to the built-in node. Log out and in again to finish.',
       switch_failed: 'Could not switch to the built-in node',
       hide: 'Hide',
       hide_label: 'Hide this notice until the next login',

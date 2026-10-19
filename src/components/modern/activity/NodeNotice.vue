@@ -12,11 +12,11 @@
     </div>
   </div>
 
-  <div v-if="problem" class="e-notice e-ov-notice" :class="severe ? 'e-risk' : 'e-warn'"
-       :role="severe ? 'alert' : 'status'" aria-labelledby="e-node-problem-t">
+  <div v-if="problem" class="e-notice e-ov-notice" :class="severe ? 'e-risk' : 'e-warn'" aria-labelledby="e-node-problem-t">
     <EIcon name="alertc" />
     <div>
-      <b id="e-node-problem-t">{{ $t('msg.node_problem.title_' + problem.kind) }}</b>
+      <!-- only the title is announced, not the whole notice with its buttons -->
+      <b id="e-node-problem-t" :role="severe ? 'alert' : 'status'">{{ $t('msg.node_problem.title_' + problem.kind) }}</b>
       <p class="e-nn-addr" translate="no"><span class="e-sr-only">{{ $t('msg.node_problem.node') }}: </span>{{ problem.address || '—' }}</p>
       <p v-if="problem.epicboxSkipped">
         {{ $t('msg.node_problem.epicbox_skipped') }}

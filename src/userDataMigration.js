@@ -17,7 +17,8 @@ const MARKER = '.migrated-from-EpicWallet'
 const USERDATA_DIR_NAME = 'epic-desktop-wallet'
 
 //Point userData at <appData>/epic-desktop-wallet whatever package.json says. Call before anything
-//reads userData (the migration, sessions, windows, electron-log). Never throws.
+//reads userData (the migration, sessions, windows). Never throws. electron-log is required earlier
+//and takes its default log folder from the package name; the GUI's own log is in ~/.epic/log.
 function pinUserDataDir(app, log = console) {
   try {
     const dir = path.join(app.getPath('appData'), USERDATA_DIR_NAME)

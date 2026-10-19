@@ -93,8 +93,10 @@ export default {
               //an existing wallet in OneDrive: open it, but say once why it should move
               const roots = window.config.getOneDriveRoots ? window.config.getOneDriveRoots() : [];
               if(oneDriveRootOf(this.userHomedir, {roots, platform: this.configService.platform})){
+                //the toaster renders HTML: the folder names go in escaped
+                const esc = (v) => String(v).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]);
                 this.$toast.warning(this.$t("msg.walletfolder.onedrive_title") + ': ' +
-                  this.$t("msg.walletfolder.onedrive_warning", [this.userHomedir, this.configService.defaultWalletRoot]), {duration: 20000});
+                  this.$t("msg.walletfolder.onedrive_warning", [esc(this.userHomedir), esc(this.configService.defaultWalletRoot)]), {duration: 20000});
               }
               this.$router.push('/login');
             }
