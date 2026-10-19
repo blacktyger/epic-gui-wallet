@@ -90,8 +90,12 @@ export const removalDialog = {
         const plan = await this.configService.removalPlan(wallet.id, { openId: this.removeOpenId(), folderMissing });
         if (seq === this.removeSeq && this.removeTarget) this.removePlan = plan;
       } catch (e) {
-        //no longer listed (another screen removed it)
-        if (seq === this.removeSeq && this.removeTarget) this.removePlan = { canList: false, canAppFiles: false, canEverything: false, reasons: { list: { key: 'gone' }, appFiles: { key: 'gone' }, everything: { key: 'gone' } } };
+        //'gone': no longer listed (another screen removed it); anything else: can't be removed here
+        let listed = true;
+        try { this.configService.settings.wallet(wallet.id); } catch (e2) { listed = false; }
+        if (listed) console.log('[removal] no plan for ' + wallet.id + ': ' + (e && e.message ? e.message : e));
+        const reason = { key: listed ? 'unknown' : 'gone' };
+        if (seq === this.removeSeq && this.removeTarget) this.removePlan = { canList: false, canAppFiles: false, canEverything: false, reasons: { list: reason, appFiles: reason, everything: reason } };
       }
     },
     closeRemoval() {
