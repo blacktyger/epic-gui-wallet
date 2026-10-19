@@ -1,7 +1,7 @@
 // What the Setup Assistant prefills for configs left by older GUIs (matrix A/C runs). npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { supportedLocale, initialNodeChoice, initialEpicboxDomain, isLocalNodeAddress } from '../src/shared/setupDefaults.js';
+import { supportedLocale, initialNodeChoice, initialEpicboxDomain, isLocalNodeAddress, currentEpicboxDomain } from '../src/shared/setupDefaults.js';
 
 const langs = {'bg': 'България', 'cz': 'Česko', 'de': 'Deutsch', 'en': 'English', 'fa': 'فارسی', 'hi': 'हिन्दी'};
 const DEFAULT = 'epicbox.epiccash.com';
@@ -63,9 +63,18 @@ test('Epicbox: an empty value written by an older assistant (bug) gets the defau
 });
 
 test('Epicbox: a domain the user saved is kept, and so is "off" chosen in a current assistant', () => {
-  assert.equal(initialEpicboxDomain({ config: { version: '5.0.3', epicbox_domain: 'epicbox.epic.tech' }, defaultDomain: DEFAULT }), 'epicbox.epic.tech');
+  assert.equal(initialEpicboxDomain({ config: { version: '5.0.3', epicbox_domain: 'epicbox.example.org' }, defaultDomain: DEFAULT }), 'epicbox.example.org');
   assert.equal(initialEpicboxDomain({ config: { version: '5.0.4', epicbox_domain: ' my.box ' }, defaultDomain: DEFAULT }), 'my.box');
   assert.equal(initialEpicboxDomain({ config: { version: '5.0.4', firstTime: false, epicbox_domain: '' }, defaultDomain: DEFAULT }), '');
   assert.equal(initialEpicboxDomain({ config: { version: '6.0.0', firstTime: false, epicbox_domain: '' }, defaultDomain: DEFAULT }), '');
   assert.equal(initialEpicboxDomain({ config: { version: '5.0.10', firstTime: false, epicbox_domain: '' }, defaultDomain: DEFAULT }), '');
+});
+
+test('Epicbox: the retired domain of 5.0.x (epicbox.epic.tech) becomes the current one', () => {
+  assert.equal(currentEpicboxDomain('epicbox.epic.tech', DEFAULT), DEFAULT);
+  assert.equal(currentEpicboxDomain(' EPICBOX.epic.tech ', DEFAULT), DEFAULT);
+  assert.equal(currentEpicboxDomain('my.box', DEFAULT), 'my.box');
+  assert.equal(currentEpicboxDomain('', DEFAULT), '');
+  assert.equal(currentEpicboxDomain(undefined, DEFAULT), undefined);
+  assert.equal(initialEpicboxDomain({ config: { version: '5.0.3', firstTime: false, epicbox_domain: 'epicbox.epic.tech' }, defaultDomain: DEFAULT }), DEFAULT);
 });
