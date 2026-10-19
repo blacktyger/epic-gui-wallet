@@ -57,7 +57,7 @@ wallet's `config.json`, and the settings columns of the IndexedDB User row:
   defaultWallet: "w1",
   wallets: [{id, label, network, configDir, dataDir, origin, importedFrom, createdAt,
              settings: {check_node_api_http_addr, nodeInternal, nodesynced, epicbox_domain,
-                        walletlisten_on_startup, node_background, epicbox_background}}] }
+                        walletlisten_on_startup, node_background}}] }
 ```
 
 The wallet id (`w1`, `w2`…) is internal; there is no wallet name any more, only an optional label for
@@ -118,8 +118,8 @@ Several wallets (approved):
   duplicates allowed (the id is the key). Rename in Settings › Wallet.
 - Switching: no switcher with one wallet. With several, the BT Labs Theme sidebar account area and
   Classic's menu get *Switch wallet*: it locks the current wallet like a logout (owner API, HTTP
-  listener and that wallet's Epicbox listener stopped, also when *Epicbox in the background* is on, since
-  that listener would keep the other wallet half-open; the built-in node stays, it serves every wallet of
+  listener and that wallet's Epicbox listener stopped; *Epicbox in the background* is removed (feat/qol,
+  Patryk's request), so `epicbox_background` is dropped from settings; the built-in node stays, it serves every wallet of
   its network) and returns to Unlock. One wallet open at a time.
 - Unlock: the last-used wallet is preselected (`setDefaultWallet` after each unlock), so most people
   only type the password. Each wallet has its own password; it is checked against the selected one only.

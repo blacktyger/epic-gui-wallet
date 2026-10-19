@@ -41,8 +41,16 @@ export const WALLET_DEFAULTS = Object.freeze({
   epicbox_domain: 'epicbox.epiccash.com',
   walletlisten_on_startup: true,
   node_background: false,
-  epicbox_background: false,
 });
+
+/* settings older drafts stored that 6.1 no longer has: dropped on load and on save
+   (epicbox_background: the Epicbox listener always stops at lock, switch and quit) */
+const DROPPED_SETTINGS = ['epicbox_background'];
+function cleanSettings(s) {
+  const out = { ...WALLET_DEFAULTS, ...(isObj(s) ? s : {}) };
+  for (const k of DROPPED_SETTINGS) delete out[k];
+  return out;
+}
 
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
@@ -72,7 +80,7 @@ export function normalizeWallet(w) {
     label: cleanLabel(w.label),
     origin: ORIGINS.includes(w.origin) ? w.origin : 'created',
     importedFrom: isObj(w.importedFrom) ? w.importedFrom : null,
-    settings: { ...WALLET_DEFAULTS, ...(isObj(w.settings) ? w.settings : {}) },
+    settings: cleanSettings(w.settings),
   };
 }
 
