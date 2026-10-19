@@ -35,8 +35,12 @@ export async function migrateNodeAddress(config, {network = 'mainnet', fetch, ti
       to = probe.url;
       reason = 'answered';
     }else if(probe.reason == 'no_answer'){
-      //nothing answered, not even the saved address (offline, or the node is down): try the
-      //network step again at the next login, a few times, instead of giving up for good
+      //nothing answered, not even the saved address (offline, or the node is down): keep exactly
+      //what the user had, not a scheme we guessed, and try again at the next login, a few times
+      if(clean.reason == 'scheme_added'){
+        to = from;
+        reason = '';
+      }
       const tries = (parseInt(config[NODE_ADDRESS_TRIES], 10) || 0) + 1;
       config[NODE_ADDRESS_TRIES] = tries;
       done = tries >= MAX_TRIES;

@@ -6,7 +6,7 @@
  *   cleanNodeAddress(address, {network})            offline: format, scheme, dead GUI fallbacks
  *   probeNodeAddress(url, suggest, {fetch, timeoutMs}) network: http -> https or :3413, only if that answers
  */
-import { fetchNodeVersion, isLocal } from './nodeVersion.js';
+import { fetchNodeVersion } from './nodeVersion.js';
 
 //the remote node new GUIs fall back to (configService.nodeFallBack); mainnet only
 export const MAINNET_FALLBACK_NODE = 'https://node.epiccash.com:3413';
@@ -22,7 +22,44 @@ const MAINNET_DEFAULT_HOSTS = [/^node\.epiccash\.com$/i, ...DEAD_FALLBACK_HOSTS]
 const isDeadFallback = (host) => DEAD_FALLBACK_HOSTS.some(re => re.test(host));
 const isMainnetDefault = (host) => MAINNET_DEFAULT_HOSTS.some(re => re.test(host));
 const hasScheme = (s) => /^[a-z][a-z0-9+.-]*:\/\//i.test(s);
-const LOCAL_HOST = /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?([/?#]|$)/i;
+
+/*
+ * A host on this computer or the local network: loopback, the private IPv4 ranges (10/8,
+ * 172.16/12, 192.168/16), link-local 169.254/16, 100.64/10 (Tailscale, CGNAT), *.local, *.lan,
+ * and IPv6 loopback, fc00::/7 and fe80::/10. Such a node usually speaks plain http, so a missing
+ * scheme means http and an http address is never upgraded to https.
+ * Only for scheme defaults: the api secret still goes to loopback only (nodeVersion.isLocal).
+ * host: a URL hostname (IPv6 in brackets) or a bare host
+ */
+export function isPrivateHost(host){
+  const h = String(host || '').trim().toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
+  if(!h){
+    return false;
+  }
+  if(h == 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.lan')){
+    return true;
+  }
+  const v4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if(v4){
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    return a == 127 || a == 10 || (a == 172 && b >= 16 && b <= 31) || (a == 192 && b == 168)
+      || (a == 169 && b == 254) || (a == 100 && b >= 64 && b <= 127);
+  }
+  if(h.includes(':')){
+    //::1, fc00::/7 (fc.., fd..), fe80::/10 (fe8., fe9., fea., feb.)
+    return h == '::1' || /^f[cd][0-9a-f]{0,2}:/.test(h) || /^fe[89ab][0-9a-f]?:/.test(h);
+  }
+  return false;
+}
+
+/* the host of an address that may have no scheme ("192.168.0.5:3413/x" -> "192.168.0.5") */
+function hostOf(s){
+  try{
+    return new URL(hasScheme(s) ? s : 'http://' + s).hostname;
+  }catch(e){
+    return '';
+  }
+}
 
 /*
  * address: the saved address; network: 'mainnet' | 'floonet' | 'usernet' (the wallet's)
@@ -31,7 +68,7 @@ const LOCAL_HOST = /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?([/?#]|$)/i;
  *   url      the cleaned address (the input, trimmed, when it can't be parsed)
  *   changed  url differs from the saved address
  *   reason   why: '' (nothing to do), 'format' (spaces, trailing slash, letter case only),
- *            'scheme_added', 'local_http' (https -> http for the local node), 'dead_fallback'
+ *            'scheme_added' (http for this computer or the LAN, else https), 'dead_fallback'
  *            (an old GUI's dead fallback node -> the current one), 'mainnet_node_on_testnet'
  *            (a floonet/usernet wallet on a mainnet node -> the built-in node), 'empty', 'invalid'
  *   suggest  addresses worth trying instead if url gives no node version (for probeNodeAddress), in
@@ -57,7 +94,7 @@ export function cleanNodeAddress(address, {network = 'mainnet'} = {}){
   let reason = 'format';
   let schemeAdded = false;
   if(!hasScheme(s)){
-    s = (LOCAL_HOST.test(s) ? 'http://' : 'https://') + s;
+    s = (isPrivateHost(hostOf(s)) ? 'http://' : 'https://') + s;
     reason = 'scheme_added';
     schemeAdded = true;
   }
@@ -83,39 +120,49 @@ export function cleanNodeAddress(address, {network = 'mainnet'} = {}){
     return result(MAINNET_FALLBACK_NODE, 'dead_fallback');
   }
 
-  if(isLocal(u.href) && u.protocol == 'https:'){
-    u.protocol = 'http:';
-    reason = 'local_http';
-  }
+  const local = isPrivateHost(host);
 
   //scheme://host[:port][/path], no query or hash; the URL parser lowercases scheme and host
   //and drops a default port (https://x:443 -> https://x)
   const path = u.pathname.replace(/\/+$/, '');
   const url = u.protocol + '//' + u.host + path;
 
-  //suspicious: http:// to a remote host (nginx answers 400 when the port is TLS), a remote address
-  //without a port (the node API is on 3413), or a scheme we guessed
+  //suspicious, so other forms of the same address are worth trying (only if it gives no answer):
+  //  remote: http:// (nginx answers 400 when the port is TLS), no port (the node API is on 3413),
+  //          or a scheme we guessed
+  //  this computer / LAN: https:// (such nodes usually speak http), no port, or a guessed scheme.
+  //          Never http -> https: a LAN node on http stays on http
   const suggest = [];
-  if(!isLocal(url)){
-    const add = (c) => { if(c !== url && !suggest.includes(c)) suggest.push(c); };
-    const withPort = (proto) => proto + '//' + host + ':' + NODE_API_PORT + path;
-    const noPort = !u.port;
-    if(u.protocol == 'http:'){
-      add('https://' + u.host + path);
+  const add = (c) => { if(c !== url && !suggest.includes(c)) suggest.push(c); };
+  const withPort = (proto) => proto + '//' + host + ':' + NODE_API_PORT + path;
+  const noPort = !u.port;
+  if(local){
+    if(u.protocol == 'https:'){
+      add('http://' + u.host + path);
       if(noPort){
         add(withPort('https:'));
         add(withPort('http:'));
       }
     }else{
       if(noPort){
-        add(withPort('https:'));
+        add(withPort('http:'));
       }
-      if(schemeAdded){
-        //"1.2.3.4:3413": a self-hosted node often speaks plain http
-        add('http://' + u.host + path);
-        if(noPort){
-          add(withPort('http:'));
-        }
+    }
+  }else if(u.protocol == 'http:'){
+    add('https://' + u.host + path);
+    if(noPort){
+      add(withPort('https:'));
+      add(withPort('http:'));
+    }
+  }else{
+    if(noPort){
+      add(withPort('https:'));
+    }
+    if(schemeAdded){
+      //"1.2.3.4:3413": a self-hosted node often speaks plain http
+      add('http://' + u.host + path);
+      if(noPort){
+        add(withPort('http:'));
       }
     }
   }
