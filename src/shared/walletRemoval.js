@@ -11,8 +11,9 @@
  * 'app' and 'everything' need a folder that is provably this app's own (planRemoval); an imported
  * or opened wallet's data folder (an older GUI's or the CLI's) is never touched.
  *
- * fs: only existsSync, lstatSync (isFile, isDirectory, isSymbolicLink: the renderer gets a plain
- * object), readdirSync, unlinkSync, rmdirSync, realpathSync. Symlinks are never followed: a
+ * fs: only existsSync, lstatSync (read through entryKind: through contextBridge a Stats object
+ * loses its methods, only its fields such as mode cross), readdirSync, unlinkSync, rmdirSync,
+ * realpathSync. Symlinks are never followed: a
  * symlink is unlinked, its target stays.
  */
 
@@ -43,6 +44,22 @@ function comparer(fs, pathMod) {
 
 const lstat = (fs, p) => tryDo(() => fs.lstatSync(p), null);
 
+//the file type bits of a stat mode (the same on Windows, where Node sets them too)
+const S_IFMT = 0o170000, S_IFDIR = 0o040000, S_IFLNK = 0o120000, S_IFREG = 0o100000;
+
+/* 'dir' | 'link' | 'file' | 'other' for an lstat result: its methods when it has them (node's
+   fs.Stats, the hardened preload's plain object), else its mode (a Stats copied by contextBridge,
+   whose methods are gone); null when there is nothing to tell (then nothing is deleted) */
+export function entryKind(st) {
+  if (!st) return null;
+  if (typeof st.isSymbolicLink === 'function' && typeof st.isDirectory === 'function') {
+    return st.isSymbolicLink() ? 'link' : st.isDirectory() ? 'dir' : (typeof st.isFile === 'function' && st.isFile()) ? 'file' : 'other';
+  }
+  if (typeof st.mode !== 'number') return null;
+  const t = st.mode & S_IFMT;
+  return t === S_IFLNK ? 'link' : t === S_IFDIR ? 'dir' : t === S_IFREG ? 'file' : 'other';
+}
+
 /*
  * What may be removed for a wallet. Nothing is changed here.
  *   wallet          the record to remove (settingsStore)
@@ -53,7 +70,7 @@ const lstat = (fs, p) => tryDo(() => fs.lstatSync(p), null);
  *   openId          the wallet open in this window ('' when none)
  *   running         our epic processes that use this wallet (ownedProcesses), [] when none
  *   folderMissing   its data folder is gone (Unlock): 'everything' is not offered
- * → { canList, canAppFiles, canEverything, reasons: {appFiles, everything}: {key, path} | null,
+ * → { canList, canAppFiles, canEverything, reasons: {list, appFiles, everything}: {key, path} | null,
  *     appFiles: [exact paths], dir, dirReal, seedFile }
  * reason keys: open, running, notours, shared, legacy, imported, separate, chain, missing
  */
@@ -62,7 +79,7 @@ export function planRemoval({ wallet, wallets = [], invalidWallets = [], paths =
   const plan = {
     canList: !!wallet && wallet.id !== openId,
     canAppFiles: false, canEverything: false,
-    reasons: { appFiles: null, everything: null },
+    reasons: { list: !wallet ? { key: 'gone', path: '' } : wallet.id === openId ? { key: 'open', path: '' } : null, appFiles: null, everything: null },
     appFiles: [], dir: '', dirReal: '', seedFile: '',
   };
   if (!wallet) return plan;
@@ -77,7 +94,7 @@ export function planRemoval({ wallet, wallets = [], invalidWallets = [], paths =
     const expected = pathMod.join(pathMod.resolve(paths.walletsDir), wallet.id);
     if (norm(pathMod.resolve(configDir)) !== norm(expected)) return fail('notours', configDir);
     const st = lstat(fs, configDir);
-    if (st && (st.isSymbolicLink() || !st.isDirectory())) return fail('notours', configDir);
+    if (st && entryKind(st) !== 'dir') return fail('notours', configDir);
     if (st && real(configDir) !== norm(pathMod.join(real(paths.walletsDir), wallet.id))) return fail('notours', configDir);
     const dir = real(configDir);
     //another wallet's folders (also a broken record's) equal, inside or around it
@@ -157,10 +174,12 @@ export function removeFiles(plan, mode, { fs, pathMod }) {
     if (!inside(p)) { fail(p, 'outside ' + plan.dir); return false; }
     const st = lstat(fs, p);
     if (!st) return true;
+    const kind = entryKind(st);
+    if (!kind) { fail(p, 'unknown file type'); return false; }
     try {
-      if (st.isSymbolicLink()) {
+      if (kind === 'link') {
         try { fs.unlinkSync(p); } catch (e) { if (e && (e.code === 'EPERM' || e.code === 'EISDIR')) fs.rmdirSync(p); else throw e; }
-      } else if (st.isDirectory()) {
+      } else if (kind === 'dir') {
         let ok = true;
         for (const name of fs.readdirSync(p)) {
           const child = pathMod.join(p, name);

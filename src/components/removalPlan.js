@@ -32,7 +32,7 @@ export const removalDialog = {
       const checking = !p;
       const choices = [
         { mode: 'list', label: this.$t('msg.removal.list_label'), hint: this.$t('msg.removal.list_hint'),
-          disabled: checking || !p.canList, reason: p && !p.canList ? this.removeReason({ key: 'open' }) : '' },
+          disabled: checking || !p.canList, reason: p && !p.canList ? this.removeReason(p.reasons.list || { key: 'open' }) : '' },
         { mode: 'app', label: this.$t('msg.removal.app_label'),
           hint: t.folderMissing ? this.$t('msg.removal.app_hint_missing', [t.configDir]) : this.$t('msg.removal.app_hint', [t.dataDir]),
           disabled: checking || !p.canAppFiles, reason: p && !p.canAppFiles ? this.removeReason(p.reasons.appFiles) : '' },
@@ -46,6 +46,14 @@ export const removalDialog = {
     },
     removeNameOk() {
       return !!this.removeTarget && this.removeTyped.trim() === this.removeTarget.name;
+    },
+    /* something was typed that isn't the name (yet): said next to the field */
+    removeNameWrong() {
+      return !!this.removeTyped.trim() && !this.removeNameOk;
+    },
+    /* the status line above the choices: checking, then ready (kept, so a screen reader hears the change) */
+    removeStatus() {
+      return this.removePlan ? this.$t('msg.removal.ready') : this.$t('msg.removal.checking');
     },
     /* the button may be pressed */
     removeReady() {
@@ -83,7 +91,7 @@ export const removalDialog = {
         if (seq === this.removeSeq && this.removeTarget) this.removePlan = plan;
       } catch (e) {
         //no longer listed (another screen removed it)
-        if (seq === this.removeSeq && this.removeTarget) this.removePlan = { canList: false, canAppFiles: false, canEverything: false, reasons: { appFiles: { key: 'gone' }, everything: { key: 'gone' } } };
+        if (seq === this.removeSeq && this.removeTarget) this.removePlan = { canList: false, canAppFiles: false, canEverything: false, reasons: { list: { key: 'gone' }, appFiles: { key: 'gone' }, everything: { key: 'gone' } } };
       }
     },
     closeRemoval() {
@@ -133,6 +141,11 @@ export const removalDialog = {
       } else if (!r.entryRemoved) {
         this.$toast.error(this.$t('msg.removal.not_saved'));
       } else {
+        if (mode === 'everything' && !r.dirRemoved) {
+          //a file someone else put in the folder keeps it (the folder is removed only when empty)
+          this.$toast.success(this.$t('msg.removal.done_all_kept', [target.name, r.plan.dir]), { duration: false });
+          return;
+        }
         this.$toast.success(this.$t(mode === 'everything' ? 'msg.removal.done_all' : mode === 'app' ? 'msg.removal.done_app' : 'msg.removal.done_list', [target.name]));
       }
     },

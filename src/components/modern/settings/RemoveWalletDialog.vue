@@ -11,7 +11,7 @@
     :description="$t('msg.removal.lead')"
     @update:open="(v) => { if (!v) close(); }"
   >
-    <p v-if="!removePlan" class="e-help e-rm-checking" role="status"><span class="e-spinner" aria-hidden="true"></span>{{ $t('msg.removal.checking') }}</p>
+    <p class="e-help e-rm-checking" role="status"><span v-if="!removePlan" class="e-spinner" aria-hidden="true"></span>{{ removeStatus }}</p>
     <fieldset class="e-wpick e-rm-choices" :disabled="removeBusy">
       <legend class="e-label">{{ $t('msg.removal.legend') }}</legend>
       <div class="e-wpick-list">
@@ -34,7 +34,8 @@
       </div>
       <div class="e-field">
         <label class="e-label" for="e-rm-name">{{ $t('msg.removal.type_label', [name]) }}</label>
-        <input id="e-rm-name" class="e-input" type="text" v-model="removeTyped" autocomplete="off" spellcheck="false" translate="no" :disabled="removeBusy" />
+        <input id="e-rm-name" class="e-input" type="text" v-model="removeTyped" autocomplete="off" spellcheck="false" translate="no" :disabled="removeBusy" :aria-invalid="removeNameWrong ? 'true' : null" :aria-describedby="removeNameWrong ? 'e-rm-name-e' : null" />
+        <p v-if="removeNameWrong" id="e-rm-name-e" class="e-help">{{ $t('msg.removal.type_mismatch') }}</p>
       </div>
       <label class="e-onb-check">
         <input type="checkbox" v-model="removeAck" :disabled="removeBusy" />

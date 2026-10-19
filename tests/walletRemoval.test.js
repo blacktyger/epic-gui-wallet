@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import realFs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { planRemoval, removeFiles } from '../src/shared/walletRemoval.js';
+import { planRemoval, removeFiles, entryKind } from '../src/shared/walletRemoval.js';
 import { createSettingsStore } from '../src/shared/settingsStore.js';
 import { layout, legacyPaths } from '../src/shared/appPaths.js';
 import { scanLegacy } from '../src/shared/legacyScan.js';
@@ -221,6 +221,7 @@ test('the open wallet and a running process: nothing but the list, and not even 
   const w = world();
   let p = plan(w, w.w1, { openId: 'w1' });
   assert.equal(p.canList, false);
+  assert.equal(p.reasons.list.key, 'open');
   assert.equal(p.reasons.appFiles.key, 'open');
   assert.equal(p.reasons.everything.key, 'open');
   p = plan(w, w.w1, { running: [{ pid: 42, role: 'listen' }] });
@@ -365,7 +366,7 @@ test('removeFiles refuses what the plan does not allow, and paths outside the fo
 
 /* --- a real folder (TMPDIR): real symlinks, configService and the importer --- */
 
-function realWorld(t) {
+function realWorld(t, fsUsed = realFs) {
   const home = realFs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), 'removal-'));
   t.after(() => realFs.rmSync(home, { recursive: true, force: true }));
   const root = path.join(home, '.epic-gui');
@@ -373,7 +374,7 @@ function realWorld(t) {
   const legacy = legacyPaths({ platform: 'linux', home, appData: path.join(home, '.config'), pathMod: path });
   const paths = { root, source: 'env', settingsFile: l.settingsFile, walletsDir: l.walletsDir, userData: l.userData, logsDir: l.logsDir, processesFile: l.processesFile, legacy };
   const nodeChildProcess = { owned: [], ownedProcesses: async (roles, opts) => { nodeChildProcess.last = { roles, opts }; if (nodeChildProcess.throws) throw new Error('ps failed'); return nodeChildProcess.owned; } };
-  const cs = new ConfigService({ emit() {} }, { fs: realFs, pathMod: path, paths, resourcePath: RESOURCES, platform: 'linux', arch: 'x64', nodeChildProcess, isPortReachable: async () => false });
+  const cs = new ConfigService({ emit() {} }, { fs: fsUsed, pathMod: path, paths, resourcePath: RESOURCES, platform: 'linux', arch: 'x64', nodeChildProcess, isPortReachable: async () => false });
   /* what Create does: folders, epic-wallet init (the seed), registerWallet */
   const create = (origin = 'created', label = 'Savings') => {
     const dirs = cs.newWalletDirs('mainnet');
@@ -550,4 +551,41 @@ test('import → remove (list or app) → the old folder is listed by the scan a
   const opened = cs.openExistingWallet(oldDir, 'mainnet');
   assert.equal(opened.ok, true);
   assert.equal(opened.wallet.id, 'w3');
+});
+
+/* fs as the renderer gets it through contextBridge: a Stats copy keeps its fields (mode) and loses
+   its methods (isDirectory, isSymbolicLink) */
+const bridgedFs = { ...realFs, lstatSync: (p) => ({ ...realFs.lstatSync(p) }) };
+
+test('entryKind: methods when there, else the mode bits of a bridged copy', (t) => {
+  const dir = realFs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), 'kind-'));
+  t.after(() => realFs.rmSync(dir, { recursive: true, force: true }));
+  realFs.writeFileSync(path.join(dir, 'f'), 'x');
+  realFs.symlinkSync(path.join(dir, 'f'), path.join(dir, 'l'));
+  for (const [name, kind] of [['', 'dir'], ['f', 'file'], ['l', 'link']]) {
+    const st = realFs.lstatSync(path.join(dir, name));
+    assert.equal(entryKind(st), kind);
+    assert.equal(entryKind(bridgedFs.lstatSync(path.join(dir, name))), kind);
+    assert.equal(typeof bridgedFs.lstatSync(path.join(dir, name)).isDirectory, 'undefined');
+  }
+  assert.equal(entryKind(null), null);
+  assert.equal(entryKind({}), null);
+});
+
+test('bridged fs (contextBridge): every choice is offered and everything is removed, symlink target untouched', async (t) => {
+  const { home, cs, create } = realWorld(t, bridgedFs);
+  const w = create();
+  const plan = await cs.removalPlan(w.id);
+  assert.equal(plan.canList, true);
+  assert.equal(plan.canAppFiles, true);
+  assert.equal(plan.canEverything, true);
+  const outside = path.join(home, 'precious');
+  realFs.mkdirSync(outside);
+  realFs.writeFileSync(path.join(outside, 'keep.txt'), 'keep');
+  realFs.symlinkSync(outside, path.join(w.dataDir, 'wallet_data', 'link-to-dir'));
+  const r = await cs.removeWallet(w.id, 'everything');
+  assert.deepEqual(r.failed, []);
+  assert.equal(r.ok, true);
+  assert.equal(realFs.existsSync(w.configDir), false);
+  assert.equal(realFs.readFileSync(path.join(outside, 'keep.txt'), 'utf8'), 'keep');
 });

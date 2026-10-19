@@ -8,6 +8,7 @@ export default {
   lead: 'Choose what to remove. Nothing happens until you press the button below.',
   legend: 'What to remove',
   checking: 'Checking this wallet’s files…',
+  ready: 'Choose one of the options below.',
 
   list_label: 'Remove from the list only',
   list_hint: 'All files stay where they are. You can add the wallet back later with “Open a wallet folder”.',
@@ -45,6 +46,7 @@ export default {
   done_list: '{0} was removed from the list. Its files were not touched.',
   done_app: '{0} was removed, with this app’s files for it.',
   done_all: '{0} was deleted from this computer.',
+  done_all_kept: '{0} was deleted. Its folder {1} was kept because it holds other files; check them and delete the folder yourself if you don’t need them.',
   //{0}: how many items, {1}: one of them
   partial_listed: 'Not everything could be removed ({0} left, e.g. {1}). The wallet stays in the list and still opens. Close any program that may use its files and try again.',
   partial_unlisted: 'The wallet was removed, but {0} item(s) could not be deleted, e.g. {1}. You can delete the folder {2} yourself.',

@@ -6,7 +6,7 @@
       <header class="modal-card-head"><p id="rmTitle" class="modal-card-title">{{ $t('msg.removal.title', [name]) }}</p></header>
       <section class="modal-card-body">
         <p id="rmLead">{{ $t('msg.removal.lead') }}</p>
-        <p v-if="!removePlan" class="help" role="status">{{ $t('msg.removal.checking') }}</p>
+        <p class="help" role="status">{{ removeStatus }}</p>
 
         <fieldset class="rm-choices" :disabled="removeBusy">
           <legend class="label">{{ $t('msg.removal.legend') }}</legend>
@@ -27,7 +27,8 @@
           </div></article>
           <div class="field">
             <label class="label" for="rmName">{{ $t('msg.removal.type_label', [name]) }}</label>
-            <div class="control"><input id="rmName" class="input" type="text" v-model="removeTyped" autocomplete="off" spellcheck="false" translate="no" :disabled="removeBusy" /></div>
+            <div class="control"><input id="rmName" class="input" type="text" v-model="removeTyped" autocomplete="off" spellcheck="false" translate="no" :disabled="removeBusy" :aria-invalid="removeNameWrong ? 'true' : null" :aria-describedby="removeNameWrong ? 'rmNameErr' : null" /></div>
+            <p v-if="removeNameWrong" id="rmNameErr" class="help">{{ $t('msg.removal.type_mismatch') }}</p>
           </div>
           <label class="checkbox"><input type="checkbox" v-model="removeAck" :disabled="removeBusy" /> {{ $t('msg.removal.ack') }}</label>
         </div>
