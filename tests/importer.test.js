@@ -326,3 +326,29 @@ test('M1: no language known (gamma: broken config.json, no User row): the app la
   assert.equal(b.settings.app().locale, 'de');
   assert.equal(b.users[0].language, undefined, 'no language passed: a new row gets the default');
 });
+
+test('nits: Windows: a wallet already imported under another spelling is not imported twice', async () => {
+  const W = path.win32;
+  const mem = new Map();
+  const memFs = {
+    existsSync: (f) => mem.has(f), readFileSync: (f) => { if (!mem.has(f)) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' }); return mem.get(f); },
+    writeFileSync: (f, d) => mem.set(f, String(d)), mkdirSync: () => {}, copyFileSync: (a, b) => mem.set(b, mem.get(a)),
+    renameSync: (a, b) => { mem.set(b, mem.get(a)); mem.delete(a); }, unlinkSync: (f) => mem.delete(f),
+  };
+  const settings = createSettingsStore({ fs: memFs, pathMod: W, file: 'C:\\R\\settings.json' }).load();
+  settings.addWallet({ id: 'w1', network: 'mainnet', configDir: 'C:\\R\\wallets\\w1', dataDir: 'C:\\Users\\Jane\\.epic\\alpha\\main',
+    origin: 'imported', importedFrom: { app: '5.3.1', account: 'alpha', dir: 'C:\\Users\\Jane\\.epic\\alpha\\main' } });
+  let registered = 0;
+  const importer = createImporter({
+    configService: { settings, newWalletDirs: () => ({ id: 'w2', configDir: 'C:\\R\\wallets\\w2' }), registerWallet: async () => { registered++; } },
+    userService: { ensureUser: async () => ({ id: 1 }) }, addressbookService: { getAddress: async () => [], addAddress: async () => {} },
+    legacyBridge: { scan: async () => ({ wallets: [{ key: 'c:\\users\\jane\\.EPIC\\alpha\\main', dir: 'c:\\users\\jane\\.EPIC\\alpha\\main',
+      network: 'mainnet', account: 'alpha', app: '5.3.1' }], chains: [], profiles: [] }) },
+    fs: memFs, pathMod: W,
+  });
+  const r = await importer.scan();
+  const res = await importer.importWallets([r.wallets[0].key]);
+  assert.deepEqual(res.imported.map(i => i.walletId), ['w1']);
+  assert.equal(registered, 0);
+  assert.deepEqual(settings.wallets().map(w => w.id), ['w1']);
+});

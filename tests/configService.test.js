@@ -442,3 +442,22 @@ test('S2: the built-in node\'s secret goes only to a node on this machine', () =
     assert.equal(secretPath(), cs.nodeDir('mainnet') + '/.api_secret', url);
   }
 });
+
+test('nits: <root>/wallets and each wallet folder are made for this user only (0o700)', () => {
+  const { cs, fs, root } = setup();
+  const modes = [];
+  const mk = fs.mkdirSync;
+  fs.mkdirSync = (p, o) => { modes.push([p, o && o.mode]); return mk(p, o); };
+  const d = cs.newWalletDirs('mainnet');
+  assert.deepEqual(modes, [[root + '/wallets', 0o700], [d.configDir, 0o700]]);
+});
+
+test('nits: Windows: a folder already listed in another case is "listed"', () => {
+  const W = path.win32;
+  const { cs, fs } = setup({ P: W, root: 'C:\\Users\\Jane\\AppData\\Local\\EpicCash\\Wallet', resourcePath: 'C:\\Epic\\resources', platform: 'win' });
+  fs.put('D:\\Backup\\Main\\wallet_data\\wallet.seed');
+  assert.equal(cs.openExistingWallet('D:\\Backup\\Main', 'mainnet').ok, true);
+  //the fake fs is case-sensitive, Windows' is not: the same seed under the other spelling
+  fs.put('d:\\backup\\MAIN\\wallet_data\\wallet.seed');
+  assert.deepEqual(cs.openExistingWallet('d:\\backup\\MAIN', 'mainnet'), { ok: false, reason: 'listed' });
+});

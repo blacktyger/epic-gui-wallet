@@ -243,3 +243,12 @@ test('S7: save tries the rename again while Windows holds the file, and returns 
   assert.equal(createSettingsStore({ fs: full, pathMod: path, file }).load().setApp({ scale: 120 }), false);
   assert.equal(fs.readFileSync(file, 'utf8'), before);
 });
+
+test('cleanLabel: C1 controls become a space, direction marks and overrides are dropped', () => {
+  assert.equal(cleanLabel('a\u0085b\u009fc'), 'a b c');
+  assert.equal(cleanLabel('\u202eevil\u202c'), 'evil');
+  assert.equal(cleanLabel('x\u200e\u200fy\u2066z\u2069'), 'xyz');
+  assert.equal(cleanLabel('\u202a\u202b\u202d '), '');
+  assert.equal(cleanLabel('Ünïcødé €'), 'Ünïcødé €', 'ordinary characters stay (U+00A0 and up)');
+  assert.equal(cleanLabel('עברית'), 'עברית', 'right-to-left text itself stays');
+});

@@ -186,7 +186,9 @@ class ConfigService {
     while (this.dirHasFiles(this.layout.walletDir('w' + n))) n++;
     const id = 'w' + n;
     const configDir = this.layout.walletDir(id);
-    this.fs.mkdirSync(configDir, { recursive: true });
+    //seeds and secrets: for this user only (the mode does nothing on Windows)
+    this.fs.mkdirSync(this.layout.walletsDir, { recursive: true, mode: 0o700 });
+    this.fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
     return { id, configDir, dataDir: configDir };
   }
 
@@ -264,7 +266,8 @@ class ConfigService {
     if (!dir || !this.path.isAbsolute(dir)) return { ok: false, reason: 'noseed' };
     const dataDir = this.path.resolve(dir);
     if (!this.fs.existsSync(this.path.join(dataDir, 'wallet_data', 'wallet.seed'))) return { ok: false, reason: 'noseed' };
-    if (this.settings.wallets().some(w => this.path.resolve(w.dataDir) === dataDir)) return { ok: false, reason: 'listed' };
+    //the same folder in another spelling (Windows: any case; a symlink) is listed too
+    if (this.settings.wallets().some(w => this.comparablePath(w.dataDir) === this.comparablePath(dataDir))) return { ok: false, reason: 'listed' };
     const net = NETWORKS.includes(network) ? network : this.networkOfDir(dataDir);
     if (!net) return { ok: false, reason: 'network' };
     const dirs = this.newWalletDirs(net);

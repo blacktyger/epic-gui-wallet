@@ -69,6 +69,13 @@ function contactRow(c, userId) {
 export function createImporter({ configService, userService, addressbookService, legacyBridge, fs, pathMod,
   cleanNodeAddress, supportedLocale, log = () => {} }) {
   const settings = () => configService.settings;
+  //one folder, however it is spelt: Windows paths are case-insensitive
+  const win = pathMod && pathMod.sep === '\\';
+  const samePath = (a, b) => {
+    if (typeof a !== 'string' || typeof b !== 'string' || !a || !b) return false;
+    const x = pathMod.resolve(a), y = pathMod.resolve(b);
+    return win ? x.toLowerCase() === y.toLowerCase() : x === y;
+  };
   let rows = new Map();   //key → scan row with its old settings
   let chains = [];
 
@@ -144,7 +151,7 @@ export function createImporter({ configService, userService, addressbookService,
   async function importOne(row, { reuseChain, setLocale }) {
     const s = settings();
     //idempotent: a retry after a crash or a double click doesn't add the wallet twice
-    const existing = s.wallets().find(w => w.dataDir === row.key || (w.importedFrom && w.importedFrom.dir === row.dir));
+    const existing = s.wallets().find(w => samePath(w.dataDir, row.key) || (w.importedFrom && samePath(w.importedFrom.dir, row.dir)));
     if (existing) {
       s.setLegacyDecision(row.dir, 'imported');
       return existing.id;

@@ -75,12 +75,17 @@ function emptyData() {
 const idNumber = (id) => { const m = typeof id === 'string' && /^w(\d+)$/.exec(id); return m ? Number(m[1]) : 0; };
 
 /* a wallet's label is only shown, never part of a path: any characters, trimmed, at most
-   LABEL_MAX characters (counted as code points, so an emoji isn't cut in half); duplicates are fine */
+   LABEL_MAX characters (counted as code points, so an emoji isn't cut in half); duplicates are fine.
+   Control characters (C0, DEL, C1) become a space; direction marks and overrides (U+200E/F,
+   U+202A–U+202E, U+2066–U+2069) are dropped, so a label can't reorder the text around it */
 export const LABEL_MAX = 32;
 export function cleanLabel(label) {
   return typeof label === 'string'
-    //eslint-disable-next-line no-control-regex -- control characters are exactly what is removed
-    ? Array.from(label.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim()).slice(0, LABEL_MAX).join('').trim() : '';
+    ? Array.from(label
+      //eslint-disable-next-line no-control-regex -- control characters are exactly what is removed
+      .replace(/[\u0000-\u001f\u007f-\u009f]+/g, ' ')
+      .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '')
+      .trim()).slice(0, LABEL_MAX).join('').trim() : '';
 }
 
 /* a wallet record as stored; throws on what would break the app later */

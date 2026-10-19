@@ -170,7 +170,8 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
           createProcess.stdout.setEncoding('utf8');
           createProcess.stdout.on('data', (data) => {
 
-            debug ? console.log('execNew.stdout', data) : null;
+            //never the text: it holds the recovery phrase
+            debug ? console.log('execNew.stdout: ' + data.length + ' characters (not logged)') : null;
 
             if(data.includes('Password:')){
               createProcess.stdin.write( password+"\n");
@@ -396,7 +397,8 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
           recover.stdout.setEncoding('utf8');
           recover.stdout.on('data', (data) => {
-            debug ? console.log('execRecover.stdout', data) : null;
+            //never the text: it holds the recovery phrase
+            debug ? console.log('execRecover.stdout: ' + data.length + ' characters (not logged)') : null;
 
             if(data.includes('Password:')){
               recover.stdin.write(password+"\n");
