@@ -18,15 +18,30 @@ const path = require('path');
 const IGNORE = ['node-pty'];
 const root = path.join(__dirname, '..');
 
+/* node-pty 1.1.0's darwin prebuilds ship spawn-helper without the exec bit; pty spawn then fails
+   on macOS ("posix_spawnp failed") */
+function chmodSpawnHelpers() {
+  const fs = require('fs');
+  const dir = path.join(root, 'node_modules', 'node-pty', 'prebuilds');
+  let entries = [];
+  try { entries = fs.readdirSync(dir).filter((d) => d.startsWith('darwin-')); } catch (e) { return; }
+  for (const d of entries) {
+    const helper = path.join(dir, d, 'spawn-helper');
+    try { if (fs.existsSync(helper)) fs.chmodSync(helper, 0o755); } catch (e) { console.log('install-app-deps: chmod ' + helper + ': ' + e.message); }
+  }
+}
+
 function load(name, from) {
   try { return require(require.resolve(name, { paths: [from] })); } catch (e) { return null; }
 }
 
 async function main() {
+  chmodSpawnHelpers();
   const electron = load('electron/package.json', root);
   if (!electron) { console.log('install-app-deps: electron is not installed, nothing to rebuild'); return; }
   //@electron/rebuild comes with electron-builder (app-builder-lib), it is not a direct dependency
-  const appBuilderLib = path.dirname(require.resolve('app-builder-lib/package.json', { paths: [root] }));
+  let appBuilderLib = root;
+  try { appBuilderLib = path.dirname(require.resolve('app-builder-lib/package.json', { paths: [root] })); } catch (e) { /* the root's own */ }
   const rebuilder = load('@electron/rebuild', appBuilderLib) || load('@electron/rebuild', root);
   if (!rebuilder) throw new Error('@electron/rebuild not found (comes with electron-builder)');
   console.log('install-app-deps: rebuilding native dependencies for electron ' + electron.version +
