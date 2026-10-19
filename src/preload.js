@@ -556,6 +556,10 @@ contextBridge.exposeInMainWorld('config', {
   appPaths(){
     return JSON.parse(JSON.stringify(appPaths));
   },
+  /* older GUIs' wallets and profiles (read only, background.js 'legacy-scan'); known: dirs to skip */
+  legacyScan(known){
+    return ipcRenderer.invoke('legacy-scan', { known });
+  },
   getPlatform(){
     switch (os.platform()) {
       case 'aix':

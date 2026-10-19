@@ -1,6 +1,6 @@
 'use strict'
 
-import { app, protocol, net, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard } from 'electron'
+import { app, protocol, net, session, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard } from 'electron'
 import contextMenu from 'electron-context-menu'
 import { exec, execFile } from 'child_process'
 import { pathToFileURL } from 'url'
@@ -8,6 +8,8 @@ import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 import { createDirectory } from './shared/nodeDirectory'
 import { createProcessRegistry, createPidCheck } from './shared/processOwnership'
 import { resolveRoot, layout, legacyPaths } from './shared/appPaths'
+import { scanLegacy } from './shared/legacyScan'
+import { readLegacyProfiles } from './legacyProfile'
 
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -441,6 +443,17 @@ ipcMain.on('app-paths', (event) => {
     //older GUIs' files, read only by the importer
     legacy: legacyPaths({ platform: process.platform, env: process.env, home: os.homedir(), appData: app.getPath('appData'), pathMod: path }),
   };
+});
+
+//first start, or Advanced > Import: find older GUIs' wallets and read their profiles (read only).
+//The renderer passes only `known` (dirs to skip); every path that is read is worked out here.
+ipcMain.handle('legacy-scan', async (event, { known } = {}) => {
+  const legacy = legacyPaths({ platform: process.platform, env: process.env, home: os.homedir(), appData: app.getPath('appData'), pathMod: path });
+  const scan = scanLegacy({ fs, pathMod: path, legacy, known: Array.isArray(known) ? known.filter(k => typeof k === 'string') : [] });
+  //the old IndexedDB is read (from a copy) only when there is something to import
+  const profiles = scan.wallets.length ? await readLegacyProfiles({ session, BrowserWindow, fs, path,
+    tmpDir: path.join(app.getPath('temp'), 'epic-gui-import'), profiles: legacy.profiles, log: (m) => log.info(m) }) : [];
+  return { ...scan, profiles };
 });
 
 //start again, after another app folder was chosen (it is read only at start)

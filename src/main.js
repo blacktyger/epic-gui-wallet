@@ -9,6 +9,7 @@ import configService from './shared/configService.js';
 import userService from './shared/userService.js';
 import addressbookService from './shared/addressbookService.js';
 import addressTransactionsService from './shared/addressTransactionService.js';
+import { createImporter } from './shared/importer.js';
 import {words} from './shared/words.js';
 import App from './App.vue'
 import mitt from 'mitt';
@@ -69,6 +70,15 @@ app.config.globalProperties.$userService =  new userService();
 app.config.globalProperties.$addressBookService =  new addressbookService();
 app.config.globalProperties.$addressTransactionsService =  new addressTransactionsService();
 app.config.globalProperties.configService = config;
+//older GUIs' wallets: found on the first start, imported read only (docs/plans/fresh-start.md)
+app.config.globalProperties.$importer = createImporter({
+  configService: config,
+  userService: app.config.globalProperties.$userService,
+  addressbookService: app.config.globalProperties.$addressBookService,
+  legacyBridge: { scan: ({ known } = {}) => window.config.legacyScan(known) },
+  fs: window.nodeFs,
+  pathMod: window.nodePath,
+});
 app.config.globalProperties.mnemonicWords = words;
 
 app.config.globalProperties.$filters = {
