@@ -1,4 +1,28 @@
 // vue.config.js
+const fs = require('fs');
+const path = require('path');
+
+/*
+ * node-pty: the pseudo-terminal the main process runs epic-wallet's listeners and init on
+ * (src/shared/ptyHost.js). A native module: not bundled by webpack and not put in app.asar, but
+ * copied as plain files to resources/node-pty (background.js loads it from there), with only what
+ * the target platform loads. Its lib/ loads build/Release first, then prebuilds/<platform>-<arch>.
+ *   Linux:   no prebuild; compiled at `npm install` into build/Release/pty.node
+ *   Windows: the x64 prebuild (conpty.node, conpty_console_list.node, and pty.node with winpty for
+ *            Windows 10 before 1903), or build/Release when it was compiled on this machine.
+ *            Not the bundled conpty.dll / OpenConsole.exe (useConptyDll is off), no .pdb
+ *   macOS:   the darwin prebuilds (pty.node, spawn-helper)
+ */
+const PTY_LIB = ['package.json', 'LICENSE', 'lib/**/*.js', '!lib/**/*.test.js'];
+const PTY_WIN_FILES = '{conpty.node,conpty_console_list.node,pty.node,winpty-agent.exe,winpty.dll}';
+//compiled from source on this (Windows) machine: then build/Release is what it loads
+const ptyWinBuilt = fs.existsSync(path.join(__dirname, 'node_modules/node-pty/build/Release/conpty.node'));
+const ptyFiles = (to, filter) => ({ from: 'node_modules/node-pty', to, filter: [...PTY_LIB, ...filter] });
+const ptyExtra = {
+  linux: ptyFiles('resources/node-pty', ['build/Release/pty.node']),
+  win: ptyFiles('resources/node-pty', [ptyWinBuilt ? 'build/Release/' + PTY_WIN_FILES : 'prebuilds/win32-x64/' + PTY_WIN_FILES]),
+  mac: ptyFiles('Resources/node-pty', ['prebuilds/darwin-*/{pty.node,spawn-helper}', 'build/Release/{pty.node,spawn-helper}']),
+};
 
 /**
  * @type {import('@vue/cli-service').ProjectOptions}
@@ -21,7 +45,13 @@ module.exports = {
       nodeIntegration: false,
       mainProcessFile: 'src/background.js',
       preload: 'src/preload.js',
+      //node-pty is loaded at run time from resources/node-pty (ptyExtra), never bundled or copied
+      //into app.asar with the rest of node_modules
+      externals: ['!node-pty'],
       builderOptions: {
+        //electron-builder also collects the project's node_modules into app.asar: not node-pty
+        //(all platforms' prebuilds and .pdb files), it is in resources/node-pty
+        files: ['**/*', '!**/node_modules/node-pty{,/**}'],
         "productName": "EpicWallet",
         "afterSign": "./build/notarize.js",
         "appId": "com.github.epiccash.epic-gui-wallet",
@@ -56,6 +86,7 @@ module.exports = {
             "channel": "latest",
           },
           "extraFiles": [
+            ptyExtra.mac,
             {
               "from": "resources/bin/mac",
               "to": "Resources/bin/mac",
@@ -104,6 +135,7 @@ module.exports = {
           "icon": "public/favicon_io/EpicCash_logo_gold_border1024x1024.png",
           "target": "nsis",
           "extraFiles": [
+            ptyExtra.win,
             {
               "from": "resources/bin/win",
               "to": "resources/bin/win",
@@ -157,6 +189,7 @@ module.exports = {
             "AppImage"
           ],
           "extraFiles": [
+            ptyExtra.linux,
             {
               "from": "resources/bin/linux",
               "to": "resources/bin/linux",

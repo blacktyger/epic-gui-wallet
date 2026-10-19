@@ -46,14 +46,6 @@
                 <label for="nodeBackgroundSync">{{ $t("msg.settings.auto_start") }}</label>
             </div>
           </div>
-          <div class="field">
-
-            <div class="control">
-                <input :disabled="(nodeInternal && !node_background)" class="switch is-success" id="walletListenEpicbox" type="checkbox" v-model="epicbox_background">
-                <label for="walletListenEpicbox">{{ $t("msg.settings.epicbox_background") }}</label>
-                <p class="help">{{ $t("msg.settings.epicbox_background_hint") }}</p>
-            </div>
-          </div>
 
 
 
@@ -94,7 +86,6 @@ import useFormValidation from "@/modules/useFormValidation";
       const check_node_api_http_addr = ref('');
       const walletlisten_on_startup = ref(false);
       const node_background = ref(false);
-      const epicbox_background = ref(false);
       const nodeInternal = ref(false);
 
 
@@ -109,7 +100,6 @@ import useFormValidation from "@/modules/useFormValidation";
         check_node_api_http_addr,
         walletlisten_on_startup,
         node_background,
-        epicbox_background,
         nodeInternal
       }
     },
@@ -133,7 +123,6 @@ import useFormValidation from "@/modules/useFormValidation";
       this.node_background = this.configService.config['node_background'];
 
 
-      this.epicbox_background = (this.node_background && this.nodeInternal) ? this.configService.config['epicbox_background'] : false;
 
       //an internal user's address is the local node's: leave it empty so external gets the default
       if(!this.nodeInternal){
@@ -150,9 +139,6 @@ import useFormValidation from "@/modules/useFormValidation";
         }else{
           this.nodeInternal = true;
         }
-
-        if(!this.node_background && this.nodeserverField.select == 'internal')
-          this.epicbox_background = false;
 
       },
 
@@ -177,7 +163,6 @@ import useFormValidation from "@/modules/useFormValidation";
             locale: this.localeSelected,
             walletlisten_on_startup: this.walletlisten_on_startup,
             node_background: this.node_background,
-            epicbox_background: this.epicbox_background,
             epicbox_domain: this.epicboxDomain.trim(),
 
           });

@@ -241,8 +241,8 @@ export default {
 
           this.isLoading = false;
           this.emitter.emit('app.accountLoggedIn');
-          //HTTP listener, then Epicbox once the node has synced
-          this.emitter.emit('app.startListeners', password);
+          //HTTP listener, then Epicbox once the node has synced (the main process has the password)
+          this.emitter.emit('app.startListeners');
 
         }else{
           //console.log(canLogin);

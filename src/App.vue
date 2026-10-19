@@ -112,7 +112,7 @@
       });
 
       /* start epicbox and refresh outputs/summary if node is snyced */
-      this.emitter.on('app.startEpicbox', async(res) => {
+      this.emitter.on('app.startEpicbox', async() => {
 
         const session = this.loginSession;
         let confirmed = await this.waitForNodesynced('nodeSynced').then((res) => {
@@ -124,7 +124,7 @@
         }
 
         if(confirmed){
-          const isEpicbox = await this.$walletService.startEpicbox(res);
+          const isEpicbox = await this.$walletService.startEpicbox();
           if(isEpicbox && isEpicbox.success){
             this.$toast.success(this.t("msg.login.epicbox_started"));
             this.store.commit('walletEpicboxService', true);
@@ -146,7 +146,7 @@
       });
 
       /* after login, in the background: the HTTP listener, then Epicbox (it waits for the node to sync) */
-      this.emitter.on('app.startListeners', async (password) => {
+      this.emitter.on('app.startListeners', async () => {
         if(!this.configService.config['walletlisten_on_startup']){
           return;
         }
@@ -155,7 +155,7 @@
         const started = performance.now();
         let isListen;
         try{
-          isListen = await this.$walletService.startListen(password, true, 'http');
+          isListen = await this.$walletService.startListen(true, 'http');
         }finally{
           this.store.commit('listenerStarting', false);
         }
@@ -175,7 +175,7 @@
 
         //start epicbox, will be executed when node has synced status
         if(this.configService.config['epicbox_domain'] != undefined && this.configService.config['epicbox_domain'] != '' ){
-          this.emitter.emit('app.startEpicbox', password);
+          this.emitter.emit('app.startEpicbox');
         }
       });
 
@@ -247,7 +247,7 @@
           locked: 0,
         });
 
-        await this.$walletService.stopListen(this.configService.config.epicbox_background);
+        await this.$walletService.stopListen();
         this.store.commit('walletEpicboxService', false);
 
         await this.$walletService.stopWallet();
@@ -420,7 +420,6 @@
 
       async nodeStatus(){
         await window.api.nodebackground(this.configService.config.node_background);
-        await window.api.epicboxbackground(this.configService.config.epicbox_background);
 
         let respNode = await this.$nodeService.getNodeStatus(this.store.state.user.nodeInternal);
         if(respNode){

@@ -375,7 +375,6 @@
             ...(this.isExistingSetup ? {} : {
               walletlisten_on_startup: true,
               node_background: false,
-              epicbox_background: false,
             }),
             nodesynced: false,
             epicbox_domain: this.epicboxDomain.defaultValue,
