@@ -15,7 +15,7 @@
  */
 import { layout, netFromShort } from './appPaths.js';
 import { createSettingsStore, normalizeWallet, NETWORKS, WALLET_DEFAULTS } from './settingsStore.js';
-import { renderWalletToml, renderNodeToml, networkPorts, walletMarkerText, WALLET_MARKER } from './walletToml.js';
+import { renderWalletToml, renderNodeToml, networkPorts, walletMarkerText, WALLET_MARKER, tomlNetwork, localNodeUrl } from './walletToml.js';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -26,7 +26,6 @@ const OWNER_SECRET = '.owner_api_secret';
 const NODE_SECRET = '.api_secret';
 //what a new wallet's folder may hold before its seed exists: these files only (see discardWalletDirs)
 const PRE_SEED_FILES = [WALLET_TOML, OWNER_SECRET, NODE_SECRET, 'epic-wallet.log', WALLET_MARKER];
-const CHAIN_TYPES = { Mainnet: 'mainnet', Floonet: 'floonet', UserTesting: 'usernet', Usernet: 'usernet' };
 
 /* the preload's I/O, in the app */
 function windowDeps() {
@@ -237,8 +236,7 @@ class ConfigService {
     const fromName = netFromShort(this.path.basename(this.path.resolve(dir)));
     if (fromName) return fromName;
     try {
-      const m = this.fs.readFileSync(this.path.join(dir, WALLET_TOML), 'utf8').match(/^\s*chain_type\s*=\s*"([^"]*)"/m);
-      return m && CHAIN_TYPES[m[1]] || '';
+      return tomlNetwork(this.fs.readFileSync(this.path.join(dir, WALLET_TOML), 'utf8'));
     } catch (e) {
       return '';
     }

@@ -30,6 +30,24 @@ export function networkPorts(network) {
   return { nodeApi: b, nodeP2p: b + 1, walletListener: b + 2, stratum: b + 3 };
 }
 
+/* chain_type as epic-wallet writes it (Mainnet, Floonet, UserTesting; Usernet in some older
+   tomls) → 'mainnet' | 'floonet' | 'usernet', '' when unknown */
+const CHAIN_TYPES = { mainnet: 'mainnet', floonet: 'floonet', usertesting: 'usernet', usernet: 'usernet' };
+export function chainTypeToNetwork(chainType) {
+  return typeof chainType === 'string' && CHAIN_TYPES[chainType.trim().toLowerCase()] || '';
+}
+
+/* the network of an epic-wallet.toml's text (its chain_type), '' when none or unknown */
+export function tomlNetwork(text) {
+  const m = /^\s*chain_type\s*=\s*"([^"]*)"/m.exec(String(text == null ? '' : text));
+  return m ? chainTypeToNetwork(m[1]) : '';
+}
+
+/* the built-in node's local API address of a network: http://127.0.0.1:<nodeApi> */
+export function localNodeUrl(network) {
+  return 'http://127.0.0.1:' + networkPorts(network).nodeApi;
+}
+
 /* a value as TOML: strings through JSON.stringify, numbers and booleans as they are */
 export function tomlValue(v) {
   if (typeof v === 'string') return JSON.stringify(v);

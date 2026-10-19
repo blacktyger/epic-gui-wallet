@@ -165,3 +165,27 @@ test('node toml, Windows: reused chain data in an old folder with spaces and quo
   assert.equal(r.server.api_secret_path, nodeDir + '\\.api_secret');
   assert.equal(r.server.foundation_path, nodeDir + '\\foundation.json');
 });
+
+test('chainTypeToNetwork / tomlNetwork: one rule for configService and legacyScan', async () => {
+  const { chainTypeToNetwork, tomlNetwork, localNodeUrl } = await import('../src/shared/walletToml.js');
+  assert.equal(chainTypeToNetwork('Mainnet'), 'mainnet');
+  assert.equal(chainTypeToNetwork('Floonet'), 'floonet');
+  assert.equal(chainTypeToNetwork('UserTesting'), 'usernet');
+  assert.equal(chainTypeToNetwork('Usernet'), 'usernet');
+  assert.equal(chainTypeToNetwork('usertesting'), 'usernet');
+  assert.equal(chainTypeToNetwork('Testnet'), '');
+  assert.equal(chainTypeToNetwork(undefined), '');
+  assert.equal(tomlNetwork('[wallet]\nchain_type = "UserTesting"\n'), 'usernet');
+  assert.equal(tomlNetwork('[wallet]\r\n  chain_type = "Floonet"\r\n'), 'floonet');
+  assert.equal(tomlNetwork('[wallet]\n#chain_type = "Floonet"\nchain_type = "Mainnet"\n'), 'mainnet');
+  assert.equal(tomlNetwork('[wallet]\n'), '');
+  assert.equal(tomlNetwork(null), '');
+  //every network's own template renders back to that network
+  for (const network of ['mainnet', 'floonet', 'usernet']) {
+    const t = renderWalletToml({ template: WALLET_TEMPLATE, network, configDir: '/c', dataDir: '/d' });
+    assert.equal(tomlNetwork(t), network);
+  }
+  assert.equal(localNodeUrl('mainnet'), 'http://127.0.0.1:3413');
+  assert.equal(localNodeUrl('floonet'), 'http://127.0.0.1:13413');
+  assert.equal(localNodeUrl('usernet'), 'http://127.0.0.1:23413');
+});
