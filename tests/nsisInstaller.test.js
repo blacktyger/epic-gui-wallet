@@ -85,7 +85,7 @@ test('the delete list is exactly the app settings, caches and logs', () => {
   assert.ok(fn.indexOf('SetShellVarContext current') < fn.indexOf('RMDir'))
 })
 
-test('no recursive delete under .epic, of a wallet, or of the 6.1 EpicCash root', () => {
+test('no recursive delete under .epic or of a wallet; 6.1 never-paths kept', () => {
   for (const [cmd, flags, p] of deletes(code)) {
     const lower = p.toLowerCase()
     if (cmd === 'RMDir' && flags.includes('/r')) {
@@ -97,8 +97,11 @@ test('no recursive delete under .epic, of a wallet, or of the 6.1 EpicCash root'
     for (const word of ['wallets', 'wallet_data', 'chain_data', 'seed', '\\main', '\\floo', '\\user']) {
       assert.ok(!lower.includes(word), `${p} contains ${word}`)
     }
-    assert.ok(!lower.startsWith('$localappdata\\epiccash'), `${p} is under %LOCALAPPDATA%\\EpicCash`)
-    assert.ok(!lower.includes('epiccash'), `${p} mentions EpicCash`)
+    //6.1's root (%USERPROFILE%\.epic-gui): only app, logs and gui_processes.json (6.1 branch), never
+    //its wallets, chain data, wallet list or location file, never the root itself
+    if (lower.includes('.epic-gui')) {
+      assert.ok(epicGuiPathAllowed(p), `${p} is a 6.1 path that must never be deleted`)
+    }
     //every delete is anchored in a per-user folder, never a bare or relative path
     assert.match(p, /^\$(APPDATA|LOCALAPPDATA|PROFILE)\\/)
   }
@@ -164,4 +167,22 @@ test('the include is wired into the build and lives outside the build output', (
   assert.equal(nsis.include, 'resources/nsis/installer.nsh')
   assert.equal(nsis.oneClick, false)
   assert.equal(path.resolve(__dirname, '..', nsis.include), NSH)
+})
+
+//a path under 6.1's root that the uninstaller option may delete: exactly app, logs or gui_processes.json
+function epicGuiPathAllowed(p) {
+  const lower = p.toLowerCase()
+  const rest = lower.slice(lower.indexOf('.epic-gui') + '.epic-gui'.length).replace(/^\\/, '')
+  return !/[*?]/.test(p) && /^(app|logs|gui_processes\.json)$/.test(rest)
+}
+
+test('the 6.1 never-paths rule rejects what it must', () => {
+  for (const bad of ['$PROFILE\\.epic-gui', '$PROFILE\\.epic-gui\\', '$PROFILE\\.epic-gui\\wallets', '$PROFILE\\.epic-gui\\wallets\\alpha',
+    '$PROFILE\\.epic-gui\\node', '$PROFILE\\.epic-gui\\settings.json', '$PROFILE\\.epic-gui\\settings.json.bak',
+    '$PROFILE\\.epic-gui\\location.json', '$PROFILE\\.epic-gui\\app\\..\\wallets', '$PROFILE\\.epic-gui\\*']) {
+    assert.equal(epicGuiPathAllowed(bad), false, bad)
+  }
+  for (const good of ['$PROFILE\\.epic-gui\\app', '$PROFILE\\.epic-gui\\logs', '$PROFILE\\.epic-gui\\gui_processes.json']) {
+    assert.equal(epicGuiPathAllowed(good), true, good)
+  }
 })
