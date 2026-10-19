@@ -144,7 +144,9 @@ module.exports = {
         },
         "nsis": {
           "oneClick": false,
-          "allowToChangeInstallationDirectory": false
+          "allowToChangeInstallationDirectory": false,
+          //uninstaller option "Also remove app settings" and the GUI 3.0.1 duplicate entry cleanup
+          "include": "resources/nsis/installer.nsh"
         },
         "linux": {
           "category": "Utility",
