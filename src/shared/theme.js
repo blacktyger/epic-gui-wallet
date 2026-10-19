@@ -61,7 +61,7 @@ export function applyScale(scale, ui) {
 }
 
 /* saves and applies the interface scale at once */
-export function saveScale(scale, configService) {
+export function saveScale(scale) {
   const v = Number(scale);
   if (!SCALES.includes(v)) return false;
   const ok = writeAppSetting('scale', v);
@@ -82,13 +82,13 @@ export function applyTheme(ui, scheme) {
 }
 
 /* saves the interface; it takes effect on reloadUi() */
-export function saveUi(ui, configService) {
+export function saveUi(ui) {
   if (!UIS.includes(ui)) return false;
   return writeAppSetting('ui', ui);
 }
 
 /* saves and applies the colour scheme at once (modern only) */
-export function saveScheme(scheme, configService) {
+export function saveScheme(scheme) {
   if (!SCHEMES.includes(scheme)) return false;
   const ok = writeAppSetting('theme', scheme);
   applyTheme(document.documentElement.dataset.ui || UI_MODERN, scheme);
@@ -102,7 +102,7 @@ export function noticeSeen(key) {
   return !!(n && n[key]);
 }
 
-export function markNoticeSeen(key, configService) {
+export function markNoticeSeen(key) {
   const n = Object.assign({}, readAppConfig().ui_notices, { [key]: true });
   return writeAppSetting('ui_notices', n);
 }
@@ -124,7 +124,7 @@ export function takeRestart() {
 }
 
 /* forget a one-time notice, so it shows again (Settings › Show the tour again) */
-export function resetNotice(key, configService) {
+export function resetNotice(key) {
   const n = Object.assign({}, readAppConfig().ui_notices);
   delete n[key];
   return writeAppSetting('ui_notices', n);

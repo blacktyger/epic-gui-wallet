@@ -502,3 +502,39 @@ test('no adoption of unrecorded processes any more: 6.1 starts with its own reco
   const reg = createProcessRegistry({ fs: { readFileSync: () => '[]' }, file: '/x/p.json', findProcess: async () => [], kill: async () => true });
   assert.equal(reg.adopt, undefined);
 });
+
+test('S4: stopping one wallet leaves another wallet\'s processes and Tor alone; the node is shared', () => {
+  const W1 = '/home/u/.epic-gui/wallets/w1', W2 = '/home/u/.epic-gui/wallets/w2', OLD = '/home/u/.epic/alpha/main';
+  const e = (pid, args) => ({ pid, at: 1, ...describeSpawn(args[0] === 'server' || args.includes('server') ? NODE : BIN, args) });
+  const entries = [
+    e(10, ['-c', W1, 'owner_api']),
+    e(11, ['-t', W1, '-c', W1, 'listen', '--method', 'http']),
+    e(12, ['-t', W1, '-c', W1, 'listen', '--method', 'epicbox']),
+    e(20, ['-t', OLD, '-c', W2, 'listen', '--method', 'http']),     //w2: imported, Tor in its old folder
+    e(21, ['-t', OLD, '-c', W2, 'listen', '--method', 'epicbox']),
+    e(30, ['server', '--config_file', '/home/u/.epic-gui/node/main/epic-server.toml', 'run']),
+  ];
+  const procs = [
+    proc(10, `${BIN} -c ${W1} owner_api`),
+    proc(11, `${BIN} -t ${W1} -c ${W1} listen --method http`),
+    proc(12, `${BIN} -t ${W1} -c ${W1} listen --method epicbox`),
+    proc(13, `/usr/bin/tor -f ${W1}/wallet_tor/torrc`, 11),
+    proc(20, `${BIN} -t ${OLD} -c ${W2} listen --method http`),
+    proc(21, `${BIN} -t ${OLD} -c ${W2} listen --method epicbox`),
+    proc(22, `/usr/bin/tor -f ${OLD}/wallet_tor/torrc`, 20),
+    proc(23, `/usr/bin/tor -f ${OLD}/wallet_tor/torrc`, 999), //w2's orphaned Tor
+    proc(30, `${NODE} server --config_file /home/u/.epic-gui/node/main/epic-server.toml run`),
+  ];
+  const all = ['owner_api', 'listen', 'epicbox', 'scan', 'node'];
+  const pids = (opts) => findOwned(entries, procs, { roles: all, tor: true, ...opts }).owned.map(p => p.pid).sort((a, b) => a - b);
+  //walletService.stopAll for w1 (torDirs: its data dir): w1's processes, its Tor, the node; nothing of w2
+  assert.deepEqual(pids({ dir: W1, torDirs: [W1] }), [10, 11, 12, 13, 30]);
+  //for w2: its listeners and both of its Tors (child and orphan), the node
+  assert.deepEqual(pids({ dir: W2, torDirs: [OLD] }), [20, 21, 22, 23, 30]);
+  //Windows-style case differences in the dir still match on win only
+  assert.deepEqual(findOwned(entries, procs, { roles: ['listen'], dir: W1.toUpperCase() }).owned, []);
+  //quit (background.js stopOwnProcesses): no dir, everything ours
+  assert.deepEqual(pids({}), [10, 11, 12, 13, 20, 21, 22, 23, 30]);
+  //killEpicProcess for w2: the owner API and http listener of any wallet (their ports), not w1's Epicbox
+  assert.deepEqual(pids({ dir: W2, anyDirRoles: ['owner_api', 'listen'], torDirs: [OLD] }), [10, 11, 13, 20, 21, 22, 23, 30]);
+});

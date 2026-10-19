@@ -179,7 +179,7 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
 
     methods: {
       saveInterface(){
-        if(saveUi(this.uiSelected, this.configService)){
+        if(saveUi(this.uiSelected)){
           this.uiSaved = this.uiSelected;
         }else{
           this.$toast.error(this.$t("msg.settings.error_save"));
@@ -192,13 +192,13 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
       //text and control size, applied at once (shared/theme.js)
       saveInterfaceScale(scale){
         this.scaleSelected = scale;
-        if(!saveScale(scale, this.configService)){
+        if(!saveScale(scale)){
           this.$toast.error(this.$t("msg.settings.error_save"));
         }
       },
       saveColourScheme(scheme){
         this.schemeSelected = scheme;
-        saveScheme(scheme, this.configService);
+        saveScheme(scheme);
         this.store.commit('scheme', scheme);
       },
       changeNodeBackgroundSetting(){

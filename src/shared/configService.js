@@ -15,7 +15,7 @@
  */
 import { layout, netFromShort } from './appPaths.js';
 import { createSettingsStore, normalizeWallet, NETWORKS, WALLET_DEFAULTS } from './settingsStore.js';
-import { renderWalletToml, renderNodeToml, networkPorts, walletMarkerText, WALLET_MARKER } from './walletToml.js';
+import { renderWalletToml, renderNodeToml, networkPorts, walletMarkerText, WALLET_MARKER, tomlNetwork, localNodeUrl, isLocalNodeUrl } from './walletToml.js';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -26,7 +26,6 @@ const OWNER_SECRET = '.owner_api_secret';
 const NODE_SECRET = '.api_secret';
 //what a new wallet's folder may hold before its seed exists: these files only (see discardWalletDirs)
 const PRE_SEED_FILES = [WALLET_TOML, OWNER_SECRET, NODE_SECRET, 'epic-wallet.log', WALLET_MARKER];
-const CHAIN_TYPES = { Mainnet: 'mainnet', Floonet: 'floonet', UserTesting: 'usernet', Usernet: 'usernet' };
 
 /* the preload's I/O, in the app */
 function windowDeps() {
@@ -86,8 +85,7 @@ class ConfigService {
     this.epicPath = this.path.resolve(bin, this.platform === 'win' ? 'epic-wallet.exe' : 'epic-wallet');
     this.epicNodePath = this.path.resolve(bin, this.platform === 'win' ? 'epic.exe' : 'epic');
 
-    //the wallet's fallback before any node is set, and while the built-in node syncs
-    this.defaultEpicNode = 'http://127.0.0.1:3413';
+    //mainnet's public node: the wallet's node while the built-in mainnet node syncs
     this.nodeFallBack = WALLET_DEFAULTS.check_node_api_http_addr;
     this.epicboxDomain = WALLET_DEFAULTS.epicbox_domain;
 
@@ -105,8 +103,20 @@ class ConfigService {
     this.killedPorts = [];
   }
 
-  getNodeFallBack() {
-    return this.nodeFallBack;
+  /* the node a wallet uses while the built-in one syncs: mainnet's public node; floonet and
+     usernet have none, so their own local node */
+  getNodeFallBack(network = this.defaultAccountNetwork) {
+    return network === 'mainnet' ? this.nodeFallBack : localNodeUrl(network);
+  }
+
+  /* the built-in node's API address for a network (default: the current wallet's) */
+  localNodeUrl(network = this.defaultAccountNetwork) {
+    return localNodeUrl(NETWORKS.includes(network) ? network : 'mainnet');
+  }
+
+  /* the node address used when a wallet has none set: the built-in node of its network */
+  get defaultEpicNode() {
+    return this.localNodeUrl();
   }
 
   /* the current wallet's record (a copy), null when none */
@@ -176,7 +186,9 @@ class ConfigService {
     while (this.dirHasFiles(this.layout.walletDir('w' + n))) n++;
     const id = 'w' + n;
     const configDir = this.layout.walletDir(id);
-    this.fs.mkdirSync(configDir, { recursive: true });
+    //seeds and secrets: for this user only (the mode does nothing on Windows)
+    this.fs.mkdirSync(this.layout.walletsDir, { recursive: true, mode: 0o700 });
+    this.fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
     return { id, configDir, dataDir: configDir };
   }
 
@@ -237,8 +249,7 @@ class ConfigService {
     const fromName = netFromShort(this.path.basename(this.path.resolve(dir)));
     if (fromName) return fromName;
     try {
-      const m = this.fs.readFileSync(this.path.join(dir, WALLET_TOML), 'utf8').match(/^\s*chain_type\s*=\s*"([^"]*)"/m);
-      return m && CHAIN_TYPES[m[1]] || '';
+      return tomlNetwork(this.fs.readFileSync(this.path.join(dir, WALLET_TOML), 'utf8'));
     } catch (e) {
       return '';
     }
@@ -255,7 +266,8 @@ class ConfigService {
     if (!dir || !this.path.isAbsolute(dir)) return { ok: false, reason: 'noseed' };
     const dataDir = this.path.resolve(dir);
     if (!this.fs.existsSync(this.path.join(dataDir, 'wallet_data', 'wallet.seed'))) return { ok: false, reason: 'noseed' };
-    if (this.settings.wallets().some(w => this.path.resolve(w.dataDir) === dataDir)) return { ok: false, reason: 'listed' };
+    //the same folder in another spelling (Windows: any case; a symlink) is listed too
+    if (this.settings.wallets().some(w => this.comparablePath(w.dataDir) === this.comparablePath(dataDir))) return { ok: false, reason: 'listed' };
     const net = NETWORKS.includes(network) ? network : this.networkOfDir(dataDir);
     if (!net) return { ok: false, reason: 'network' };
     const dirs = this.newWalletDirs(net);
@@ -274,22 +286,26 @@ class ConfigService {
     return this.fs.readFileSync(this.path.join(this.resourcePath, name), 'utf8');
   }
 
-  /* the node the wallet is told to use: a public node while the built-in one has not synced yet */
-  walletNodeUrl(settings) {
-    const addr = settings.check_node_api_http_addr || this.defaultEpicNode;
-    return settings.nodesynced == false && addr == 'http://127.0.0.1:3413' ? this.nodeFallBack : addr;
+  /* the node the wallet is told to use. Mainnet: the public node while the built-in one has not
+     synced yet; floonet and usernet have no public node, so their local node always */
+  walletNodeUrl(settings, network = 'mainnet') {
+    const local = this.localNodeUrl(network);
+    const addr = settings.check_node_api_http_addr || local;
+    return network === 'mainnet' && settings.nodesynced == false && addr == local ? this.nodeFallBack : addr;
   }
 
   /* <configDir>/epic-wallet.toml of the current (or the given) wallet, written whole every time */
   writeWalletToml(wallet = this.wallet) {
     if (!wallet) throw new Error('no wallet');
     const s = wallet.settings;
-    const nodeUrl = this.walletNodeUrl(s);
+    const nodeUrl = this.walletNodeUrl(s, wallet.network);
     const file = this.path.join(wallet.configDir, WALLET_TOML);
     const text = renderWalletToml({
       template: this.template(WALLET_TOML), network: wallet.network, configDir: wallet.configDir, dataDir: wallet.dataDir,
       nodeUrl, epicboxDomain: s.epicbox_domain || this.epicboxDomain,
-      nodeApiSecretPath: s.nodeInternal ? this.path.join(this.nodeDir(wallet.network), NODE_SECRET) : '',
+      //the built-in node's secret only goes to a node on this machine, never to a public node
+      //(the one used while the built-in node syncs, or one typed in)
+      nodeApiSecretPath: s.nodeInternal && isLocalNodeUrl(nodeUrl) ? this.path.join(this.nodeDir(wallet.network), NODE_SECRET) : '',
     });
     this.writeFile(file, text);
     if (wallet.id === this.walletId) {
@@ -397,18 +413,54 @@ class ConfigService {
     return !this.settings.readOnly && this.settings.wallets().length === 0 && this.paths.source !== 'env' && !!this.locationFile();
   }
 
+  /* a path as the OS compares it: resolved, through symlinks when it exists, any case on Windows */
+  comparablePath(p) {
+    let r = this.path.resolve(p);
+    if (typeof this.fs.realpathSync === 'function') {
+      try { r = this.fs.realpathSync(r); } catch (e) { /* not there (yet): as given */ }
+    }
+    return this.path.sep === '\\' ? r.toLowerCase() : r;
+  }
+
+  /* is `dir` the folder `parent` or inside it */
+  isSameOrInside(dir, parent) {
+    if (!parent) return false;
+    const rel = this.path.relative(this.comparablePath(parent), this.comparablePath(dir));
+    return rel === '' || (!rel.startsWith('..') && !this.path.isAbsolute(rel));
+  }
+
+  /*
+   * Advanced › Keep app data in another folder. Resolves {ok: true} or {ok: false, reason}:
+   *   'notallowed' wallets in the list, root set by EPIC_GUI_HOME, broken settings, or not an absolute path
+   *   'legacy'     ~/.epic or an older GUI's profile folder (or a folder inside one): never written by 6.1
+   *   'wallet'     a wallet folder (wallet_data in it or in a folder above it)
+   *   'notempty'   the folder holds files: 6.1's root must be new or empty
+   *   'failed'     the folder or location.json could not be written
+   * The default root itself clears location.json (clearRoot).
+   */
   setRoot(dir) {
-    if (!this.canMoveRoot() || !dir || !this.path.isAbsolute(dir)) return false;
+    if (!this.canMoveRoot() || !dir || typeof dir !== 'string' || !this.path.isAbsolute(dir)) return { ok: false, reason: 'notallowed' };
     const root = this.path.resolve(dir);
-    if (root === this.path.resolve(this.paths.defaultRoot)) return this.clearRoot();
+    if (this.comparablePath(root) === this.comparablePath(this.paths.defaultRoot)) {
+      return this.clearRoot() ? { ok: true } : { ok: false, reason: 'failed' };
+    }
+    const legacy = this.paths.legacy || {};
+    const legacyDirs = [legacy.epicDir, legacy.appConfigFile && this.path.dirname(legacy.appConfigFile),
+      ...(Array.isArray(legacy.profiles) ? legacy.profiles.map(p => p && p.dir) : [])].filter(d => typeof d === 'string' && d);
+    if (legacyDirs.some(d => this.isSameOrInside(root, d))) return { ok: false, reason: 'legacy' };
+    for (let d = root; ; d = this.path.dirname(d)) {
+      if (this.fs.existsSync(this.path.join(d, 'wallet_data'))) return { ok: false, reason: 'wallet' };
+      if (this.path.dirname(d) === d) break;
+    }
+    if (this.dirHasFiles(root)) return { ok: false, reason: 'notempty' };
     try {
       this.fs.mkdirSync(root, { recursive: true });
       this.fs.mkdirSync(this.paths.defaultRoot, { recursive: true });
       this.writeFile(this.locationFile(), JSON.stringify({ root }, null, 2));
-      return true;
+      return { ok: true };
     } catch (e) {
       console.log('configService.setRoot', e && e.message);
-      return false;
+      return { ok: false, reason: 'failed' };
     }
   }
 
@@ -440,8 +492,11 @@ class ConfigService {
       ...(!cfg.node_background ? ['node'] : [])];
 
     //one process scan for wallet, node and Tor: each scan spawns ps (powershell on Windows, ~1 s there).
-    //Tor of a listener lives in the wallet's data dir (wallet_tor)
-    let killPids = await this.nodeChildProcess.ownedProcesses(roles, {tor: true, torDirs: [this.walletDataDir].filter(Boolean)});
+    //This wallet's processes (its config dir); the owner API and http listener of any of our wallets
+    //too, since they hold the ports this wallet needs (3420, the listener port); another wallet's
+    //Epicbox listener or scan is left alone. Tor of a listener lives in the wallet's data dir (wallet_tor)
+    let killPids = await this.nodeChildProcess.ownedProcesses(roles, {dir: this.walletConfigDir, anyDirRoles: ['owner_api', 'listen'],
+      tor: true, torDirs: [this.walletDataDir].filter(Boolean)});
     this.allKilled = true;
 
     if (killPids.length) {

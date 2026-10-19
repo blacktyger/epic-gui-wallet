@@ -83,7 +83,7 @@
 <script>
 
 import { useStore } from '@/store';
-import { walletList, walletName, networkBadge, shortPath, homeShort, appLocale, walletFolder, walletOpen } from '@/components/wallets';
+import { walletList, walletName, networkBadge, shortFolder, appLocale, walletFolder, walletOpen } from '@/components/wallets';
 
   /*
    * This wallet: its label, its folders, where it was imported from; the other wallets in the
@@ -151,7 +151,7 @@ import { walletList, walletName, networkBadge, shortPath, homeShort, appLocale, 
       },
       badge: networkBadge,
       short(dir) {
-        return shortPath(homeShort(dir, this.configService), 52);
+        return shortFolder(dir, this.configService, 52);
       },
       openFolder(dir) {
         if (dir) window.openepichidden.open(dir);

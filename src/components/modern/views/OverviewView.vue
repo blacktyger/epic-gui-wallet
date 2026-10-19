@@ -389,12 +389,12 @@
       endTour() {
         this.tourOpen = false;
         //the tour also says where the interface switch is: the new-look notice is not needed after it
-        markNoticeSeen('tour', this.configService);
+        markNoticeSeen('tour');
         this.dismissUpgraded();
         if (this.$route.query.tour) this.$router.replace('/dashboard');
       },
       dismissUpgraded() {
-        markNoticeSeen('upgraded', this.configService);
+        markNoticeSeen('upgraded');
         this.showUpgraded = false;
       },
     },

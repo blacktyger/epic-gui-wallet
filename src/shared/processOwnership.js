@@ -205,8 +205,12 @@ export function torrcPaths(dir, win) {
 /*
  * The running processes that are ours, from one process list (find-process entries).
  *   roles:   which recorded roles to return (default all)
- *   dir:     only wallet/node processes of this dir; network: only nodes of this network
- *   tor:     also return our Tor processes (torrc in the data dir of a recorded http listener or in torDirs)
+ *   dir:     only wallet processes of this wallet (its config dir, -c); the node is shared by every
+ *            wallet of its network, so it is never filtered by dir. anyDirRoles: roles taken from any
+ *            wallet even with dir (a port every wallet needs: the owner API, the http listener)
+ *   network: only nodes of this network
+ *   tor:     also return our Tor processes (torrc in the data dir of a recorded http listener that
+ *            passes the dir filter, or in torDirs)
  * A recorded pid matches the process with that pid. The app starts the binaries without a shell, so
  * that is epic-wallet.exe / epic.exe itself; only a cmd.exe wrapper (6.0.0 spawned with shell: true)
  * also matches its direct epic child.
@@ -221,6 +225,9 @@ export function findOwned(entries, procs, opts = {}) {
   const owned = [];
   const live = [];
   const seen = new Set();
+  const anyDir = Array.isArray(opts.anyDirRoles) ? opts.anyDirRoles : [];
+  const dirOk = (entry) => !opts.dir || entry.role === 'node' || anyDir.includes(entry.role)
+    || norm(entry.dir, win) === norm(opts.dir, win);
 
   for (const entry of recorded) {
     const self = list.find(p => p.pid == entry.pid);
@@ -229,7 +236,7 @@ export function findOwned(entries, procs, opts = {}) {
     if (!matches.length) continue;
     live.push(entry);
     if (!roles.includes(entry.role)) continue;
-    if (opts.dir && norm(entry.dir, win) !== norm(opts.dir, win) && entry.role !== 'node') continue;
+    if (!dirOk(entry)) continue;
     if (opts.network && entry.role === 'node' && entry.network !== opts.network) continue;
     for (const p of matches) {
       if (seen.has(p.pid)) continue;
@@ -240,7 +247,7 @@ export function findOwned(entries, procs, opts = {}) {
   }
 
   if (opts.tor) {
-    const dirs = [...(opts.torDirs || []), ...recorded.filter(e => e.role === 'listen').map(e => e.topDir || e.dir)].filter(Boolean);
+    const dirs = [...(opts.torDirs || []), ...recorded.filter(e => e.role === 'listen' && dirOk(e)).map(e => e.topDir || e.dir)].filter(Boolean);
     const torrcs = [...new Set(dirs.flatMap(d => torrcPaths(d, win).map(t => norm(t, win))))];
     const allOurs = new Set(live.flatMap(e => list.filter(p => p.pid == e.pid || p.ppid == e.pid).map(p => p.pid)));
     for (const p of list) {
@@ -296,6 +303,24 @@ function pause(ms) {
   while (Date.now() < end) { /* wait */ }
 }
 
+/* fs.renameSync, tried again a few times (10, 20, 30 ms apart) while Windows says the file is busy
+   (antivirus, an indexer or another process reading it: EPERM, EBUSY, EACCES); throws the last error.
+   Also used by settingsStore.js. */
+export function renameRetry(fs, from, to, { tries = RENAME_TRIES, wait = pause } = {}) {
+  for (let i = 1; ; i++) {
+    try {
+      fs.renameSync(from, to);
+      return;
+    } catch (e) {
+      if (i < tries && e && RENAME_BUSY.includes(e.code)) {
+        wait(10 * i);
+        continue;
+      }
+      throw e;
+    }
+  }
+}
+
 /*
  * The record of spawned processes, kept in `file` (JSON array), with the I/O passed in:
  *   fs: node fs; findProcess: find-process; kill(pid) → Promise<boolean>; win: Windows
@@ -343,18 +368,12 @@ export function createProcessRegistry({ fs, file, findProcess, kill, win = false
     } catch (e) {
       return direct(e.code || e.message);
     }
-    for (let i = 1; ; i++) {
-      try {
-        fs.renameSync(tmp, file);
-        return true;
-      } catch (e) {
-        if (i < RENAME_TRIES && RENAME_BUSY.includes(e.code)) {
-          pause(10 * i);
-          continue;
-        }
-        try { fs.unlinkSync(tmp); } catch (e2) { /* gone already */ }
-        return direct('rename ' + (e.code || e.message));
-      }
+    try {
+      renameRetry(fs, tmp, file);
+      return true;
+    } catch (e) {
+      try { fs.unlinkSync(tmp); } catch (e2) { /* gone already */ }
+      return direct('rename ' + (e.code || e.message));
     }
   }
 

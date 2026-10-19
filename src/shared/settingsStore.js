@@ -1,7 +1,7 @@
 /*
  * GUI 6.1's settings file, <root>/settings.json (paths: shared/appPaths.js). It replaces the old
  * ~/.epic/epic_3-0-0_config.json (account list, theme), each wallet's config.json and the
- * settings half of the IndexedDB User row. Plain ESM, fs passed in: tests/settingsStore.test.js.
+ * settings half of the IndexedDB User row. Plain ESM, fs passed in: tests/appPaths.test.js.
  *
  * {
  *   "schema": 1,
@@ -10,6 +10,7 @@
  *   "legacy": { "<old wallet dir>": "imported" | "fresh" },  // what the user chose per found wallet
  *   "node": { "mainnet": { "chainDir": "<dir>" } },          // built-in node; absent = <root>/node/main/chain_data
  *   "defaultWallet": "w1",
+ *   "nextId": 2,                        // the next wallet id's number: only grows, so an id is never reused
  *   "wallets": [{
  *     "id": "w1", "label": "", "network": "mainnet",
  *     "configDir": "<root>/wallets/w1",   // epic-wallet.toml, secrets, log: always 6.1's own
@@ -21,10 +22,14 @@
  *   }]
  * }
  *
- * Saving writes settings.json.tmp, keeps the previous file as settings.json.bak, then renames.
+ * Saving writes settings.json.tmp, keeps the previous file as settings.json.bak, then renames
+ * (again a few times while Windows holds the file); a save that fails returns false, never throws.
  * A file that exists but can't be read is never overwritten (readOnly): a hand edit with a typo
  * must not lose the wallet list. Keys this version doesn't know are kept.
  */
+
+import { localNodeUrl } from './walletToml.js';
+import { renameRetry } from './processOwnership.js';
 
 export const SCHEMA = 1;
 export const NETWORKS = ['mainnet', 'floonet', 'usernet'];
@@ -43,11 +48,19 @@ export const WALLET_DEFAULTS = Object.freeze({
   node_background: false,
 });
 
+/* a new wallet's settings on its network: mainnet uses the public node; floonet and usernet have
+   no public node, so their own local node (http://127.0.0.1:<the network's node API port>) */
+export function walletDefaults(network) {
+  return network === 'mainnet' || !NETWORKS.includes(network)
+    ? { ...WALLET_DEFAULTS }
+    : { ...WALLET_DEFAULTS, check_node_api_http_addr: localNodeUrl(network) };
+}
+
 /* settings older drafts stored that 6.1 no longer has: dropped on load and on save
    (epicbox_background: the Epicbox listener always stops at lock, switch and quit) */
 const DROPPED_SETTINGS = ['epicbox_background'];
-function cleanSettings(s) {
-  const out = { ...WALLET_DEFAULTS, ...(isObj(s) ? s : {}) };
+function cleanSettings(s, network) {
+  const out = { ...walletDefaults(network), ...(isObj(s) ? s : {}) };
   for (const k of DROPPED_SETTINGS) delete out[k];
   return out;
 }
@@ -55,16 +68,24 @@ function cleanSettings(s) {
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
 function emptyData() {
-  return { schema: SCHEMA, app: { ...APP_DEFAULTS }, legacy: {}, node: {}, defaultWallet: '', wallets: [] };
+  return { schema: SCHEMA, app: { ...APP_DEFAULTS }, legacy: {}, node: {}, defaultWallet: '', nextId: 1, wallets: [] };
 }
 
+/* the number of a wN id, 0 for any other id */
+const idNumber = (id) => { const m = typeof id === 'string' && /^w(\d+)$/.exec(id); return m ? Number(m[1]) : 0; };
+
 /* a wallet's label is only shown, never part of a path: any characters, trimmed, at most
-   LABEL_MAX characters (counted as code points, so an emoji isn't cut in half); duplicates are fine */
+   LABEL_MAX characters (counted as code points, so an emoji isn't cut in half); duplicates are fine.
+   Control characters (C0, DEL, C1) become a space; direction marks and overrides (U+200E/F,
+   U+202A–U+202E, U+2066–U+2069) are dropped, so a label can't reorder the text around it */
 export const LABEL_MAX = 32;
 export function cleanLabel(label) {
   return typeof label === 'string'
-    //eslint-disable-next-line no-control-regex -- control characters are exactly what is removed
-    ? Array.from(label.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim()).slice(0, LABEL_MAX).join('').trim() : '';
+    ? Array.from(label
+      //eslint-disable-next-line no-control-regex -- control characters are exactly what is removed
+      .replace(/[\u0000-\u001f\u007f-\u009f]+/g, ' ')
+      .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '')
+      .trim()).slice(0, LABEL_MAX).join('').trim() : '';
 }
 
 /* a wallet record as stored; throws on what would break the app later */
@@ -80,7 +101,7 @@ export function normalizeWallet(w) {
     label: cleanLabel(w.label),
     origin: ORIGINS.includes(w.origin) ? w.origin : 'created',
     importedFrom: isObj(w.importedFrom) ? w.importedFrom : null,
-    settings: cleanSettings(w.settings),
+    settings: cleanSettings(w.settings, w.network),
   };
 }
 
@@ -97,11 +118,15 @@ function normalize(raw) {
   d.wallets = wallets;
   Object.defineProperty(d, 'invalidWallets', { value: invalid, enumerable: false });
   if (!wallets.some(w => w.id === d.defaultWallet)) d.defaultWallet = wallets.length ? wallets[0].id : '';
+  //past every id in the file, the broken records' too (they are written back and may be fixed by hand)
+  const stored = Number.isSafeInteger(raw.nextId) && raw.nextId > 0 ? raw.nextId : 1;
+  d.nextId = Math.max(stored, ...[...wallets, ...invalid].map(w => idNumber(w && w.id) + 1));
   return d;
 }
 
-/* fs: node's fs (sync calls only); file: <root>/settings.json; now: () => ISO string */
-export function createSettingsStore({ fs, pathMod, file, now = () => new Date().toISOString() }) {
+/* fs: node's fs (sync calls only); file: <root>/settings.json; now: () => ISO string;
+   wait(ms): the pause between rename tries (tests) */
+export function createSettingsStore({ fs, pathMod, file, now = () => new Date().toISOString(), wait }) {
   let data = emptyData();
   let fileExists = false;
   let readOnly = false;
@@ -128,14 +153,27 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
     return api;
   }
 
+  /* true when written; false (never a throw) when the file is unreadable (readOnly) or can't be
+     written: the change stays in memory and goes out with the next save that works. The rename is
+     tried again while Windows holds the file (processOwnership.renameRetry); settings.json is
+     never left half written. */
+  let saveError = '';
   function save() {
     if (readOnly) return false;
-    fs.mkdirSync(pathMod.dirname(file), { recursive: true });
     const tmp = file + '.tmp';
-    const out = { ...data, schema: SCHEMA, wallets: [...data.wallets, ...(data.invalidWallets || [])] };
-    fs.writeFileSync(tmp, JSON.stringify(out, null, 2), 'utf8');
-    if (fs.existsSync(file)) fs.copyFileSync(file, file + '.bak');
-    fs.renameSync(tmp, file);
+    try {
+      fs.mkdirSync(pathMod.dirname(file), { recursive: true });
+      const out = { ...data, schema: SCHEMA, wallets: [...data.wallets, ...(data.invalidWallets || [])] };
+      fs.writeFileSync(tmp, JSON.stringify(out, null, 2), 'utf8');
+      if (fs.existsSync(file)) fs.copyFileSync(file, file + '.bak');
+      renameRetry(fs, tmp, file, wait ? { wait } : {});
+    } catch (e) {
+      saveError = String(e && (e.code || e.message) || e);
+      try { if (fs.existsSync(tmp)) fs.unlinkSync(tmp); } catch (e2) { /* left for the next save */ }
+      console.log('settings not saved: ' + file + ': ' + saveError);
+      return false;
+    }
+    saveError = '';
     fileExists = true;
     return true;
   }
@@ -152,6 +190,8 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
     get exists() { return fileExists; },
     get readOnly() { return readOnly; },
     get loadError() { return loadError; },
+    /* why the last save failed ('' after one that worked) */
+    get saveError() { return saveError; },
     /* a copy: change it through the setters, so every change is saved */
     get data() { return JSON.parse(JSON.stringify(data)); },
 
@@ -175,17 +215,24 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
     defaultWalletId() { return data.defaultWallet; },
     setDefaultWallet(id) { find(id); data.defaultWallet = id; return save(); },
 
-    /* w1, w2, …: never reused while the list holds it, so a wallet's folder is never shared */
+    /* w1, w2, …: never reused, also after a wallet was removed from the list, so a wallet's
+       folder is never shared (settings.json keeps nextId, which only grows) */
     nextWalletId() {
-      const n = data.wallets.map(w => /^w(\d+)$/.exec(w.id)).filter(Boolean).map(m => +m[1]);
-      return 'w' + ((n.length ? Math.max(...n) : 0) + 1);
+      return 'w' + data.nextId;
     },
     addWallet(w) {
       const rec = normalizeWallet({ createdAt: now(), ...w });
-      if (data.wallets.some(x => x.id === rec.id)) throw new Error('wallet ' + rec.id + ' exists');
+      if ([...data.wallets, ...(data.invalidWallets || [])].some(x => x && x.id === rec.id)) throw new Error('wallet ' + rec.id + ' exists');
+      const before = { defaultWallet: data.defaultWallet, nextId: data.nextId };
       data.wallets.push(rec);
+      data.nextId = Math.max(data.nextId, idNumber(rec.id) + 1);
       if (!data.defaultWallet) data.defaultWallet = rec.id;
-      save();
+      if (!save()) {
+        //a wallet that isn't on disk would be gone after a restart: not listed, the caller says so
+        data.wallets = data.wallets.filter(x => x !== rec);
+        Object.assign(data, before);
+        throw new Error('settings not saved (' + (saveError || 'read only') + '): ' + file);
+      }
       return { ...rec, settings: { ...rec.settings } };
     },
     updateWallet(id, patch) {

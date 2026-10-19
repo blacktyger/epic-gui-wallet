@@ -69,6 +69,13 @@ function contactRow(c, userId) {
 export function createImporter({ configService, userService, addressbookService, legacyBridge, fs, pathMod,
   cleanNodeAddress, supportedLocale, log = () => {} }) {
   const settings = () => configService.settings;
+  //one folder, however it is spelt: Windows paths are case-insensitive
+  const win = pathMod && pathMod.sep === '\\';
+  const samePath = (a, b) => {
+    if (typeof a !== 'string' || typeof b !== 'string' || !a || !b) return false;
+    const x = pathMod.resolve(a), y = pathMod.resolve(b);
+    return win ? x.toLowerCase() === y.toLowerCase() : x === y;
+  };
   let rows = new Map();   //key → scan row with its old settings
   let chains = [];
 
@@ -129,7 +136,10 @@ export function createImporter({ configService, userService, addressbookService,
       const cfg = readOldConfig(w.key);
       const name = str(acc.user.name).trim();
       const label = name || (w.account === 'default' ? '' : str(w.account));
-      const language = locale(str(acc.user.language) || cfg.locale);
+      //the old config.json's locale is what the old app showed (its Settings wrote it); the User
+      //row's language is often the Setup Assistant's 'en', never changed. '' = nothing known
+      const oldLang = str(cfg.locale).trim() || str(acc.user.language).trim();
+      const language = oldLang ? locale(oldLang) : '';
       const row = { ...w, label, contacts: acc.contacts.length, language, settings: settingsFor(w, acc.user, cfg) };
       rows.set(w.key, { ...row, contactRows: acc.contacts, user: acc.user });
       wallets.push(row);
@@ -137,10 +147,11 @@ export function createImporter({ configService, userService, addressbookService,
     return { wallets, chains };
   }
 
+  /* setLocale: this wallet's language becomes the app's (see importWallets) */
   async function importOne(row, { reuseChain, setLocale }) {
     const s = settings();
     //idempotent: a retry after a crash or a double click doesn't add the wallet twice
-    const existing = s.wallets().find(w => w.dataDir === row.key || (w.importedFrom && w.importedFrom.dir === row.dir));
+    const existing = s.wallets().find(w => samePath(w.dataDir, row.key) || (w.importedFrom && samePath(w.importedFrom.dir, row.dir)));
     if (existing) {
       s.setLegacyDecision(row.dir, 'imported');
       return existing.id;
@@ -153,7 +164,7 @@ export function createImporter({ configService, userService, addressbookService,
     });
     try {
       const user = await userService.ensureUser(id, {
-        name: row.label, language: row.language,
+        name: row.label, language: row.language || undefined,
         nodeInternal: row.settings.nodeInternal, epicbox_domain: row.settings.epicbox_domain,
       });
       if (!user || typeof user.id !== 'number') throw new Error('no user row');
@@ -166,12 +177,15 @@ export function createImporter({ configService, userService, addressbookService,
         catch (e) { log('import ' + id + ': a contact was not added: ' + (e && e.message)); }
       }
     } catch (e) {
-      //undo the list entry so a retry starts clean; nothing of the old wallet was touched
+      //undo the list entry and the new config folder (its toml, WALLET.txt: discardWalletDirs removes
+      //only those names, and never a folder holding wallet_data) so a retry starts clean; configDir
+      //is 6.1's own, never the old wallet's folder, which is not touched
       try { s.removeWallet(id); } catch (e2) { /* already gone */ }
+      if (configDir !== row.key) configService.discardWalletDirs({ configDir });
       throw e;
     }
     s.setLegacyDecision(row.dir, 'imported');
-    if (setLocale && !s.app().locale && row.language) s.setApp({ locale: row.language });
+    if (setLocale && row.language) s.setApp({ locale: row.language });
     if (reuseChain && !s.nodeChainDir(row.network)) {
       const chain = (row.chainDir && chains.find(c => c.dir === row.chainDir)) || chains.find(c => c.network === row.network);
       if (chain) s.setNodeChainDir(row.network, chain.dir);
@@ -183,12 +197,17 @@ export function createImporter({ configService, userService, addressbookService,
     if (!rows.size) await scan();
     const s = settings();
     const hadDefault = !!s.defaultWalletId();
+    //the first imported wallet with a known language sets the app's, unless the user chose one:
+    //app.locale '' is the OS language, and on the first-run found screen nobody has chosen yet
+    let localeOpen = s.isFirstRun() || !s.app().locale;
     const imported = [], failed = [];
     for (const key of Array.isArray(keys) ? keys : []) {
       const row = rows.get(key);
       if (!row) { failed.push({ key, reason: 'not found' }); continue; }
       try {
-        const walletId = await importOne(row, { reuseChain, setLocale: imported.length === 0 });
+        const setLocale = localeOpen && !!row.language;
+        const walletId = await importOne(row, { reuseChain, setLocale });
+        if (setLocale) localeOpen = false;
         imported.push({ key, walletId });
       } catch (e) {
         failed.push({ key, reason: String(e && e.message || e) });

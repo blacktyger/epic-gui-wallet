@@ -11,6 +11,7 @@
  * A wallet is a dir holding wallet_data/wallet.seed.
  */
 import { netShort, netFromShort } from './appPaths.js';
+import { tomlNetwork } from './walletToml.js';
 
 const NETS = ['mainnet', 'floonet', 'usernet'];
 const SHORTS = ['main', 'floo', 'user'];
@@ -39,11 +40,8 @@ function mtime(fs, file) {
 }
 
 /* chain_type in the wallet's own toml, the last resort for its network */
-function tomlNetwork(fs, pathMod, dir) {
-  const toml = tryDo(() => fs.readFileSync(pathMod.join(dir, 'epic-wallet.toml'), 'utf8'), '');
-  const m = /^\s*chain_type\s*=\s*"(\w+)"/m.exec(toml);
-  const net = m ? m[1].toLowerCase() : '';
-  return NETS.includes(net) ? net : '';
+function dirTomlNetwork(fs, pathMod, dir) {
+  return tomlNetwork(tryDo(() => fs.readFileSync(pathMod.join(dir, 'epic-wallet.toml'), 'utf8'), ''));
 }
 
 /* which old GUI wrote the folder. config.json's version is the GUI's config version (3.0.0,
@@ -120,7 +118,7 @@ export function scanLegacy({ fs, pathMod, legacy, known = [] }) {
     const network = NETS.includes(info.network) ? info.network
       : SHORTS.includes(base) ? netFromShort(base)
       : SHORTS.includes(parentBase) ? netFromShort(parentBase)
-      : tomlNetwork(fs, pathMod, key) || 'mainnet';
+      : dirTomlNetwork(fs, pathMod, key) || 'mainnet';
     let account = typeof info.account === 'string' && info.account ? info.account : '';
     if (!account) {
       if (layout30) account = base;

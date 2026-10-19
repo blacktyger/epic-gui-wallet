@@ -30,7 +30,6 @@ const resourcePath =
 
 let logFile = `${moment(new Date()).format('YYYY_MM_D')}.log`
 let logPath = join(appPaths.logsDir, logFile);
-let processes = {};
 log.transports.file.resolvePath = () => logPath
 log.transports.file.format = '{y}-{m}-{d} {h}:{i}:{s}:{ms} [{level}] {text}';
 log.transports.file.maxSize = 5 * 1024 * 1024
@@ -47,7 +46,6 @@ if(fs.existsSync(path.join(appPaths.root, 'debug.log'))){
 }
 
 const spawn = require('child_process').spawn;
-const fork = require('child_process').fork;
 const exec = require('child_process').exec;
 const execFile = require('child_process').execFile;
 const validChannels = ['firstscan-stdout', 'scan-stdout', 'scan-finish', 'scan-error', 'walletExisted', 'walletCreated', 'walletCreateFailed', 'nodeBackground', 'epicboxBackground'];
@@ -170,7 +168,8 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
           createProcess.stdout.setEncoding('utf8');
           createProcess.stdout.on('data', (data) => {
 
-            debug ? console.log('execNew.stdout', data) : null;
+            //never the text: it holds the recovery phrase
+            debug ? console.log('execNew.stdout: ' + data.length + ' characters (not logged)') : null;
 
             if(data.includes('Password:')){
               createProcess.stdin.write( password+"\n");
@@ -396,7 +395,8 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
           recover.stdout.setEncoding('utf8');
           recover.stdout.on('data', (data) => {
-            debug ? console.log('execRecover.stdout', data) : null;
+            //never the text: it holds the recovery phrase
+            debug ? console.log('execRecover.stdout: ' + data.length + ' characters (not logged)') : null;
 
             if(data.includes('Password:')){
               recover.stdin.write(password+"\n");

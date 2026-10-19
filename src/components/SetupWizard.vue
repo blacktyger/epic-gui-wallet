@@ -324,14 +324,17 @@
           const epicboxDomain = this.epicboxDomain.defaultValue || '';
 
           //settings.json: the wallet's settings (the toml is rendered again), the app's language, the label
-          this.configService.updateConfig({
+          const saved = this.configService.updateConfig({
             check_node_api_http_addr: this.nodeserverField.defaultValue,
             locale: this.localeSelected,
             nodesynced: false,
             nodeInternal: nodeInternal,
             epicbox_domain: epicboxDomain,
           });
-          this.configService.renameWallet(walletId, label);
+          //settings.json not written (or the toml): stay here and say so, so it can be tried again
+          if(!this.configService.renameWallet(walletId, label) || !saved){
+            throw new Error(this.$t('msg.settings.error_save'));
+          }
           //the User row the store reads (commits store.user)
           await this.$userService.ensureUser(walletId, {
             name: label,

@@ -30,45 +30,25 @@ export function networkBadge(network) {
   return network && network !== 'mainnet' ? network.charAt(0).toUpperCase() + network.slice(1) : '';
 }
 
-/* the last two segments of a folder (…/alpha/main), Windows or POSIX separators */
-export function pathTail(dir, segments = 2) {
-  const parts = String(dir || '').split(/[\\/]+/).filter(Boolean);
-  return parts.slice(-segments).join('/');
-}
-
 /* a folder for a secondary line: its last segments, '…/' in front when shortened */
 export function folderTail(dir, segments = 3) {
   const parts = String(dir || '').split(/[\\/]+/).filter(Boolean);
   return (parts.length > segments ? '…/' : '') + parts.slice(-segments).join('/');
 }
 
-/* labels need not be unique: when another wallet shows the same name, its folder tells them apart */
-export function walletHint(wallet, list) {
-  if (!wallet) return '';
-  const name = walletName(wallet, list);
-  const same = (list || []).some(w => w.id !== wallet.id && walletName(w, list) === name);
-  return same ? pathTail(wallet.dataDir) : '';
-}
-
-/* a long folder path, shortened in the middle (the full one goes in a title attribute) */
-export function shortPath(dir, max = 46) {
-  const s = String(dir || '');
+/* a folder as one line: under the user's home as ~/… (the home is the folder that holds .epic),
+   then shortened in the middle to at most max characters (the full path goes in a title) */
+export function shortFolder(dir, configService, max = 46) {
+  let s = String(dir || '');
+  const epicDir = configService && configService.paths && configService.paths.legacy && configService.paths.legacy.epicDir;
+  const home = epicDir ? epicDir.replace(/[\\/]\.epic[\\/]?$/, '') : '';
+  if (home && home !== epicDir && s.startsWith(home) && /[\\/]/.test(s.charAt(home.length))) {
+    s = '~' + s.slice(home.length);
+  }
   if (s.length <= max) return s;
   const keep = max - 1;
   const head = Math.ceil(keep * 0.4);
   return s.slice(0, head) + '…' + s.slice(s.length - (keep - head));
-}
-
-/* a path under the user's home as ~/… (the home is the folder that holds .epic) */
-export function homeShort(dir, configService) {
-  const s = String(dir || '');
-  const epicDir = configService && configService.paths && configService.paths.legacy && configService.paths.legacy.epicDir;
-  if (!epicDir) return s;
-  const home = epicDir.replace(/[\\/]\.epic[\\/]?$/, '');
-  if (home && home !== epicDir && s.startsWith(home) && /[\\/]/.test(s.charAt(home.length))) {
-    return '~' + s.slice(home.length);
-  }
-  return s;
 }
 
 export function formatBytes(bytes) {

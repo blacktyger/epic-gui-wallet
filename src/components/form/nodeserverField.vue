@@ -41,7 +41,7 @@
 
 <script>
 
-  import { ref, computed } from "vue";
+  import { ref, computed, getCurrentInstance } from "vue";
   import useFormValidation from "@/modules/useFormValidation";
   import NodeDirectory from "@/components/form/NodeDirectory.vue";
 
@@ -53,6 +53,12 @@
       let select = ref('internal');
       let defaultValue = ref(null);
       let nodeInternal = ref(false);
+      //the built-in node of the current wallet's network (3413, 13413 or 23413)
+      const instance = getCurrentInstance();
+      const localNode = () => {
+        const cs = instance && instance.proxy && instance.proxy.configService;
+        return cs && typeof cs.localNodeUrl === 'function' ? cs.localNodeUrl() : 'http://127.0.0.1:3413';
+      };
 
       const { validateAddressField, errors } = useFormValidation();
 
@@ -71,7 +77,7 @@
           return validateAddressField("nodeaddress", defaultValue.value, true);
         }else{
           nodeInternal.value = true;
-          defaultValue.value = 'http://127.0.0.1:3413';
+          defaultValue.value = localNode();
           return true;
         }
 

@@ -170,3 +170,97 @@ test('settings: an unreadable or newer file is never overwritten, unknown keys a
   assert.equal(saved.wallets[0].future, 2);
   assert.deepEqual(saved.wallets[1], { id: 'bad' });
 });
+
+test('B1: wallet defaults per network: public node on mainnet, the local node on floonet and usernet', async () => {
+  const { walletDefaults } = await import('../src/shared/settingsStore.js');
+  assert.deepEqual(walletDefaults('mainnet'), { ...WALLET_DEFAULTS });
+  assert.equal(walletDefaults('floonet').check_node_api_http_addr, 'http://127.0.0.1:13413');
+  assert.equal(walletDefaults('usernet').check_node_api_http_addr, 'http://127.0.0.1:23413');
+  const n = normalizeWallet({ id: 'w2', network: 'floonet', configDir: '/r/w2', dataDir: '/r/w2' });
+  assert.equal(n.settings.check_node_api_http_addr, 'http://127.0.0.1:13413');
+  //a stored address is kept
+  assert.equal(normalizeWallet({ id: 'w2', network: 'usernet', configDir: '/r/w2', dataDir: '/r/w2',
+    settings: { check_node_api_http_addr: 'http://10.0.0.5:23413' } }).settings.check_node_api_http_addr, 'http://10.0.0.5:23413');
+});
+
+test('S5: wallet ids are never reused: removed ids, broken records kept on disk, nextId only grows', (t) => {
+  const root = tmpRoot(t);
+  const file = path.join(root, 'settings.json');
+  const rec = (id, network = 'mainnet') => ({ id, network, configDir: '/r/wallets/' + id, dataDir: '/r/wallets/' + id });
+  const s = createSettingsStore({ fs, pathMod: path, file }).load();
+  assert.equal(s.nextWalletId(), 'w1');
+  s.addWallet(rec('w1'));
+  s.addWallet(rec(s.nextWalletId()));
+  assert.equal(s.nextWalletId(), 'w3');
+  s.removeWallet('w2');
+  assert.equal(s.nextWalletId(), 'w3', 'a removed id is not given out again');
+  s.removeWallet('w1');
+  assert.equal(s.nextWalletId(), 'w3');
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).nextId, 3);
+  assert.equal(createSettingsStore({ fs, pathMod: path, file }).load().nextWalletId(), 'w3', 'kept in settings.json');
+
+  //an older file without nextId and with a broken record (kept on disk): past both
+  fs.writeFileSync(file, JSON.stringify({ schema: 1, wallets: [rec('w2'), { id: 'w7', network: 'nonet' }] }));
+  const r = createSettingsStore({ fs, pathMod: path, file }).load();
+  assert.deepEqual(r.wallets().map(w => w.id), ['w2']);
+  assert.equal(r.nextWalletId(), 'w8');
+  assert.throws(() => r.addWallet(rec('w7')), /exists/, 'not over a broken record');
+  //a stored nextId lower than the ids (a hand edit) never wins
+  fs.writeFileSync(file, JSON.stringify({ schema: 1, nextId: 1, wallets: [rec('w4')] }));
+  assert.equal(createSettingsStore({ fs, pathMod: path, file }).load().nextWalletId(), 'w5');
+  fs.writeFileSync(file, JSON.stringify({ schema: 1, nextId: 'x', wallets: [] }));
+  assert.equal(createSettingsStore({ fs, pathMod: path, file }).load().nextWalletId(), 'w1');
+  //an id given explicitly past nextId moves it on
+  const q = createSettingsStore({ fs, pathMod: path, file }).load();
+  q.addWallet(rec('w9'));
+  assert.equal(q.nextWalletId(), 'w10');
+});
+
+test('S7: save tries the rename again while Windows holds the file, and returns false instead of throwing', (t) => {
+  const root = tmpRoot(t);
+  const file = path.join(root, 'settings.json');
+  const busy = (code) => Object.assign(new Error(code), { code });
+  let fails = 2, renames = 0;
+  const waits = [];
+  const flaky = { ...fs, renameSync: (a, b) => { renames++; if (fails-- > 0) throw busy('EPERM'); return fs.renameSync(a, b); } };
+  const s = createSettingsStore({ fs: flaky, pathMod: path, file, wait: (ms) => waits.push(ms) }).load();
+  assert.equal(s.setApp({ theme: 'light' }), true);
+  assert.equal(renames, 3, 'failed twice, then worked');
+  assert.deepEqual(waits, [10, 20]);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).app.theme, 'light');
+  assert.equal(s.saveError, '');
+
+  //always busy: false, the file as it was, no temp file left, no throw from any setter
+  const before = fs.readFileSync(file, 'utf8');
+  const locked = { ...fs, renameSync: () => { throw busy('EBUSY'); } };
+  const l = createSettingsStore({ fs: locked, pathMod: path, file, wait: () => {} }).load();
+  assert.equal(l.setApp({ theme: 'dark' }), false);
+  assert.equal(l.markScanned(0), false);
+  assert.equal(l.setLegacyDecision('/old', 'fresh'), false);
+  assert.equal(l.saveError, 'EBUSY');
+  assert.equal(fs.readFileSync(file, 'utf8'), before);
+  assert.ok(!fs.existsSync(file + '.tmp'));
+  //a wallet that can't be saved is not listed (registerWallet reports it)
+  assert.throws(() => l.addWallet({ id: 'w1', network: 'mainnet', configDir: '/r/w1', dataDir: '/r/w1' }), /settings not saved \(EBUSY\)/);
+  assert.deepEqual(l.wallets(), []);
+  assert.equal(l.defaultWalletId(), '');
+  assert.equal(l.nextWalletId(), 'w1');
+  //another error is not retried
+  let n = 0;
+  const denied = { ...fs, renameSync: () => { n++; throw busy('ENOSPC'); } };
+  assert.equal(createSettingsStore({ fs: denied, pathMod: path, file, wait: () => {} }).load().setApp({ scale: 110 }), false);
+  assert.equal(n, 1);
+  //a write that throws (a full disk): false too
+  const full = { ...fs, writeFileSync: () => { throw busy('ENOSPC'); } };
+  assert.equal(createSettingsStore({ fs: full, pathMod: path, file }).load().setApp({ scale: 120 }), false);
+  assert.equal(fs.readFileSync(file, 'utf8'), before);
+});
+
+test('cleanLabel: C1 controls become a space, direction marks and overrides are dropped', () => {
+  assert.equal(cleanLabel('a\u0085b\u009fc'), 'a b c');
+  assert.equal(cleanLabel('\u202eevil\u202c'), 'evil');
+  assert.equal(cleanLabel('x\u200e\u200fy\u2066z\u2069'), 'xyz');
+  assert.equal(cleanLabel('\u202a\u202b\u202d '), '');
+  assert.equal(cleanLabel('Ünïcødé €'), 'Ünïcødé €', 'ordinary characters stay (U+00A0 and up)');
+  assert.equal(cleanLabel('עברית'), 'עברית', 'right-to-left text itself stays');
+});

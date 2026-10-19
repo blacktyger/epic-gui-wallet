@@ -203,7 +203,7 @@
       },
       //forget that the tour was seen and open it on Overview
       showTourAgain() {
-        resetNotice('tour', this.configService);
+        resetNotice('tour');
         this.$router.push({ path: '/dashboard', query: { tour: '1' } });
       },
     },
