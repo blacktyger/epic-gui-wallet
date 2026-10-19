@@ -13,8 +13,8 @@ require('promise.prototype.finally').shim();
 const log = window.log;
 console.log = log.log;
 const ownerApiPort = 3420;
-const jsonRPCUrl = 'http://127.0.0.1:3420/v3/owner'
-const jsonRPCForeignUrl = 'http://127.0.0.1:3420/v2/foreign'
+const jsonRPCUrl = WALLET_API_ORIGIN + '/v3/owner'
+const jsonRPCForeignUrl = WALLET_API_ORIGIN + '/v2/foreign'
 
 class WalletService {
 
@@ -95,35 +95,38 @@ class WalletService {
 
     }
 
+    /* the client for the wallet API on this machine (epic-wallet owner_api), and for nothing else:
+       the owner API secret goes with each of its calls, so a call to any other address (a node, a
+       relative url) is refused before it is sent */
     initClient() {
 
-      let baseURL = this.configService.config['check_node_api_http_addr'] ? this.configService.config['check_node_api_http_addr'] : this.configService.defaultEpicNode;
       let password = this.configService.ownerApisecret;
-
-      return new Promise(function(resolve, reject) {
-
-                let client = axios.create({
-                    baseURL: baseURL,
-                    auth: {
-                        username: 'epic',
-                        password: password
-                    },
-                    withCredentials:true
-
-                })
-
-                resolve(client);
+      let client = axios.create({
+          baseURL: WALLET_API_ORIGIN,
+          auth: {
+              username: 'epic',
+              password: password
+          },
       });
+      client.interceptors.request.use((config) => {
+          let url = '';
+          try{ url = new URL(config.url || '', config.baseURL || WALLET_API_ORIGIN).href; }catch(e){ /* refused below */ }
+          if(!isWalletApiUrl(url)){
+            throw new Error('not the wallet API, not sent');
+          }
+          return config;
+      });
+      return Promise.resolve(client);
     }
 
     /* timeout (ms, 0: none): give up on a call the wallet does not answer; why the last call
        failed is kept in lastError, for the log */
     async jsonRPC(method, params, isForeign, timeout = 0){
         this.lastError = '';
+        //no withCredentials: the wallet API answers CORS with "*", which a credentialed request
+        //may not use; the secret goes in the Authorization header (initClient)
         const headers = {
-            'Content-Type': 'application/json',
-            'withCredentials': true,
-            'credentials': 'same-origin'
+            headers: {'Content-Type': 'application/json'}
         }
 
         const body = {
@@ -201,7 +204,7 @@ class WalletService {
           }
       }else{
 
-        let response = await this.client.post(url, body, headers, {withCredentials:true})
+        let response = await this.client.post(url, body, headers)
         .catch(error => {
               this.debug ? console.log('WalletService.jsonRPC', error) : null;
               return false;
