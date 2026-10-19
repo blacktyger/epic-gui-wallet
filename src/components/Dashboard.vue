@@ -2,7 +2,7 @@
 
   <section class="section is-main-section">
 
-
+    <node-problem-notice />
 
     <div id="tabs-with-content">
 
@@ -42,6 +42,7 @@ import { useStore } from '@/store';
 import Transaction from '@/components/Transaction.vue'
 import Commit from '@/components/Commit.vue'
 import SummaryInfo from '@/components/SummaryInfo.vue'
+import NodeProblemNotice from '@/components/NodeProblemNotice.vue'
 
 export default {
   name: "dashboard",
@@ -49,6 +50,7 @@ export default {
     Transaction,
     Commit,
     SummaryInfo,
+    NodeProblemNotice,
   },
 
   setup() {

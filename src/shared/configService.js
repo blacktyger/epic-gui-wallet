@@ -1,4 +1,6 @@
 /* check required files and folder on on app start */
+import { tomlString } from './tomlString.js';
+import { migrateNodeAddress } from './nodeAddressMigration.js';
 const defaultAppConfigDir = window.config.getUserHomedir();
 const defaultUserdir = 'epicguiwallet';
 const path = window.nodePath;
@@ -23,6 +25,9 @@ class ConfigService {
       //TODO: make it selectable in app, so user can
       //start wallet from last used account
       this.defaultAccountWalletdir = path.join(defaultAppConfigDir, '.epic');
+      //where a new wallet goes unless the user picks a folder. Not defaultAccountWalletdir: that becomes
+      //the last checked account's dir, and a second new wallet would be created inside the first one
+      this.defaultWalletRoot = path.join(defaultAppConfigDir, '.epic');
       this.appConfigFile = path.join(defaultAppConfigDir, '.epic', 'epic_3-0-0_config.json');
 
       this.defaultAccountNetwork = 'mainnet';
@@ -130,27 +135,17 @@ class ConfigService {
 
         const re = /^db_root(\s)*=(\s).*/gm;
         if(tomlContent.search(re) != -1){
-          if(this.platform == 'win'){
-                  //double escaped path
-            tomlContent = tomlContent.replace(re, 'db_root = "' + chainDir.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re, 'db_root = "' + chainDir + '"');
-          }
+          tomlContent = tomlContent.replace(re, () => 'db_root = ' + tomlString(chainDir));
         }
 
         const re2 = /^chain_type(\s)*=(\s).*/gm;
         if(tomlContent.search(re2) != -1){
-          tomlContent = tomlContent.replace(re2, 'chain_type = "' + this.tomlNetworkname + '"');
+          tomlContent = tomlContent.replace(re2, () => 'chain_type = ' + tomlString(this.tomlNetworkname));
         }
 
         const re3 = /^foundation_path(\s)*=(\s).*/gm;
         if(tomlContent.search(re3) != -1){
-          if(this.platform == 'win'){
-                  //double escaped path
-            tomlContent = tomlContent.replace(re3, 'foundation_path = "' + foundationFile.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re3, 'foundation_path = "' + foundationFile + '"');
-          }
+          tomlContent = tomlContent.replace(re3, () => 'foundation_path = ' + tomlString(foundationFile));
         }
 
         const re4 = /^stdout_log_level(\s)*=(\s).*/gm;
@@ -303,18 +298,15 @@ class ConfigService {
         const re2 = /^data_file_dir(\s)*=(\s).*/gm; 
         if(tomlContent.search(re2) != -1){
             let wallet_data_dir = path.join(walletDir, 'wallet_data');
-            if(this.platform == 'win'){
-              //double escaped path
-              tomlContent = tomlContent.replace(re2, 'data_file_dir = "' + wallet_data_dir.replace(/\\/g, '\\\\') + '"');
-            }else{
-              tomlContent = tomlContent.replace(re2, 'data_file_dir = "' + wallet_data_dir + '"');
-            }
+            tomlContent = tomlContent.replace(re2, () => 'data_file_dir = ' + tomlString(wallet_data_dir));
         }
 
         const re3 = /^check_node_api_http_addr(\s)*=(\s).*/gm;
 
         let nodeApiHttp = '';
-        if(this.config.nodesynced == false && this.config.check_node_api_http_addr == 'http://127.0.0.1:3413'){
+        //the fallback is a mainnet node: floonet/usernet wallets stay on the built-in node while it syncs
+        if(this.config.nodesynced == false && this.config.check_node_api_http_addr == 'http://127.0.0.1:3413'
+           && (this.defaultAccountNetwork || 'mainnet') == 'mainnet'){
           nodeApiHttp = this.nodeFallBack;
         }else{
           nodeApiHttp = this.config.check_node_api_http_addr;
@@ -323,7 +315,7 @@ class ConfigService {
         this.walletNodeAddr = nodeApiHttp;
 
         if(tomlContent.search(re3) != -1){
-          tomlContent = tomlContent.replace(re3, 'check_node_api_http_addr = "' + nodeApiHttp + '"');
+          tomlContent = tomlContent.replace(re3, () => 'check_node_api_http_addr = ' + tomlString(nodeApiHttp));
         }
 
         const re4 = /^stdout_log_level(\s)*=(\s).*/gm;
@@ -333,42 +325,22 @@ class ConfigService {
 
         const re5 = /^api_secret_path(\s)*=(\s).*/gm;
         if(tomlContent.search(re5) != -1){
-          if(this.platform == 'win'){
-            //double escaped path
-            tomlContent = tomlContent.replace(re5, 'api_secret_path = "' + this.ownerApiSecretPath.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re5, 'api_secret_path = "' + this.ownerApiSecretPath + '"');
-          }
+          tomlContent = tomlContent.replace(re5, () => 'api_secret_path = ' + tomlString(this.ownerApiSecretPath));
         }
 
         const re6 = /^node_api_secret_path(\s)*=(\s).*/gm;
         if(tomlContent.search(re6) != -1){
-          if(this.platform == 'win'){
-            //double escaped path
-            tomlContent = tomlContent.replace(re6, 'node_api_secret_path = "' + this.apiSecretPath.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re6, 'node_api_secret_path = "' + this.apiSecretPath + '"');
-          }
+          tomlContent = tomlContent.replace(re6, () => 'node_api_secret_path = ' + tomlString(this.apiSecretPath));
         }
 
         const re7 = /^send_config_dir(\s)*=(\s).*/gm;
         if(tomlContent.search(re7) != -1){
-          if(this.platform == 'win'){
-            //double escaped path
-            tomlContent = tomlContent.replace(re7, 'send_config_dir = "' + walletDir.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re7, 'send_config_dir = "' + walletDir + '"');
-          }
+          tomlContent = tomlContent.replace(re7, () => 'send_config_dir = ' + tomlString(walletDir));
         }
 
         const re8 = /^log_file_path(\s)*=(\s).*/gm;
         if(tomlContent.search(re8) != -1){
-          if(this.platform == 'win'){
-            //double escaped path
-            tomlContent = tomlContent.replace(re8, 'log_file_path = "' + walletTOMLLogfilePath.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re8, 'log_file_path = "' + walletTOMLLogfilePath + '"');
-          }
+          tomlContent = tomlContent.replace(re8, () => 'log_file_path = ' + tomlString(walletTOMLLogfilePath));
         }
 
         const re9 = /^epicbox_domain(\s)*=(\s).*/gm;
@@ -380,7 +352,7 @@ class ConfigService {
         }
 
         if(tomlContent.search(re9) != -1){
-          tomlContent = tomlContent.replace(re9, 'epicbox_domain = "' + epicboxDomain + '"');
+          tomlContent = tomlContent.replace(re9, () => 'epicbox_domain = ' + tomlString(epicboxDomain));
         }else{
 //do not add space in this block!!!
 ///this updates older toml file format to work with epicbox
@@ -857,10 +829,13 @@ epicbox_port = 443
       //check if user home dir exist.
       //if home dir is not found then user have to select one
 
+      //for the login error: the saved folder of this account that is not there ('' when no folder is saved)
+      this.missingWalletDir = '';
       if (window.nodeFs.existsSync(userHomedir)) {
           this.emitter.emit('checkSuccess', 'user wallet dir exist');
       } else {
           initWallet = true;
+          this.missingWalletDir = userHomedir == defaultUserdir ? '' : userHomedir;
           this.emitter.emit('checkFail', 'user wallet dir does not exist');
           return 'init';
       }
@@ -937,6 +912,12 @@ epicbox_port = 443
         //make some settings
         //load settings before change wallet toml
         this.config = this.loadConfig(this.configFile);
+        //once per account: clean up a node address saved by an older GUI, before the toml gets it
+        const migrated = await migrateNodeAddress(this.config, {network: this.defaultAccountNetwork});
+        this.nodeAddressChange = migrated.change;
+        if(migrated.updated){
+          this.saveConfig();
+        }
 
         this.walletTOMLPath = this.checkTomlFile(defaultAccountWalletdir);
         if(!this.walletTOMLPath){

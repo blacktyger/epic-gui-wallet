@@ -591,6 +591,12 @@ contextBridge.exposeInMainWorld('config', {
   getArch(){
     return os.arch();
   },
+  /* the OneDrive folders Windows sets in the environment, for the wallet folder warning */
+  getOneDriveRoots(){
+    return ['OneDrive', 'OneDriveConsumer', 'OneDriveCommercial']
+      .map(name => process.env[name])
+      .filter(v => typeof v === 'string' && v.trim() !== '');
+  },
   getOnionV3(address){
 
     const chekcsumstr = Buffer.from(".onion checksum","utf8");

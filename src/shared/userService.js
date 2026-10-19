@@ -1,5 +1,6 @@
 import { BaseService } from "./base_service";
 import { useStore } from '@/store';
+import { removeAccountData } from "./accountData";
 
 class UserService extends BaseService {
 
@@ -13,6 +14,11 @@ class UserService extends BaseService {
 
     clear(){
       return this.connection.clear(this.tableName);
+    }
+
+    /* the account left the wallet list: remove its row and contacts (shared/accountData.js) */
+    removeAccountData(account) {
+        return removeAccountData(this.connection, account);
     }
 
     getUser(account) {

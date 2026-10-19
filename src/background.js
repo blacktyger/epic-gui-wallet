@@ -16,6 +16,11 @@ const findProcess = require('find-process');
 const os = require('os');
 const fs = require('fs');
 const log = require('electron-log');
+const { migrateFromEpicWallet, pinUserDataDir } = require('./userDataMigration');
+//before any window or session touches userData: freeze its folder name (a package rename must not
+//move the profile again), then bring over the 5.x profile (address book, settings)
+pinUserDataDir(app, log);
+migrateFromEpicWallet(app, log);
 const {autoUpdater} = require("electron-updater");
 autoUpdater.channel = "latest";
 //setting the channel turns on downgrades: an older release would be offered as an update

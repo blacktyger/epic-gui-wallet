@@ -50,6 +50,7 @@
 import { ref } from 'vue';
 import { useRouter } from '@/router';
 import { useStore } from '@/store';
+import { oneDriveRootOf } from '@/shared/oneDrive';
 
 export default {
   name: "new",
@@ -89,6 +90,12 @@ export default {
               this.error = 1;
               this.errMsg = this.$t("msg.new.selectErr");
             }else{
+              //an existing wallet in OneDrive: open it, but say once why it should move
+              const roots = window.config.getOneDriveRoots ? window.config.getOneDriveRoots() : [];
+              if(oneDriveRootOf(this.userHomedir, {roots, platform: this.configService.platform})){
+                this.$toast.warning(this.$t("msg.walletfolder.onedrive_title") + ': ' +
+                  this.$t("msg.walletfolder.onedrive_warning", [this.userHomedir, this.configService.defaultWalletRoot]), {duration: 20000});
+              }
               this.$router.push('/login');
             }
 

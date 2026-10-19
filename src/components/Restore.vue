@@ -192,6 +192,7 @@
 
 
   import { ref, computed, onMounted } from 'vue';
+  import { forgetLeftoverAccountData } from "@/shared/accountData";
   import { useRouter } from '@/router';
   import { useRoute } from 'vue-router';
   import AccountField from "@/components/form/accountField";
@@ -267,6 +268,9 @@
     },
 
     methods: {
+      async forgetLeftoverAccountData(account){
+        return forgetLeftoverAccountData({appConfig: this.configService.appConfig, userService: this.$userService, account});
+      },
       toggleAdvancedSettings(){
 
         this.advancedSettings = !this.advancedSettings;
@@ -362,6 +366,9 @@
           if(recovered && !recovered.success){
             this.$toast.error(recovered.msg, {duration:false});
           }else{
+            //a wallet of this name that was removed from the list left its settings and contacts
+            //behind: the restored wallet starts clean instead of taking them over
+            await this.forgetLeftoverAccountData(this.accountField.defaultValue);
             //save new account settings and run a check against recoverd wallet
             if(await this.configService.updateAppConfig('account_dirs', {
                 account: this.accountField.defaultValue,
