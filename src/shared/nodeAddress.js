@@ -62,6 +62,20 @@ function hostOf(s){
 }
 
 /*
+ * The address to save for what the user typed in the node address field (Settings, Setup): trimmed,
+ * http:// for this computer or the LAN and https:// for others when no scheme is given (any port
+ * kept), trailing slashes dropped (the wallet appends /v2/...). Only the saved value: the field
+ * keeps showing the text as typed, so a "/" never vanishes under the user's cursor.
+ */
+export function nodeFieldAddress(text){
+  let s = String(text || '').trim();
+  if(s && !hasScheme(s)){
+    s = (isPrivateHost(hostOf(s)) ? 'http://' : 'https://') + s;
+  }
+  return s.replace(/\/+$/, '');
+}
+
+/*
  * address: the saved address; network: 'mainnet' | 'floonet' | 'usernet' (the wallet's)
  *
  * returns {url, changed, reason, suggest}
