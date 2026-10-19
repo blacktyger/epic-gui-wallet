@@ -87,7 +87,7 @@ async function readOne({ session, BrowserWindow, fs, path, tmpDir, profile, log 
 /*
  * electron: {session, BrowserWindow} from 'electron' (after app 'ready'; the app:// scheme must be
  * registered as privileged, as background.js does); fs, path: node's; tmpDir: a dir of ours
- * (e.g. app.getPath('temp') + '/epic-gui-import'); profiles: appPaths.legacyPaths().profiles.
+ * (<root>/tmp/import, under 6.1's own folder); profiles: appPaths.legacyPaths().profiles.
  * → [{app, dir, databases, version, stores, users, contacts}] for each profile that could be read; never throws.
  */
 export async function readLegacyProfiles({ session, BrowserWindow, fs, path, tmpDir, profiles, log = () => {} }) {

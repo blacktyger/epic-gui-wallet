@@ -18,15 +18,26 @@ const ps = require('ps-node');
 const findProcess = require('find-process');
 const os = require('os');
 const fs = require('fs');
-const log = require('electron-log');
 
-//GUI 6.1 keeps everything under its own folder (shared/appPaths.js), Electron's userData too: set
-//before anything (electron-updater, the session, IndexedDB) reads userData
+//GUI 6.1 keeps everything under its own folder (shared/appPaths.js), Electron's userData and logs
+//too: set before anything (electron-log, electron-updater, the session, IndexedDB) reads them.
+//electron-log asks for app.getPath('logs') when it is loaded, and Electron creates that folder
+//(~/.config/epic-desktop-wallet/logs) unless setAppLogsPath came first: so it is required below.
 const rootInfo = resolveRoot({ platform: process.platform, env: process.env, home: os.homedir(), pathMod: path,
   readFile: (f) => fs.readFileSync(f, 'utf8') });
 const appLayout = layout(rootInfo.root, path);
 app.setPath('userData', appLayout.userData);
+app.setAppLogsPath(appLayout.logsDir);
+
+//one app at a time: a second start hands over to the first (second-instance below) and quits at
+//once, before it opens a window, scans or stops any process
+const primaryInstance = app.requestSingleInstanceLock();
+if (!primaryInstance) {
+  app.exit(0);
+}
+
 fs.mkdirSync(appLayout.logsDir, { recursive: true });
+const log = require('electron-log');
 log.transports.file.resolvePath = () => path.join(appLayout.logsDir, 'main.log');
 
 const {autoUpdater} = require("electron-updater");
@@ -291,7 +302,7 @@ app.on('window-all-closed', async() => {
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== 'darwin') {
 
-    await stopOwnProcesses();
+    if (primaryInstance) await stopOwnProcesses();
     app.quit()
   }
 
@@ -346,16 +357,25 @@ autoUpdater.on('error', (err) => {
 });*/
 
 
+//someone started the app again: show this window instead
+app.on('second-instance', () => {
+  if (!win || win.isDestroyed()) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+});
+
 app.on('activate', () => {
   // On macOS it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
-  if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  if (primaryInstance && BrowserWindow.getAllWindows().length === 0) createWindow()
 })
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', async (event) => {
+  if (!primaryInstance) return;
   //console.log('app', noderuninbackground);
   console.log('noderuninbackground', noderuninbackground);
   console.log('epicboxruninbackground', epicboxruninbackground);
@@ -452,7 +472,7 @@ ipcMain.handle('legacy-scan', async (event, { known } = {}) => {
   const scan = scanLegacy({ fs, pathMod: path, legacy, known: Array.isArray(known) ? known.filter(k => typeof k === 'string') : [] });
   //the old IndexedDB is read (from a copy) only when there is something to import
   const profiles = scan.wallets.length ? await readLegacyProfiles({ session, BrowserWindow, fs, path,
-    tmpDir: path.join(app.getPath('temp'), 'epic-gui-import'), profiles: legacy.profiles, log: (m) => log.info(m) }) : [];
+    tmpDir: path.join(appLayout.root, 'tmp', 'import'), profiles: legacy.profiles, log: (m) => log.info(m) }) : [];
   return { ...scan, profiles };
 });
 
