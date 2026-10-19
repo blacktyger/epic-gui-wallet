@@ -39,7 +39,7 @@ export const removalDialog = {
       ];
       //the data folder is gone: nothing more to delete, so no third choice
       if (!t.folderMissing) {
-        choices.push({ mode: 'everything', label: this.$t('msg.removal.all_label'), hint: this.$t('msg.removal.all_hint', [t.configDir]),
+        choices.push({ mode: 'everything', label: this.$t('msg.removal.all_label'), hint: p && p.canEverything ? this.$t('msg.removal.all_hint', [t.configDir]) : this.$t('msg.removal.all_hint_off'),
           disabled: checking || !p.canEverything, reason: p && !p.canEverything ? this.removeReason(p.reasons.everything) : '' });
       }
       return choices;

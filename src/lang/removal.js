@@ -17,6 +17,8 @@ export default {
   app_hint_missing: 'Also deletes its settings, its contacts in this app and this app’s files for it in {0}.',
   all_label: 'Remove everything, including the recovery phrase',
   all_hint: 'Deletes the wallet completely from this computer: {0}',
+  //the choice can't be used here (the reason follows): no folder named, so nothing reads as if it would go
+  all_hint_off: 'Deletes the wallet and its recovery phrase from this computer.',
 
   //why a choice can't be used
   reason_open: 'This wallet is open. Lock it or switch to another wallet first.',
