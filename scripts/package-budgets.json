@@ -1,0 +1,4 @@
+{
+  "linux": { "artifact": 161000000, "extracted": 383000000, "asar": 9000000 },
+  "win": { "artifact": 999000000, "extracted": 999000000, "asar": 9000000 }
+}

@@ -28,7 +28,15 @@ const ptyExtra = {
  * @type {import('@vue/cli-service').ProjectOptions}
  */
 
+/*
+ * Chromium's own UI strings (context menu, dialogs; app.getLocale()): only en-US and the app's
+ * languages (src/i18n.js: bg, cz = cs, de, fa, hi). Not set for mac.
+ */
+const ELECTRON_LANGUAGES = ['en-US', 'bg', 'cs', 'de', 'fa', 'hi'];
+
 module.exports = {
+  //no .map files in the package (the renderer's would be 8 MB of app.asar)
+  productionSourceMap: false,
   css: {
     loaderOptions: {
       sass: {
@@ -49,9 +57,12 @@ module.exports = {
       //into app.asar with the rest of node_modules
       externals: ['!node-pty'],
       builderOptions: {
-        //electron-builder also collects the project's node_modules into app.asar: not node-pty
-        //(all platforms' prebuilds and .pdb files), it is in resources/node-pty
-        files: ['**/*', '!**/node_modules/node-pty{,/**}'],
+        //main, preload and renderer are webpack bundles that need only Node built-ins, so no
+        //node_modules in app.asar at all (node-pty is in resources/node-pty), and no source maps.
+        //scripts/package-check.js fails the release build if either comes back
+        files: ['**/*', '!**/node_modules{,/**}', '!**/*.map'],
+        //strips the Linux helper binaries (scripts/afterPack.js)
+        afterPack: './scripts/afterPack.js',
         "productName": "EpicWallet",
         "afterSign": "./build/notarize.js",
         "appId": "com.github.epiccash.epic-gui-wallet",
@@ -127,6 +138,7 @@ module.exports = {
         "win": {
           "icon": "public/favicon_io/EpicCash_logo_gold_border1024x1024.png",
           "target": "nsis",
+          electronLanguages: ELECTRON_LANGUAGES,
           "extraFiles": [
             ptyExtra.win,
             {
@@ -176,6 +188,7 @@ module.exports = {
           "target": [
             "AppImage"
           ],
+          electronLanguages: ELECTRON_LANGUAGES,
           "extraFiles": [
             ptyExtra.linux,
             {

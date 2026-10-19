@@ -17,6 +17,8 @@ npm run electron:build
 ```
 Add `-- --linux dir` for an unpacked Linux build in `build/linux-unpacked`.
 
+Release builds (AppImage and Windows installer, package check, hashes) use `scripts/release.sh`: see [docs/RELEASE.md](docs/RELEASE.md).
+
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
 
