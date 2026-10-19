@@ -21,6 +21,8 @@ import About from '@/components/About.vue';
 import Account from '@/components/Account.vue';
 import Seed from '@/components/Seed.vue';
 import New from '@/components/New.vue';
+import Found from '@/components/Found.vue';
+import SettingsError from '@/components/SettingsError.vue';
 
 const routes = [
   {
@@ -40,6 +42,24 @@ const routes = [
     path: '/new',
     name: 'new',
     component: New
+  },
+  {
+    //older Epic Wallet wallets were found: import them or start fresh (once, or from Welcome › Advanced)
+    meta: {
+      title: 'Found wallets'
+    },
+    path: '/found',
+    name: 'found',
+    component: Found
+  },
+  {
+    //settings.json exists but can't be read: nothing is written until it is fixed
+    meta: {
+      title: 'Settings error'
+    },
+    path: '/settings-error',
+    name: 'settingsError',
+    component: SettingsError
   },
   {
 

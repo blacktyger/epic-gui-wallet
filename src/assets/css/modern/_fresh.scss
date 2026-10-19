@@ -1,0 +1,108 @@
+/* GUI 6.1 fresh start: the found screen, Welcome › Advanced, the Unlock wallet picker and its
+ * "folder missing" state, the settings error screen and Settings › Wallet's wallet list.
+ * Built from the existing tokens and components (e-panel, e-notice, e-seg, e-onb-check). */
+
+/* ---------------------------------------------------------------- hero screens that scroll */
+/* the found screen and Welcome with Advanced open can be taller than the 768 px window */
+.e-found-screen,
+.e-welcome-screen { height: 100vh; min-height: 0; overflow-y: auto; place-items: start center; padding-block: var(--sp-10) var(--sp-6); }
+/* centred while it fits, top-aligned and scrollable when it doesn't (auto margins never go negative) */
+.e-welcome-screen > .e-onb-hero,
+.e-found-screen > .e-found { margin-block: auto; }
+.e-found-screen .e-auth-foot,
+.e-welcome-screen .e-auth-foot { position: static; margin-top: var(--sp-6); }
+
+/* ---------------------------------------------------------------- found screen */
+.e-found { width: min(680px, 100%); }
+.e-found .e-auth-title h1 { display: inline-flex; align-items: center; gap: var(--sp-3); justify-content: center; }
+.e-found .e-auth-title h1[tabindex='-1']:focus { outline: none; }
+.e-found > form > .e-notice,
+.e-found > .e-notice { text-align: left; }
+.e-found-list { list-style: none; margin: var(--sp-4) 0 0; padding: 0; }
+.e-found-row {
+  display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: var(--sp-3) var(--sp-4); align-items: start;
+  padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--line);
+}
+.e-found-row:last-child { border-bottom: 0; }
+.e-found-row.e-is-fresh .e-found-info { opacity: 0.6; }
+.e-found-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.e-found-name { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.e-found-name b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e-found-dir { font-size: 0.75rem; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e-found-meta { font-size: var(--fs-sm); color: var(--faint); }
+.e-found-legacy { display: flex; gap: 6px; align-items: flex-start; margin-top: var(--sp-1); font-size: var(--fs-sm); color: var(--warn); }
+.e-found-legacy .e-icon { flex: none; margin-top: 2px; }
+
+/* Import / Start fresh: a radio pair drawn as the segmented control */
+.e-found-choice { display: inline-flex; padding: 3px; gap: 2px; margin: 0; border-radius: var(--r-sm); background: var(--s2); border: 1px solid var(--line); align-self: center; }
+.e-found-choice label { position: relative; cursor: pointer; }
+.e-found-choice input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.e-found-choice span {
+  display: inline-flex; align-items: center; height: 32px; padding: 0 var(--sp-3); border-radius: 6px;
+  color: var(--dim); font-weight: 500; font-size: var(--fs-sm); white-space: nowrap;
+}
+.e-found-choice label:hover span { color: var(--text); background: var(--hover); }
+.e-found-choice input:checked + span { background: var(--s3); color: var(--accent-text); box-shadow: inset 0 -2px 0 var(--accent); }
+.e-found-choice input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.e-found-chain { margin-top: var(--sp-4); align-items: flex-start; font-weight: 400; color: var(--dim); }
+.e-found-chain input { margin-top: 2px; }
+.e-found-chain span { overflow-wrap: anywhere; }
+.e-found-actions { margin-top: var(--sp-6); align-items: center; gap: var(--sp-3); }
+.e-found-center { justify-content: center; }
+.e-found-error { margin-top: var(--sp-3); }
+.e-found-failed { margin: var(--sp-2) 0 0; padding-left: var(--sp-5); font-size: var(--fs-sm); color: var(--dim); }
+.e-found-failed li + li { margin-top: 2px; }
+
+/* ---------------------------------------------------------------- Welcome › Advanced */
+.e-welcome-adv { margin-top: var(--sp-6); text-align: left; background: var(--s1); }
+.e-welcome-adv .e-tech-body { display: flex; flex-direction: column; gap: var(--sp-4); padding: 0 var(--sp-4) var(--sp-4); }
+.e-adv-row { display: flex; flex-direction: column; gap: var(--sp-2); }
+.e-adv-row > .e-btn { align-self: flex-start; }
+.e-adv-row .e-help { margin: 0; }
+.e-adv-row + .e-adv-row { padding-top: var(--sp-4); border-top: 1px solid var(--line); }
+.e-adv-inline { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.e-adv-inline .e-select { width: auto; min-width: 140px; }
+.e-adv-path { font-size: 0.75rem; color: var(--faint); overflow-wrap: anywhere; }
+.e-adv-row .e-notice { margin-top: var(--sp-1); }
+.e-adv-row .e-notice .e-row { margin-top: var(--sp-2); gap: var(--sp-2); }
+.e-net-note { display: inline-flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); }
+.e-net-note.e-create-net { margin: 0 0 var(--sp-4); }
+
+/* ---------------------------------------------------------------- Unlock: wallet picker */
+.e-wpick { border: 0; margin: 0 0 var(--sp-5); padding: 0; }
+.e-wpick legend { margin-bottom: var(--sp-2); }
+.e-wpick-list { display: flex; flex-direction: column; gap: var(--sp-2); max-height: 216px; overflow-y: auto; padding: 2px; margin: -2px; }
+.e-wpick label { position: relative; display: flex; align-items: center; gap: var(--sp-3); min-height: 44px; padding: 0 var(--sp-3); border: 1px solid var(--line-field); border-radius: var(--r-sm); background: var(--s2); cursor: pointer; }
+.e-wpick label:hover { border-color: var(--dim); }
+.e-wpick input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.e-wpick label:has(input:checked) { border-color: var(--accent); background: var(--accent-faint); }
+.e-wpick label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.e-wpick .e-dot { flex: none; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line-strong); }
+.e-wpick label:has(input:checked) .e-dot { border-color: var(--accent); box-shadow: inset 0 0 0 3px var(--s2); background: var(--accent); }
+.e-wpick .e-wpick-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e-wpick .e-wpick-hint { margin-left: var(--sp-2); font-weight: 400; font-size: 0.75rem; color: var(--faint); }
+.e-auth-card .e-missing { margin-top: var(--sp-4); }
+.e-missing .e-mono { font-size: 0.75rem; overflow-wrap: anywhere; color: var(--text); }
+.e-missing .e-row { margin-top: var(--sp-3); gap: var(--sp-2); flex-wrap: wrap; }
+.e-unlock-single { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); margin: calc(var(--sp-3) * -1) 0 var(--sp-4); color: var(--dim); font-size: var(--fs-sm); }
+
+/* ---------------------------------------------------------------- settings error */
+.e-fs-card { width: min(560px, 100%); }
+.e-fs-card .e-notice { text-align: left; }
+.e-fs-path { margin-top: var(--sp-2); font-size: 0.75rem; color: var(--text) !important; overflow-wrap: anywhere; }
+.e-fs-text { margin-top: var(--sp-4); color: var(--dim); }
+.e-fs-actions { margin-top: var(--sp-6); gap: var(--sp-2); }
+
+/* ---------------------------------------------------------------- Settings › Wallet */
+.e-stg-paths { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.e-wlist { list-style: none; margin: 0; padding: 0; }
+.e-wlist li { display: flex; align-items: center; gap: var(--sp-3); }
+.e-wlist li + li { margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--line); }
+.e-wlist .e-wlist-info { flex: 1; min-width: 0; }
+.e-wlist .e-wlist-info b { display: flex; align-items: center; gap: var(--sp-2); }
+.e-wlist .e-wlist-info p { font-size: 0.75rem; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e-add-wallet { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.e-add-wallet .e-btn { justify-content: flex-start; }
+.e-stg-origin { display: flex; gap: 6px; align-items: flex-start; margin-top: var(--sp-1); color: var(--dim); font-size: var(--fs-sm); }
+.e-stg-origin .e-icon { flex: none; margin-top: 2px; color: var(--faint); }

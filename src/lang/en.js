@@ -1,10 +1,13 @@
 import modern from './modern/en';
 import nodedir from './nodedir';
+import wallets from './wallets';
 
 const messages = {
   msg: {
     //public node list from status.btlabs.uk, see lang/nodedir.js
     nodedir,
+    //wallet list, first start and the found screen (6.1), see lang/wallets.js
+    wallets,
 
     title: '',
     password: 'Password',

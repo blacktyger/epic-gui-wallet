@@ -13,7 +13,7 @@
                     <img src="../assets/img/epiccash-brand-full.png" style="width: 190px; padding: 16px 0px;">
                   </header>
                   <div id="restoreMnemonicWords" class="card-content">
-                    <h2 class="title" style="text-align: center;">{{ $t('msg.restore.title') }} {{ $t('msg.step_of', [1,3]) }}</h2>
+                    <h2 class="title" style="text-align: center;">{{ $t('msg.restore.title') }} {{ $t('msg.step_of', [1,2]) }}</h2>
 
                     <!-- paste the whole phrase (box or first word) or type word by word -->
                     <p class="has-text-weight-semibold has-text-warning" style="margin-bottom: 16px; text-align: center; color: #d19944!important;">
@@ -61,10 +61,10 @@
                     </p>
 
                     <div class="buttons is-centered">
-                      <router-link class="button is-primary" :to="{name: fromRoute}">
+                      <button type="button" class="button is-primary" @click="back">
                         <mdicon name="arrow-left-bold-hexagon-outline" />
                         {{ $t("msg.back") }}
-                      </router-link>
+                      </button>
                       <button :disabled="filled == 0" class="button is-primary" @click="clearup"><mdicon name="delete" />{{ $t('msg.reset') }}</button>
 
                       <button :disabled="!enoughSeeds" class="button is-primary" @click="page='addPassword'">
@@ -85,16 +85,17 @@
                     <img src="../assets/img/epiccash-brand-full.png" style="width: 190px; padding: 16px 0px;">
                   </header>
                   <div id="restoreMnemonicWords" class="card-content">
-                    <h2 class="title" style="text-align: center;">{{ $t('msg.restore.title') }} {{ $t('msg.step_of', [2,3]) }}</h2>
+                    <h2 class="title" style="text-align: center;">{{ $t('msg.restore.title') }} {{ $t('msg.step_of', [2,2]) }}</h2>
                     <p class="has-text-weight-semibold has-text-warning" style="color: #d19944!important;margin-bottom: 24px;">
-                      {{ $t('msg.restore.create_new') }}
+                      {{ $t('msg.wallets.restore_password') }}
                     </p>
+                    <p v-if="networkName" class="has-text-centered"><span class="tag is-warning is-light">{{ networkName }}</span></p>
 
-                    <div class="field">
-                        <label class="label">{{ $t('msg.account.account') }}</label>
+                    <div v-if="adding" class="field">
+                        <label class="label" for="restoreLabel">{{ $t('msg.wallets.label') }}</label>
                         <div class="control">
-                          <AccountField ref="accountField" placeholder="default" />
-                          <p class="help">{{ $t('msg.account.only_letter') }} <!----></p>
+                          <input id="restoreLabel" class="input" type="text" v-model="label" maxlength="60" autocomplete="off" />
+                          <p class="help">{{ $t('msg.wallets.label_hint') }}</p>
                         </div>
                     </div>
 
@@ -112,44 +113,11 @@
                         </div>
                     </div>
 
-
-                    <div class="field">
-                      <div class="control">
-                          <a class="icon-text" style="font-size:0.8rem;" @click="toggleAdvancedSettings" >
-                            <mdicon size="18" v-if="!advancedSettings" name="menu-right" />
-                            <mdicon size="18" v-else name="menu-down" />
-                            {{ $t('msg.custom_settings') }}
-                          </a>
-                        </div>
-                    </div>
-
-
-                      <div class="card" v-bind:class="{'is-hidden':!advancedSettings}" >
-                        <div class="card-content">
-                         <div class="content">
-                          <div class="field">
-                              <label class="label">{{ $t('msg.restore.walletLocation') }}</label>
-
-                              <WalletdirField ref="walletdirField" />
-
-                          </div>
-                          <div class="field">
-                              <label class="label">{{ $t("msg.settings.network") }}</label>
-                              <div class="control">
-                                <NetworkField ref="networkField" />
-                              </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      </div>
-
-
-
                     <div class="buttons is-centered">
-                        <button class="button is-primary" @click="page='addSeeds'"><mdicon name="arrow-left-bold-hexagon-outline" />{{ $t('msg.restore.change_seed') }}</button>
-                        <button class="button is-primary" @click="initR" >{{ $t('msg.restore.recover') }}</button>
+                        <button class="button is-primary" :disabled="restoring" @click="page='addSeeds'"><mdicon name="arrow-left-bold-hexagon-outline" />{{ $t('msg.restore.change_seed') }}</button>
+                        <button class="button is-primary" :class="{ 'button__loader': restoring }" :aria-disabled="restoring" @click="initR" ><span class="button__text">{{ $t('msg.restore.recover') }}</span></button>
                     </div>
+                    <StartupProgress v-if="restoring && restoreCurrent" :stages="restoreAllStages" :current="restoreCurrent" />
 
                   </div>
                 </div>
@@ -157,29 +125,6 @@
             </div>
           </div>
 
-          <div v-else-if="page==='restored'" class="container">
-            <div class="columns is-centered">
-              <div class="column is-three-quarters">
-                <div class="card has-card-header-background">
-                  <header class="card-header" style="justify-content: center;">
-                    <img src="../assets/img/epiccash-brand-full.png" style="width: 190px; padding: 16px 0px;">
-                  </header>
-                  <div id="restoreMnemonicWords" class="card-content">
-                    <h2 class="title" style="text-align: center;">{{ $t('msg.restore.title') }} {{ $t('msg.step_of', [3,3]) }}</h2>
-                    <p class="has-text-weight-semibold has-text-warning" style="color: #d19944!important;margin-bottom: 24px;">
-                      {{ $t('msg.restore.wallet_recovered') }}
-                    </p>
-
-                    <div class="buttons is-centered">
-                      <router-link class="button is-outlined is-primary" to="/login">
-                        {{ $t("msg.login_") }}
-                      </router-link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-        </div>
       </div>
 
       </section>
@@ -194,19 +139,25 @@
   import { ref, computed, onMounted } from 'vue';
   import { useRouter } from '@/router';
   import { useRoute } from 'vue-router';
-  import AccountField from "@/components/form/accountField";
   import PasswordField from "@/components/form/passwordField";
-  import WalletdirField from "@/components/form/walletdirField";
-  import NetworkField from "@/components/form/networkField";
+  import StartupProgress from "@/components/layout/StartupProgress.vue";
   import useFormValidation from "@/modules/useFormValidation";
+  import { walletOpen, networkBadge, isLoggedIn } from '@/components/wallets';
 
+  const NETWORKS = ['mainnet', 'floonet', 'usernet'];
+
+  /*
+   * Restore a wallet from its recovery phrase (pasted whole, or word by word), set a password,
+   * then it opens; its first scan of the chain runs as before. No name and no folder:
+   * walletService.recover makes it in the app's folder and adds it to the list. Route query as
+   * in Create: network, add=1 (an optional label; the wallet open now is closed first).
+   */
   export default {
     name: "restore",
+    mixins: [walletOpen],
     components: {
       PasswordField,
-      AccountField,
-      WalletdirField,
-      NetworkField,
+      StartupProgress,
     },
     setup(){
       const router = useRouter();
@@ -219,14 +170,9 @@
       //the phrase box; kept in step with the word fields
       const phrase = ref('');
       const page = ref('addSeeds');//ref('addSeeds');//
-      const accountField = ref();
       const passwordField = ref('');
       const passwordField2 = ref('');
-      const walletdirField = ref('');
-      const networkField = ref('');
       const { resetFormErrors } = useFormValidation();
-      const advancedSettings = ref(false);
-      const newseeds = ref([]);
       const fromRoute = route.params.from ? route.params.from : 'login';
 
 
@@ -237,17 +183,42 @@
         slots,
         phrase,
         page,
-        accountField,
         passwordField,
         passwordField2,
-        walletdirField,
         resetFormErrors,
-        advancedSettings,
-        networkField,
         fromRoute
       }
     },
+    data() {
+      return {
+        //Settings › Add another wallet: an optional label
+        label: '',
+        //recovering, then opening the wallet
+        restoring: false,
+        //'restore' while recovering, 'open' while it opens (the unlock steps follow)
+        restoreStage: '',
+        //the wallet just restored (settings record)
+        wallet: null,
+      };
+    },
     computed: {
+      adding(){
+        return this.$route.query.add === '1';
+      },
+      network(){
+        const n = this.$route.query.network;
+        return NETWORKS.includes(n) ? n : 'mainnet';
+      },
+      networkName(){
+        return networkBadge(this.network);
+      },
+      //recovering, then the unlock steps
+      restoreAllStages(){
+        return [{key: 'restore', label: this.$t('msg.wallets.stage_restore')}, ...this.stages];
+      },
+      restoreCurrent(){
+        return this.restoreStage === 'restore' ? 'restore' : (this.restoreStage ? this.$store.state.loginStage || 'check' : '');
+      },
       wordSet(){
         return new Set(this.mnemonicWords);
       },
@@ -267,9 +238,12 @@
     },
 
     methods: {
-      toggleAdvancedSettings(){
-
-        this.advancedSettings = !this.advancedSettings;
+      back(){
+        if(this.adding && isLoggedIn(this.$store)){
+          this.$router.push({name: 'account'});
+        }else{
+          this.$router.push({name: this.fromRoute});
+        }
       },
 
       /* split pasted or typed text into words: any whitespace, newlines too; numbering like "1. word" is dropped */
@@ -336,65 +310,54 @@
 
       async initR(){
 
+        //running already (aria-disabled keeps the focus on the button, so guard here)
+        if(this.restoring){
+          return;
+        }
         this.resetFormErrors();
-        let isFormAllValid = [];
-        let userhomedir = '';
-        //check if not exist => false
-        isFormAllValid.push(this.passwordField.validInput());
-        isFormAllValid.push(this.passwordField2.validInput());
-        //only recover for non existing acount yet
-        isFormAllValid.push(this.accountField.validInput(this.configService, true));
-        isFormAllValid.push(this.walletdirField.validInput(this.configService));
-        isFormAllValid.push(this.networkField.validInput());
-
-        //we create a complete new wallet
-        if(!isFormAllValid.includes(false)){
-
-          userhomedir = window.nodePath.join(this.walletdirField.defaultValue, this.accountField.defaultValue);
-
-          if(this.accountField.defaultValue == 'default'){
-            userhomedir = window.nodePath.join(this.walletdirField.defaultValue);
-          }
-
-          let walletRecoverDir = window.nodePath.join(userhomedir, this.networkField.shortName);
-
-          let recovered = await this.$walletService.recover(this.seeds.join(' '), this.passwordField.defaultValue, this.networkField.defaultValue, walletRecoverDir)
-          if(recovered && !recovered.success){
-            this.$toast.error(recovered.msg, {duration:false});
-          }else{
-            //save new account settings and run a check against recoverd wallet
-            if(await this.configService.updateAppConfig('account_dirs', {
-                account: this.accountField.defaultValue,
-                userhomedir: userhomedir,
-                network: this.networkField.defaultValue,
-                isdefault: this.accountField.defaultValue == 'default' ? true : false
-              })){
-              let action = await this.configService.startCheck(this.accountField.defaultValue);
-              if(action === 'settings'){
-                //this.newseeds = recovered.msg.split(' ');
-                //the phrase is not needed any more: drop it from the form
-                this.clearup();
-                this.page = 'restored'
-              }else{
-                this.$toast.error(this.$t('msg.restore.recover_fail', [action]), {duration:false});
-              }
-
-            }else{
-              this.$toast.error(this.$t('msg.restore.fatal_app'), {duration:false});
-            }
-          }
-
-        }else{
+        const valid = [this.passwordField.validInput(), this.passwordField2.validInput()];
+        if(valid.includes(false)){
           return;
         }
 
-
+        this.restoring = true;
+        this.restoreStage = 'restore';
+        const password = this.passwordField.defaultValue;
+        const started = performance.now();
+        try{
+          //makes the wallet's folders, runs the recovery and adds it to the list (nothing is listed on failure)
+          const recovered = await this.$walletService.recover(this.seeds.join(' '), password, this.network, {label: this.adding ? this.label.trim() : ''});
+          console.log('[restore] ' + (recovered && recovered.success ? 'wallet restored' : 'failed') + ' +' + Math.round(performance.now() - started) + ' ms');
+          if(!recovered || !recovered.success || !recovered.wallet){
+            this.$toast.error(recovered && recovered.msg ? String(recovered.msg.message || recovered.msg) : this.$t('msg.wallets.restore_failed'), {duration:false});
+            return;
+          }
+          this.wallet = recovered.wallet;
+          //the phrase is not needed any more: drop it from the form
+          this.clearup();
+          this.restoreStage = 'open';
+          //Add another wallet: the wallet open now is closed first, as Lock does
+          await this.logoutCurrent();
+          const result = await this.openWallet(this.wallet.id, password);
+          if(result !== 'opened'){
+            this.toUnlock();
+          }
+        }catch(e){
+          this.$toast.error(e && e.message ? e.message : String(e), {duration:false});
+          if(this.wallet){
+            this.toUnlock();
+          }
+        }finally{
+          this.$store.commit('loginStage', '');
+          this.restoreStage = '';
+          this.restoring = false;
+        }
       },
-      toLogin(recovered){
-        this.page = 'addSeeds';
-        this.clearup();
-        this.emitter.emit('toLogin', recovered);
-      }
+
+      //restored, but it did not open: the unlock page, with this wallet chosen
+      toUnlock(){
+        this.$router.push({name: 'login', query: {wallet: this.wallet.id}});
+      },
     }
   }
 </script>

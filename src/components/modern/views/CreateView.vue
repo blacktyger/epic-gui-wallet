@@ -1,18 +1,20 @@
 <template>
   <div>
-    <!-- 1. name and password. Stays mounted while the wallet is created (the Classic logic reads its fields) -->
+    <!-- 1. the password (and a label when adding a wallet). Stays mounted while the wallet is
+         created (the Classic logic reads its fields) -->
     <OnboFrame
       v-show="page === 'create' && !working"
       :side="$t('msg.modern.unlock.side_new')"
       :groups="groups('create')"
       :title="$t('msg.modern.unlock.create_title')"
-      :lead="$t('msg.modern.unlock.create_lead')"
+      :lead="$t('msg.wallets.create_lead')"
       :active="page === 'create' && !working"
     >
-      <div class="e-field">
-        <label class="e-label" data-field>{{ $t('msg.modern.unlock.wallet_name') }}</label>
-        <AccountField ref="accountField" required="true" placeholder="default" />
-        <p class="e-help">{{ $t('msg.modern.unlock.wallet_name_help') }}</p>
+      <p v-if="networkName" class="e-net-note e-create-net"><span class="e-tag e-warn">{{ networkName }}</span><span class="e-small e-dim">{{ $t('msg.wallets.network_wallet', [networkName]) }}</span></p>
+      <div v-if="adding" class="e-field">
+        <label class="e-label" for="createLabel">{{ $t('msg.wallets.label') }} <span class="e-faint e-small">{{ $t('msg.wallets.optional') }}</span></label>
+        <input id="createLabel" class="e-input" type="text" v-model="label" maxlength="60" autocomplete="off" spellcheck="false" aria-describedby="createLabelHelp" />
+        <p id="createLabelHelp" class="e-help">{{ $t('msg.wallets.label_hint') }}</p>
       </div>
       <div class="e-field">
         <label class="e-label" data-field>{{ $t('msg.modern.unlock.password') }}</label>
@@ -22,23 +24,8 @@
         <label class="e-label" data-field>{{ $t('msg.modern.unlock.password_confirm') }}</label>
         <PasswordField ref="passwordField2" required="true" :repeat="passwordField ? passwordField.input : null" name="password2" />
       </div>
-      <div class="e-onb-section">
-        <details class="e-tech" :open="advancedSettings" @toggle="advancedSettings = $event.target.open">
-          <summary><EIcon name="chevr" />{{ $t('msg.modern.unlock.advanced') }}</summary>
-          <div class="e-tech-body">
-            <div class="e-field" role="group" aria-labelledby="e-create-folder-l">
-              <span id="e-create-folder-l" class="e-label">{{ $t('msg.modern.unlock.wallet_folder') }}</span>
-              <WalletdirField ref="walletdirField" />
-            </div>
-            <div class="e-field">
-              <label class="e-label" data-field>{{ $t('msg.modern.unlock.network') }}</label>
-              <NetworkField ref="networkField" />
-            </div>
-          </div>
-        </details>
-      </div>
       <template #actions>
-        <router-link class="e-btn e-btn-ghost" :to="{ name: fromRoute }"><EIcon name="chevl" />{{ $t('msg.back') }}</router-link>
+        <button type="button" class="e-btn e-btn-ghost" @click="back"><EIcon name="chevl" />{{ $t('msg.back') }}</button>
         <span class="e-grow"></span>
         <button type="button" class="e-btn e-btn-primary" :aria-disabled="isLoading ? 'true' : null" @click="create">{{ $t('msg.modern.unlock.create_action') }}<EIcon name="arrowr" /></button>
       </template>
@@ -50,7 +37,7 @@
         <BrandTile />
         <div class="e-auth-title">
           <h1 ref="progressHeading" tabindex="-1">{{ failure ? $t('msg.modern.unlock.create_failed_title') : $t('msg.modern.unlock.creating_title') }}</h1>
-          <p>{{ $t('msg.modern.unlock.creating_lead', { name: accountField ? accountField.defaultValue : '' }) }}</p>
+          <p v-if="networkName">{{ $t('msg.wallets.network_wallet', [networkName]) }}</p>
         </div>
         <div class="e-panel">
           <StageList :stages="createStages" :current="createStage" :failed="failure ? failure.stage : ''" :label="$t('msg.modern.unlock.progress')" />
@@ -62,7 +49,7 @@
             <p>{{ failure.message }}</p>
             <div class="e-row e-notice-actions">
               <button type="button" class="e-btn e-btn-sm" @click="retry"><EIcon name="refresh" />{{ $t('msg.modern.unlock.try_again') }}</button>
-              <button type="button" class="e-btn e-btn-sm e-btn-ghost" @click="editForm">{{ $t('msg.modern.unlock.choose_other') }}</button>
+              <button type="button" class="e-btn e-btn-sm e-btn-ghost" @click="editForm">{{ $t('msg.back') }}</button>
             </div>
           </div>
         </div>
@@ -70,14 +57,28 @@
       </div>
     </div>
 
+    <!-- 4. the phrase is written down: the new wallet opens (the unlock steps) -->
+    <div v-if="page === 'created' && opening" class="e-hero-screen">
+      <div class="e-onb-progress">
+        <BrandTile />
+        <div class="e-auth-title">
+          <h1 ref="openingHeading" tabindex="-1">{{ $t('msg.wallets.opening_title') }}</h1>
+          <p>{{ $t('msg.modern.unlock.unlocking_lead') }}</p>
+        </div>
+        <div class="e-panel">
+          <StageList :stages="stages" :current="$store.state.loginStage" :label="$t('msg.modern.unlock.unlock_steps')" />
+        </div>
+      </div>
+    </div>
+
     <!-- 3. the recovery phrase (mockup 13 and 14) -->
     <OnboFrame
-      v-show="page === 'created'"
+      v-show="page === 'created' && !opening"
       :side="$t('msg.modern.unlock.side_new')"
       :groups="groups('phrase')"
       :title="$t('msg.modern.unlock.phrase_title')"
       :lead="$t('msg.modern.unlock.phrase_lead')"
-      :active="page === 'created'"
+      :active="page === 'created' && !opening"
     >
       <div class="e-notice e-warn">
         <EIcon name="shield" />
@@ -115,7 +116,7 @@
       <template #actions>
         <span class="e-grow"></span>
         <span class="e-hint">{{ revealed ? $t('msg.modern.unlock.phrase_written_q', { n: newseeds.length }) : $t('msg.modern.unlock.phrase_reveal_first') }}</span>
-        <router-link v-if="revealed" class="e-btn e-btn-primary" to="/login"><EIcon name="check" />{{ $t('msg.modern.unlock.written_down') }}</router-link>
+        <button v-if="revealed" type="button" class="e-btn e-btn-primary" @click="openNewWallet"><EIcon name="lockopen" />{{ $t('msg.wallets.written_open') }}</button>
         <button v-else type="button" class="e-btn e-btn-primary" disabled :title="$t('msg.modern.unlock.phrase_reveal_first')"><EIcon name="check" />{{ $t('msg.modern.unlock.written_down') }}</button>
       </template>
     </OnboFrame>
@@ -127,17 +128,14 @@
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import StageList from '@/components/modern/ui/StageList.vue';
-  import AccountField from '@/components/modern/form/AccountField.vue';
   import PasswordField from '@/components/modern/form/PasswordField.vue';
-  import WalletdirField from '@/components/modern/form/WalletdirField.vue';
-  import NetworkField from '@/components/modern/form/NetworkField.vue';
   import BrandTile from '@/components/modern/onboarding/BrandTile.vue';
   import OnboFrame from '@/components/modern/onboarding/OnboFrame.vue';
   import { railGroups } from '@/components/modern/onboarding/rails';
   import { captureToast, fieldLabels } from '@/components/modern/onboarding/helpers';
 
   export default reskin(Create, {
-    components: { EIcon, StageList, AccountField, PasswordField, WalletdirField, NetworkField, BrandTile, OnboFrame },
+    components: { EIcon, StageList, PasswordField, BrandTile, OnboFrame },
     mixins: [fieldLabels],
     data() {
       return {
@@ -160,6 +158,9 @@
       working(now) {
         if (now) this.$nextTick(() => this.focusEl(this.$refs.progressHeading));
       },
+      opening(now) {
+        if (now) this.$nextTick(() => this.focusEl(this.$refs.openingHeading));
+      },
     },
     methods: {
       groups(current) {
@@ -180,7 +181,6 @@
       },
       editForm() {
         this.failure = null;
-        this.advancedSettings = true;
       },
       reveal() {
         this.revealed = true;

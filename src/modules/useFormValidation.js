@@ -4,7 +4,7 @@ import useValidators from '@/modules/Validators';
 const errors = reactive({});
 
 
-const { isEmpty, isEqual, minLength, accountExist, isNumber, isSpendable, onlyLetter, isDirEmpty, isHttpAddress, isEpicboxAddress } = useValidators();
+const { isEmpty, isEqual, minLength, isNumber, isSpendable, isDirEmpty, isHttpAddress, isEpicboxAddress } = useValidators();
 
 export default function useFormValidation() {
 
@@ -15,21 +15,6 @@ export default function useFormValidation() {
           message = !fieldValue ? isEmpty(fieldName, fieldValue) : minLength(fieldName, fieldValue, 4) || isEqual(fieldName, fieldValue, repeat);
         }else{
           message = !fieldValue ? isEmpty(fieldName, fieldValue) : minLength(fieldName, fieldValue, 4);
-        }
-
-        if(message !== null){
-          errors[fieldName] = message;
-          return false;
-        }
-        return true;
-    }
-
-    const validateAccountField = (fieldName, fieldValue, configService, exist) => {
-        let message = null;
-        if(exist){
-          message = !fieldValue ? isEmpty(fieldName, fieldValue) : onlyLetter(fieldName, fieldValue) || accountExist(fieldName, fieldValue, configService, exist);
-        }else{
-          message = onlyLetter(fieldName, fieldValue) || accountExist(fieldName, fieldValue, configService, exist);
         }
 
         if(message !== null){
@@ -96,16 +81,6 @@ export default function useFormValidation() {
         return true;
     }
 
-    const validateNetworkField = (fieldName, fieldValue) => {
-
-        let message = isEmpty(fieldName, fieldValue);
-        if(message !== null){
-          errors[fieldName] = message;
-          return false;
-        }
-        return true;
-    }
-
     const resetFormErrors = () => {
       for (const [key, value] of Object.entries(errors)) {
           errors[key] = null;
@@ -116,12 +91,10 @@ export default function useFormValidation() {
       errors,
       resetFormErrors,
       validatePasswordField,
-      validateAccountField,
       validateAmountField,
       validateProofAddressField,
       validateAddressField,
       validateDirField,
-      validateNetworkField,
       validateTextField
     }
 }

@@ -35,9 +35,6 @@ export default function useValidators() {
     return fieldValue.length < min ? i18n.global.t("msg.validators.min_length", [fieldName, min]) : null;
   }
 
-  const onlyLetter = (fieldName, fieldValue) => {
-    return /^[a-z]*$/.test(fieldValue) == false ? i18n.global.t("msg.validators.only_letters", [fieldName]) : null;
-  }
 
 
   const isNumber = (fieldName, fieldValue) => {
@@ -48,24 +45,13 @@ export default function useValidators() {
     return spendable < parseFloat(fieldValue) + 0.01 ? i18n.global.t("msg.validators.spendable") : null;
   }
 
-  const accountExist = (fieldName, fieldValue, configService, exist) => {
-
-    if(exist){
-      return configService.accountExist(fieldValue) ? i18n.global.t("msg.validators.exist", [fieldValue]) : null;
-    }else{
-      return !configService.accountExist(fieldValue) ? i18n.global.t("msg.validators.notexist", [fieldValue]) : null;
-    }
-
-  }
 
   return {
     isEmpty,
     isEqual,
     minLength,
-    accountExist,
     isNumber,
     isSpendable,
-    onlyLetter,
     isDirEmpty,
     isHttpAddress,
     isEpicboxAddress

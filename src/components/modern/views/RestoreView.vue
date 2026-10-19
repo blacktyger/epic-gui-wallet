@@ -91,7 +91,7 @@
       </template>
 
       <template #actions>
-        <router-link class="e-btn e-btn-ghost" :to="{ name: fromRoute }"><EIcon name="chevl" />{{ $t('msg.back') }}</router-link>
+        <button type="button" class="e-btn e-btn-ghost" @click="back"><EIcon name="chevl" />{{ $t('msg.back') }}</button>
         <button type="button" class="e-btn e-btn-ghost" :disabled="filled == 0" @click="clearup"><EIcon name="trash" />{{ $t('msg.reset') }}</button>
         <span class="e-grow"></span>
         <span class="e-hint">{{ hint }}</span>
@@ -99,7 +99,8 @@
       </template>
     </OnboFrame>
 
-    <!-- 2. name and password. Stays mounted while the wallet is restored (the Classic logic reads its fields) -->
+    <!-- 2. the password (and a label when adding a wallet). Stays mounted while the wallet is
+         restored (the Classic logic reads its fields) -->
     <OnboFrame
       v-if="page === 'addPassword'"
       v-show="!working"
@@ -110,10 +111,11 @@
       :active="!working"
       focus-heading
     >
-      <div class="e-field">
-        <label class="e-label" data-field>{{ $t('msg.modern.unlock.wallet_name') }}</label>
-        <AccountField ref="accountField" placeholder="default" />
-        <p class="e-help">{{ $t('msg.modern.unlock.wallet_name_help') }}</p>
+      <p v-if="networkName" class="e-net-note e-create-net"><span class="e-tag e-warn">{{ networkName }}</span><span class="e-small e-dim">{{ $t('msg.wallets.network_wallet', [networkName]) }}</span></p>
+      <div v-if="adding" class="e-field">
+        <label class="e-label" for="restoreLabel">{{ $t('msg.wallets.label') }} <span class="e-faint e-small">{{ $t('msg.wallets.optional') }}</span></label>
+        <input id="restoreLabel" class="e-input" type="text" v-model="label" maxlength="60" autocomplete="off" spellcheck="false" aria-describedby="restoreLabelHelp" />
+        <p id="restoreLabelHelp" class="e-help">{{ $t('msg.wallets.label_hint') }}</p>
       </div>
       <div class="e-field">
         <label class="e-label" data-field>{{ $t('msg.modern.unlock.password') }}</label>
@@ -123,21 +125,6 @@
         <label class="e-label" data-field>{{ $t('msg.modern.unlock.password_confirm') }}</label>
         <PasswordField ref="passwordField2" required="true" :repeat="passwordField ? passwordField.input : null" name="password2" />
       </div>
-      <div class="e-onb-section">
-        <details class="e-tech" :open="advancedSettings" @toggle="advancedSettings = $event.target.open">
-          <summary><EIcon name="chevr" />{{ $t('msg.modern.unlock.advanced') }}</summary>
-          <div class="e-tech-body">
-            <div class="e-field" role="group" aria-labelledby="e-restore-folder-l">
-              <span id="e-restore-folder-l" class="e-label">{{ $t('msg.modern.unlock.wallet_folder') }}</span>
-              <WalletdirField ref="walletdirField" />
-            </div>
-            <div class="e-field">
-              <label class="e-label" data-field>{{ $t('msg.modern.unlock.network') }}</label>
-              <NetworkField ref="networkField" />
-            </div>
-          </div>
-        </details>
-      </div>
       <template #actions>
         <button type="button" class="e-btn e-btn-ghost" @click="page = 'addSeeds'"><EIcon name="chevl" />{{ $t('msg.back') }}</button>
         <span class="e-grow"></span>
@@ -145,8 +132,7 @@
       </template>
     </OnboFrame>
 
-    <!-- 3. the wallet is being restored, or it failed. The Classic screen has no steps here: the
-         whole recovery is the one running step -->
+    <!-- 3. the wallet is being restored, then it opens (the unlock steps), or it failed -->
     <div v-if="page === 'addPassword' && working" class="e-hero-screen">
       <div class="e-onb-progress">
         <BrandTile />
@@ -154,7 +140,7 @@
           <h1 ref="progressHeading" tabindex="-1">{{ failure ? $t('msg.modern.unlock.restore_failed_title') : $t('msg.modern.unlock.restoring_title') }}</h1>
         </div>
         <div v-if="!failure" class="e-panel">
-          <StageList :stages="restoreStages" current="restore" :label="$t('msg.modern.unlock.progress')" />
+          <StageList :stages="restoreAllStages" :current="restoreCurrent || 'restore'" :label="$t('msg.modern.unlock.progress')" />
         </div>
         <div v-if="failure" class="e-notice e-risk" role="alert">
           <EIcon name="alertc" />
@@ -171,22 +157,6 @@
       </div>
     </div>
 
-    <!-- 4. restored: the Classic flow goes on at the login -->
-    <div v-if="page === 'restored'" class="e-hero-screen">
-      <div class="e-onb-progress">
-        <BrandTile />
-        <div class="e-auth-title">
-          <h1 ref="restoredHeading" tabindex="-1">{{ $t('msg.modern.unlock.restored_title') }}</h1>
-          <p>{{ $t('msg.restore.wallet_recovered') }}</p>
-        </div>
-        <div class="e-panel">
-          <StageList :stages="restoreStages" complete :label="$t('msg.modern.unlock.progress')" />
-        </div>
-        <div class="e-row e-onb-restored-actions">
-          <router-link class="e-btn e-btn-primary e-btn-lg" to="/login"><EIcon name="lockopen" />{{ $t('msg.login_') }}</router-link>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -195,17 +165,14 @@
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import StageList from '@/components/modern/ui/StageList.vue';
-  import AccountField from '@/components/modern/form/AccountField.vue';
   import PasswordField from '@/components/modern/form/PasswordField.vue';
-  import WalletdirField from '@/components/modern/form/WalletdirField.vue';
-  import NetworkField from '@/components/modern/form/NetworkField.vue';
   import BrandTile from '@/components/modern/onboarding/BrandTile.vue';
   import OnboFrame from '@/components/modern/onboarding/OnboFrame.vue';
   import { railGroups } from '@/components/modern/onboarding/rails';
   import { captureToast, fieldLabels } from '@/components/modern/onboarding/helpers';
 
   export default reskin(Restore, {
-    components: { EIcon, StageList, AccountField, PasswordField, WalletdirField, NetworkField, BrandTile, OnboFrame },
+    components: { EIcon, StageList, PasswordField, BrandTile, OnboFrame },
     mixins: [fieldLabels],
     data() {
       return {
@@ -223,12 +190,6 @@
       firstInvalid() {
         return this.slots.findIndex(w => this.isInvalid(w));
       },
-      restoreStages() {
-        return [
-          { key: 'restore', label: this.$t('msg.modern.unlock.restore_stage_restore') },
-          { key: 'save', label: this.$t('msg.modern.unlock.restore_stage_save') },
-        ];
-      },
       //what stops Continue, in a few words
       hint() {
         if (this.enoughSeeds) return '';
@@ -240,9 +201,6 @@
     watch: {
       working(now) {
         if (now) this.$nextTick(() => this.focusEl(this.$refs.progressHeading));
-      },
-      page(p) {
-        if (p == 'restored') this.$nextTick(() => this.focusEl(this.$refs.restoredHeading));
       },
     },
     methods: {

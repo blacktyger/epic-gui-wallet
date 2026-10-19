@@ -66,9 +66,9 @@
                       <h2 class="title is-4" style="color: #d19944!important;margin-bottom: 24px;">{{ $t("msg.setupwizard.account_information") }}</h2>
 
                         <div class="field">
-                          <label class="label">{{ $t("msg.setupwizard.your_name") }}<span class="required">*</span></label>
+                          <label class="label">{{ $t("msg.wallets.label") }}</label>
                           <TextField ref="textField" fieldname="name" />
-                          <p class="help">{{ $t("msg.setupwizard.name_only_internal") }}</p>
+                          <p class="help">{{ $t("msg.wallets.label_hint") }}</p>
                         </div>
 
                         <div class="field">
@@ -85,7 +85,7 @@
                         <p>&nbsp;</p>
                         <div class="buttons is-centered">
 
-                          <button v-if="fromRoute == 'navbar'" class="button is-primary" @click="backToDashbaord()"><mdicon name="arrow-left-bold-hexagon-outline" />{{ $t("msg.back") }}</button>
+                          <button class="button is-primary" @click="backToDashbaord()"><mdicon name="arrow-left-bold-hexagon-outline" />{{ $t("msg.back") }}</button>
                           <button class="button is-primary" @click="nextStep('step2')" >{{ $t("msg.setupwizard.next_step") }}&nbsp;<mdicon size=22 name="arrow-right-circle-outline" /></button>
 
                         </div>
@@ -143,7 +143,7 @@
 
                       <h2 class="title is-4" style="color: #d19944!important;margin-bottom: 24px;">{{ $t("msg.setupwizard.values_correct") }}</h2>
                       <p>
-                        {{ $t("msg.setupwizard.name") }}: {{this.textField.defaultValue}}<br/>
+                        {{ $t("msg.wallets.label") }}: {{ labelValue }}<br/>
                         {{ $t("msg.setupwizard.language") }}: {{localeSelected}}<br/>
                         {{ $t("msg.setupwizard.network_node") }}: {{this.nodeserverField.nodeInternal ? 'internal' : this.nodeserverField.defaultValue}}<br/>
 
@@ -157,7 +157,6 @@
                         <button class="button is-primary" @click="prevStep('step3')" ><mdicon name="arrow-left-circle-outline" />&nbsp;{{ $t("msg.setupwizard.previous_step") }}</button>
                         <button class="button is-primary" :class="{'is-loading': isSaving}" :disabled="isSaving" @click="save" >{{ $t("msg.setupwizard.save_and_finish") }}</button>
                       </div>
-                      <StartupProgress v-if="isSaving && store.state.loginStage" :stages="openStages" :current="store.state.loginStage" />
 
 
                     </div><!-- end step 3 -->
@@ -174,11 +173,9 @@
 </template>
 <script>
 
-  import { ref, reactive, onUnmounted, computed } from 'vue';
-  import { useI18n } from 'vue-i18n';
+  import { ref } from 'vue';
   import NodeserverField from "@/components/form/nodeserverField";
   import TextField from "@/components/form/textField";
-  import StartupProgress from "@/components/layout/StartupProgress.vue";
   import useFormValidation from "@/modules/useFormValidation";
   import { useRouter } from '@/router';
   import { useRoute } from 'vue-router';
@@ -191,7 +188,6 @@
     components: {
       NodeserverField,
       TextField,
-      StartupProgress,
       //videoPlay,
     },
     setup(){
@@ -217,12 +213,6 @@
       const fromRoute = route.params.from ? route.params.from : 'login';
       const isSaving = ref(false);
       const isExistingSetup = ref(false);
-      const { t } = useI18n();
-      //first login: after saving, the login page opens the wallet (loginStage in the store)
-      const openStages = computed(() => [
-        {key: 'wallet', label: t('msg.login.stage_wallet')},
-        {key: 'unlock', label: t('msg.login.stage_unlock')},
-      ]);
 
 
       return{
@@ -243,39 +233,39 @@
         fromRoute,
         isSaving,
         isExistingSetup,
-        openStages,
         domain,
         epicboxDomain
 
       }
     },
 
-    async mounted(){
+    computed: {
+      //the wallet's label (optional), as typed
+      labelValue(){
+        return this.textField && typeof this.textField.input == 'string' ? this.textField.input.trim() : '';
+      },
+    },
 
-      let user = await this.$userService.getUser(this.configService.configAccount);
+    /* the settings editor of the wallet that is open (Classic menu, Settings › Wallet): a new
+       wallet starts with the defaults, so this is never part of the first login */
+    async mounted(){
 
       this.store.dispatch('toggleFullPage', true);
       this.store.commit('asideStateToggle', false);
-      this.locale = this.configService.config['locale'];
-      this.localeSelected = this.configService.config['locale'];
+      const config = this.configService.config || {};
+      const wallet = this.configService.wallet || {};
+      this.locale = config['locale'] || this.$i18n.locale;
+      this.localeSelected = this.locale;
       this.langs = this.configService.langs;
 
-      //an existing setup opens with its saved values, a first run with the defaults
-      this.isExistingSetup = !!(user && user[0] && !this.configService.config['firstTime']);
-      if(this.isExistingSetup){
-        const config = this.configService.config;
-        this.epicboxDomain.input = config['epicbox_domain'] ? config['epicbox_domain'] : '';
-        this.nodeserverField.select = user[0].nodeInternal ? 'internal' : 'external';
-        if(!user[0].nodeInternal){
-          this.nodeserverField.input = config['check_node_api_http_addr'] ? config['check_node_api_http_addr'] : '';
-        }
-      }else{
-        this.epicboxDomain.input = this.configService.epicboxDomain;
+      this.isExistingSetup = true;
+      this.epicboxDomain.input = config['epicbox_domain'] ? config['epicbox_domain'] : '';
+      const nodeInternal = !!(this.store.state.user && this.store.state.user.nodeInternal);
+      this.nodeserverField.select = nodeInternal ? 'internal' : 'external';
+      if(!nodeInternal){
+        this.nodeserverField.input = config['check_node_api_http_addr'] ? config['check_node_api_http_addr'] : '';
       }
-
-      if(user && user[0]){
-        this.textField.input = user[0].name ? user[0].name : '';
-      }
+      this.textField.input = wallet.label || '';
 
     },
     methods: {
@@ -286,8 +276,7 @@
         switch(step){
 
           case 'step2':
-            isFormAllValid.push(this.textField.validInput('name'));
-            isValid = !isFormAllValid.includes(false);
+            //the label is optional
           break;
           case 'step3':
             isFormAllValid.push(this.nodeserverField.validInput());
@@ -323,88 +312,44 @@
         this.emitter.emit('app.accountLoggedIn');
       },
       async save(){
-        //a second click while saving would save twice and log in twice
+        //a second click while saving would save twice
         if(this.isSaving){
           return;
         }
         this.isSaving = true;
         try{
+          const walletId = this.configService.walletId;
+          const label = this.labelValue;
+          const nodeInternal = !!this.nodeserverField.nodeInternal;
+          const epicboxDomain = this.epicboxDomain.defaultValue || '';
 
-          let user = await this.$userService.getUser(this.configService.configAccount);
-
-
-          if(user.length){
-            await this.$userService.updateUserByAccount(this.configService.configAccount, {
-              account: this.configService.configAccount,
-              name: this.textField.defaultValue,
-              language: this.localeSelected,
-              nodeInternal: this.nodeserverField.nodeInternal,
-              epicbox_domain: this.epicboxDomain.defaultValue,
-            });
-            user = await this.$userService.getUser(this.configService.configAccount);
-
-          }else{
-
-            let inserted = await this.$userService.addUser({
-              account: this.configService.configAccount,
-              name: this.textField.defaultValue,
-              ngrok: '', //column is NOT NULL in the user table
-              language: this.localeSelected,
-              nodeInternal: this.nodeserverField.nodeInternal,
-              email: '',
-              epicbox_domain: this.epicboxDomain.defaultValue,
-            });
-            if(inserted.length){
-              user = inserted;
-            }else{
-              this.$toast.error(this.$t("msg.setupwizard.db_fatal"));
-              this.isSaving = false;
-              return;
-            }
-
-
-          }
-
-
+          //settings.json: the wallet's settings (the toml is rendered again), the app's language, the label
           this.configService.updateConfig({
-            version: this.configService.configVersion,
             check_node_api_http_addr: this.nodeserverField.defaultValue,
             locale: this.localeSelected,
-            firstTime: false,
-            //first run only: a re-run keeps the listener and background settings
-            ...(this.isExistingSetup ? {} : {
-              walletlisten_on_startup: true,
-              node_background: false,
-              epicbox_background: false,
-            }),
             nodesynced: false,
-            epicbox_domain: this.epicboxDomain.defaultValue,
-
+            nodeInternal: nodeInternal,
+            epicbox_domain: epicboxDomain,
           });
+          this.configService.settings.updateWallet(walletId, {label});
+          //the User row the store reads (commits store.user)
+          await this.$userService.ensureUser(walletId, {
+            name: label,
+            language: this.localeSelected,
+            nodeInternal: nodeInternal,
+            epicbox_domain: epicboxDomain,
+          });
+          this.emitter.emit('app.selectLocale', this.localeSelected);
 
-          this.configService.checkTomlFile();
-          this.store.commit('user', user[0]);
-
-          const loginWaits = this.emitter.all.get('setupwizard.saved');
-          if(this.fromRoute != 'navbar' && loginWaits && loginWaits.length){
-            //first login: the login page starts the node and the wallet api (isSaving stays on)
-            this.emitter.emit('setupwizard.saved');
-            return;
-          }
-
-          console.log('start node before wallet listener');
           await this.emitter.emit('app.nodeStart');
 
           this.isSaving = false;
           this.emitter.emit('app.accountLoggedIn');
 
-
         }catch(e){
           this.isSaving = false;
-          this.$toast.error(this.$t("msg.setupwizard.errors_save", [e.message]));
-          return
+          this.$toast.error(this.$t("msg.setupwizard.errors_save", [e && e.message ? e.message : String(e)]));
         }
-
       },
 
     }

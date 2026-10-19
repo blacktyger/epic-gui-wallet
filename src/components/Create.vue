@@ -9,7 +9,7 @@
               <div class="column is-three-quarters">
                 <div class="card has-card-header-background">
                   <header class="card-header" style="justify-content: center;">
-                    <img src="../assets/img/epiccash-brand-full.png" style="width: 190px; padding: 16px 0px;">
+                    <img src="../assets/img/epiccash-brand-full.png" style="width: 190px; padding: 16px 0px;" alt="Epic Cash">
                   </header>
                   <div id="restoreMnemonicWords" class="card-content">
                     <h2 class="title" style="text-align: center;">{{ $t('msg.create.seedPhrase') }}</h2>
@@ -29,10 +29,11 @@
                     </div>
                     <p>&nbsp;</p>
                     <div class="buttons is-centered">
-                      <router-link class="button is-primary" to="/login">
-                        {{ $t("msg.create.writtenDown") }}
-                      </router-link>
+                      <button type="button" class="button is-primary" :class="{ 'button__loader': opening }" :aria-disabled="opening" @click="openNewWallet">
+                        <span class="button__text">{{ $t("msg.wallets.open_my_wallet") }}</span>
+                      </button>
                     </div>
+                    <StartupProgress v-if="opening && $store.state.loginStage" :stages="stages" :current="$store.state.loginStage" />
                   </div>
                 </div>
               </div>
@@ -45,17 +46,17 @@
               <div class="column is-three-quarters">
                 <div class="card has-card-header-background">
                   <header class="card-header" style="justify-content: center;">
-                    <img src="../assets/img/epiccash-brand-full.png" style="width: 190px; padding: 16px 0px;">
+                    <img src="../assets/img/epiccash-brand-full.png" style="width: 190px; padding: 16px 0px;" alt="Epic Cash">
                   </header>
                   <div id="restoreMnemonicWords" class="card-content">
                     <h2 class="title" style="text-align: center;">{{ $t('msg.create.toNewMsg') }}</h2>
+                    <p v-if="networkName" class="has-text-centered"><span class="tag is-warning is-light">{{ networkName }}</span></p>
 
-
-                    <div class="field">
-                        <label class="label">{{ $t('msg.account.account') }}<span class="required">*</span></label>
+                    <div v-if="adding" class="field">
+                        <label class="label" for="createLabel">{{ $t('msg.wallets.label') }}</label>
                         <div class="control">
-                          <AccountField ref="accountField" required="true" placeholder="default" />
-                          <p class="help">{{ $t('msg.only_letter') }} <!----></p>
+                          <input id="createLabel" class="input" type="text" v-model="label" maxlength="60" autocomplete="off" />
+                          <p class="help">{{ $t('msg.wallets.label_hint') }}</p>
                         </div>
                     </div>
 
@@ -73,39 +74,11 @@
                         </div>
                     </div>
 
-                    <div class="field">
-                      <div class="control">
-                          <a class="icon-text" style="font-size:0.8rem;" @click="toggleAdvancedSettings" >
-                            <mdicon size="18" v-if="!advancedSettings" name="menu-right" />
-                            <mdicon size="18" v-else name="menu-down" />
-                            {{ $t('msg.custom_settings') }}
-                          </a>
-                        </div>
-                    </div>
-
-                    <div class="card" v-bind:class="{'is-hidden':!advancedSettings}" >
-
-                      <div class="card-content">
-                         <div class="content">
-                           <div class="field">
-                              <label class="label">{{ $t('msg.restore.walletLocation') }}</label>
-                              <WalletdirField ref="walletdirField" />
-                          </div>
-                          <div class="field">
-                              <label class="label">{{ $t("msg.settings.network") }}</label>
-                              <div class="control">
-                                <NetworkField ref="networkField" />
-                              </div>
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
                     <div class="buttons is-centered">
-                      <router-link class="button is-primary" :to="{name: fromRoute}">
+                      <button type="button" class="button is-primary" @click="back">
                         <mdicon name="arrow-left-bold-hexagon-outline" />
                         {{ $t("msg.back") }}
-                      </router-link>
+                      </button>
                       <button class="button is-primary" :class="{ 'button__loader': isLoading }" :aria-disabled="isLoading" @click="create" >
                         <span class="button__text">{{ $t('msg.create.newWallet') }}</span>
                       </button>
@@ -129,21 +102,25 @@ import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from '@/router';
 import { useRoute } from 'vue-router';
-import AccountField from "@/components/form/accountField";
 import PasswordField from "@/components/form/passwordField";
-import WalletdirField from "@/components/form/walletdirField";
-import NetworkField from "@/components/form/networkField";
 import StartupProgress from "@/components/layout/StartupProgress.vue";
 import useFormValidation from "@/modules/useFormValidation";
+import { walletOpen, networkBadge, isLoggedIn } from '@/components/wallets';
 
+const NETWORKS = ['mainnet', 'floonet', 'usernet'];
+
+/*
+ * A new wallet: a password (twice), then its recovery phrase, then it opens with that password.
+ * No name and no folder: walletService.new makes it in the app's folder and adds it to the list.
+ * Route query: network (from Welcome › Advanced), add=1 (Settings › Add another wallet: an
+ * optional label, and the wallet that is open is closed before the new one opens).
+ */
 export default {
   name: "create",
+  mixins: [walletOpen],
 
   components: {
     PasswordField,
-    AccountField,
-    WalletdirField,
-    NetworkField,
     StartupProgress,
   },
   watch: {
@@ -154,19 +131,14 @@ export default {
   setup(){
     const router = useRouter();
     const route = useRoute();
-    const page = ref('create');//ref('addSeeds');//
-    const accountField = ref();
+    const page = ref('create');
     const passwordField = ref('');
     const passwordField2 = ref('');
-    const walletdirField = ref('');
-    const networkField = ref('');
     const { resetFormErrors } = useFormValidation();
-    const advancedSettings = ref(false);
     const newseeds = ref([]);
     const isLoading = ref(false);
     const qrText = ref('');
     const fromRoute = route.params.from ? route.params.from : 'login';
-    const vueCanvas = ref(null);
     const { t } = useI18n();
     const createStage = ref('');
     const createStages = computed(() => [
@@ -174,40 +146,57 @@ export default {
       {key: 'save', label: t('msg.create.stage_save')},
     ]);
 
-
-
     return{
       router,
       page,
-      accountField,
       passwordField,
       passwordField2,
-      walletdirField,
       resetFormErrors,
-      advancedSettings,
-      networkField,
       fromRoute,
       isLoading,
       qrText,
       newseeds,
       createStage,
       createStages
-
-
     }
+  },
+  data() {
+    return {
+      //Settings › Add another wallet: an optional label
+      label: '',
+      //the wallet just made (settings record)
+      wallet: null,
+      //opening it after the phrase
+      opening: false,
+    };
+  },
+  computed: {
+    adding() {
+      return this.$route.query.add === '1';
+    },
+    network() {
+      const n = this.$route.query.network;
+      return NETWORKS.includes(n) ? n : 'mainnet';
+    },
+    networkName() {
+      return networkBadge(this.network);
+    },
   },
 
   methods: {
     async qrcode(text){
-
-      this.vueCanvas = document.getElementById("qrcodeCanvas");
-      window.nodeQr.toCanvas(this.vueCanvas, text, function (error) {
-        if (error) console.error('HttpReceive.qrcode', error)
+      const canvas = document.getElementById("qrcodeCanvas");
+      window.nodeQr.toCanvas(canvas, text, function (error) {
+        if (error) console.error('Create.qrcode', error)
       })
     },
-    toggleAdvancedSettings(){
 
-      this.advancedSettings = !this.advancedSettings;
+    back(){
+      if(this.adding && isLoggedIn(this.$store)){
+        this.$router.push({name: 'account'});
+      }else{
+        this.$router.push({name: this.fromRoute});
+      }
     },
 
     async create(){
@@ -218,73 +207,61 @@ export default {
       }
 
       this.resetFormErrors();
-
-      let isFormAllValid = [];
-      let userhomedir = '';
-      //check if not exist => false
-      isFormAllValid.push(this.passwordField.validInput());
-      isFormAllValid.push(this.passwordField2.validInput());
-      //only recover for non existing acount yet
-      isFormAllValid.push(this.accountField.validInput(this.configService, true));
-      isFormAllValid.push(this.walletdirField.validInput(this.configService));
-      isFormAllValid.push(this.networkField.validInput());
-
-      //we create a complete new wallet
-      if(!isFormAllValid.includes(false)){
-
-        this.isLoading = true;
-
-        userhomedir = window.nodePath.join(this.walletdirField.defaultValue, this.accountField.defaultValue);
-
-        if(this.accountField.defaultValue == 'default'){
-          userhomedir = window.nodePath.join(this.walletdirField.defaultValue);
-        }
-
-        let walletRecoverDir = window.nodePath.join(userhomedir, this.networkField.shortName);
-        const started = performance.now();
-        this.createStage = 'create';
-        try{
-          let created = await this.$walletService.new(this.passwordField.defaultValue, this.networkField.defaultValue, walletRecoverDir);
-          console.log('[create] wallet created +' + Math.round(performance.now() - started) + ' ms');
-          if(created && !created.success){
-            this.$toast.error(created.msg, {duration:false});
-          }else{
-            this.createStage = 'save';
-            //save new account settings and run a check against recoverd wallet
-            if(await this.configService.updateAppConfig('account_dirs', {
-                account: this.accountField.defaultValue,
-                userhomedir: userhomedir,
-                network: this.networkField.defaultValue,
-                isdefault: this.accountField.defaultValue == 'default' ? true : false
-              })){
-              let action = await this.configService.startCheck(this.accountField.defaultValue);
-              if(action === 'settings'){
-                console.log('[create] account saved +' + Math.round(performance.now() - started) + ' ms');
-                this.newseeds = created.msg.split(' ');
-                this.qrText = created.msg;
-                this.page = 'created'
-
-              }else{
-                this.$toast.error(this.$t('msg.create.fatal_create', [action]), {duration:false});
-              }
-
-            }else{
-              this.$toast.error(this.$t('msg.create.fatal_update'), {duration:false});
-            }
-          }
-        }catch(e){
-          this.$toast.error(e && e.message ? e.message : String(e), {duration:false});
-        }finally{
-          this.createStage = '';
-          this.isLoading = false;
-        }
-
-      }else{
+      const valid = [this.passwordField.validInput(), this.passwordField2.validInput()];
+      if(valid.includes(false)){
         return;
       }
 
+      this.isLoading = true;
+      const started = performance.now();
+      this.createStage = 'create';
+      try{
+        //makes the wallet's folders, runs init and adds it to the list (nothing is listed on failure)
+        const created = await this.$walletService.new(this.passwordField.defaultValue, this.network, {label: this.adding ? this.label.trim() : ''});
+        console.log('[create] ' + (created && created.success ? 'wallet created' : 'failed') + ' +' + Math.round(performance.now() - started) + ' ms');
+        if(!created || !created.success || !created.wallet){
+          this.$toast.error(created && created.msg ? String(created.msg.message || created.msg) : this.$t('msg.wallets.create_failed'), {duration:false});
+        }else{
+          this.createStage = 'save';
+          this.wallet = created.wallet;
+          this.newseeds = String(created.msg).split(' ');
+          this.qrText = String(created.msg);
+          this.page = 'created';
+        }
+      }catch(e){
+        this.$toast.error(e && e.message ? e.message : String(e), {duration:false});
+      }finally{
+        this.createStage = '';
+        this.isLoading = false;
+      }
     },
 
+    /* the phrase is written down: open the new wallet with the password just chosen */
+    async openNewWallet(){
+      if(this.opening || !this.wallet){
+        return;
+      }
+      this.opening = true;
+      try{
+        //Add another wallet: the wallet open now is closed first, as Lock does
+        await this.logoutCurrent();
+        const result = await this.openWallet(this.wallet.id, this.passwordField.defaultValue);
+        if(result !== 'opened'){
+          this.toUnlock();
+        }
+      }catch(e){
+        this.$toast.error(e && e.message ? e.message : String(e));
+        this.toUnlock();
+      }finally{
+        this.$store.commit('loginStage', '');
+        this.opening = false;
+      }
+    },
+
+    //it did not open: the unlock page, with this wallet chosen
+    toUnlock(){
+      this.$router.push({name: 'login', query: {wallet: this.wallet.id}});
+    },
   }
 }
 </script>

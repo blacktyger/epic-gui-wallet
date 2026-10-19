@@ -7,6 +7,8 @@
 import BlankView from '@/components/modern/views/BlankView.vue';
 import UnlockView from '@/components/modern/views/UnlockView.vue';
 import WelcomeView from '@/components/modern/views/WelcomeView.vue';
+import FoundView from '@/components/modern/views/FoundView.vue';
+import SettingsErrorView from '@/components/modern/views/SettingsErrorView.vue';
 import CreateView from '@/components/modern/views/CreateView.vue';
 import RestoreView from '@/components/modern/views/RestoreView.vue';
 import SetupView from '@/components/modern/views/SetupView.vue';
@@ -28,6 +30,8 @@ export const MODERN_VIEWS = {
   checkService: { component: BlankView, layout: 'bare', titleKey: '' },
   login: { component: UnlockView, layout: 'bare', titleKey: 'msg.modern.title_unlock' },
   new: { component: WelcomeView, layout: 'bare', titleKey: 'msg.modern.title_welcome' },
+  found: { component: FoundView, layout: 'bare', titleKey: 'msg.wallets.title_found' },
+  settingsError: { component: SettingsErrorView, layout: 'bare', titleKey: 'msg.wallets.error_title' },
   create: { component: CreateView, layout: 'bare', titleKey: 'msg.modern.title_create' },
   restore: { component: RestoreView, layout: 'bare', titleKey: 'msg.modern.title_restore' },
   setupwizard: { component: SetupView, layout: 'bare', titleKey: 'msg.modern.title_setup' },
