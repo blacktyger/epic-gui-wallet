@@ -12,8 +12,7 @@
         </h2>
       </div>
       <div class="message-body">
-        <p>{{ $t('msg.node_problem.address_changed', [addressChange.from, addressChange.to]) }}</p>
-        <p v-if="addressChangeReason">{{ addressChangeReason }}</p>
+        <p class="node-problem-address">{{ $t('msg.node_problem.address_changed', [addressChange.from, addressChange.to]) }}</p>
         <div class="buttons node-problem-actions">
           <button type="button" class="button is-small is-dark is-outlined" @click="store.commit('nodeAddressChange', null)">{{ $t('msg.node_problem.ok') }}</button>
         </div>
@@ -30,16 +29,7 @@
       </div>
       <div class="message-body">
 
-        <dl class="node-problem-facts">
-          <dt>{{ $t('msg.node_problem.node') }}</dt>
-          <dd class="node-problem-address">{{ problem.address || '—' }}</dd>
-          <template v-if="showsVersion">
-            <dt>{{ $t('msg.node_problem.version') }}</dt>
-            <dd>{{ problem.version || $t('msg.node_problem.version_unknown') }}</dd>
-          </template>
-        </dl>
-
-        <p v-for="(line, i) in why" :key="i">{{ line }}</p>
+        <p class="node-problem-address"><span class="sr-only">{{ $t('msg.node_problem.node') }}: </span>{{ problem.address || '—' }}</p>
 
         <p v-if="problem.epicboxSkipped" class="node-problem-epicbox">
           {{ $t('msg.node_problem.epicbox_skipped') }}
@@ -48,24 +38,19 @@
 
         <h3 class="node-problem-subtitle">{{ $t('msg.node_problem.fixes') }}</h3>
         <ul class="node-problem-fixes">
-          <li v-if="showsUpgrade">
-            <a :href="releasesUrl" @click.prevent="openExternal(releasesUrl)">{{ $t('msg.node_problem.fix_upgrade') }}</a>
-            <span class="node-problem-hint">{{ $t('msg.node_problem.opens_browser') }}</span>
+          <li>
+            <router-link to="/settings" class="button is-small is-primary is-outlined">{{ $t(mainnet ? 'msg.node_problem.fix_public' : 'msg.node_problem.fix_other') }}</router-link>
+            <!-- the node list is of mainnet nodes -->
+            <a v-if="mainnet" class="node-problem-link" :href="nodeListUrl" @click.prevent="openExternal(nodeListUrl)" @auxclick.prevent>{{ $t('msg.node_problem.node_list') }}<span class="sr-only"> {{ $t('msg.node_problem.opens_browser') }}</span><mdicon name="open-in-new" size="14" aria-hidden="true" /></a>
           </li>
           <li>
-            <button type="button" class="button is-small is-primary" :class="{'is-loading': switching}"
+            <button type="button" class="button is-small is-primary is-outlined" :class="{'is-loading': switching}"
                     :disabled="switching" :aria-busy="switching" @click="useBuiltinNode">
               {{ $t('msg.node_problem.fix_builtin') }}
             </button>
-            <span class="node-problem-hint">{{ $t(mainnet ? 'msg.node_problem.fix_builtin_hint_mainnet' : 'msg.node_problem.fix_builtin_hint') }}</span>
           </li>
-          <li>
-            <!-- the node list is of mainnet nodes -->
-            <template v-if="mainnet">
-              <a :href="nodeListUrl" @click.prevent="openExternal(nodeListUrl)">{{ $t('msg.node_problem.fix_public') }}</a>
-              <span class="node-problem-hint">{{ $t('msg.node_problem.opens_browser') }}</span>,
-            </template>
-            <router-link to="/settings">{{ $t('msg.node_problem.fix_settings') }}</router-link>
+          <li v-if="showsUpgrade">
+            <a class="node-problem-link" :href="releasesUrl" @click.prevent="openExternal(releasesUrl)" @auxclick.prevent>{{ $t('msg.node_problem.fix_upgrade') }}<span class="sr-only"> {{ $t('msg.node_problem.opens_browser') }}</span><mdicon name="open-in-new" size="14" aria-hidden="true" /></a>
           </li>
         </ul>
 
@@ -82,7 +67,6 @@
 <script>
   import { ref, computed } from 'vue';
   import { useStore } from '@/store';
-  import { useI18n } from 'vue-i18n';
   import { LOCAL_NODE } from '@/shared/nodeAddress.js';
 
   export const NODE_RELEASES_URL = 'https://github.com/EpicCash/epic/releases';
@@ -92,7 +76,6 @@
     name: 'NodeProblemNotice',
     setup(){
       const store = useStore();
-      const { t } = useI18n();
       const switching = ref(false);
 
       const problem = computed(() => store.state.nodeProblem && !store.state.nodeProblem.hidden ? store.state.nodeProblem : null);
@@ -102,39 +85,10 @@
       const showsUpgrade = showsVersion;
       const mainnet = computed(() => !problem.value || !problem.value.network || problem.value.network == 'mainnet');
 
-      const why = computed(() => {
-        const p = problem.value;
-        if(!p){
-          return [];
-        }
-        const lines = [];
-        if(p.kind == 'too_old'){
-          lines.push(t(p.version ? 'msg.node_problem.why_too_old' : 'msg.node_problem.why_needs_secret'));
-        }else if(p.kind == 'status_locked'){
-          lines.push(t('msg.node_problem.why_status_locked'));
-        }else if(p.kind == 'unreachable'){
-          lines.push(t('msg.node_problem.why_unreachable', [p.reason]));
-          if(p.local && p.network && p.network != 'mainnet'){
-            lines.push(t('msg.node_problem.why_local_testnet', [p.network]));
-          }
-        }else if(p.kind == 'not_epic'){
-          lines.push(t('msg.node_problem.why_not_epic', [p.reason]));
-        }
-        if(showsVersion.value){
-          lines.push(t(p.statusReadable ? 'msg.node_problem.status_fallback' : 'msg.node_problem.status_unreadable'));
-        }
-        return lines;
-      });
-
       const addressChange = computed(() => store.state.nodeAddressChange);
-      const addressChangeReason = computed(() => {
-        const c = addressChange.value;
-        const known = ['scheme_added', 'local_http', 'dead_fallback', 'mainnet_node_on_testnet', 'answered'];
-        return c && known.includes(c.reason) ? t('msg.node_problem.reason_' + c.reason, [c.network || '']) : '';
-      });
 
       return {
-        store, switching, problem, severe, showsVersion, showsUpgrade, mainnet, why, addressChange, addressChangeReason,
+        store, switching, problem, severe, showsUpgrade, mainnet, addressChange,
         releasesUrl: NODE_RELEASES_URL, nodeListUrl: NODE_LIST_URL,
       };
     },
@@ -184,15 +138,6 @@
     font-weight: 600;
     margin: 0;
   }
-  .node-problem-facts {
-    display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
-    gap: 0.15rem 0.75rem;
-    margin-bottom: 0.75rem;
-  }
-  .node-problem-facts dt {
-    font-weight: 600;
-  }
   .node-problem-address {
     overflow-wrap: anywhere;
     font-family: monospace;
@@ -206,17 +151,30 @@
     margin-top: 0.75rem;
     margin-bottom: 0.35rem;
   }
-  .node-problem-fixes {
-    list-style: disc;
-    margin-left: 1.25rem;
+  .node-problem-fixes li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
   }
   .node-problem-fixes li + li {
-    margin-top: 0.4rem;
+    margin-top: 0.5rem;
   }
-  .node-problem-hint {
-    margin-left: 0.35rem;
-    font-size: 0.85em;
-    opacity: 0.85;
+  .node-problem-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
   .node-problem-actions {
     margin-top: 0.75rem;

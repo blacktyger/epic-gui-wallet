@@ -422,6 +422,9 @@
           return;
         }
         const {kind, address, version, reason, local, statusReadable, statusVia} = check;
+        //the notice says it in plain words; the details are for the log
+        console.log('[node] ' + address + ': ' + kind + ', version ' + (version || 'unknown') + ', ' + (reason || '-')
+          + ', status ' + (statusReadable ? 'readable via ' + statusVia : 'not readable'));
         this.store.commit('nodeProblem', {
           kind, address, version, reason, local, statusReadable, statusVia,
           network: this.configService.defaultAccountNetwork || 'mainnet',
