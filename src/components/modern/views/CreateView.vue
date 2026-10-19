@@ -86,16 +86,17 @@
       </div>
       <div class="e-onb-phrase">
         <div class="e-seed-wrap">
+          <!-- the words are in the page only while revealed; before that an empty, veiled grid -->
           <ol
+            v-if="revealed"
             ref="seedList"
             class="e-seed"
-            :class="{ 'e-is-veiled': !revealed }"
-            :aria-hidden="revealed ? null : 'true'"
-            :aria-label="revealed ? $t('msg.modern.unlock.phrase_label', { n: newseeds.length }) : null"
-            :tabindex="revealed ? -1 : null"
+            :aria-label="$t('msg.modern.unlock.phrase_label', { n: newseeds.length })"
+            tabindex="-1"
           >
             <li v-for="(seed, index) in newseeds" :key="index" translate="no">{{ seed }}</li>
           </ol>
+          <ol v-else class="e-seed e-is-veiled" aria-hidden="true"><li v-for="n in newseeds.length" :key="n"></li></ol>
           <div v-if="!revealed" class="e-seed-veil e-onb-veil">
             <div class="e-onb-veil-card">
               <button type="button" class="e-btn e-btn-primary" @click="reveal"><EIcon name="eye" />{{ $t('msg.modern.unlock.phrase_reveal') }}</button>
@@ -103,9 +104,9 @@
             </div>
           </div>
         </div>
-        <!-- the Classic screen shows the phrase as a QR code too: kept, behind the reveal. The canvas
-             stays in the page because the Classic code draws on it by id as soon as the phrase exists -->
-        <details v-show="revealed" class="e-tech e-onb-qr">
+        <!-- the Classic screen shows the phrase as a QR code too: kept, behind the reveal (drawn by reveal()) -->
+        <button v-if="revealed" type="button" class="e-btn e-btn-ghost e-btn-sm" @click="hide"><EIcon name="eyeoff" />{{ $t('msg.modern.unlock.phrase_hide') }}</button>
+        <details v-if="revealed" class="e-tech e-onb-qr">
           <summary><EIcon name="chevr" />{{ $t('msg.modern.unlock.phrase_qr') }}</summary>
           <div class="e-tech-body">
             <p class="e-help">{{ $t('msg.modern.unlock.phrase_qr_hint') }}</p>
@@ -142,7 +143,6 @@
         //the creation failed: {stage, message}
         failure: null,
         lastStage: '',
-        revealed: false,
       };
     },
     computed: {
@@ -183,7 +183,7 @@
         this.failure = null;
       },
       reveal() {
-        this.revealed = true;
+        Create.methods.reveal.call(this);
         this.$nextTick(() => this.focusEl(this.$refs.seedList));
       },
       focusEl(el) {

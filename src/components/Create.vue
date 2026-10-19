@@ -20,13 +20,21 @@
                       <div class="message-body">{{ $t('msg.create.backupWarning') }}</div>
                     </article>
                     <!-- numbered, so the words are written down in order (a phrase can repeat a word) -->
-                    <ol class="tags" style="justify-content: center; list-style: none; margin-left: 0;">
-                      <li style="color:#000000" class="mnemonic-word tag is-light is-medium is-rounded is-link" v-for="(seed, index) in newseeds" :key="index"><small style="opacity:0.6;">{{ index + 1 }}.&nbsp;</small>{{seed}}<span class="space"> </span></li>
-                    </ol>
+                    <!-- in the page only while revealed (and the QR code drawn only then) -->
+                    <template v-if="revealed">
+                      <ol class="tags" style="justify-content: center; list-style: none; margin-left: 0;">
+                        <li style="color:#000000" class="mnemonic-word tag is-light is-medium is-rounded is-link" v-for="(seed, index) in newseeds" :key="index"><small style="opacity:0.6;">{{ index + 1 }}.&nbsp;</small>{{seed}}<span class="space"> </span></li>
+                      </ol>
 
-                    <div style="text-align: center;">
-                      <canvas id="qrcodeCanvas" ></canvas>
+                      <div style="text-align: center;">
+                        <canvas id="qrcodeCanvas" ></canvas>
+                      </div>
+                    </template>
+                    <div class="buttons is-centered">
+                      <button v-if="revealed" type="button" class="button is-light" @click="hide">{{ $t('msg.modern.unlock.phrase_hide') }}</button>
+                      <button v-else type="button" class="button is-warning" @click="reveal">{{ $t('msg.modern.unlock.phrase_reveal') }}</button>
                     </div>
+                    <p v-if="!revealed" class="help has-text-centered">{{ $t('msg.modern.unlock.phrase_reveal_hint') }}</p>
                     <p>&nbsp;</p>
                     <div class="buttons is-centered">
                       <button type="button" class="button is-primary" :class="{ 'button__loader': opening }" :aria-disabled="opening" @click="openNewWallet">
@@ -124,8 +132,9 @@ export default {
     StartupProgress,
   },
   watch: {
-    qrText: function (val) {
-      this.qrcode(val);
+    //the phrase screen is left (or hidden) while the wallet opens: the words leave the page
+    opening: function (now) {
+      if (now) this.hide();
     }
   },
   setup(){
@@ -168,6 +177,8 @@ export default {
       wallet: null,
       //opening it after the phrase
       opening: false,
+      //the recovery words are in the page only after "Reveal phrase" (never just hidden by CSS)
+      revealed: false,
     };
   },
   computed: {
@@ -183,9 +194,22 @@ export default {
     },
   },
 
+  beforeUnmount() {
+    this.revealed = false;
+    this.newseeds = [];
+    this.qrText = '';
+  },
   methods: {
+    reveal(){
+      this.revealed = true;
+      this.$nextTick(() => this.qrcode(this.qrText));
+    },
+    hide(){
+      this.revealed = false;
+    },
     async qrcode(text){
       const canvas = document.getElementById("qrcodeCanvas");
+      if (!canvas || !text) return;
       window.nodeQr.toCanvas(canvas, text, function (error) {
         if (error) console.error('Create.qrcode', error)
       })
