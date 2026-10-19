@@ -183,7 +183,7 @@ export function walletMarkerText({ id, label, network, createdAt, dataDir, confi
     'Wallet id: ' + one(id),
     'Wallet data (the seed is in wallet_data): ' + one(dataDir),
     ...(configDir && configDir !== dataDir ? ['Settings of this wallet in Epic Wallet 6.1: ' + one(configDir)] : []),
-    ...(importedFrom && importedFrom.dir ? ['Imported from an older Epic Wallet' + (importedFrom.app ? ' (' + one(importedFrom.app) + ')' : '') + '; the older app can still open it.'] : []),
+    ...(importedFrom && importedFrom.dir ? ['Imported from an older Epic Wallet' + (importedFrom.app ? ' (' + one(importedFrom.app) + ')' : '') + '.'] : []),
     '',
     'This file is only for you: Epic Wallet writes it and never reads it.',
   ];

@@ -351,7 +351,9 @@ test('WALLET.txt: label, network, day, data folder; written on register, rename 
   const first = fs.readFileSync(file).split('\n');
   assert.equal(first[0], 'Epic Wallet: Alpha · floonet · created 2026-10-19 · data: ' + old);
   assert.ok(first.includes('Settings of this wallet in Epic Wallet 6.1: ' + root + '/wallets/w1'));
-  assert.ok(first.some(l => l.startsWith('Imported from an older Epic Wallet (5.3.1)')));
+  assert.ok(first.includes('Imported from an older Epic Wallet (5.3.1).'));
+  //nothing that suggests using the older app on this wallet alongside 6.1
+  assert.ok(!/older app|still open/i.test(first.join('\n')));
   assert.equal(cs.renameWallet('w1', ' Savings\nfake line '), true);
   assert.match(fs.readFileSync(file).split('\n')[0], /^Epic Wallet: Savings fake line · floonet/);
   fs.unlinkSync(file);

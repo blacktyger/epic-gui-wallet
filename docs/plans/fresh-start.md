@@ -6,10 +6,12 @@ Related: `docs/plans/upgrade-path.md` on `fix/userdata-migration` (research, mat
 ## Goal and scope
 
 New users get one wallet with no name: choose a password, or restore from a recovery phrase. People with
-old wallets see, once, "Found N wallets from an older Epic Wallet" and pick Import or Start fresh. 6.1
-keeps its own settings in its own folder and never writes an older GUI's files, so an older GUI still opens
-its wallets afterwards. All old startup quirks (account names, stale `account_dirs`, Setup Assistant
-re-runs, folder moves, toml rewrites) are gone because 6.1 no longer reads that state at runtime.
+old wallets see, once, "We found N wallets from an older Epic Wallet" with the wallets pre-checked and
+*Use selected wallets* or *Not now*. 6.1 keeps its own settings in its own folder and never writes an older
+GUI's files (checked by the matrix: old files byte-identical, the old GUI still logs in; that is a safety
+check, not something the UI suggests: the UI never proposes using the older app on the same wallet). All
+old startup quirks (account names, stale `account_dirs`, Setup Assistant re-runs, folder moves, toml
+rewrites) are gone because 6.1 no longer reads that state at runtime.
 
 Out of scope: macOS testing (no 4.1.0 binaries), the Windows installer test pass (unit tests and code
 reading only), moving or copying seeds, importing anything beyond node, Epicbox, language, contacts (and the
@@ -131,11 +133,16 @@ Several wallets (approved):
   <path>", plus id and origin), rewritten on register, rename (`configService.renameWallet`) and each
   unlock. Informational only: the app never reads it. Never written in an old folder.
 
-Found screen: "Found N wallets from an older Epic Wallet", one row each: label (old display name or
-account), folder, network, last used, contacts count; per row Import / Start fresh, plus *Import all* and
-*Start fresh* (all). Note: "Use the password you had in the older wallet. The older app keeps working."
-Each choice is stored in `legacy`, so the screen never asks again; the first imported wallet becomes
-the default.
+Found screen (redesigned, Patryk 2026-10-19): title "We found N wallets from an older Epic Wallet", one
+line "Use them here? Your coins and recovery phrase stay the same." One row per wallet with a
+pre-checked checkbox: label (old display name or account) · network · folder · last used, contacts count,
+and the history note for epic-wallet 3.x wallets. Below the list, when old chain data exists, one ticked
+checkbox "Reuse the downloaded blockchain". Primary *Use selected wallets* (disabled with none checked)
+imports the checked ones; unchecked ones stay undecided. Secondary *Not now* imports and changes nothing.
+Both mark the scan done (`firstRun`), so the screen doesn't come back at start; "You can import them later in
+Settings." (Settings › Add another wallet › *Import from an older Epic Wallet* runs the scan again and shows
+the same screen, listing everything not yet in the 6.1 list). Imported ones are stored in `legacy`; the first
+imported wallet becomes the default.
 
 ## Importer
 
@@ -162,7 +169,8 @@ the default.
 4. Import: `id = nextWalletId()`, `configDir = <root>/wallets/<id>`, `dataDir = <old dir>`,
    `origin: 'imported'`, `importedFrom: {app, account, dir}`; render the toml; User row + contacts in the
    new IndexedDB; `legacy[dir] = 'imported'`. Listener/background flags take the 6.1 defaults.
-5. Start fresh: `legacy[dir] = 'fresh'`. Nothing else.
+5. Not checked, or *Not now*: nothing is stored for those wallets (only `firstRun`), so a later
+   *Import from an older Epic Wallet* lists them again. (`markFresh` stays in the importer API, unused by the UI.)
 
 Old GUI "accounts" are separate epic-wallet instances (own folder, seed, password; the GUI never called
 `create_account_path` or `set_active_account`). Every one found is offered, on every network, in both
