@@ -47,6 +47,7 @@
         </div>
 
         <h2 class="title is-5" style="margin-top: 1.5rem;">{{ $t('msg.wallets.add_wallet') }}</h2>
+        <p class="help" style="margin-bottom: 0.5rem;">{{ $t('msg.wallets.add_wallet_hint') }}</p>
         <div class="buttons">
           <button type="button" class="button is-small" @click="addCreate">{{ $t('msg.wallets.create') }}</button>
           <button type="button" class="button is-small" @click="addRestore">{{ $t('msg.wallets.restore') }}</button>
