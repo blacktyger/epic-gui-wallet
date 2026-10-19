@@ -1,5 +1,12 @@
 require('promise.prototype.finally').shim();
 import { fetchNodeVersion, fetchNodeStatus, classifyNode, fetchTipHeight } from './nodeVersion.js';
+import { loadDirectory, CHAINS } from './nodeDirectory.js';
+import { assessNodeStatus, directoryReferenceHeight, createBehindTracker } from './nodeHealth.js';
+
+//the node list is asked for at most once a minute (the main process caches it as long), and a
+//network tip older than this is not used
+const DIRECTORY_EVERY_MS = 60 * 1000;
+const DIRECTORY_MAX_AGE_MS = 10 * 60 * 1000;
 
 const log = window.log;
 console.log = log.log;
@@ -23,6 +30,10 @@ class NodeService {
         'txhashset_kernels_validation',
 
       ]
+      //the network tip from the public node list (nodeHealth.js): {chain, height, at}
+      this.networkTip = null;
+      this.directoryAskedAt = 0;
+      this.behindTracker = createBehindTracker();
   }
 
   async restartNode(){
@@ -92,6 +103,9 @@ class NodeService {
     const check = await classifyNode(address, {apiSecret: this.configService.apisecret, referenceHeight: () => this.referenceHeight()});
     //for the status polls: a status read via get_tip has no user agent, the panel shows this version
     this.nodeVersion = check.version || '';
+    if(check.status){
+      check.status = this.assessStatus(check.status);
+    }
     return check;
   }
 
@@ -112,6 +126,40 @@ class NodeService {
     const h = status && status.tip ? Number(status.tip.height) || 0 : 0;
     const high = status && status.sync_info ? Number(status.sync_info.highest_height) || 0 : 0;
     this.highestSeenHeight = Math.max(this.highestSeenHeight || 0, h, high);
+  }
+
+  /* ask the main process for the public node list in the background, never awaited: the status
+     is checked against the last list there is (none yet, or none for usernet: nodeHealth's fallback) */
+  refreshNetworkTip(){
+    const chain = this.configService.defaultAccountNetwork || 'mainnet';
+    const now = Date.now();
+    if(!CHAINS.includes(chain) || now - this.directoryAskedAt < DIRECTORY_EVERY_MS){
+      return;
+    }
+    this.directoryAskedAt = now;
+    loadDirectory(window.api, chain).then((dir) => {
+      const height = directoryReferenceHeight(dir);
+      if(height > 0){
+        this.networkTip = {chain, height, at: Date.now()};
+      }
+    }).catch(() => {});
+  }
+
+  /* the network tip for the wallet's network from the last list, 0 if none */
+  networkTipHeight(){
+    const chain = this.configService.defaultAccountNetwork || 'mainnet';
+    const tip = this.networkTip;
+    return tip && tip.chain == chain && Date.now() - tip.at < DIRECTORY_MAX_AGE_MS ? tip.height : 0;
+  }
+
+  /* the status as the wallet uses it (nodeHealth.assessNodeStatus): at the network tip is synced,
+     whatever the node says. node_behind: how many blocks behind once BEHIND_CONFIRMATIONS checks in
+     a row said so, else 0 (the UI's "Your node is N blocks behind") */
+  assessStatus(status){
+    this.refreshNetworkTip();
+    const assessed = assessNodeStatus(status, {referenceHeight: this.networkTipHeight()});
+    const behind = this.behindTracker.update(assessed && assessed.behind_blocks);
+    return assessed && typeof assessed === 'object' && !assessed.error ? {...assessed, node_behind: behind} : assessed;
   }
 
   async getNodeStatus(internal){
@@ -177,6 +225,8 @@ class NodeService {
       }
     }
 
+    //the restart checks above read the status as the node gave it
+    response = this.assessStatus(response);
     this.debug ? console.log('NodeService.getNodeStatus', response) : null;
     return response;
 

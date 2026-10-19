@@ -514,7 +514,7 @@
             return 'blocked';
           }
           const s = await this.$nodeService.getNodeStatus(this.store.state.user.nodeInternal).catch(() => false);
-          if(s && s.tip && s.tip.height > 0 && s.sync_status === 'no_sync'){
+          if(s && s.tip && s.tip.height > 0 && s.sync_status === 'no_sync' && !s.node_behind){
             window.nodeSynced = true;
             return true;
           }
@@ -698,7 +698,7 @@
           if(check.statusReadable){
             this.$toast.success(this.t("msg.app.external_node_online"));
             //Epicbox waits for this; the status poll starts only in 10 s
-            window.nodeSynced = !!(check.status && check.status.tip && check.status.tip.height > 0 && check.status.sync_status === 'no_sync');
+            window.nodeSynced = !!(check.status && check.status.tip && check.status.tip.height > 0 && check.status.sync_status === 'no_sync' && !check.status.node_behind);
             this.store.commit('nodeStatus', check.status);
           }else{
             this.nodeStatusFailed = true;
@@ -721,7 +721,8 @@
             this.reclassifyNode();
           }
 
-          window.nodeSynced = respNode.tip && respNode.tip.height > 0 && respNode.sync_status === 'no_sync';
+          //a node behind the network tip (nodeHealth.js) does not start Epicbox; sending still keys on sync_status
+          window.nodeSynced = !!(respNode.tip && respNode.tip.height > 0 && respNode.sync_status === 'no_sync' && !respNode.node_behind);
 
           if(this.store.state.user.nodeInternal && this.configService.config.nodesynced == false){
             if(respNode.tip && respNode.tip.height > 0 && respNode.sync_status === 'no_sync'){

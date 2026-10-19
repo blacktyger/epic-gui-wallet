@@ -28,6 +28,10 @@ export default {
   svc_connecting: 'Connecting…',
   svc_syncing: 'Syncing · {p}',
   svc_synced: 'Synced · block {h}',
+  svc_behind: '{n} blocks behind',
+  //the node is clearly below the network tip (shared/nodeHealth.js)
+  node_behind: 'Your node is {n} blocks behind.',
+  switch_node: 'Switch node',
   svc_receiving: 'Receiving',
   svc_listener_starting: 'Starting listener…',
   svc_epicbox_http: 'Epicbox and HTTP on',

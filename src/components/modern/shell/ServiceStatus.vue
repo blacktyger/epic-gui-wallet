@@ -8,7 +8,7 @@
       type="button"
       class="e-svc"
       :class="'e-is-' + line.tone"
-      :title="line.name + ': ' + line.detail"
+      :title="line.name + ': ' + line.detail + (line.action ? ' · ' + line.action : '')"
       @click="$router.push(line.to)"
     >
       <EIcon :name="line.tone == 'busy' ? 'sync' : line.icon" />
@@ -38,6 +38,10 @@
         const base = { key: 'node', icon: 'server', name: t('msg.modern.svc_node'), to: '/settings' };
         if (s.error) return { ...base, tone: 'risk', detail: t('msg.modern.svc_node_down') };
         if (!s.user_agent) return { ...base, tone: 'busy', detail: t('msg.modern.svc_connecting') };
+        //behind the network tip (nodeService.assessStatus): the line opens Settings, node first, to switch
+        if (s.node_behind > 0) {
+          return { ...base, tone: 'warn', detail: t('msg.modern.svc_behind', { n: Number(s.node_behind).toLocaleString(locale.value) }), action: t('msg.modern.switch_node') };
+        }
         if (s.sync_status != 'synced') {
           return { ...base, tone: 'warn', detail: t('msg.modern.svc_syncing', { p: nodeSyncPercent(s, locale.value) }) };
         }

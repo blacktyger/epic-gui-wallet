@@ -149,11 +149,12 @@
         <div class="e-panel e-ov-status">
           <div class="e-ov-row">
             <span v-if="nodeConnecting" class="e-spinner" aria-hidden="true"></span>
-            <EIcon v-else name="server" :class="nodeDown ? 'e-risk' : (nodeSyncing ? 'e-warn' : 'e-ok')" />
+            <EIcon v-else name="server" :class="nodeDown ? 'e-risk' : (nodeSyncing || nodeBehind ? 'e-warn' : 'e-ok')" />
             <div class="e-grow">
               <b>{{ isInternal ? $t('msg.modern.overview.node_builtin') : $t('msg.modern.overview.node_external') }}</b>
               <small v-if="nodeConnecting" role="status">{{ $t('msg.modern.overview.node_connecting') }}</small>
               <small v-else-if="nodeDown" class="e-risk">{{ $t('msg.modern.overview.node_not_responding') }}</small>
+              <small v-else-if="nodeBehind" role="status">{{ $t('msg.modern.node_behind', { n: fmt(nodeBehind) }) }} <router-link to="/settings" class="e-link-btn">{{ $t('msg.modern.switch_node') }}</router-link></small>
               <small v-else-if="nodeSyncing">{{ $t('msg.modern.overview.node_progress', { status: store.state.nodeStatus.sync_status, p: syncPercent }) }}<template v-if="node.connections != null"> · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</template></small>
               <small v-else>{{ $t('msg.modern.overview.node_synced') }}<template v-if="node.connections != null"> · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</template></small>
               <small v-if="nodeSynced" class="e-ov-height" translate="no" :title="$t('msg.modern.overview.node_block')">{{ $t('msg.modern.overview.node_block') }} <span class="e-mono">{{ fmt(blockHeight) }}</span></small>
@@ -272,8 +273,13 @@
       nodeConnecting() {
         return !this.node.error && !this.node.user_agent;
       },
+      /* blocks below the network tip, once seen twice in a row (nodeService.assessStatus), else 0 */
+      nodeBehind() {
+        return !this.node.error && this.node.node_behind > 0 ? this.node.node_behind : 0;
+      },
       nodeSyncing() {
-        return !this.node.error && !!this.node.user_agent && this.node.sync_status != 'synced';
+        //a node stuck behind the tip (nodeBehind) is not syncing: the status card says so instead
+        return !this.node.error && !!this.node.user_agent && this.node.sync_status != 'synced' && !this.nodeBehind;
       },
       /* the test HttpSend uses before it sends */
       nodeSynced() {

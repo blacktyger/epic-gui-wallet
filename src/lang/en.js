@@ -100,6 +100,8 @@ const messages = {
       progress: 'Progress',
       block_height: 'Blockchain Height',
       node_sync_status: 'Internal node sync status',
+      node_behind: 'Your node is {n} blocks behind.',
+      switch_node: 'Switch node',
     },
     dashboard:{
       transactions: 'Transactions',
