@@ -238,7 +238,12 @@
           this.stopRefreshNode();
           this.stopRefresh();
           await this.$nodeService.stopNode();
+          //locked within the 3 s: no node for a session that is gone
+          const session = this.loginSession;
           setTimeout(async() => {
+            if(session !== this.loginSession){
+              return;
+            }
             await this.nodeStart();
 
 
@@ -536,7 +541,14 @@
           if(!this.configService.startCheckNode()){
             this.$toast.error(this.t("msg.app.error_setup_internal_node"));
           }else{
+            const session = this.loginSession;
             let started  = await this.$nodeService.internalNodeStart();
+
+            //locked while the node was starting: the lock's stop ran before this node existed
+            if(started && session !== this.loginSession && !this.loggedIn && !(this.configService.config || {}).node_background){
+              await this.$nodeService.stopNode();
+              return;
+            }
 
             if(started){
               this.$toast.success(this.t("msg.app.node_started"));

@@ -487,10 +487,11 @@ class ConfigService {
    */
   async killEpicProcess() {
 
-    //the node stays if the user runs it in the background
-    const cfg = this.config;
-    const roles = ['owner_api', 'listen', 'scan', 'epicbox',
-      ...(!cfg.node_background ? ['node'] : [])];
+    //the built-in node is never in this list: it is shared by every wallet of its network, the app
+    //started it (only our recorded processes are found), internalNodeStart reuses it, and quit stops
+    //it unless it runs in the background. Asking about it here showed "Epic is already running"
+    //for our own node after a lock or with a second wallet
+    const roles = ['owner_api', 'listen', 'scan', 'epicbox'];
 
     //one process scan for wallet, node and Tor: each scan spawns ps (powershell on Windows, ~1 s there).
     //This wallet's processes (its config dir); the owner API and http listener of any of our wallets
@@ -534,7 +535,6 @@ class ConfigService {
               ...(has('owner_api') ? [3420] : []),
               //another wallet's http listener holds the same port
               ...(has('listen') && !this.killedPorts.includes(this.walletListenerPort) ? [this.walletListenerPort] : []),
-              ...(has('node') ? [this.getNodeApiPort()] : []),
             ];
             resolve(true);
           } else {

@@ -391,6 +391,18 @@ test('killEpicProcess: our processes, Tor in the data dir, background roles kept
   assert.equal(await cs.waitForKilledPorts(), true);
 });
 
+test('killEpicProcess never offers to stop our built-in node: it is shared per network and reused', async () => {
+  const { cs, fs, nodeChildProcess } = setup();
+  const d = cs.newWalletDirs('mainnet');
+  fs.put(d.configDir + '/wallet_data/wallet.seed');
+  //node_background off: before, the node was in the list, so a second wallet (or a lock while the
+  //node was starting) met "Epic is already running" for the node the app had started itself
+  cs.registerWallet({ ...d, network: 'mainnet', settings: { node_background: false, nodeInternal: true } });
+  cs.startCheck(d.id);
+  await cs.killEpicProcess();
+  assert.ok(!nodeChildProcess.lastScan.roles.includes('node'), nodeChildProcess.lastScan.roles.join(','));
+});
+
 test('killEpicProcess: this wallet\'s listeners and Tor are stopped without asking (restarted on the pty)', async () => {
   const { cs, fs, events, nodeChildProcess, killed } = setup();
   const old = '/home/jane/.epic/alpha/main';
