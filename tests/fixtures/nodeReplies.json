@@ -1,5 +1,5 @@
 {
- "_note": "Replies recorded 2026-10-19: public nodes live; local 4.0.3/4.1.0 = GitHub release binaries (sha256 checked) run in bwrap on usernet (genesis only). '(auth)' = with the node's api secret (the secret itself is not recorded). Errors are fetch failures.",
+ "_note": "Replies recorded 2026-10-19: public nodes live; local 4.0.3/4.1.0 = GitHub release binaries (sha256 checked) run in bwrap on usernet (genesis only). '(auth)' = with the node's api secret (the secret itself is not recorded). Errors are fetch failures. 'POST /v2/foreign get_tip' was added later: live for the public nodes; for the local nodes built from each one's recorded tip. 'remote 4.1.0, status locked (user report)': a user's plain 4.1.0 node, public endpoints only, address not recorded.",
  "https://node.epiccash.com:3413": {
   "GET /v1/version": {
    "status": 200,
@@ -72,6 +72,26 @@
      }
     }
    }
+  },
+  "POST /v2/foreign get_tip": {
+   "status": 200,
+   "body": {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "result": {
+     "Ok": {
+      "height": 3760617,
+      "last_block_pushed": "6e7dcf8715f6316a6897c5331207ab60fc57029282e739ace94222ed3711eb37",
+      "prev_block_to_last": "1f8adaf818c3e0730e0e2a72ec41aef9534160562e642c189f5921af3e2c198c",
+      "total_difficulty": {
+       "cuckaroo": 990739982485,
+       "cuckatoo": 140764671935789,
+       "progpow": 8153577311690569589,
+       "randomx": 4599029130959539
+      }
+     }
+    }
+   }
   }
  },
  "https://epic.stackwallet.com:3413": {
@@ -134,6 +154,26 @@
      }
     }
    }
+  },
+  "POST /v2/foreign get_tip": {
+   "status": 200,
+   "body": {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "result": {
+     "Ok": {
+      "height": 3760617,
+      "last_block_pushed": "6e7dcf8715f6316a6897c5331207ab60fc57029282e739ace94222ed3711eb37",
+      "prev_block_to_last": "1f8adaf818c3e0730e0e2a72ec41aef9534160562e642c189f5921af3e2c198c",
+      "total_difficulty": {
+       "cuckaroo": 990739982485,
+       "cuckatoo": 140764671935789,
+       "progpow": 8153577311690569589,
+       "randomx": 4599029130959539
+      }
+     }
+    }
+   }
   }
  },
  "http://node.epiccash.com:3413": {
@@ -160,6 +200,12 @@
    "body": {
     "html": "<html>\r\n<head><title>400 The plain HTTP request was sent to HTTPS port</title></head>\r\n<body>\r\n<center><h1>400 Bad Reque"
    }
+  },
+  "POST /v2/foreign get_tip": {
+   "status": 400,
+   "body": {
+    "html": "<html>\r\n<head><title>400 The plain HTTP request was sent to HTTPS port</title></head>\r\n<body>\r\n<center><h1>400 Bad Reque"
+   }
   }
  },
  "https://fastepic.eu:3413": {
@@ -174,6 +220,9 @@
   },
   "POST /v2/foreign get_version": {
    "error": "TypeError: ENOTFOUND"
+  },
+  "POST /v2/foreign get_tip": {
+   "error": "TypeError: ENOTFOUND"
   }
  },
  "http://116.203.211.229:3413": {
@@ -187,6 +236,9 @@
    "error": "TimeoutError: The operation was aborted due to timeout"
   },
   "POST /v2/foreign get_version": {
+   "error": "TimeoutError: The operation was aborted due to timeout"
+  },
+  "POST /v2/foreign get_tip": {
    "error": "TimeoutError: The operation was aborted due to timeout"
   }
  },
@@ -214,6 +266,12 @@
    "body": {
     "html": "<html>\r\n<head><title>301 Moved Permanently</title></head>\r\n<body>\r\n<center><h1>301 Moved Permanently</h1></center>\r\n<hr>"
    }
+  },
+  "POST /v2/foreign get_tip": {
+   "status": 301,
+   "body": {
+    "html": "<html>\r\n<head><title>301 Moved Permanently</title></head>\r\n<body>\r\n<center><h1>301 Moved Permanently</h1></center>\r\n<hr>"
+   }
   }
  },
  "https://example.org": {
@@ -236,6 +294,12 @@
    }
   },
   "POST /v2/foreign get_version": {
+   "status": 405,
+   "body": {
+    "html": "<!doctype html><html lang=\"en\"><head><title>Example Domain</title><meta name=\"viewport\" content=\"width=device-width, ini"
+   }
+  },
+  "POST /v2/foreign get_tip": {
    "status": 405,
    "body": {
     "html": "<!doctype html><html lang=\"en\"><head><title>Example Domain</title><meta name=\"viewport\" content=\"width=device-width, ini"
@@ -340,6 +404,27 @@
      }
     }
    }
+  },
+  "POST /v2/foreign get_tip": {
+   "status": 200,
+   "body": {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "result": {
+     "Ok": {
+      "height": 0,
+      "last_block_pushed": "2eb72db9505c31aac4d344c7ce4cad426e060f4f4034954187b5f77e8e4fa156",
+      "prev_block_to_last": "0000000000000000000000000000000000000000000000000000000000000000",
+      "total_difficulty": {
+       "cuckaroo": 1,
+       "cuckatoo": 1,
+       "progpow": 1,
+       "randomx": 1
+      }
+     }
+    }
+   },
+   "note": "get_tip is public on every node; reply built from this node's recorded tip"
   }
  },
  "local 4.0.3 without api secret": {
@@ -466,6 +551,27 @@
      }
     }
    }
+  },
+  "POST /v2/foreign get_tip": {
+   "status": 200,
+   "body": {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "result": {
+     "Ok": {
+      "height": 0,
+      "last_block_pushed": "2eb72db9505c31aac4d344c7ce4cad426e060f4f4034954187b5f77e8e4fa156",
+      "prev_block_to_last": "0000000000000000000000000000000000000000000000000000000000000000",
+      "total_difficulty": {
+       "cuckaroo": 1,
+       "cuckatoo": 1,
+       "progpow": 1,
+       "randomx": 1
+      }
+     }
+    }
+   },
+   "note": "get_tip is public on every node; reply built from this node's recorded tip"
   }
  },
  "local 4.1.0 with api secret": {
@@ -580,6 +686,27 @@
      }
     }
    }
+  },
+  "POST /v2/foreign get_tip": {
+   "status": 200,
+   "body": {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "result": {
+     "Ok": {
+      "height": 0,
+      "last_block_pushed": "2eb72db9505c31aac4d344c7ce4cad426e060f4f4034954187b5f77e8e4fa156",
+      "prev_block_to_last": "0000000000000000000000000000000000000000000000000000000000000000",
+      "total_difficulty": {
+       "cuckaroo": 1,
+       "cuckatoo": 1,
+       "progpow": 1,
+       "randomx": 1
+      }
+     }
+    }
+   },
+   "note": "get_tip is public on every node; reply built from this node's recorded tip"
   }
  },
  "local 4.1.0 without api secret": {
@@ -682,6 +809,27 @@
      }
     }
    }
+  },
+  "POST /v2/foreign get_tip": {
+   "status": 200,
+   "body": {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "result": {
+     "Ok": {
+      "height": 0,
+      "last_block_pushed": "2eb72db9505c31aac4d344c7ce4cad426e060f4f4034954187b5f77e8e4fa156",
+      "prev_block_to_last": "0000000000000000000000000000000000000000000000000000000000000000",
+      "total_difficulty": {
+       "cuckaroo": 1,
+       "cuckatoo": 1,
+       "progpow": 1,
+       "randomx": 1
+      }
+     }
+    }
+   },
+   "note": "get_tip is public on every node; reply built from this node's recorded tip"
   }
  },
  "local 4.1.0-1 (bundled) with api secret": {
@@ -808,6 +956,85 @@
      }
     }
    }
+  },
+  "POST /v2/foreign get_tip": {
+   "status": 200,
+   "body": {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "result": {
+     "Ok": {
+      "height": 0,
+      "last_block_pushed": "2eb72db9505c31aac4d344c7ce4cad426e060f4f4034954187b5f77e8e4fa156",
+      "prev_block_to_last": "0000000000000000000000000000000000000000000000000000000000000000",
+      "total_difficulty": {
+       "cuckaroo": 1,
+       "cuckatoo": 1,
+       "progpow": 1,
+       "randomx": 1
+      }
+     }
+    }
+   },
+   "note": "get_tip is public on every node; reply built from this node's recorded tip"
+  }
+ },
+ "remote 4.1.0, status locked (user report)": {
+  "GET /v1/version": {
+   "status": 200,
+   "body": {
+    "node_version": "4.1.0",
+    "block_header_version": 6
+   }
+  },
+  "GET /v1/status": {
+   "status": 401,
+   "body": {
+    "jsonrpc": "2.0",
+    "error": {
+     "code": -32600,
+     "message": "Unauthorized"
+    },
+    "id": null
+   }
+  },
+  "POST /v2/foreign get_version": {
+   "status": 200,
+   "body": {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "result": {
+     "Ok": {
+      "block_header_version": 6,
+      "node_version": "4.1.0"
+     }
+    }
+   }
+  },
+  "POST /v2/foreign get_tip": {
+   "status": 200,
+   "body": {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "result": {
+     "Ok": {
+      "height": 3760617,
+      "last_block_pushed": "6e7dcf8715f6316a6897c5331207ab60fc57029282e739ace94222ed3711eb37",
+      "prev_block_to_last": "1f8adaf818c3e0730e0e2a72ec41aef9534160562e642c189f5921af3e2c198c",
+      "total_difficulty": {
+       "cuckaroo": 990739982485,
+       "cuckatoo": 140764671935789,
+       "progpow": 8153577311690569589,
+       "randomx": 4599029130959539
+      }
+     }
+    }
+   }
+  },
+  "POST /v2/owner get_status": {
+   "status": 401,
+   "body": null,
+   "note": "the real node answered 200; set to 401 to test the foreign-only path"
   }
  }
 }

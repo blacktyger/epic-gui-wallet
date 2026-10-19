@@ -10,6 +10,8 @@
  *   4.1.0                         200 "4.1.0"      401 always                200                        200
  *   4.1.0-1                       200 "4.1.0"      200                       200                        200
  * 4.1.0 and 4.1.0-1 both report "4.1.0": only the 401 on /v1/status tells them apart.
+ * POST /v2/foreign (get_version, get_tip) is public on every version, and it is what epic-wallet
+ * itself uses: a node that answers there works with the wallet, whatever /v1/status says.
  * The api secret is only ever sent to a local node.
  */
 
@@ -73,11 +75,8 @@ async function probeVersion(address, {fetch: fetchFn = (...args) => fetch(...arg
       return {ok: false, reason: 'HTTP ' + res.status, code: 'http'};
     }
 
-    //an older node with an api secret. Only a local node: the GUI sends the secret to no other host,
-    //so a remote node that needs it can't be used anyway
-    if(!isLocal(base)){
-      return {ok: false, reason: 'HTTP 401', code: 'auth'};
-    }
+    //an older node with an api secret: ask the public foreign API, which epic-wallet uses too.
+    //No secret is sent with it, to any host
     const res2 = await fetchFn(base + '/v2/foreign', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -87,7 +86,7 @@ async function probeVersion(address, {fetch: fetchFn = (...args) => fetch(...arg
     });
     const body = res2.ok ? await readJson(res2) : null;
     const version = body && body.result && body.result.Ok && body.result.Ok.node_version;
-    return version ? {ok: true, version} : {ok: false, reason: 'HTTP 401', code: 'http'};
+    return version ? {ok: true, version} : {ok: false, reason: 'HTTP 401', code: 'auth'};
 
   }catch(e){
     const reason = failReason(e, timeoutMs);
@@ -140,15 +139,66 @@ export function ownerStatusToV1(reply){
   return status;
 }
 
+//a node at most this many blocks below the reference height counts as synced (a block a minute)
+export const SYNC_TOLERANCE = 5;
+
+/*
+ * A POST /v2/foreign get_tip reply in the shape of GET /v1/status, for a node whose status is
+ * locked. get_tip has no sync state and no peer count: the node counts as synced when its tip is
+ * within SYNC_TOLERANCE of referenceHeight (a public node's tip, or the highest height seen),
+ * else as syncing towards it. No reference (0): no_sync (App.vue still needs a height above 0).
+ * null if the reply has no tip.
+ */
+export function foreignTipToV1(reply, {referenceHeight = 0, version = ''} = {}){
+  const ok = reply && reply.result && reply.result.Ok;
+  const height = ok && Number(ok.height);
+  if(!ok || !Number.isFinite(height) || height < 0){
+    return null;
+  }
+  const tip = {height, last_block_pushed: ok.last_block_pushed, prev_block_to_last: ok.prev_block_to_last, total_difficulty: ok.total_difficulty};
+  const reference = Number(referenceHeight) || 0;
+  const behind = reference > 0 && height < reference - SYNC_TOLERANCE;
+  const status = {
+    tip,
+    sync_status: behind ? 'body_sync' : 'no_sync',
+    //unknown via get_tip
+    connections: null,
+    ...(version ? {user_agent: 'MW/Epic ' + version} : {}),
+  };
+  if(behind){
+    status.sync_info = {current_height: height, highest_height: reference};
+  }
+  return status;
+}
+
+/* a node's tip height from POST /v2/foreign get_tip (public on every node), 0 if none */
+export async function fetchTipHeight(address, {fetch: fetchFn = (...args) => fetch(...args), timeoutMs = 5000} = {}){
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try{
+    const res = await fetchFn(baseOf(address) + '/v2/foreign', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: rpc('get_tip'), signal: controller.signal, redirect: 'manual'});
+    const body = res.ok ? await readJson(res) : null;
+    const h = body && body.result && body.result.Ok && Number(body.result.Ok.height);
+    return Number.isFinite(h) && h > 0 ? h : 0;
+  }catch(e){
+    return 0;
+  }finally{
+    clearTimeout(timeoutId);
+  }
+}
+
 /*
  * The node's status (the GET /v1/status shape). When /v1/status gives 401 (a plain 4.1.0 node,
- * or a node whose secret the GUI doesn't have), it is read from POST /v2/owner get_status instead.
+ * or a node whose secret the GUI doesn't have), it is read from POST /v2/owner get_status instead,
+ * and failing that from POST /v2/foreign get_tip (what epic-wallet uses; see foreignTipToV1).
  * apiSecret: the local node's secret, sent only when the address is local.
+ * referenceHeight: a number, or an async function giving one, for the get_tip sync state
  *
- * returns {ok: true, status, via: 'v1' | 'owner', locked} or {ok: false, reason, locked}
+ * returns {ok: true, status, via: 'v1' | 'owner' | 'foreign', locked} or {ok: false, reason, locked}
  *   locked: /v1/status answered 401
  */
-export async function fetchNodeStatus(address, {fetch: fetchFn = (...args) => fetch(...args), apiSecret = '', timeoutMs = 10000, redirect = 'manual'} = {}){
+export async function fetchNodeStatus(address, {fetch: fetchFn = (...args) => fetch(...args), apiSecret = '', timeoutMs = 10000, redirect = 'manual', referenceHeight = 0, version = ''} = {}){
 
   const base = baseOf(address);
   const controller = new AbortController();
@@ -170,9 +220,22 @@ export async function fetchNodeStatus(address, {fetch: fetchFn = (...args) => fe
 
     const res2 = await fetchFn(base + '/v2/owner', {method: 'POST', headers, body: rpc('get_status'), signal: controller.signal, redirect});
     const status = res2.ok ? ownerStatusToV1(await readJson(res2)) : null;
-    return status
-      ? {ok: true, status, via: 'owner', locked: true}
-      : {ok: false, reason: 'HTTP 401', locked: true};
+    if(status){
+      return {ok: true, status, via: 'owner', locked: true};
+    }
+
+    //the foreign API: public, no secret, and what the wallet itself talks to
+    const res3 = await fetchFn(base + '/v2/foreign', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: rpc('get_tip'), signal: controller.signal, redirect});
+    const tipReply = res3.ok ? await readJson(res3) : null;
+    if(tipReply && tipReply.result && tipReply.result.Ok){
+      const reference = typeof referenceHeight === 'function' ? await referenceHeight() : referenceHeight;
+      const fromTip = foreignTipToV1(tipReply, {referenceHeight: reference, version});
+      if(fromTip){
+        return {ok: true, status: fromTip, via: 'foreign', locked: true};
+      }
+    }
+    return {ok: false, reason: 'HTTP 401', locked: true};
 
   }catch(e){
     return {ok: false, reason: failReason(e, timeoutMs), locked: false};
@@ -183,18 +246,19 @@ export async function fetchNodeStatus(address, {fetch: fetchFn = (...args) => fe
 
 /*
  * What kind of node is at an address:
- *   ok             version >= 4.1.0 and its status is readable via GET /v1/status
- *   too_old        version < 4.1.0, or a remote node that answers /v1/version with 401
- *                  (a node up to 4.0.x with an api secret; version then unknown)
- *   status_locked  4.1.0 whose GET /v1/status needs the secret (a plain 4.1.0, not 4.1.0-1)
+ *   ok             the wallet can use it: an Epic node whose status the GUI can read, via GET /v1/status,
+ *                  POST /v2/owner get_status or POST /v2/foreign get_tip (statusVia says which; an old
+ *                  or plain 4.1.0 node that answers there is fine, the details only go to the log)
+ *   too_old        version < 4.1.0, or a node whose version needs its api secret, and no status at all
+ *   status_locked  /v1/status needs the secret and no public fallback answers
  *   unreachable    no reply, or a node whose status can't be read for another reason
  *   not_epic       something answers, but not an Epic node
  *
  * returns {kind, address, version, reason, local, statusReadable, statusVia, status}
- *   statusReadable: the GUI can read the status anyway (statusVia 'v1' or 'owner'); then the node
- *   panel and the Epicbox autostart work. status: that status, or null
+ *   statusReadable: the GUI can read the status (statusVia 'v1', 'owner' or 'foreign'); then the node
+ *   panel, sending and the Epicbox autostart work. status: that status, or null
  */
-export async function classifyNode(address, {fetch: fetchFn, apiSecret = '', timeoutMs = 5000} = {}){
+export async function classifyNode(address, {fetch: fetchFn, apiSecret = '', timeoutMs = 5000, referenceHeight = 0} = {}){
 
   const base = baseOf(address);
   const local = isLocal(base);
@@ -215,7 +279,7 @@ export async function classifyNode(address, {fetch: fetchFn, apiSecret = '', tim
     return result('not_epic', {reason: v.reason});
   }
 
-  const st = await fetchNodeStatus(base, {...opts, apiSecret, timeoutMs});
+  const st = await fetchNodeStatus(base, {...opts, apiSecret, timeoutMs, referenceHeight, version: v.version});
   const status = {
     version: v.version,
     statusReadable: st.ok,
@@ -223,14 +287,18 @@ export async function classifyNode(address, {fetch: fetchFn, apiSecret = '', tim
     status: st.ok ? st.status : null,
   };
 
+  //it works with the wallet: no notice, whatever its version or /v1/status say
+  if(st.ok){
+    const notes = [];
+    if(compareVersions(v.version, MIN_NODE_VERSION) < 0) notes.push('version ' + v.version);
+    if(st.locked) notes.push('/v1/status locked, status via ' + st.via);
+    return result('ok', {...status, reason: notes.join(', ')});
+  }
   if(compareVersions(v.version, MIN_NODE_VERSION) < 0){
     return result('too_old', {...status, reason: 'version ' + v.version});
   }
   if(st.locked){
-    return result('status_locked', {...status, reason: '/v1/status needs api secret'});
+    return result('status_locked', {...status, reason: '/v1/status needs api secret, no public status'});
   }
-  if(!st.ok){
-    return result('unreachable', {...status, reason: 'status: ' + st.reason});
-  }
-  return result('ok', status);
+  return result('unreachable', {...status, reason: 'status: ' + st.reason});
 }

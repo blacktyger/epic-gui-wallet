@@ -51,7 +51,8 @@
 
                   <div v-if="store.state.nodeType == 'internal' && !this.configService.config.nodesynced">{{ $t('msg.headerbar.node_sync_status') }}</div>
                   <div>{{ $t('msg.headerbar.version') }}: {{store.state.nodeStatus.user_agent}}</div>
-                  <div>{{ $t('msg.headerbar.peers') }}: {{store.state.nodeStatus.connections}}</div>
+                  <!-- unknown for a node read via /v2/foreign get_tip -->
+                  <div v-if="store.state.nodeStatus.connections != null">{{ $t('msg.headerbar.peers') }}: {{store.state.nodeStatus.connections}}</div>
                   <div>{{ $t('msg.headerbar.status') }}: {{store.state.nodeStatus.sync_status}}</div>
 
                     <div v-if="store.state.nodeStatus.sync_status != 'synced'">{{ $t('msg.headerbar.progress') }}: {{currentHeight}}&nbsp;/&nbsp;{{highestHeight}} ({{loaded}}%)</div>

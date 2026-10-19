@@ -421,6 +421,10 @@
       /* the classification of the external node (shared/nodeVersion.js) -> the store's nodeProblem */
       setNodeProblem(check){
         if(!check || check.kind == 'ok'){
+          //usable, maybe an older node or one with a locked /v1/status: no notice, a line in the log
+          if(check && check.reason){
+            console.log('[node] ' + withoutUserinfo(check.address) + ': usable, ' + check.reason + ', version ' + (check.version || 'unknown'));
+          }
           this.store.commit('nodeProblem', null);
           return;
         }
