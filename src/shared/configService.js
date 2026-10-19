@@ -1,4 +1,5 @@
 /* check required files and folder on on app start */
+import { tomlString } from './tomlString.js';
 const defaultAppConfigDir = window.config.getUserHomedir();
 const defaultUserdir = 'epicguiwallet';
 const path = window.nodePath;
@@ -131,27 +132,17 @@ class ConfigService {
 
         const re = /^db_root(\s)*=(\s).*/gm;
         if(tomlContent.search(re) != -1){
-          if(this.platform == 'win'){
-                  //double escaped path
-            tomlContent = tomlContent.replace(re, 'db_root = "' + chainDir.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re, 'db_root = "' + chainDir + '"');
-          }
+          tomlContent = tomlContent.replace(re, () => 'db_root = ' + tomlString(chainDir));
         }
 
         const re2 = /^chain_type(\s)*=(\s).*/gm;
         if(tomlContent.search(re2) != -1){
-          tomlContent = tomlContent.replace(re2, 'chain_type = "' + this.tomlNetworkname + '"');
+          tomlContent = tomlContent.replace(re2, () => 'chain_type = ' + tomlString(this.tomlNetworkname));
         }
 
         const re3 = /^foundation_path(\s)*=(\s).*/gm;
         if(tomlContent.search(re3) != -1){
-          if(this.platform == 'win'){
-                  //double escaped path
-            tomlContent = tomlContent.replace(re3, 'foundation_path = "' + foundationFile.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re3, 'foundation_path = "' + foundationFile + '"');
-          }
+          tomlContent = tomlContent.replace(re3, () => 'foundation_path = ' + tomlString(foundationFile));
         }
 
         const re4 = /^stdout_log_level(\s)*=(\s).*/gm;
@@ -304,12 +295,7 @@ class ConfigService {
         const re2 = /^data_file_dir(\s)*=(\s).*/gm; 
         if(tomlContent.search(re2) != -1){
             let wallet_data_dir = path.join(walletDir, 'wallet_data');
-            if(this.platform == 'win'){
-              //double escaped path
-              tomlContent = tomlContent.replace(re2, 'data_file_dir = "' + wallet_data_dir.replace(/\\/g, '\\\\') + '"');
-            }else{
-              tomlContent = tomlContent.replace(re2, 'data_file_dir = "' + wallet_data_dir + '"');
-            }
+            tomlContent = tomlContent.replace(re2, () => 'data_file_dir = ' + tomlString(wallet_data_dir));
         }
 
         const re3 = /^check_node_api_http_addr(\s)*=(\s).*/gm;
@@ -322,7 +308,7 @@ class ConfigService {
         }
 
         if(tomlContent.search(re3) != -1){
-          tomlContent = tomlContent.replace(re3, 'check_node_api_http_addr = "' + nodeApiHttp + '"');
+          tomlContent = tomlContent.replace(re3, () => 'check_node_api_http_addr = ' + tomlString(nodeApiHttp));
         }
 
         const re4 = /^stdout_log_level(\s)*=(\s).*/gm;
@@ -332,42 +318,22 @@ class ConfigService {
 
         const re5 = /^api_secret_path(\s)*=(\s).*/gm;
         if(tomlContent.search(re5) != -1){
-          if(this.platform == 'win'){
-            //double escaped path
-            tomlContent = tomlContent.replace(re5, 'api_secret_path = "' + this.ownerApiSecretPath.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re5, 'api_secret_path = "' + this.ownerApiSecretPath + '"');
-          }
+          tomlContent = tomlContent.replace(re5, () => 'api_secret_path = ' + tomlString(this.ownerApiSecretPath));
         }
 
         const re6 = /^node_api_secret_path(\s)*=(\s).*/gm;
         if(tomlContent.search(re6) != -1){
-          if(this.platform == 'win'){
-            //double escaped path
-            tomlContent = tomlContent.replace(re6, 'node_api_secret_path = "' + this.apiSecretPath.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re6, 'node_api_secret_path = "' + this.apiSecretPath + '"');
-          }
+          tomlContent = tomlContent.replace(re6, () => 'node_api_secret_path = ' + tomlString(this.apiSecretPath));
         }
 
         const re7 = /^send_config_dir(\s)*=(\s).*/gm;
         if(tomlContent.search(re7) != -1){
-          if(this.platform == 'win'){
-            //double escaped path
-            tomlContent = tomlContent.replace(re7, 'send_config_dir = "' + walletDir.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re7, 'send_config_dir = "' + walletDir + '"');
-          }
+          tomlContent = tomlContent.replace(re7, () => 'send_config_dir = ' + tomlString(walletDir));
         }
 
         const re8 = /^log_file_path(\s)*=(\s).*/gm;
         if(tomlContent.search(re8) != -1){
-          if(this.platform == 'win'){
-            //double escaped path
-            tomlContent = tomlContent.replace(re8, 'log_file_path = "' + walletTOMLLogfilePath.replace(/\\/g, '\\\\') + '"');
-          }else{
-            tomlContent = tomlContent.replace(re8, 'log_file_path = "' + walletTOMLLogfilePath + '"');
-          }
+          tomlContent = tomlContent.replace(re8, () => 'log_file_path = ' + tomlString(walletTOMLLogfilePath));
         }
 
         const re9 = /^epicbox_domain(\s)*=(\s).*/gm;
@@ -379,7 +345,7 @@ class ConfigService {
         }
 
         if(tomlContent.search(re9) != -1){
-          tomlContent = tomlContent.replace(re9, 'epicbox_domain = "' + epicboxDomain + '"');
+          tomlContent = tomlContent.replace(re9, () => 'epicbox_domain = ' + tomlString(epicboxDomain));
         }else{
 //do not add space in this block!!!
 ///this updates older toml file format to work with epicbox
