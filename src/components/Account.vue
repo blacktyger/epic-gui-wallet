@@ -61,6 +61,7 @@
           <div class="control"><button type="button" class="button is-small is-primary" @click="folderWithNetwork">{{ $t('msg.wallets.open') }}</button></div>
         </div>
         <p v-if="folderError" class="help is-danger" role="alert">{{ folderError }}</p>
+        <WalletFolderPick v-if="folderPick" :pick="folderPick" :busy="folderBusy" @open="folderPicked" @again="pickWalletFolder" @cancel="folderPick = null" />
 
       </div>
     </div>

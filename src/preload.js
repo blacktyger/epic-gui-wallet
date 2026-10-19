@@ -678,9 +678,10 @@ contextBridge.exposeInMainWorld('config', {
   appPaths(){
     return JSON.parse(JSON.stringify(appPaths));
   },
-  /* older GUIs' wallets and profiles (read only, background.js 'legacy-scan'); known: dirs to skip */
-  legacyScan(known){
-    return ipcRenderer.invoke('legacy-scan', { known });
+  /* older GUIs' wallets and profiles (read only, background.js 'legacy-scan'); known: dirs to skip;
+     opts.chainsOnly: only the chain data ({chains}), for the built-in node in Settings */
+  legacyScan(known, opts){
+    return ipcRenderer.invoke('legacy-scan', { known, chainsOnly: !!(opts && opts.chainsOnly) });
   },
   getPlatform(){
     switch (os.platform()) {
@@ -747,6 +748,8 @@ contextBridge.exposeInMainWorld('api', {
     showOpenDialog: async () => {
         return await ipcRenderer.invoke('show-open-dialog');
     },
+    //Open a wallet folder: the dialog, and what was picked worked out to wallet folders (background.js)
+    pickWalletFolder: (title) => ipcRenderer.invoke('pick-wallet-folder', String(title || '')),
     quit: () => {
       ipcRenderer.invoke('quit');
     },

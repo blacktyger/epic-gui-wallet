@@ -9,6 +9,7 @@
  *   "firstRun": { "scannedAt": "<ISO>", "found": 2 },        // absent until the first-start scan ran
  *   "legacy": { "<old wallet dir>": "imported" | "fresh" },  // what the user chose per found wallet
  *   "node": { "mainnet": { "chainDir": "<dir>" } },          // built-in node; absent = <root>/node/main/chain_data
+ *           (and "chainOffer": {checkedAt, answer, dir}: Settings asked once about old chain data)
  *   "defaultWallet": "w1",
  *   "nextId": 2,                        // the next wallet id's number: only grows, so an id is never reused
  *   "wallets": [{
@@ -209,6 +210,14 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
     nodeChainDir(network) { return data.node[network] && data.node[network].chainDir || ''; },
     setNodeChainDir(network, dir) {
       data.node[network] = { ...(data.node[network] || {}), chainDir: dir || '' };
+      return save();
+    },
+    /* the one-time chain data offer of Settings (shared/chainOffer.js); 'used' also sets chainDir */
+    chainOffer(network) { const o = data.node[network] && data.node[network].chainOffer; return o ? { ...o } : null; },
+    setChainOffer(network, offer) {
+      const patch = { chainOffer: { ...offer } };
+      if (offer.answer === 'used' && offer.dir) patch.chainDir = offer.dir;
+      data.node[network] = { ...(data.node[network] || {}), ...patch };
       return save();
     },
 

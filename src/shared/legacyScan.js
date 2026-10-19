@@ -12,6 +12,8 @@
  */
 import { netShort, netFromShort } from './appPaths.js';
 import { tomlNetwork } from './walletToml.js';
+//Open a wallet folder's resolver, for the main process with the scans (background.js)
+export { resolveWalletFolder } from './walletFolder.js';
 
 const NETS = ['mainnet', 'floonet', 'usernet'];
 const SHORTS = ['main', 'floo', 'user'];
@@ -56,18 +58,19 @@ function guessApp(fs, pathMod, dir, layout30) {
   return '4.x–5.x';
 }
 
-/* approximate bytes of a chain: lmdb + txhashset, depth- and count-bounded */
-function chainBytes(fs, pathMod, chainDir) {
+/* approximate bytes of a chain: lmdb + txhashset, depth- and count-bounded;
+   each file is also told to onFile(sub, bytes) */
+function chainBytes(fs, pathMod, chainDir, onFile = () => {}) {
   let bytes = 0, seen = 0;
-  const walk = (dir, depth) => {
+  const walk = (sub, dir, depth) => {
     for (const d of tryDo(() => fs.readdirSync(dir, { withFileTypes: true }), [])) {
       if (++seen > WALK_LIMIT) return;
       const p = pathMod.join(dir, d.name);
-      if (d.isDirectory()) { if (depth < 4) walk(p, depth + 1); }
-      else if (d.isFile()) bytes += tryDo(() => fs.statSync(p).size, 0);
+      if (d.isDirectory()) { if (depth < 4) walk(sub, p, depth + 1); }
+      else if (d.isFile()) { const n = tryDo(() => fs.statSync(p).size, 0); bytes += n; onFile(sub, n); }
     }
   };
-  for (const sub of ['lmdb', 'txhashset']) walk(pathMod.join(chainDir, sub), 0);
+  for (const sub of ['lmdb', 'txhashset']) walk(sub, pathMod.join(chainDir, sub), 0);
   return bytes;
 }
 
@@ -172,4 +175,60 @@ export function scanLegacy({ fs, pathMod, legacy, known = [] }) {
   for (const s of SHORTS) addChain(pathMod.join(epicDir, s, 'chain_data'), netFromShort(s));
 
   return { wallets, chains };
+}
+
+/* when a chain was written last: its lmdb (data.mdb changes with every block), else the folders */
+function chainModified(fs, pathMod, chainDir) {
+  return Math.max(...[['lmdb', 'data.mdb'], ['lmdb'], ['txhashset']].map(p => mtime(fs, pathMod.join(chainDir, ...p))));
+}
+
+/*
+ * The chain data older apps and the CLI left behind, for the built-in node (Settings, the one-time
+ * offer of shared/chainOffer.js): every <wallet dir>/chain_data with lmdb/ and txhashset/, whether
+ * or not the wallet is in 6.1's list or still has its seed, and ~/.epic/<net>/chain_data (CLI).
+ * Read only, like scanLegacy.
+ * → [{dir, network, bytes, txhashsetBytes, modified}]   (modified: ms, 0 when unknown)
+ */
+export function scanChains({ fs, pathMod, legacy }) {
+  const win = pathMod.sep === '\\';
+  const norm = (p) => win ? p.toLowerCase() : p;
+  const real = (p) => tryDo(() => fs.realpathSync(p), pathMod.resolve(p));
+  const epicDir = legacy.epicDir;
+  const chains = [];
+  const seen = new Set();
+
+  /* dir: a wallet folder (or ~/.epic/<net>); network: what its place says */
+  const consider = (dir, network) => {
+    if (!NETS.includes(network)) return;
+    const chainDir = pathMod.join(dir, 'chain_data');
+    if (!fs.existsSync(pathMod.join(chainDir, 'lmdb')) || !fs.existsSync(pathMod.join(chainDir, 'txhashset'))) return;
+    const key = real(chainDir);
+    if (seen.has(norm(key))) return;
+    seen.add(norm(key));
+    let txhashsetBytes = 0;
+    const bytes = chainBytes(fs, pathMod, key, (sub, n) => { if (sub === 'txhashset') txhashsetBytes += n; });
+    chains.push({ dir: key, network, bytes, txhashsetBytes, modified: chainModified(fs, pathMod, key) });
+  };
+  /* <home>/<net>, its 3.0-layout accounts <home>/<net>/<account>, and <home>/<account>/<net> */
+  const underHome = (home, nets) => {
+    for (const s of SHORTS) {
+      const network = netFromShort(s);
+      if (!nets.includes(network)) continue;
+      consider(pathMod.join(home, s), network);
+      for (const acc of subdirs(fs, pathMod, pathMod.join(home, s))) consider(acc, network);
+    }
+    for (const sub of subdirs(fs, pathMod, home)) {
+      const name = pathMod.basename(sub);
+      if (SHORTS.includes(name)) continue;
+      for (const s of SHORTS) if (nets.includes(netFromShort(s))) consider(pathMod.join(sub, s), netFromShort(s));
+    }
+  };
+
+  //the account list first (its folders may be anywhere), then ~/.epic itself
+  for (const e of readAccountDirs(fs, legacy.appConfigFile)) {
+    if (!pathMod.isAbsolute(e.userhomedir)) continue;
+    underHome(e.userhomedir, NETS.includes(e.network) ? [e.network] : NETS);
+  }
+  underHome(epicDir, NETS);
+  return chains;
 }

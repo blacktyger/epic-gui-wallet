@@ -63,7 +63,8 @@ function contactRow(c, userId) {
  * configService: {settings (settingsStore), newWalletDirs(network), registerWallet(rec)}
  * userService.ensureUser(walletId, cols) → User row; userService.removeUser(walletId): rows an earlier
  * wallet of that id left (settings.json lost while <root>/app survived); addressbookService: {getAddress(userId), addAddress(row)}
- * legacyBridge.scan({known}) → {wallets, chains, profiles} (main: scanLegacy + readLegacyProfiles)
+ * legacyBridge.scan({known}) → {wallets, chains, profiles} (main: scanLegacy + readLegacyProfiles);
+ *   scan({chainsOnly: true}) → {chains} (main: scanChains, no profile copy)
  * fs (readFileSync) and pathMod read each old config.json.
  * cleanNodeAddress(url, {network}) → {url} (shared/nodeAddress.js), supportedLocale(lang) → locale: optional.
  */
@@ -231,5 +232,16 @@ export function createImporter({ configService, userService, addressbookService,
     return { marked };
   }
 
-  return { scan, importWallets, markFresh };
+  /* the chain data on this machine, for the built-in node (Settings: shared/chainOffer.js); null when the scan failed */
+  async function scanChains() {
+    try {
+      const res = await legacyBridge.scan({ known: [], chainsOnly: true }) || {};
+      return Array.isArray(res.chains) ? res.chains : [];
+    } catch (e) {
+      log('chain scan failed: ' + (e && e.message ? e.message : e));
+      return null;
+    }
+  }
+
+  return { scan, importWallets, markFresh, scanChains };
 }
