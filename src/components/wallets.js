@@ -198,7 +198,7 @@ export const walletOpen = {
         store.commit('loginStage', stage);
         lap('wallet service started');
       });
-      lap('wallet opened');
+      lap(canLogin && canLogin.success ? 'wallet opened' : 'wallet not opened');
       store.commit('loginStage', '');
 
       if (canLogin && canLogin.success) {
@@ -208,7 +208,9 @@ export const walletOpen = {
         } catch (e) {
           //open but not logged in: close it again, the main process forgets the password
           await window.nodeChildProcess.clearSessionPassword().catch(() => {});
-          this.$walletService.stopWallet();
+          //stopped before a retry can meet the owner API still stopping
+          await Promise.resolve(this.$walletService.stopWallet()).catch(() => {});
+          this.$walletService.token = undefined;
           throw e;
         }
         this.emitter.emit('app.accountLoggedIn');

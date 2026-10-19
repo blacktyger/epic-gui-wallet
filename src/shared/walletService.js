@@ -673,8 +673,11 @@ class WalletService {
             return {success: false};
           }
           if(!now.server.unknown && !sameServer(now.server, cfg)){
-            await this.checkOldEpicbox(now.server, session);
-            this.setPendingEpicboxCheck(null);
+            const checked = await this.checkOldEpicbox(now.server, session);
+            //a check that didn't run (locked, wallet switched) stays pending for the next start
+            if(session === this.epicboxSession && checked && checked.why != 'cancelled' && checked.why != 'not_started'){
+              this.setPendingEpicboxCheck(null);
+            }
           }
         }
         //a server change that was not applied then ("Not now", a lock during the switch): the
