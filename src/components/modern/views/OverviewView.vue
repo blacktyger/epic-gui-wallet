@@ -50,7 +50,10 @@
       </li>
     </ol>
 
-    <div v-if="nodeDown" class="e-notice e-risk e-ov-notice" role="alert">
+    <!-- the external node is too old, locked, not an Epic node, or the saved address was cleaned up -->
+    <NodeNotice />
+
+    <div v-if="nodeDown && !nodeProblemShown" class="e-notice e-risk e-ov-notice" role="alert">
       <EIcon name="alertc" />
       <div>
         <b>{{ isInternal ? $t('msg.modern.overview.node_down') : $t('msg.modern.overview.node_down_at', { addr: store.state.nodeType }) }}</b>
@@ -151,11 +154,11 @@
               <b>{{ isInternal ? $t('msg.modern.overview.node_builtin') : $t('msg.modern.overview.node_external') }}</b>
               <small v-if="nodeConnecting" role="status">{{ $t('msg.modern.overview.node_connecting') }}</small>
               <small v-else-if="nodeDown" class="e-risk">{{ $t('msg.modern.overview.node_not_responding') }}</small>
-              <small v-else-if="nodeSyncing">{{ $t('msg.modern.overview.node_progress', { status: store.state.nodeStatus.sync_status, p: syncPercent }) }} · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</small>
-              <small v-else>{{ $t('msg.modern.overview.node_synced') }} · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</small>
+              <small v-else-if="nodeSyncing">{{ $t('msg.modern.overview.node_progress', { status: store.state.nodeStatus.sync_status, p: syncPercent }) }}<template v-if="node.connections != null"> · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</template></small>
+              <small v-else>{{ $t('msg.modern.overview.node_synced') }}<template v-if="node.connections != null"> · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</template></small>
               <small v-if="nodeSynced" class="e-ov-height" translate="no" :title="$t('msg.modern.overview.node_block')">{{ $t('msg.modern.overview.node_block') }} <span class="e-mono">{{ fmt(blockHeight) }}</span></small>
               <small v-if="!isInternal && nodeHost" class="e-mono e-ov-host" translate="no" :title="store.state.nodeType">{{ nodeHost }}</small>
-              <small v-if="isInternal && !configService.config.nodesynced" class="e-faint">{{ $t('msg.modern.overview.node_fallback', { addr: nodeFallBack }) }}</small>
+              <small v-if="isInternal && !configService.config.nodesynced && (configService.defaultAccountNetwork || 'mainnet') == 'mainnet'" class="e-faint">{{ $t('msg.modern.overview.node_fallback', { addr: nodeFallBack }) }}</small>
               <small v-if="store.state.nodeStatus.user_agent" class="e-faint" translate="no" :title="store.state.nodeStatus.user_agent">{{ nodeVersion }}</small>
             </div>
             <button
@@ -209,10 +212,11 @@
   import RecentTx from '@/components/modern/activity/RecentTx.vue';
   import SyncNotes from '@/components/modern/activity/SyncNotes.vue';
   import TxRing from '@/components/modern/activity/TxRing.vue';
+  import NodeNotice from '@/components/modern/activity/NodeNotice.vue';
 
   export default reskin(HeaderBar, {
     name: 'OverviewView',
-    components: { EIcon, MoneyText, RecentTx, SyncNotes, TxRing, ETour },
+    components: { EIcon, MoneyText, RecentTx, SyncNotes, TxRing, ETour, NodeNotice },
     data() {
       return {
         showUpgraded: !noticeSeen('upgraded'),
@@ -258,6 +262,11 @@
       },
       nodeDown() {
         return !!this.node.error;
+      },
+      /* NodeNotice already says what is wrong with the node: no second notice for it */
+      nodeProblemShown() {
+        const p = this.store.state.nodeProblem;
+        return !!(p && !p.hidden);
       },
       nodeConnecting() {
         return !this.node.error && !this.node.user_agent;

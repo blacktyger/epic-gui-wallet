@@ -16,6 +16,9 @@ const sha3_256 = require('js-sha3').sha3_256;
 const ps = require('ps-node');
 const fs = require('fs');
 const log = require('electron-log');
+//no wallet password in any log line (src/logRedact.js)
+require('./logRedact').installLogRedaction(log);
+require('./logRedact').installConsoleRedaction(console);
 
 //GUI 6.1's folders (shared/appPaths.js), resolved once by the main process (background.js)
 const appPaths = ipcRenderer.sendSync('app-paths');

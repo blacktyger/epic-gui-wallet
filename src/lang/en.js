@@ -236,6 +236,8 @@ const messages = {
       stage_closing: 'Closing the old wallet processes',
       stage_wallet: 'Starting the wallet service',
       stage_unlock: 'Unlocking the wallet',
+      folder_missing: 'The folder of the wallet "{0}" was not found: {1}. It may have been moved, renamed or deleted.',
+      folder_unknown: 'No folder is saved for the wallet "{0}".',
     },
     seed:{
       errorGetMnemonic: 'Error getting Mnemonic. Is password correct?',
@@ -248,6 +250,10 @@ const messages = {
       selectErr: 'selected folder has no "wallet_data" dir and wallet config.',
       networkErr: 'Network type can not be determined.<br/>Please select one.',
       selectNetwork: 'continue',
+    },
+    walletfolder: {
+      onedrive_title: 'This folder is in OneDrive',
+      onedrive_warning: '{0} is synced by OneDrive. Syncing can damage the wallet database while the wallet is open, a second computer can create conflicting copies, and the built-in node would upload gigabytes of chain data. Choose a folder outside OneDrive, for example {1}.',
     },
     restore:{
       title: 'Restore wallet via seed phrase',
@@ -446,6 +452,31 @@ const messages = {
     },
     //the Modern interface (6.1 redesign), see lang/modern/
     modern,
+    //the node notice (NodeProblemNotice.vue) and the one-time node address cleanup. Plain words only:
+    //the technical reason goes to the log. Other languages fall back to these
+    node_problem: {
+      title_too_old: 'This node\'s version isn\'t compatible with this wallet.',
+      title_status_locked: 'This node\'s version isn\'t compatible with this wallet.',
+      title_unreachable: 'This node isn\'t responding.',
+      title_not_epic: 'This address isn\'t an Epic Cash node.',
+      node: 'Node',
+      epicbox_skipped: 'Epicbox didn\'t start. You can start it on the Receive page.',
+      go_receive: 'Go to Receive',
+      fixes: 'What you can do',
+      fix_public: 'Use a public node',
+      node_list: 'node list',
+      fix_builtin: 'Use the built-in node',
+      fix_other: 'Use another node',
+      fix_upgrade: 'Update your node',
+      opens_browser: '(opens in your browser)',
+      switched: 'Switched to the built-in node. Log out and in again to finish.',
+      switch_failed: 'Could not switch to the built-in node',
+      hide: 'Hide',
+      hide_label: 'Hide this notice until the next login',
+      address_changed_title: 'Your node address was updated',
+      address_changed: 'Now using {1} instead of {0}.',
+      ok: 'OK',
+    }
   }
 }
 export default messages

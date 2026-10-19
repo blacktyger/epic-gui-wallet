@@ -10,6 +10,8 @@ import userService from './shared/userService.js';
 import addressbookService from './shared/addressbookService.js';
 import addressTransactionsService from './shared/addressTransactionService.js';
 import { createImporter } from './shared/importer.js';
+import { cleanNodeAddress } from './shared/nodeAddress.js';
+import { supportedLocale } from './shared/setupDefaults.js';
 import {words} from './shared/words.js';
 import App from './App.vue'
 import mitt from 'mitt';
@@ -78,6 +80,9 @@ app.config.globalProperties.$importer = createImporter({
   legacyBridge: { scan: ({ known } = {}) => window.config.legacyScan(known) },
   fs: window.nodeFs,
   pathMod: window.nodePath,
+  //fix/userdata-migration's offline cleanup of a saved node address, and the language fallback
+  cleanNodeAddress,
+  supportedLocale: (lang) => supportedLocale(lang, config.langs),
 });
 app.config.globalProperties.mnemonicWords = words;
 

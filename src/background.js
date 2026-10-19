@@ -38,6 +38,9 @@ if (!primaryInstance) {
 fs.mkdirSync(appLayout.logsDir, { recursive: true });
 const log = require('electron-log');
 log.transports.file.resolvePath = () => path.join(appLayout.logsDir, 'main.log');
+//no wallet password in any log line (src/logRedact.js)
+require('./logRedact').installLogRedaction(log);
+require('./logRedact').installConsoleRedaction(console);
 
 const {autoUpdater} = require("electron-updater");
 autoUpdater.channel = "latest";
@@ -173,6 +176,13 @@ async function createWindow() {
       webSecurity: false
     }
   });
+
+  //a link that would open a new app window (target=_blank, middle-click, window.open) opens in the
+  //browser instead, http(s) only; the new window would have this window's preload and powers
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url)
+    return { action: 'deny' }
+  })
 
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {

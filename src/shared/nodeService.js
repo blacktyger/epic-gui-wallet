@@ -1,4 +1,5 @@
 require('promise.prototype.finally').shim();
+import { fetchNodeVersion, fetchNodeStatus, classifyNode, fetchTipHeight } from './nodeVersion.js';
 
 const log = window.log;
 console.log = log.log;
@@ -80,66 +81,55 @@ class NodeService {
 
   }
 
-  /* is there an Epic node at this address? GET /v1/version needs no auth on 4.x nodes.
-     returns {ok: true, version} or {ok: false, reason} */
+  /* is there an Epic node at this address? Works without the api secret on every node version
+     (shared/nodeVersion.js). returns {ok: true, version} or {ok: false, reason} */
   async checkNodeVersion(address){
+    return fetchNodeVersion(address);
+  }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    let result;
-    try{
-      const res = await fetch(address.replace(/\/+$/, '') + '/v1/version', {
-        method: 'GET',
-        signal: controller.signal
-      });
-      if(!res.ok){
-        result = {ok: false, reason: 'HTTP ' + res.status};
-      }else{
-        let body = null;
-        try{ body = await res.json(); }catch(e){ /* not JSON */ }
-        result = body && body.node_version
-          ? {ok: true, version: body.node_version}
-          : {ok: false, reason: 'no node version in the reply'};
-      }
-    }catch(e){
-      result = {ok: false, reason: e.name === 'AbortError' ? 'no reply within 5 s' : 'not reachable'};
+  /* ok | too_old | status_locked | unreachable | not_epic for the saved node (shared/nodeVersion.js) */
+  async classifyNode(address){
+    const check = await classifyNode(address, {apiSecret: this.configService.apisecret, referenceHeight: () => this.referenceHeight()});
+    //for the status polls: a status read via get_tip has no user agent, the panel shows this version
+    this.nodeVersion = check.version || '';
+    return check;
+  }
+
+  /* the height a node with only a tip (POST /v2/foreign get_tip) is compared with to call it synced:
+     the public node's tip on mainnet (asked at most once a minute), else the highest height seen */
+  async referenceHeight(){
+    const now = Date.now();
+    if((this.configService.defaultAccountNetwork || 'mainnet') == 'mainnet' && (!this.referenceTip || now - this.referenceTip.at > 60000)){
+      const height = await fetchTipHeight(this.configService.getNodeFallBack(), {timeoutMs: 5000});
+      //a failed ask keeps the last known one and is tried again in a minute
+      this.referenceTip = {height: height || (this.referenceTip ? this.referenceTip.height : 0), at: now};
     }
-    clearTimeout(timeoutId);
-    return result;
+    return Math.max(this.referenceTip ? this.referenceTip.height : 0, this.highestSeenHeight || 0);
+  }
+
+  /* remember the highest tip a status showed (the reference when there is no public node) */
+  noteHeight(status){
+    const h = status && status.tip ? Number(status.tip.height) || 0 : 0;
+    const high = status && status.sync_info ? Number(status.sync_info.highest_height) || 0 : 0;
+    this.highestSeenHeight = Math.max(this.highestSeenHeight || 0, h, high);
   }
 
   async getNodeStatus(internal){
 
     let baseURL = this.configService.config['check_node_api_http_addr'] ? this.configService.config['check_node_api_http_addr'] : this.configService.defaultEpicNode;
-    let password = this.configService.apisecret;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    let headers = { 'Content-Type': 'application/json' };
-    //the node secret belongs to the local node only
-    let isLocalNode = false;
-    try{
-      isLocalNode = ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(baseURL).hostname);
-    }catch(e){
-      //invalid address: send no credentials
+    //GET /v1/status; on a 401 (plain node 4.1.0) the same status from POST /v2/owner get_status,
+    //else the tip from POST /v2/foreign get_tip. The node secret is sent to the local node only
+    const res = await fetchNodeStatus(baseURL, {apiSecret: this.configService.apisecret, timeoutMs: 10000, referenceHeight: () => this.referenceHeight(), version: this.nodeVersion || ''});
+    if(!res.ok){
+      window.log ? console.log('NodeService.fetch', res.reason) : null;
     }
-    if(isLocalNode){
-      headers['Authorization'] = 'Basic ' + btoa('epic:' + password);
+    //how the status was read last: 'v1', 'owner' or null
+    this.statusVia = res.ok ? res.via : null;
+    let response = res.ok ? res.status : false;
+    if(response && res.via != 'foreign'){
+      this.noteHeight(response);
     }
-
-    let response = await fetch(baseURL +'/v1/status', {
-      method:'GET',
-      headers: headers,
-      signal: controller.signal
-    }).then(function(res){
-      if (!res.ok) { throw Error(res) }
-      return res.json();
-    }).catch(function(error){
-      window.log ? console.log('NodeService.fetch', error) : null;
-      return false;
-    });
-    clearTimeout(timeoutId);
 
     /* check if node status is ok or need a restart because is stalled */
     if(internal){

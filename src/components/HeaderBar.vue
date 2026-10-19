@@ -44,14 +44,15 @@
                     <span class="externalnode">
                     <mdicon class="show-pointer" v-if="store.state.nodeType == 'internal' && !nodeRestarting" size=20 name="restart" @click.prevent="restartNode" />
                     <mdicon v-if="store.state.nodeType == 'internal' && nodeRestarting" size=20 />
-                    <span v-if="store.state.nodeType == 'internal' && !this.configService.config.nodesynced"><mdicon size=18 name="server-network" />{{ $t('msg.headerbar.node') }} ({{this.nodeFallBack}})</span>
+                    <span v-if="store.state.nodeType == 'internal' && !this.configService.config.nodesynced && (configService.defaultAccountNetwork || 'mainnet') == 'mainnet'"><mdicon size=18 name="server-network" />{{ $t('msg.headerbar.node') }} ({{this.nodeFallBack}})</span>
                     <span v-else><mdicon size=18 name="server-network" /> {{ $t('msg.headerbar.node') }} ({{store.state.nodeType}})</span>
                     </span>
                   </h3>
 
                   <div v-if="store.state.nodeType == 'internal' && !this.configService.config.nodesynced">{{ $t('msg.headerbar.node_sync_status') }}</div>
                   <div>{{ $t('msg.headerbar.version') }}: {{store.state.nodeStatus.user_agent}}</div>
-                  <div>{{ $t('msg.headerbar.peers') }}: {{store.state.nodeStatus.connections}}</div>
+                  <!-- unknown for a node read via /v2/foreign get_tip -->
+                  <div v-if="store.state.nodeStatus.connections != null">{{ $t('msg.headerbar.peers') }}: {{store.state.nodeStatus.connections}}</div>
                   <div>{{ $t('msg.headerbar.status') }}: {{store.state.nodeStatus.sync_status}}</div>
 
                     <div v-if="store.state.nodeStatus.sync_status != 'synced'">{{ $t('msg.headerbar.progress') }}: {{currentHeight}}&nbsp;/&nbsp;{{highestHeight}} ({{loaded}}%)</div>

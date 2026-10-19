@@ -103,6 +103,7 @@ import { useStore } from '@/store';
 import NodeserverField from "@/components/form/nodeserverField";
 import useFormValidation from "@/modules/useFormValidation";
 import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } from '@/shared/theme';
+import { supportedLocale } from "@/shared/setupDefaults";
 
   export default {
     name: "settings",
@@ -162,9 +163,10 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
       this.nodeInternal = this.store.state.user.nodeInternal;
       this.nodeserverField.select = !this.store.state.user.nodeInternal ? 'external' : 'internal';
 
-      this.localeSelected = this.configService.config['locale'];
-      this.epicboxDomain = this.configService.config['epicbox_domain'];
       this.langs = this.configService.langs;
+      //a language an old GUI saved that is no longer offered (ru, zh) shows as English, not blank
+      this.localeSelected = supportedLocale(this.configService.config['locale'], this.langs);
+      this.epicboxDomain = this.configService.config['epicbox_domain'];
       this.walletlisten_on_startup = this.configService.config['walletlisten_on_startup'];
       this.node_background = this.configService.config['node_background'];
 
