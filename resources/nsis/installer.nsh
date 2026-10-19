@@ -21,10 +21,11 @@
 #    It never runs in a silent uninstall (/S) or an update (--updated, /KEEP_APP_DATA): those are
 #    how the installer and auto-update remove the previous version.
 #
-#    6.1: the planned settings root %LOCALAPPDATA%\EpicCash\Wallet will hold wallets\ (seeds).
-#    Nothing under %LOCALAPPDATA%\EpicCash may be deleted here. When 6.1 moves userData to
-#    <root>\app, revisit this list (add <root>\app by exact path); <root>\wallets must never be
-#    deleted. tests/nsisInstaller.test.js enforces both.
+#    6.1: its root is %USERPROFILE%\.epic-gui (may be moved, see its location.json). This branch
+#    deletes nothing there. The 6.1 branch may add exactly <root>\app (its Chromium profile),
+#    <root>\logs and <root>\gui_processes.json; it must never delete <root>\wallets, <root>\node
+#    (chain data), <root>\settings.json(.bak) (the wallet list), <root>\location.json or the root
+#    itself. tests/nsisInstaller.test.js enforces the never-list.
 #
 # 2. Installer: remove the leftover Apps & Features entry of GUI 3.0.1. It was built with appId
 #    "epic.tech", so its entry has another GUID and survives the upgrade. Its uninstaller would
