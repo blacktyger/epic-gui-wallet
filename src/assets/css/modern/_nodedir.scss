@@ -47,6 +47,13 @@
 }
 .e-nodedir-foot .e-link-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-sm); }
 
+/* public Epicbox servers (modern/form/EpicboxServers.vue): the same rows, a state tag on each */
+.e-nodedir-dot.e-risk { background: var(--risk); box-shadow: 0 0 0 3px var(--risk-soft); }
+.e-ebdir { margin-top: var(--sp-4); }
+.e-ebdir .e-nodedir-meta { gap: var(--sp-2); }
+.e-ebdir .e-nodedir-meta .e-tag { white-space: nowrap; }
+.e-ebdir-note { margin-top: 6px; }
+
 @media (prefers-reduced-motion: reduce) {
   .e-nodedir { animation: none; }
 }

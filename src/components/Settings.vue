@@ -63,6 +63,7 @@
               <p class="help">{{ $t("msg.settings.epicbox_domain_hint") }}</p>
             </div>
           </div>
+          <EpicboxServers :domain="epicboxDomain || ''" :chain="configService.defaultAccountNetwork || 'mainnet'" @pick="(d) => { epicboxDomain = d; }" />
 
 
           <div class="field">
@@ -94,6 +95,7 @@
 import { ref, onUnmounted } from 'vue';
 import { useStore } from '@/store';
 import NodeserverField from "@/components/form/nodeserverField";
+import EpicboxServers from "@/components/form/EpicboxServers.vue";
 import useFormValidation from "@/modules/useFormValidation";
 import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } from '@/shared/theme';
 import { supportedLocale } from "@/shared/setupDefaults";
@@ -102,6 +104,7 @@ import { supportedLocale } from "@/shared/setupDefaults";
     name: "settings",
     components: {
       NodeserverField,
+      EpicboxServers,
     },
     setup(){
 
