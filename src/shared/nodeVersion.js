@@ -15,6 +15,8 @@
  * The api secret is only ever sent to a local node.
  */
 
+import { defaultNodeFetch } from './nodeFetch.js';
+
 //the oldest node the GUI is fully made for (README: 4.1.0-1 or later; 4.1.0 needs the owner status fallback)
 export const MIN_NODE_VERSION = '4.1.0';
 
@@ -53,7 +55,7 @@ const authHeaders = (base, apiSecret) => apiSecret && isLocal(base)
 const rpc = (method) => JSON.stringify({jsonrpc: '2.0', id: 1, method, params: []});
 
 /* fetchNodeVersion plus a machine-readable code: 'network' | 'timeout' | 'http' | 'no_version' | 'auth' */
-async function probeVersion(address, {fetch: fetchFn = (...args) => fetch(...args), timeoutMs = 5000, redirect} = {}){
+async function probeVersion(address, {fetch: fetchFn = defaultNodeFetch(), timeoutMs = 5000, redirect} = {}){
 
   const base = baseOf(address);
   const controller = new AbortController();
@@ -172,7 +174,7 @@ export function foreignTipToV1(reply, {referenceHeight = 0, version = ''} = {}){
 }
 
 /* a node's tip height from POST /v2/foreign get_tip (public on every node), 0 if none */
-export async function fetchTipHeight(address, {fetch: fetchFn = (...args) => fetch(...args), timeoutMs = 5000} = {}){
+export async function fetchTipHeight(address, {fetch: fetchFn = defaultNodeFetch(), timeoutMs = 5000} = {}){
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try{
@@ -198,7 +200,7 @@ export async function fetchTipHeight(address, {fetch: fetchFn = (...args) => fet
  * returns {ok: true, status, via: 'v1' | 'owner' | 'foreign', locked} or {ok: false, reason, locked}
  *   locked: /v1/status answered 401
  */
-export async function fetchNodeStatus(address, {fetch: fetchFn = (...args) => fetch(...args), apiSecret = '', timeoutMs = 10000, redirect = 'manual', referenceHeight = 0, version = ''} = {}){
+export async function fetchNodeStatus(address, {fetch: fetchFn = defaultNodeFetch(), apiSecret = '', timeoutMs = 10000, redirect = 'manual', referenceHeight = 0, version = ''} = {}){
 
   const base = baseOf(address);
   const controller = new AbortController();

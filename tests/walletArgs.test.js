@@ -7,6 +7,7 @@ import {
   PTY_KINDS, hasPassArg, withPassArg, checkPtyArgs,
 } from '../src/shared/walletArgs.js';
 import { createPtyHost } from '../src/shared/ptyHost.js';
+import { checkSpawnArgs } from '../src/shared/walletArgs.js';
 import { describeSpawn, redactArgs } from '../src/shared/processOwnership.js';
 
 const BIN = '/opt/epic/resources/bin/linux/epic-wallet';
@@ -160,4 +161,25 @@ test('owner API status messages become one line', () => {
   assert.equal(statusMessageText({ ScanningComplete: 'Scanning Complete' }), 'Scanning Complete');
   assert.equal(statusMessageText({ FullScanWarn: '' }), 'FullScanWarn');
   assert.equal(statusMessageText(null), '');
+});
+
+test('checkSpawnArgs: the owner API and the node exactly as the app starts them', () => {
+  const owner = ownerApiArgs({ network: 'floonet', configDir: NEW, dataDir: NEW, startDir: NEW + '/owner_api_closed' });
+  assert.deepEqual(checkSpawnArgs('owner_api', owner), { configDir: NEW, startDir: NEW + '/owner_api_closed' });
+  assert.deepEqual(checkSpawnArgs('node', ['server', '--config_file', '/home/jane/.epic-gui/node/main/epic-server.toml', 'run']),
+    { configFile: '/home/jane/.epic-gui/node/main/epic-server.toml' });
+  assert.deepEqual(checkSpawnArgs('node', ['--usernet', 'server', '--config_file', 'C:\\Users\\j\\.epic-gui\\node\\user\\epic-server.toml', 'run']),
+    { configFile: 'C:\\Users\\j\\.epic-gui\\node\\user\\epic-server.toml' });
+  for (const [role, args] of [
+    ['owner_api', ['-c', NEW, 'send', '-m', 'file', '-d', '/home/jane/.bashrc', '1']],
+    ['owner_api', ['--offline_mode', '-c', NEW, '-t', NEW, 'finalize', '-i', '/etc/passwd']],
+    ['owner_api', ['--offline_mode', '-c', 'relative', '-t', NEW, 'owner_api']],
+    ['owner_api', ['--pass', 'x', '--offline_mode', '-c', NEW, '-t', NEW, 'owner_api']],
+    ['node', ['clean']],
+    ['node', ['server', '--config_file', '/tmp/x.toml', 'run', '--extra']],
+    ['node', 'server'],
+    ['shell', ['-c', 'id']],
+  ]) {
+    assert.throws(() => checkSpawnArgs(role, args), undefined, JSON.stringify(args));
+  }
 });
