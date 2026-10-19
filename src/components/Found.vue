@@ -76,7 +76,7 @@
 </template>
 
 <script>
-  import { takeScan, shortPath, homeShort, formatBytes, formatDate, networkBadge, walletOpen } from '@/components/wallets';
+  import { takeScan, shortFolder, formatBytes, formatDate, networkBadge, walletOpen } from '@/components/wallets';
 
   /*
    * Wallets an older Epic Wallet left on this computer (importer.scan): import each one, or
@@ -166,7 +166,7 @@
       },
       badge: networkBadge,
       short(dir) {
-        return shortPath(homeShort(dir, this.configService), 56);
+        return shortFolder(dir, this.configService, 56);
       },
       size: formatBytes,
       setAll(value) {

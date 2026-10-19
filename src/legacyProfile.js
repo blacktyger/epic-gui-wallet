@@ -19,17 +19,16 @@ const TIMEOUT_MS = 10000;
 
 /* runs in the hidden page on the copy: opens the DB at whatever version it has (no version
    argument, so no upgrade), reads both stores, and aborts if the DB would be created */
-const READ_SCRIPT = `indexedDB.databases().catch(() => []).then((dbs) => new Promise((resolve) => {
-  const out = { users: [], contacts: [], stores: [], databases: dbs.map((d) => d.name + ' v' + d.version), version: 0, error: '' };
+const READ_SCRIPT = `new Promise((resolve) => {
+  const out = { users: [], contacts: [], error: '' };
   const req = indexedDB.open(${JSON.stringify(DB_NAME)});
   req.onupgradeneeded = () => { out.error = 'no database'; req.transaction.abort(); };
   req.onerror = () => resolve(out.error ? out : { ...out, error: String(req.error && req.error.name) });
   req.onblocked = () => resolve({ ...out, error: 'blocked' });
   req.onsuccess = () => {
     const db = req.result;
-    out.version = db.version;
-    out.stores = Array.from(db.objectStoreNames);
-    const want = ['User', 'Addressbook'].filter((s) => out.stores.includes(s));
+    const stores = Array.from(db.objectStoreNames);
+    const want = ['User', 'Addressbook'].filter((s) => stores.includes(s));
     if (!want.length) { db.close(); resolve(out); return; }
     const tx = db.transaction(want, 'readonly');
     const get = (s, key) => { if (want.includes(s)) tx.objectStore(s).getAll().onsuccess = (e) => { out[key] = e.target.result; }; };
@@ -38,7 +37,7 @@ const READ_SCRIPT = `indexedDB.databases().catch(() => []).then((dbs) => new Pro
     tx.oncomplete = () => { db.close(); resolve(out); };
     tx.onerror = () => { db.close(); resolve({ ...out, error: String(tx.error && tx.error.name) }); };
   };
-}))`;
+})`;
 
 function withTimeout(promise, ms, what) {
   let timer;
@@ -69,7 +68,7 @@ async function readOne({ session, BrowserWindow, fs, path, tmpDir, profile, log 
     const res = await withTimeout(run(), TIMEOUT_MS, profile.dir);
     if (res.error) log('legacy profile ' + profile.dir + ': ' + res.error);
     return {
-      app: profile.app, dir: profile.dir, databases: res.databases, version: res.version, stores: res.stores,
+      app: profile.app, dir: profile.dir,
       users: Array.isArray(res.users) ? res.users : [],
       contacts: Array.isArray(res.contacts) ? res.contacts : [],
     };
@@ -88,7 +87,7 @@ async function readOne({ session, BrowserWindow, fs, path, tmpDir, profile, log 
  * electron: {session, BrowserWindow} from 'electron' (after app 'ready'; the app:// scheme must be
  * registered as privileged, as background.js does); fs, path: node's; tmpDir: a dir of ours
  * (<root>/tmp/import, under 6.1's own folder); profiles: appPaths.legacyPaths().profiles.
- * → [{app, dir, databases, version, stores, users, contacts}] for each profile that could be read; never throws.
+ * → [{app, dir, users, contacts}] for each profile that could be read; never throws.
  */
 export async function readLegacyProfiles({ session, BrowserWindow, fs, path, tmpDir, profiles, log = () => {} }) {
   //Chromium recreates empty caches in a session's dir when it flushes at quit, after the copy was

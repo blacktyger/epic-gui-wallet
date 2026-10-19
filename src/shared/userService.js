@@ -11,10 +11,6 @@ class UserService extends BaseService {
         this.store = useStore();
     }
 
-    clear(){
-      return this.connection.clear(this.tableName);
-    }
-
     getUser(account) {
 
         return this.connection.select({
@@ -22,15 +18,6 @@ class UserService extends BaseService {
             where: {
                 account: account
             }
-        })
-    }
-
-    addUser(user) {
-        return this.connection.insert({
-            into: this.tableName,
-            //legacy: keybase is a NOT NULL column in the stored schema (see idbService)
-            values: [{keybase: '', ...user}],
-            return: true
         })
     }
 
@@ -71,24 +58,6 @@ class UserService extends BaseService {
         }
         this.store.commit('user', rows[0]);
         return rows[0];
-    }
-
-    async updateUserByAccount(account, updateData) {
-
-        let updated = this.connection.update({
-            in: this.tableName,
-            set: updateData,
-            where: {
-                account: account
-            }
-        });
-        if(updated){
-            let user = await this.getUser(account);
-            if(user.length){
-              this.store.commit('user', user[0]);
-            }
-        }
-        return updated;
     }
 
 }

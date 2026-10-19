@@ -30,7 +30,6 @@ const resourcePath =
 
 let logFile = `${moment(new Date()).format('YYYY_MM_D')}.log`
 let logPath = join(appPaths.logsDir, logFile);
-let processes = {};
 log.transports.file.resolvePath = () => logPath
 log.transports.file.format = '{y}-{m}-{d} {h}:{i}:{s}:{ms} [{level}] {text}';
 log.transports.file.maxSize = 5 * 1024 * 1024
@@ -47,7 +46,6 @@ if(fs.existsSync(path.join(appPaths.root, 'debug.log'))){
 }
 
 const spawn = require('child_process').spawn;
-const fork = require('child_process').fork;
 const exec = require('child_process').exec;
 const execFile = require('child_process').execFile;
 const validChannels = ['firstscan-stdout', 'scan-stdout', 'scan-finish', 'scan-error', 'walletExisted', 'walletCreated', 'walletCreateFailed', 'nodeBackground', 'epicboxBackground'];
