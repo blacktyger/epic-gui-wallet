@@ -20,6 +20,8 @@ export const removalDialog = {
       removeTyped: '',
       removeAck: false,
       removeBusy: false,
+      //counts openRemoval calls, so a late plan for an earlier wallet is dropped
+      removeSeq: 0,
     };
   },
   computed: {
@@ -74,16 +76,19 @@ export const removalDialog = {
       this.removePlan = null;
       const target = { id: wallet.id, name: name || wallet.id, dataDir: wallet.dataDir || '', configDir: wallet.configDir || '', folderMissing };
       this.removeTarget = target;
+      //which opening this is: this.removeTarget reads back as Vue's reactive proxy, never === target
+      const seq = ++this.removeSeq;
       try {
         const plan = await this.configService.removalPlan(wallet.id, { openId: this.removeOpenId(), folderMissing });
-        if (this.removeTarget === target) this.removePlan = plan;
+        if (seq === this.removeSeq && this.removeTarget) this.removePlan = plan;
       } catch (e) {
         //no longer listed (another screen removed it)
-        if (this.removeTarget === target) this.removePlan = { canList: false, canAppFiles: false, canEverything: false, reasons: { appFiles: { key: 'gone' }, everything: { key: 'gone' } } };
+        if (seq === this.removeSeq && this.removeTarget) this.removePlan = { canList: false, canAppFiles: false, canEverything: false, reasons: { appFiles: { key: 'gone' }, everything: { key: 'gone' } } };
       }
     },
     closeRemoval() {
       if (this.removeBusy) return;
+      this.removeSeq++;
       this.removeTarget = null;
       this.removePlan = null;
     },
