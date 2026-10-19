@@ -82,7 +82,8 @@ test('a new wallet: folders, register, toml with every path in its own folder, s
   assert.equal(tomlStr(toml, 'chain_type'), 'UserTesting');
   assert.equal(tomlStr(toml, 'data_file_dir'), root + '/wallets/w1/wallet_data');
   assert.equal(tomlStr(toml, 'api_secret_path'), root + '/wallets/w1/.owner_api_secret');
-  assert.equal(tomlStr(toml, 'check_node_api_http_addr'), 'https://node.epiccash.com:3413');
+  //usernet has no public node: its own local node (B1)
+  assert.equal(tomlStr(toml, 'check_node_api_http_addr'), 'http://127.0.0.1:23413');
   //not the current wallet until startCheck
   assert.equal(cs.walletId, '');
 
@@ -94,7 +95,7 @@ test('a new wallet: folders, register, toml with every path in its own folder, s
   assert.equal(cs.walletConfigDir, dirs.configDir);
   assert.equal(cs.walletDataDir, dirs.dataDir);
   assert.equal(cs.walletTOMLPath, dirs.configDir + '/epic-wallet.toml');
-  assert.equal(cs.walletNodeAddr, 'https://node.epiccash.com:3413');
+  assert.equal(cs.walletNodeAddr, 'http://127.0.0.1:23413');
   //secrets are read when used: epic-wallet writes them at its first start
   assert.equal(cs.ownerApisecret, '');
   fs.put(dirs.configDir + '/.owner_api_secret', 'abc\n');
@@ -143,11 +144,11 @@ test('updateConfig: locale to the app, wallet keys to the wallet, unknown keys d
   const toml = fs.readFileSync(d.configDir + '/epic-wallet.toml');
   assert.equal(tomlStr(toml, 'epicbox_domain'), 'epicbox.example.org');
   assert.equal(tomlStr(toml, 'check_node_api_http_addr'), 'https://n.example:3413');
-  //the built-in node, not synced yet: the wallet uses the public node meanwhile, and the node's secret
+  //the built-in node, not synced yet: the wallet uses the public node meanwhile, never with the node's secret (S2)
   cs.updateConfig({ nodeInternal: true, nodesynced: false, check_node_api_http_addr: 'http://127.0.0.1:3413' });
   const t2 = fs.readFileSync(d.configDir + '/epic-wallet.toml');
   assert.equal(tomlStr(t2, 'check_node_api_http_addr'), 'https://node.epiccash.com:3413');
-  assert.equal(tomlStr(t2, 'node_api_secret_path'), cs.nodeDir('mainnet') + '/.api_secret');
+  assert.equal(tomlStr(t2, 'node_api_secret_path'), d.configDir + '/.api_secret');
   cs.updateConfig({ nodesynced: true });
   assert.equal(tomlStr(fs.readFileSync(d.configDir + '/epic-wallet.toml'), 'check_node_api_http_addr'), 'http://127.0.0.1:3413');
   assert.equal(cs.apiSecretPath, cs.nodeDir('mainnet') + '/.api_secret');
@@ -287,7 +288,8 @@ test('Windows: paths with spaces and quotes reach the tomls intact', () => {
   const old = 'D:\\Old $& Epic\\.epic\\alpha\\main';
   fs.put(old + '\\wallet_data\\wallet.seed');
   const d = cs.newWalletDirs('mainnet');
-  cs.registerWallet({ ...d, dataDir: old, network: 'mainnet', origin: 'imported', settings: { nodeInternal: true } });
+  cs.registerWallet({ ...d, dataDir: old, network: 'mainnet', origin: 'imported',
+    settings: { nodeInternal: true, nodesynced: true, check_node_api_http_addr: 'http://127.0.0.1:3413' } });
   assert.equal(cs.startCheck('w1'), 'login');
   const t = fs.readFileSync(root + '\\wallets\\w1\\epic-wallet.toml');
   assert.equal(tomlStr(t, 'data_file_dir'), old + '\\wallet_data');
@@ -348,4 +350,56 @@ test('killEpicProcess: our processes, Tor in the data dir, background roles kept
   assert.deepEqual(killed, [5, 6]);
   assert.deepEqual(cs.killedPorts, [3420, 3415]);
   assert.equal(await cs.waitForKilledPorts(), true);
+});
+
+test('B1: a new floonet/usernet wallet uses its own local node, mainnet the public node', () => {
+  const { cs, fs } = setup();
+  const nodeOf = (id) => tomlStr(fs.readFileSync(cs.settings.wallet(id).configDir + '/epic-wallet.toml'), 'check_node_api_http_addr');
+  for (const [network, url] of [['mainnet', 'https://node.epiccash.com:3413'], ['floonet', 'http://127.0.0.1:13413'], ['usernet', 'http://127.0.0.1:23413']]) {
+    const d = cs.newWalletDirs(network);
+    fs.put(d.dataDir + '/wallet_data/wallet.seed');
+    //as walletService.initWallet registers it: no settings
+    const w = cs.registerWallet({ id: d.id, network, configDir: d.configDir, dataDir: d.dataDir, origin: 'created' });
+    assert.equal(w.settings.check_node_api_http_addr, url, network);
+    assert.equal(nodeOf(w.id), url, network);
+    assert.equal(cs.startCheck(w.id), 'login');
+    assert.equal(cs.walletNodeAddr, url, network);
+    assert.equal(cs.localNodeUrl(), url.startsWith('http://') ? url : 'http://127.0.0.1:3413');
+    assert.equal(cs.defaultEpicNode, cs.localNodeUrl());
+    assert.equal(cs.getNodeFallBack(), network === 'mainnet' ? 'https://node.epiccash.com:3413' : url);
+  }
+  //the "not synced yet" fallback to the public node is mainnet's only
+  assert.equal(cs.walletNodeUrl({ nodesynced: false, check_node_api_http_addr: 'http://127.0.0.1:3413' }, 'mainnet'), 'https://node.epiccash.com:3413');
+  assert.equal(cs.walletNodeUrl({ nodesynced: false, check_node_api_http_addr: 'http://127.0.0.1:13413' }, 'floonet'), 'http://127.0.0.1:13413');
+  assert.equal(cs.walletNodeUrl({ nodesynced: false, check_node_api_http_addr: '' }, 'usernet'), 'http://127.0.0.1:23413');
+  assert.equal(cs.walletNodeUrl({ nodesynced: true, check_node_api_http_addr: 'http://127.0.0.1:3413' }, 'mainnet'), 'http://127.0.0.1:3413');
+  //floonet built-in node, not synced: still the local floonet node (with its secret)
+  cs.startCheck('w2');
+  cs.updateConfig({ nodeInternal: true, nodesynced: false });
+  const t = fs.readFileSync(cs.walletTOMLPath);
+  assert.equal(tomlStr(t, 'check_node_api_http_addr'), 'http://127.0.0.1:13413');
+  assert.equal(tomlStr(t, 'node_api_secret_path'), cs.nodeDir('floonet') + '/.api_secret');
+});
+
+test('S2: the built-in node\'s secret goes only to a node on this machine', () => {
+  const { cs, fs } = setup();
+  const d = cs.newWalletDirs('mainnet');
+  fs.put(d.dataDir + '/wallet_data/wallet.seed');
+  cs.registerWallet({ ...d, network: 'mainnet', origin: 'created' });
+  cs.startCheck('w1');
+  const secretPath = () => tomlStr(fs.readFileSync(cs.walletTOMLPath), 'node_api_secret_path');
+  //built-in node on, not synced: the public node gets the wallet's own secret file
+  cs.updateConfig({ nodeInternal: true, nodesynced: false, check_node_api_http_addr: 'http://127.0.0.1:3413' });
+  assert.equal(tomlStr(fs.readFileSync(cs.walletTOMLPath), 'check_node_api_http_addr'), 'https://node.epiccash.com:3413');
+  assert.equal(secretPath(), d.configDir + '/.api_secret');
+  //synced: the local node and its secret
+  cs.updateConfig({ nodesynced: true });
+  assert.equal(secretPath(), cs.nodeDir('mainnet') + '/.api_secret');
+  //a remote address with nodeInternal still on (hand edit): no node secret
+  cs.updateConfig({ check_node_api_http_addr: 'https://node.example.org:3413' });
+  assert.equal(secretPath(), d.configDir + '/.api_secret');
+  for (const url of ['http://localhost:3413', 'http://[::1]:3413']) {
+    cs.updateConfig({ check_node_api_http_addr: url });
+    assert.equal(secretPath(), cs.nodeDir('mainnet') + '/.api_secret', url);
+  }
 });

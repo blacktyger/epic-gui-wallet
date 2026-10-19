@@ -48,6 +48,16 @@ export function localNodeUrl(network) {
   return 'http://127.0.0.1:' + networkPorts(network).nodeApi;
 }
 
+/* is this node address on this machine (127.0.0.1, localhost, ::1)? Only then may a wallet send it
+   the built-in node's secret */
+export function isLocalNodeUrl(url) {
+  try {
+    return ['127.0.0.1', 'localhost', '[::1]', '::1'].includes(new URL(String(url)).hostname.toLowerCase());
+  } catch (e) {
+    return false;
+  }
+}
+
 /* a value as TOML: strings through JSON.stringify, numbers and booleans as they are */
 export function tomlValue(v) {
   if (typeof v === 'string') return JSON.stringify(v);

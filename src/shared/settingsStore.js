@@ -26,6 +26,8 @@
  * must not lose the wallet list. Keys this version doesn't know are kept.
  */
 
+import { localNodeUrl } from './walletToml.js';
+
 export const SCHEMA = 1;
 export const NETWORKS = ['mainnet', 'floonet', 'usernet'];
 export const ORIGINS = ['created', 'restored', 'imported', 'opened'];
@@ -43,11 +45,19 @@ export const WALLET_DEFAULTS = Object.freeze({
   node_background: false,
 });
 
+/* a new wallet's settings on its network: mainnet uses the public node; floonet and usernet have
+   no public node, so their own local node (http://127.0.0.1:<the network's node API port>) */
+export function walletDefaults(network) {
+  return network === 'mainnet' || !NETWORKS.includes(network)
+    ? { ...WALLET_DEFAULTS }
+    : { ...WALLET_DEFAULTS, check_node_api_http_addr: localNodeUrl(network) };
+}
+
 /* settings older drafts stored that 6.1 no longer has: dropped on load and on save
    (epicbox_background: the Epicbox listener always stops at lock, switch and quit) */
 const DROPPED_SETTINGS = ['epicbox_background'];
-function cleanSettings(s) {
-  const out = { ...WALLET_DEFAULTS, ...(isObj(s) ? s : {}) };
+function cleanSettings(s, network) {
+  const out = { ...walletDefaults(network), ...(isObj(s) ? s : {}) };
   for (const k of DROPPED_SETTINGS) delete out[k];
   return out;
 }
@@ -80,7 +90,7 @@ export function normalizeWallet(w) {
     label: cleanLabel(w.label),
     origin: ORIGINS.includes(w.origin) ? w.origin : 'created',
     importedFrom: isObj(w.importedFrom) ? w.importedFrom : null,
-    settings: cleanSettings(w.settings),
+    settings: cleanSettings(w.settings, w.network),
   };
 }
 

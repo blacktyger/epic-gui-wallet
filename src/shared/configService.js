@@ -15,7 +15,7 @@
  */
 import { layout, netFromShort } from './appPaths.js';
 import { createSettingsStore, normalizeWallet, NETWORKS, WALLET_DEFAULTS } from './settingsStore.js';
-import { renderWalletToml, renderNodeToml, networkPorts, walletMarkerText, WALLET_MARKER, tomlNetwork, localNodeUrl } from './walletToml.js';
+import { renderWalletToml, renderNodeToml, networkPorts, walletMarkerText, WALLET_MARKER, tomlNetwork, localNodeUrl, isLocalNodeUrl } from './walletToml.js';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -85,8 +85,7 @@ class ConfigService {
     this.epicPath = this.path.resolve(bin, this.platform === 'win' ? 'epic-wallet.exe' : 'epic-wallet');
     this.epicNodePath = this.path.resolve(bin, this.platform === 'win' ? 'epic.exe' : 'epic');
 
-    //the wallet's fallback before any node is set, and while the built-in node syncs
-    this.defaultEpicNode = 'http://127.0.0.1:3413';
+    //mainnet's public node: the wallet's node while the built-in mainnet node syncs
     this.nodeFallBack = WALLET_DEFAULTS.check_node_api_http_addr;
     this.epicboxDomain = WALLET_DEFAULTS.epicbox_domain;
 
@@ -104,8 +103,20 @@ class ConfigService {
     this.killedPorts = [];
   }
 
-  getNodeFallBack() {
-    return this.nodeFallBack;
+  /* the node a wallet uses while the built-in one syncs: mainnet's public node; floonet and
+     usernet have none, so their own local node */
+  getNodeFallBack(network = this.defaultAccountNetwork) {
+    return network === 'mainnet' ? this.nodeFallBack : localNodeUrl(network);
+  }
+
+  /* the built-in node's API address for a network (default: the current wallet's) */
+  localNodeUrl(network = this.defaultAccountNetwork) {
+    return localNodeUrl(NETWORKS.includes(network) ? network : 'mainnet');
+  }
+
+  /* the node address used when a wallet has none set: the built-in node of its network */
+  get defaultEpicNode() {
+    return this.localNodeUrl();
   }
 
   /* the current wallet's record (a copy), null when none */
@@ -272,22 +283,26 @@ class ConfigService {
     return this.fs.readFileSync(this.path.join(this.resourcePath, name), 'utf8');
   }
 
-  /* the node the wallet is told to use: a public node while the built-in one has not synced yet */
-  walletNodeUrl(settings) {
-    const addr = settings.check_node_api_http_addr || this.defaultEpicNode;
-    return settings.nodesynced == false && addr == 'http://127.0.0.1:3413' ? this.nodeFallBack : addr;
+  /* the node the wallet is told to use. Mainnet: the public node while the built-in one has not
+     synced yet; floonet and usernet have no public node, so their local node always */
+  walletNodeUrl(settings, network = 'mainnet') {
+    const local = this.localNodeUrl(network);
+    const addr = settings.check_node_api_http_addr || local;
+    return network === 'mainnet' && settings.nodesynced == false && addr == local ? this.nodeFallBack : addr;
   }
 
   /* <configDir>/epic-wallet.toml of the current (or the given) wallet, written whole every time */
   writeWalletToml(wallet = this.wallet) {
     if (!wallet) throw new Error('no wallet');
     const s = wallet.settings;
-    const nodeUrl = this.walletNodeUrl(s);
+    const nodeUrl = this.walletNodeUrl(s, wallet.network);
     const file = this.path.join(wallet.configDir, WALLET_TOML);
     const text = renderWalletToml({
       template: this.template(WALLET_TOML), network: wallet.network, configDir: wallet.configDir, dataDir: wallet.dataDir,
       nodeUrl, epicboxDomain: s.epicbox_domain || this.epicboxDomain,
-      nodeApiSecretPath: s.nodeInternal ? this.path.join(this.nodeDir(wallet.network), NODE_SECRET) : '',
+      //the built-in node's secret only goes to a node on this machine, never to a public node
+      //(the one used while the built-in node syncs, or one typed in)
+      nodeApiSecretPath: s.nodeInternal && isLocalNodeUrl(nodeUrl) ? this.path.join(this.nodeDir(wallet.network), NODE_SECRET) : '',
     });
     this.writeFile(file, text);
     if (wallet.id === this.walletId) {

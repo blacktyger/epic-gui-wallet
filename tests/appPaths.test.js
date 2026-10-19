@@ -158,3 +158,15 @@ test('settings: an unreadable or newer file is never overwritten, unknown keys a
   assert.equal(saved.wallets[0].future, 2);
   assert.deepEqual(saved.wallets[1], { id: 'bad' });
 });
+
+test('B1: wallet defaults per network: public node on mainnet, the local node on floonet and usernet', async () => {
+  const { walletDefaults } = await import('../src/shared/settingsStore.js');
+  assert.deepEqual(walletDefaults('mainnet'), { ...WALLET_DEFAULTS });
+  assert.equal(walletDefaults('floonet').check_node_api_http_addr, 'http://127.0.0.1:13413');
+  assert.equal(walletDefaults('usernet').check_node_api_http_addr, 'http://127.0.0.1:23413');
+  const n = normalizeWallet({ id: 'w2', network: 'floonet', configDir: '/r/w2', dataDir: '/r/w2' });
+  assert.equal(n.settings.check_node_api_http_addr, 'http://127.0.0.1:13413');
+  //a stored address is kept
+  assert.equal(normalizeWallet({ id: 'w2', network: 'usernet', configDir: '/r/w2', dataDir: '/r/w2',
+    settings: { check_node_api_http_addr: 'http://10.0.0.5:23413' } }).settings.check_node_api_http_addr, 'http://10.0.0.5:23413');
+});

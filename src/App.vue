@@ -518,7 +518,7 @@
             if(respNode.tip && respNode.tip.height > 0 && respNode.sync_status === 'no_sync'){
               this.configService.updateConfig({
                 nodesynced: true,
-                check_node_api_http_addr: 'http://127.0.0.1:3413'
+                check_node_api_http_addr: this.configService.localNodeUrl()
               });
               //updateConfig renders the wallet's toml again
               this.nodesyncedModalOpen();
