@@ -24,6 +24,9 @@ class ConfigService {
       //TODO: make it selectable in app, so user can
       //start wallet from last used account
       this.defaultAccountWalletdir = path.join(defaultAppConfigDir, '.epic');
+      //where a new wallet goes unless the user picks a folder. Not defaultAccountWalletdir: that becomes
+      //the last checked account's dir, and a second new wallet would be created inside the first one
+      this.defaultWalletRoot = path.join(defaultAppConfigDir, '.epic');
       this.appConfigFile = path.join(defaultAppConfigDir, '.epic', 'epic_3-0-0_config.json');
 
       this.defaultAccountNetwork = 'mainnet';

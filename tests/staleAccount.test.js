@@ -56,3 +56,15 @@ test('an account whose folder exists has no missing folder', async () => {
   assert.equal(cs.missingWalletDir, '');
   assert.equal(cs.defaultAccountWalletdir, path.join(home, 'main'));
 });
+
+test('a new wallet still defaults to ~/.epic after another account was checked', async () => {
+  const home = path.join(root, 'My Wallets', 'test');
+  fs.mkdirSync(path.join(home, 'main'), { recursive: true });
+  const cs = new ConfigService({ emit() {} });
+  cs.appConfig = { account_dirs: [{ account: 'test', userhomedir: home, network: 'mainnet', isdefault: false }] };
+
+  await cs.startCheck('test');
+  //defaultAccountWalletdir is now test's dir; walletdirField uses defaultWalletRoot for a new wallet
+  assert.equal(cs.defaultAccountWalletdir, path.join(home, 'main'));
+  assert.equal(cs.defaultWalletRoot, path.join(root, '.epic'));
+});
