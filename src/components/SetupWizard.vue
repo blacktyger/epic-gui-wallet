@@ -331,7 +331,7 @@
             nodeInternal: nodeInternal,
             epicbox_domain: epicboxDomain,
           });
-          this.configService.settings.updateWallet(walletId, {label});
+          this.configService.renameWallet(walletId, label);
           //the User row the store reads (commits store.user)
           await this.$userService.ensureUser(walletId, {
             name: label,

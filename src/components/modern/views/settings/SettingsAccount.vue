@@ -30,19 +30,25 @@
         <div class="e-set-row">
           <div class="e-stg-paths">
             <b id="stg-data-l">{{ $t('msg.wallets.data_folder') }}</b>
-            <p>{{ $t('msg.wallets.data_folder_hint') }}</p>
+            <p>{{ importedDir ? $t('msg.wallets.data_folder_imported') : $t('msg.wallets.data_folder_hint') }}</p>
             <p class="e-mono e-stg-path" translate="no">{{ dataDir }}</p>
-            <p v-if="importedDir" class="e-stg-origin"><EIcon name="history" size="sm" /><span>{{ $t('msg.wallets.imported_from', [importedDir]) }}</span></p>
+            <p v-if="importedDir && importedDir !== dataDir" class="e-stg-origin"><EIcon name="history" size="sm" /><span>{{ $t('msg.wallets.imported_from', [importedDir]) }}</span></p>
           </div>
-          <div class="e-ctl"><button type="button" class="e-btn e-sm" aria-describedby="stg-data-l" @click="openFolder(dataDir)"><EIcon name="open" />{{ $t('msg.modern.settings.open_folder') }}</button></div>
+          <div class="e-ctl e-stg-folder-btns">
+            <button type="button" class="e-btn e-sm" aria-describedby="stg-data-l" @click="openFolder(dataDir)"><EIcon name="open" />{{ $t('msg.modern.settings.open_folder') }}</button>
+            <button type="button" class="e-btn e-sm e-btn-ghost" aria-describedby="stg-data-l" @click="copyPath(dataDir)"><EIcon name="copy" />{{ $t('msg.wallets.copy_path') }}</button>
+          </div>
         </div>
-        <div class="e-set-row">
+        <div v-if="showConfigDir" class="e-set-row">
           <div class="e-stg-paths">
             <b id="stg-cfg-l">{{ $t('msg.wallets.config_folder') }}</b>
             <p>{{ $t('msg.wallets.config_folder_hint') }}</p>
             <p class="e-mono e-stg-path" translate="no">{{ configDir }}</p>
           </div>
-          <div class="e-ctl"><button type="button" class="e-btn e-sm" aria-describedby="stg-cfg-l" @click="openFolder(configDir)"><EIcon name="open" />{{ $t('msg.modern.settings.open_folder') }}</button></div>
+          <div class="e-ctl e-stg-folder-btns">
+            <button type="button" class="e-btn e-sm" aria-describedby="stg-cfg-l" @click="openFolder(configDir)"><EIcon name="open" />{{ $t('msg.modern.settings.open_folder') }}</button>
+            <button type="button" class="e-btn e-sm e-btn-ghost" aria-describedby="stg-cfg-l" @click="copyPath(configDir)"><EIcon name="copy" />{{ $t('msg.wallets.copy_path') }}</button>
+          </div>
         </div>
         <div class="e-set-row">
           <div>
@@ -74,7 +80,7 @@
               <div class="e-glyph-sq" aria-hidden="true"><EIcon name="wallet" /></div>
               <div class="e-wlist-info">
                 <b><span class="e-truncate">{{ nameOf(w) }}</span><span v-if="badge(w.network)" class="e-tag e-warn">{{ badge(w.network) }}</span></b>
-                <p class="e-mono" :title="w.dataDir" translate="no">{{ w.dataDir }}</p>
+                <p class="e-mono" :title="w.dataDir" translate="no">{{ short(w.dataDir) }}</p>
               </div>
               <button type="button" class="e-btn e-btn-sm e-btn-ghost" :aria-label="$t('msg.wallets.remove_named', [nameOf(w)])" @click="askRemove(w)"><EIcon name="trash" />{{ $t('msg.wallets.remove_from_list') }}</button>
             </li>

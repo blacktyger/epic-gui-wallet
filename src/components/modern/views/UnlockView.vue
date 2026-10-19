@@ -14,10 +14,13 @@
           <fieldset v-if="wallets.length > 1" class="e-wpick">
             <legend class="e-label">{{ $t('msg.wallets.wallet') }}</legend>
             <div class="e-wpick-list">
-              <label v-for="w in wallets" :key="w.id">
-                <input type="radio" name="unlock-wallet" :value="w.id" v-model="selectedId" @change="missing = null" />
+              <label v-for="w in wallets" :key="w.id" :title="w.dataDir">
+                <input type="radio" name="unlock-wallet" :value="w.id" v-model="selectedId" :aria-describedby="'unlock-wf-' + w.id" @change="missing = null" />
                 <span class="e-dot" aria-hidden="true"></span>
-                <span class="e-wpick-name">{{ nameOf(w) }}<small v-if="hintOf(w)" class="e-mono e-wpick-hint" translate="no">{{ hintOf(w) }}</small></span>
+                <span class="e-wpick-text">
+                  <span class="e-wpick-name">{{ nameOf(w) }}</span>
+                  <small :id="'unlock-wf-' + w.id" class="e-mono e-wpick-dir" translate="no">{{ folderOf(w) }}</small>
+                </span>
                 <span v-if="badge(w.network)" class="e-tag e-warn">{{ badge(w.network) }}</span>
               </label>
             </div>

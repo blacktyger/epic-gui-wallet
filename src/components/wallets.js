@@ -36,6 +36,12 @@ export function pathTail(dir, segments = 2) {
   return parts.slice(-segments).join('/');
 }
 
+/* a folder for a secondary line: its last segments, '…/' in front when shortened */
+export function folderTail(dir, segments = 3) {
+  const parts = String(dir || '').split(/[\\/]+/).filter(Boolean);
+  return (parts.length > segments ? '…/' : '') + parts.slice(-segments).join('/');
+}
+
 /* labels need not be unique: when another wallet shows the same name, its folder tells them apart */
 export function walletHint(wallet, list) {
   if (!wallet) return '';
@@ -51,6 +57,18 @@ export function shortPath(dir, max = 46) {
   const keep = max - 1;
   const head = Math.ceil(keep * 0.4);
   return s.slice(0, head) + '…' + s.slice(s.length - (keep - head));
+}
+
+/* a path under the user's home as ~/… (the home is the folder that holds .epic) */
+export function homeShort(dir, configService) {
+  const s = String(dir || '');
+  const epicDir = configService && configService.paths && configService.paths.legacy && configService.paths.legacy.epicDir;
+  if (!epicDir) return s;
+  const home = epicDir.replace(/[\\/]\.epic[\\/]?$/, '');
+  if (home && home !== epicDir && s.startsWith(home) && /[\\/]/.test(s.charAt(home.length))) {
+    return '~' + s.slice(home.length);
+  }
+  return s;
 }
 
 export function formatBytes(bytes) {
@@ -162,7 +180,12 @@ export const walletOpen = {
       });
       if (user) store.commit('user', user);
 
-      return (await this.startWallet(password, knownNotRunning, lap)) ? 'opened' : 'failed';
+      if (!(await this.startWallet(password, knownNotRunning, lap))) return 'failed';
+      //the wallet used last is the one Unlock offers next time
+      try {
+        if (this.configService.settings.defaultWalletId() !== walletId) this.configService.settings.setDefaultWallet(walletId);
+      } catch (e) { /* the list changed meanwhile: keep the old default */ }
+      return 'opened';
     },
 
     /* start the node and the wallet api, then log in.

@@ -55,7 +55,7 @@
 
                   <label v-if="chain" class="checkbox" style="display: block; margin: 1rem 0;">
                     <input type="checkbox" v-model="reuseChain">
-                    {{ $t('msg.wallets.found_reuse_chain', [chain.dir, size(chain.bytes)]) }}
+                    {{ $t('msg.wallets.found_reuse_chain', [short(chain.dir), size(chain.bytes)]) }}
                   </label>
 
                   <p v-if="error" class="has-text-danger" role="alert">{{ error }}</p>
@@ -76,7 +76,7 @@
 </template>
 
 <script>
-  import { takeScan, shortPath, formatBytes, formatDate, networkBadge, walletOpen } from '@/components/wallets';
+  import { takeScan, shortPath, homeShort, formatBytes, formatDate, networkBadge, walletOpen } from '@/components/wallets';
 
   /*
    * Wallets an older Epic Wallet left on this computer (importer.scan): import each one, or
@@ -166,7 +166,7 @@
       },
       badge: networkBadge,
       short(dir) {
-        return shortPath(dir, 56);
+        return shortPath(homeShort(dir, this.configService), 56);
       },
       size: formatBytes,
       setAll(value) {

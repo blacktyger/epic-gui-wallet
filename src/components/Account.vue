@@ -20,14 +20,20 @@
         <div class="field">
           <label class="label">{{ $t('msg.wallets.data_folder') }}</label>
           <p><code style="word-break: break-all;">{{ dataDir }}</code></p>
-          <button type="button" class="button is-small is-outlined" @click="openFolder(dataDir)">{{ $t('msg.wallets.open_folder') }}</button>
+          <div class="buttons" style="margin-top: 0.25rem;">
+            <button type="button" class="button is-small is-outlined" @click="openFolder(dataDir)">{{ $t('msg.wallets.open_folder') }}</button>
+            <button type="button" class="button is-small is-outlined" @click="copyPath(dataDir)">{{ $t('msg.wallets.copy_path') }}</button>
+          </div>
         </div>
-        <div class="field">
+        <div v-if="showConfigDir" class="field">
           <label class="label">{{ $t('msg.wallets.config_folder') }}</label>
           <p><code style="word-break: break-all;">{{ configDir }}</code></p>
-          <button type="button" class="button is-small is-outlined" @click="openFolder(configDir)">{{ $t('msg.wallets.open_folder') }}</button>
+          <div class="buttons" style="margin-top: 0.25rem;">
+            <button type="button" class="button is-small is-outlined" @click="openFolder(configDir)">{{ $t('msg.wallets.open_folder') }}</button>
+            <button type="button" class="button is-small is-outlined" @click="copyPath(configDir)">{{ $t('msg.wallets.copy_path') }}</button>
+          </div>
         </div>
-        <p v-if="importedDir" class="help">{{ $t('msg.wallets.imported_from', [importedDir]) }}</p>
+        <p v-if="importedDir" class="help">{{ importedDir === dataDir ? $t('msg.wallets.data_folder_imported') : $t('msg.wallets.imported_from', [importedDir]) }}</p>
 
         <hr>
         <h2 class="title is-5">{{ $t('msg.wallets.other_wallets') }}</h2>
@@ -77,7 +83,7 @@
 <script>
 
 import { useStore } from '@/store';
-import { walletList, walletName, networkBadge, shortPath, appLocale, walletFolder, walletOpen } from '@/components/wallets';
+import { walletList, walletName, networkBadge, shortPath, homeShort, appLocale, walletFolder, walletOpen } from '@/components/wallets';
 
   /*
    * This wallet: its label, its folders, where it was imported from; the other wallets in the
@@ -108,11 +114,16 @@ import { walletList, walletName, networkBadge, shortPath, appLocale, walletFolde
       defaultName() {
         return this.wallet ? walletName({ ...this.wallet, label: '' }, this.wallets) : '';
       },
+      //where the wallet itself is (for an imported wallet: the older app's folder)
       dataDir() {
-        return this.configService.walletDataDir || (this.wallet && this.wallet.dataDir) || '';
+        return (this.wallet && this.wallet.dataDir) || this.configService.walletDataDir || '';
       },
+      //6.1's own folder for it (toml, secrets, log); shown only when it is not the data folder
       configDir() {
-        return this.configService.walletConfigDir || (this.wallet && this.wallet.configDir) || '';
+        return (this.wallet && this.wallet.configDir) || this.configService.walletConfigDir || '';
+      },
+      showConfigDir() {
+        return !!this.configDir && this.configDir !== this.dataDir;
       },
       network() {
         return (this.wallet && this.wallet.network) || this.configService.defaultAccountNetwork || '';
@@ -140,20 +151,32 @@ import { walletList, walletName, networkBadge, shortPath, appLocale, walletFolde
       },
       badge: networkBadge,
       short(dir) {
-        return shortPath(dir, 52);
+        return shortPath(homeShort(dir, this.configService), 52);
       },
       openFolder(dir) {
         if (dir) window.openepichidden.open(dir);
       },
+      async copyPath(dir) {
+        if (!dir) return;
+        try {
+          await window.clipboard.writeText(dir);
+          this.$toast.success(this.$t('msg.wallets.copied'));
+        } catch (e) {
+          this.$toast.error(e && e.message ? e.message : String(e));
+        }
+      },
 
-      /* the label goes into the wallet list and the User row (sidebar, unlock) */
+      /* the label goes into the wallet list (configService.renameWallet: trimmed to 32, WALLET.txt
+         rewritten) and the User row (sidebar) */
       async saveLabel(){
         if(!this.walletId){
           return;
         }
-        const label = String(this.label || '').trim();
         try{
-          this.configService.settings.updateWallet(this.walletId, {label});
+          if(!this.configService.renameWallet(this.walletId, String(this.label || ''))){
+            throw new Error('not saved');
+          }
+          const label = this.configService.settings.wallet(this.walletId).label;
           const cfg = this.configService.config || {};
           await this.$userService.ensureUser(this.walletId, {
             name: label,

@@ -17,7 +17,7 @@
                     <div class="control">
                       <div class="select is-fullwidth">
                         <select id="loginWallet" v-model="selectedId" :disabled="isLoading" @change="missing = null">
-                          <option v-for="w in wallets" :key="w.id" :value="w.id">{{ nameOf(w) }}{{ hintOf(w) ? ' · ' + hintOf(w) : '' }}{{ badge(w.network) ? ' (' + badge(w.network) + ')' : '' }}</option>
+                          <option v-for="w in wallets" :key="w.id" :value="w.id">{{ nameOf(w) }}{{ badge(w.network) ? ' (' + badge(w.network) + ')' : '' }} · {{ folderOf(w) }}</option>
                         </select>
                       </div>
                     </div>
@@ -87,7 +87,7 @@ import StartupProgress from "@/components/layout/StartupProgress.vue";
 import useFormValidation from "@/modules/useFormValidation";
 import { useRouter } from '@/router';
 import { useStore } from '@/store';
-import { walletOpen, walletList, walletName, walletHint, networkBadge } from '@/components/wallets';
+import { walletOpen, walletList, walletName, folderTail, networkBadge } from '@/components/wallets';
 
 /*
  * Unlock: the password of a wallet in the list. With several wallets a picker (the default one
@@ -157,9 +157,9 @@ export default {
     nameOf(w) {
       return walletName(w, this.wallets);
     },
-    //the folder's last segments, only when two wallets show the same name
-    hintOf(w) {
-      return walletHint(w, this.wallets);
+    //the picker's second line: the data folder's last segments (the full path in a tooltip)
+    folderOf(w) {
+      return folderTail(w.dataDir);
     },
     badge: networkBadge,
 
@@ -182,9 +182,6 @@ export default {
         const result = await this.openWallet(wallet.id, this.passwordField.defaultValue);
         if(result === 'missing'){
           this.missing = { id: wallet.id, name: this.nameOf(wallet), dir: wallet.dataDir };
-        }else if(result === 'opened' && this.configService.settings.defaultWalletId() !== wallet.id){
-          //the next start offers the wallet used last
-          this.configService.settings.setDefaultWallet(wallet.id);
         }
       }catch(e){
         //e.g. the process scan failed: never leave the form locked
