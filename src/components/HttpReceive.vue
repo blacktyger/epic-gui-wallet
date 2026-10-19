@@ -39,13 +39,6 @@
 
           </div>
 
-          <div class="message is-info">
-            <div class="message-header"><p>{{ $t("msg.httpReceive.proof_address") }}</p></div>
-            <div class="message-body">
-              <code>{{ proofAddress }}</code>&nbsp;<mdicon @click="copy(proofAddress)" name="content-copy" size=16 />&nbsp;<mdicon class="is-clickable" @click="qrcode(proofAddress, 'proof')" name="qrcode-scan" size=16 />
-            </div>
-          </div>
-
 
 
         </div>
@@ -126,13 +119,14 @@ export default {
     const epicboxAddress = ref('');
     //the public key of the Epicbox address; the domain is the listener's (see epicboxDomainNow)
     const epicboxKey = ref('');
-    const proofAddress = ref('');
     const { resetFormErrors } = useFormValidation();
     const isLoading = ref(false);
     const vueCanvas = ref(null);
     const addressTypeHeader = ref('');
     const publicIp = ref('');
     const portIsForwarded = ref(false);
+    //the check when the page opens is done (Modern shows "checking" until then)
+    const portCheckedOnce = ref(false);
 
     return {
       store,
@@ -140,12 +134,12 @@ export default {
 
       epicboxAddress,
       epicboxKey,
-      proofAddress,
       resetFormErrors,
       isLoading,
       addressTypeHeader,
       publicIp,
-      portIsForwarded
+      portIsForwarded,
+      portCheckedOnce
 
     }
   },
@@ -179,8 +173,8 @@ export default {
     this.publicIp = await window.config.getPublicIp() || {};
     this.localAddress = this.publicIp.ip ? 'http://' + this.publicIp.ip + ':' + this.configService.walletListenerPort : '';
     this.portIsForwarded = this.publicIp.ip ? await window.config.isPortReachable(this.publicIp.ip, this.configService.walletListenerPort) : false;
+    this.portCheckedOnce = true;
 
-    await this.getProofAddress();
     this.epicboxAddress = await this.getEpicboxAddress();
 
 
@@ -222,13 +216,6 @@ export default {
       }
       return this.configService.config['epicbox_domain'] != '' ? this.configService.config['epicbox_domain'] : this.configService.epicboxDomain;
     },
-    async getProofAddress(){
-      let addressRes = await this.$walletService.getPubliProofAddress();
-      if(addressRes && addressRes.result && addressRes.result.Ok){
-        this.proofAddress = addressRes.result.Ok;
-      }
-    },
-
     copy(text){
       window.clipboard.writeText(text);
       this.$toast.show(this.$t("msg.copy_to_clipboard"), {duration:1000});
@@ -247,7 +234,6 @@ export default {
         this.isLoading = false;
         if(isListen && isListen.success){
 
-          await this.getProofAddress();
           this.$toast.success(this.$t("msg.login.listener_started"));
           this.store.commit('walletListenerService', true);
 

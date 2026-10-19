@@ -40,17 +40,6 @@
 
             <div class="field">
               <div class="control">
-                  <input class="switch is-success" id="sendProofSwitch" type="checkbox" v-model="withproof" @click="addProof" :disabled="!proofAllowed" :aria-describedby="proofAllowed ? null : 'sendProofNote'">
-                  <label for="sendProofSwitch">{{ $t("msg.send_proof") }}</label>
-                  <p v-if="!proofAllowed" id="sendProofNote" class="help">{{ $t("msg.httpSend.proofEpicbox") }}</p>
-                  <div v-show="withproof && proofAllowed">
-                    <ProofAddressField ref="proofAddressField" />
-                  </div>
-              </div>
-            </div>
-
-            <div class="field">
-              <div class="control">
                 <textarea maxlength="256" class="textarea" v-model="message" placeholder="Message (max. 256 chars)" ></textarea>
               </div>
             </div>
@@ -99,16 +88,14 @@ import { useStore } from '@/store';
 import { MIN_CONFIRMATIONS } from '@/shared/confirmations';
 import { MAX_OUTPUTS } from '@/shared/sendMath';
 import AmountField from "@/components/form/amountField";
-import ProofAddressField from "@/components/form/proofAddressField";
 import AddressField from "@/components/form/addressField";
 import useFormValidation from "@/modules/useFormValidation";
-import { clearSendForm, inputAfterSend, sendMethod, proofAllowed as proofAllowedFor, proofRequest, isOnionAddress } from "@/shared/sendForm";
+import { clearSendForm, inputAfterSend, sendMethod, isOnionAddress } from "@/shared/sendForm";
 
 export default {
   name: "http-send",
   components: {
     AmountField,
-    ProofAddressField,
     AddressField,
   },
 
@@ -130,7 +117,6 @@ export default {
         }
         if(newVal == ''){
           this.addressSelected = false;
-          this.withproof = false;
           this.foundAddress = [];
           this.method = 'http';
           this.address = {};
@@ -142,17 +128,13 @@ export default {
           this.address = {};
         }
       },
-      //no payment proof over Epicbox (shared/sendForm.js): untick it whenever it is on there
-      proofConflict: function (on) { if (on) this.withproof = false; },
   },
   setup(){
 
     const store = useStore();
     const foundAddress = ref([]);
     const addressSelected = ref(false);
-    const withproof = ref(false);
     const amountField = ref('');
-    const proofAddressField = ref('');
     const addressField = ref('');
     const method = ref('http');
     const message = ref('');
@@ -171,9 +153,7 @@ export default {
       store,
       foundAddress,
       addressSelected,
-      withproof,
       amountField,
-      proofAddressField,
       addressField,
       method,
       message,
@@ -196,30 +176,12 @@ export default {
     epicboxSelected(){
       return sendMethod(this.method, this.addressField && this.addressField.input) == 'epicbox';
     },
-    /* Epicbox sends carry no payment proof (epic-wallet sends them as V2 slates) */
-    proofAllowed(){
-      return proofAllowedFor(this.method, this.addressField && this.addressField.input);
-    },
-    proofConflict(){
-      return this.withproof && !this.proofAllowed;
-    },
     epicboxConnected(){
       return !!this.store.state.walletEpicboxService;
     },
   },
   methods: {
 
-    addProof(){
-
-      if(!this.proofAllowed){
-        this.withproof = false;
-      }else if(!this.withproof){
-        this.withproof = true;
-      }else{
-        this.withproof = false;
-      }
-
-    },
     fillAddressField(address, type){
       this.address = address;
       if(!this.addressSelected){
@@ -230,12 +192,6 @@ export default {
           this.addressField.setValue(address.externalTwo.trim());
           this.method = 'http';
         }
-
-        if(address.alwaysproof && address.proofaddr != ''){
-          this.withproof = true;
-        }
-        //always paste proof address even if empty
-        this.proofAddressField.setValue(address.proofaddr);
         this.addressSelected = true;
         this.foundAddress = [];
       }
@@ -272,7 +228,6 @@ export default {
         amountValid = false;
       }
       isFormAllValid.push(amountValid);
-      this.withproof ? isFormAllValid.push(this.proofAddressField.validInput()) : null;
 
 
       if(!isFormAllValid.includes(false)){
@@ -284,7 +239,8 @@ export default {
           "minimum_confirmations": MIN_CONFIRMATIONS,
           "max_outputs": MAX_OUTPUTS,
           "message": this.message,
-          "payment_proof_recipient_address": this.withproof ? this.proofAddressField.defaultValue : null,
+          //the GUI never asks for a payment proof (the CLI still can)
+          "payment_proof_recipient_address": null,
           "target_slate_version": null,
           "ttl_blocks": null,
           "send_args": null
@@ -367,12 +323,6 @@ export default {
 
     async sendNow(){
       this.resetFormErrors();
-      //a proof asked for over Epicbox (a stale form) would be dropped by the wallet: stop here
-      if(proofRequest(this.method, this.addressField.input, this.withproof).refused){
-        this.withproof = false;
-        this.$toast.error(this.$t('msg.httpSend.proofEpicbox'));
-        return;
-      }
       let isFormAllValid = [];
       let amountValid = false;
       try {
@@ -381,7 +331,6 @@ export default {
         amountValid = false;
       }
       isFormAllValid.push(amountValid);
-      this.withproof ? isFormAllValid.push(this.proofAddressField.validInput()) : null;
       isFormAllValid.push(this.addressField.validInput());
 
       let method = sendMethod(this.method, this.addressField.defaultValue);
@@ -399,8 +348,8 @@ export default {
           "max_outputs": MAX_OUTPUTS,
           "target_slate_version": null,
           "ttl_blocks": null,
-          //the proof address as validInput just read it (never over Epicbox)
-          "payment_proof_recipient_address": proofRequest(method, this.addressField.defaultValue, this.withproof, this.proofAddressField.defaultValue).address,
+          //the GUI never asks for a payment proof (the CLI still can)
+          "payment_proof_recipient_address": null,
           "send_args": {
             "method": method,
             "dest": this.addressField.defaultValue,

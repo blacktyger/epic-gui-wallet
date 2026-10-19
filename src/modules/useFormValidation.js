@@ -72,15 +72,6 @@ export default function useFormValidation() {
         }
         return true;
     }
-    const validateProofAddressField = (fieldName, fieldValue) => {
-
-        let message = minLength(fieldName, fieldValue, 64);
-        if(message !== null){
-          errors[fieldName] = message;
-          return false;
-        }
-        return true;
-    }
 
     const validateAddressField = (fieldName, fieldValue, forceHttp) => {
 
@@ -125,7 +116,6 @@ export default function useFormValidation() {
       resetFormErrors,
       validatePasswordField,
       validateAmountField,
-      validateProofAddressField,
       validateAddressField,
       validateDirField,
       validateTextField

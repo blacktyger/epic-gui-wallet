@@ -9,9 +9,7 @@ const messages = [
     do sítě Epic Cash.<br/></br>
     Stav vašeho node serveru by měl být „synchronizován“.<br/>
     <br/>
-    Adresa příjemce může být adresa Epicbox nebo jakákoli externí adresa http(s).<br/>
-    <br/>
-    Chcete-li mít proof o provedení transakce, zadejte proof adresu poskytnutou příjemcem.<br/>`,
+    Adresa příjemce může být adresa Epicbox nebo jakákoli externí adresa http(s).<br/>`,
   },
   {
     title: 'Obdržet mince',
@@ -21,8 +19,6 @@ const messages = [
     Tuto funkci lze změnit v Nastavení.<br/>
     <br/>
     Na stránce Obdržet bude seznam adres, které lze použít k přijímání mincí.<br/>
-    <br/>
-    Na této stránce je také zobrazena Vaše proof adresa.<br/>
     <br/>
     Pokud se něco pokazí a Vaše peněženka neobdržela mince, restartujte lestener na stránce Obdržet.<br/>`
   },
@@ -95,14 +91,6 @@ const messages = [
     <br/>
     Pokud později ztratíte data z peněženky, můžete peněženku obnovit<br/>
     s těmito slovy.<br/>`
-  },
-  {
-    title: 'Odeslat proof o platbě a proof adresu',
-    text: `V Epicu můžete provádět transakce s dodatečným proof.<br/>
-    <br/>
-    Pomocí proof je možné, aby ostatní ověřili, že transakce byla provedena mezi odesílatelem a příjemcem.<br/>
-    <br/>
-    K ověření proof potřebuje uživatel proof data a částku.<br/>`
   },
   {
     title: 'Ngrok',

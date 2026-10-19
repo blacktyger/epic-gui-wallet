@@ -163,10 +163,6 @@
 
                           </template>
 
-                            <template v-else>
-                              <span class="has-text-weight-bold">{{ $t("msg.transaction.payment_proof") }}: </span>-<br/>
-                            </template>
-
                         </td>
                       </tr>
                     </tbody>

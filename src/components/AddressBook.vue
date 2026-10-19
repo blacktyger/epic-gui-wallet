@@ -89,23 +89,6 @@
 
             <div class="field">
               <div class="control">
-
-                <label>{{ $t("msg.addressbook.proof_address") }}</label>
-                <input class="input" type="text" v-model="proofaddr" >
-              </div>
-            </div>
-
-            <div class="field">
-              <div class="control">
-                <label class="checkbox">
-                  <input class="switch is-success" id="alwaysProofSwitch" type="checkbox" v-model="alwaysproof">
-                  <label for="alwaysProofSwitch">{{ $t("msg.addressbook.send_always") }}</label>
-                </label>
-              </div>
-            </div>
-
-            <div class="field">
-              <div class="control">
                 <label>{{ $t("msg.addressbook.notice") }}</label>
                 <textarea class="textarea" v-model="notice" ></textarea>
               </div>
@@ -142,8 +125,6 @@
             <p class="block" v-if="externalTwo"><label class="label">{{ $t("msg.addressbook.external_two") }}</label> {{externalTwo}}&nbsp;<mdicon @click="copy(externalTwo)" name="content-copy" size=16 /></p>
 
 
-            <p class="block" v-if="proofaddr"><label class="label">{{ $t("msg.addressbook.proof_address") }}</label> {{proofaddr}}&nbsp;<mdicon @click="copy(proofaddr)" name="content-copy" size=16 /></p>
-            <p class="block" v-if="proofaddr"><label class="label">{{ $t("msg.addressbook.send_always") }}</label> {{alwaysproof == true ? 'yes' : 'no'}}</p>
 
             <p class="block" v-if="notice"><label class="label">{{ $t("msg.addressbook.notice") }}</label></p> 
             <pre>{{notice}}</pre>
@@ -189,7 +170,8 @@ export default {
     const country = ref('');
     const city = ref('');
 
-    //a Tor address an older version stored: no longer shown or edited, but kept on save
+    //a Tor address, a payment proof address and "always ask for a proof" an older version stored:
+    //no longer shown or edited, but kept on save
     const onion = ref('');
     const alwaysproof = ref(false);
     const proofaddr = ref('');

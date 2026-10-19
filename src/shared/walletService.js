@@ -322,15 +322,6 @@ class WalletService {
         }, false);
     }
 
-    async getPubliProofAddress(){
-      return this.jsonRPC(
-        'get_public_proof_address',
-        {
-          "token": this.token,
-          "derivation_index": 0
-        }, false);
-    }
-
     async getEpicboxAddress(){
 
       return this.jsonRPC(

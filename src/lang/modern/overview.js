@@ -210,7 +210,6 @@ export default {
   d_no_value: '-',
   copy_field: 'Copy {what}',
   d_proof: 'Payment proof',
-  d_no_proof: 'None for this transaction.',
   d_cancel: 'Cancel transaction',
   d_cancelling: 'Cancelling…',
   d_finalize: 'Finalize…',

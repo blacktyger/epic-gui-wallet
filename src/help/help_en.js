@@ -9,9 +9,7 @@ const messages = [
     to the Epic Cash network.<br/></br>
     The status of your node server should read, “synced.”<br/>
     <br/>
-    The recipient address can be an Epicbox address or any external http(s) address.<br/>
-    <br/>
-    To have proof the transaction was carried out, enter the proof address provided by the receiver.<br/>`,
+    The recipient address can be an Epicbox address or any external http(s) address.<br/>`,
   },
   {
     title: 'Receive coins',
@@ -20,8 +18,6 @@ const messages = [
     This feature can be changed in Settings.<br/>
     <br/>
     On the Receive Page, there will be a list of addresses that can be used to receive coins.<br/>
-    <br/>
-    Your proof address is also displayed on this page.<br/>
     <br/>
     If something goes wrong and your wallet is not receiving coins, restart the listener on the Receive Page.<br/>`
   },
@@ -89,15 +85,6 @@ const messages = [
     <br/>
     Later if you loose your wallet data, you can recover the wallet<br/>
     with this words.<br/>`
-  },
-  {
-    title: 'Send Payment proof and proof address',
-    text: `In epic you can make transactions with an additional proof.<br/>
-    <br/>
-    With a proof its possible for others
-    to verify that the transaction was made between the sender and receiver.<br/>
-    <br/>
-    To verify a proof the user needs the proof data and amount.<br/>`
   },
   {
     title: 'Network node',

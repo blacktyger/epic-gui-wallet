@@ -19,7 +19,6 @@ const messages = {
     received_mempool: '... waiting for confirmation',
     locked: '已锁定',
     send: '发送',
-    send_proof: 'send proof',
     dandelion: 'Dandelion++',
     dandelion_hint: 'Broadcasting transactions via Dandelion++',
     createofflinetx: 'Create offline transaction',

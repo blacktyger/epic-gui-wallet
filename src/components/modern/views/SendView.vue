@@ -92,21 +92,6 @@
           <div class="e-tech-body">
             <div class="e-set-row e-flat">
               <div>
-                <b id="e-send-proof-l">{{ $t('msg.modern.send.proof_title') }}</b>
-                <p id="e-send-proof-d">{{ $t('msg.modern.send.proof_hint') }}</p>
-                <p v-if="!proofAllowed" id="e-send-proof-n" class="e-help">{{ $t('msg.modern.send.proof_epicbox') }}</p>
-              </div>
-              <label class="e-switch">
-                <input id="sendProofSwitch" v-model="withproof" type="checkbox" :disabled="!proofAllowed" aria-labelledby="e-send-proof-l" :aria-describedby="proofAllowed ? 'e-send-proof-d' : 'e-send-proof-d e-send-proof-n'" @click="addProof" />
-                <span class="e-track"></span>
-              </label>
-            </div>
-            <div v-show="withproof && proofAllowed" class="e-field e-send-proof">
-              <label class="e-label" for="e-send-proof">{{ $t('msg.modern.send.proof_address') }}</label>
-              <div ref="proofBox"><ProofAddressField ref="proofAddressField" /></div>
-            </div>
-            <div class="e-set-row e-flat">
-              <div>
                 <b id="e-send-dand-l">{{ $t('msg.dandelion') }}</b>
                 <p id="e-send-dand-d">{{ $t('msg.dandelion_hint') }}</p>
               </div>
@@ -181,10 +166,6 @@
           <dt>{{ $t('msg.modern.send.message') }}</dt>
           <dd>{{ rv.message }}</dd>
         </template>
-        <template v-if="rv.proof">
-          <dt>{{ $t('msg.modern.send.proof_row') }}</dt>
-          <dd>{{ $t('msg.modern.send.proof_requested') }}</dd>
-        </template>
       </dl>
       <p v-if="isLoadingSend" class="e-help e-send-sending" role="status"><span class="e-spinner" aria-hidden="true"></span>{{ $t('msg.modern.send.sending_status') }}</p>
     </template>
@@ -210,7 +191,6 @@
   import MoneyText from '@/components/modern/ui/MoneyText.vue';
   import AmountField from '@/components/modern/form/AmountField.vue';
   import AddressField from '@/components/modern/form/AddressField.vue';
-  import ProofAddressField from '@/components/modern/form/ProofAddressField.vue';
   import { formatEpic, nodeSyncPercent } from '@/components/modern/format';
   import { epicToNano, nanoToEpic } from '@/shared/sendMath';
   import { isOnionAddress } from '@/shared/sendForm';
@@ -225,10 +205,10 @@
   const TAIL = 6;
 
   export default reskin(HttpSend, {
-    components: { EIcon, EDialog, MoneyText, AmountField, AddressField, ProofAddressField },
+    components: { EIcon, EDialog, MoneyText, AmountField, AddressField },
     data() {
       return {
-        //the "Payment proof and privacy" disclosure
+        //the "Privacy" disclosure
         advOpen: false,
         //mirrors the Dandelion++ checkbox (the Classic code reads the checkbox itself via ref="dandelion")
         dandelionOn: true,
@@ -243,15 +223,12 @@
       //the Modern fields render a bare input: give the labels something to point at
       const to = this.$refs.toBox && this.$refs.toBox.querySelector('input');
       if (to) to.id = 'e-send-to';
-      const proof = this.$refs.proofBox && this.$refs.proofBox.querySelector('input');
-      if (proof) proof.id = 'e-send-proof';
     },
     watch: {
       //a message about a field goes away when the field changes (Classic keeps it until the next send)
       //(the Tor address message stays while the field holds one: HttpSend's watcher sets it)
       'addressField.input'(v) { if (!isOnionAddress(v)) this.clearError(this.addressField, 'address'); },
       'amountField.input'() { this.clearError(this.amountField, 'amount'); },
-      'proofAddressField.input'() { this.clearError(this.proofAddressField, 'proof_address'); },
     },
     computed: {
       locale() { return this.$i18n ? this.$i18n.locale : 'en'; },
@@ -284,8 +261,7 @@
       formHasErrors() {
         const a = this.amountField && this.amountField.errors && this.amountField.errors.amount;
         const t = this.addressField && this.addressField.errors && this.addressField.errors.address;
-        const p = this.withproof && this.proofAddressField && this.proofAddressField.errors && this.proofAddressField.errors.proof_address;
-        return !!(a || t || p);
+        return !!(a || t);
       },
       canSend() { return this.nodeSynced && !(this.epicboxSelected && !this.epicboxConnected) && !this.sent },
       hint() {
@@ -322,9 +298,7 @@
         return words.slice(0, 2).map(w => Array.from(w)[0]).join('').toUpperCase();
       },
       advState() {
-        const p = this.withproof;
-        const d = this.dandelionOn;
-        return this.$t('msg.modern.send.' + (p && d ? 'adv_both' : p ? 'adv_proof' : d ? 'adv_dandelion' : 'adv_none'));
+        return this.$t('msg.modern.send.' + (this.dandelionOn ? 'adv_dandelion' : 'adv_none'));
       },
       rvAmountText() { return this.rv ? formatEpic(this.rv.amount, { locale: this.locale, decimals: this.rv.dec }) : ''; },
       /* decimals to show: as many as the amount or the fee has (EPIC has 8), at least 4 */
@@ -352,12 +326,8 @@
         } finally {
           this.reviewing = false;
         }
-        this.withproof && this.proofAllowed ? valid.push(this.proofAddressField.validInput()) : null;
         valid.push(this.addressField.validInput());
-        if (valid.includes(false)) {
-          if (this.withproof && this.proofAddressField.errors && this.proofAddressField.errors.proof_address) this.advOpen = true;
-          return;
-        }
+        if (valid.includes(false)) return;
         const to = this.addressField.defaultValue;
         const kind = (this.epicboxSelected) ? 'epicbox' : 'http';
         const amountNano = this.amountField.amountNano;
@@ -381,8 +351,6 @@
           total: nanoToEpic(amountNano + feeNano),
           dec: Math.max(decimalsOf(this.amountField.defaultValue), decimalsOf(fee)),
           message: this.message,
-          //never "proof requested" for an Epicbox send (it carries none)
-          proof: this.withproof && kind != 'epicbox',
         };
         this.reviewOpen = true;
       },

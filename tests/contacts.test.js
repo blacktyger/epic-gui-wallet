@@ -34,6 +34,13 @@ test('a Tor address an older version stored: kept on save, not searched (it is n
   assert.deepEqual(searchContacts([zoe, bob], 'bob').map(c => c.id), [2]);
 });
 
+test('proof fields an older version stored: kept on save, not searched (they are not shown any more)', () => {
+  const old = { ...bob, proofaddr: 'b4e2a7c6d1f0e9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4', alwaysproof: true };
+  assert.equal(contactFields(old).proofaddr, old.proofaddr);
+  assert.equal(contactFields(old).alwaysproof, true);
+  assert.deepEqual(searchContacts([zoe, old], 'b4e2a7c6').map(c => c.id), []);
+});
+
 test('an empty or blank search shows all contacts; no match shows none', () => {
   assert.equal(searchContacts([zoe, bob], '').length, 2);
   assert.equal(searchContacts([zoe, bob], '   ').length, 2);

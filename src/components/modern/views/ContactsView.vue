@@ -79,17 +79,6 @@
             </div>
           </div>
           <div class="e-field">
-            <label class="e-label" for="con-f-proof">{{ $t('msg.addressbook.proof_address') }}</label>
-            <input id="con-f-proof" class="e-input e-mono" type="text" spellcheck="false" autocomplete="off" translate="no" v-model="proofaddr" />
-          </div>
-          <div class="e-con-switch">
-            <label class="e-switch" for="alwaysProofSwitch">
-              <input id="alwaysProofSwitch" type="checkbox" v-model="alwaysproof" />
-              <span class="e-track"></span>
-              <span><b>{{ $t('msg.addressbook.send_always') }}</b></span>
-            </label>
-          </div>
-          <div class="e-field">
             <label class="e-label" for="con-f-note">{{ $t('msg.addressbook.notice') }} <span class="e-opt">{{ $t('msg.modern.settings.notice_optional') }}</span></label>
             <textarea id="con-f-note" class="e-textarea" rows="3" v-model="notice"></textarea>
           </div>
@@ -124,14 +113,6 @@
           <div v-if="externalTwo">
             <dt>{{ $t('msg.addressbook.external_two') }}</dt>
             <dd class="e-addr"><code translate="no">{{ externalTwo }}</code><button type="button" class="e-icon-btn e-sm" :aria-label="$t('msg.modern.settings.copy_field', { what: $t('msg.addressbook.external_two') })" @click="copy(externalTwo)"><EIcon name="copy" size="sm" /></button></dd>
-          </div>
-          <div v-if="proofaddr">
-            <dt>{{ $t('msg.addressbook.proof_address') }}</dt>
-            <dd class="e-addr"><code translate="no">{{ proofaddr }}</code><button type="button" class="e-icon-btn e-sm" :aria-label="$t('msg.modern.settings.copy_field', { what: $t('msg.addressbook.proof_address') })" @click="copy(proofaddr)"><EIcon name="copy" size="sm" /></button></dd>
-          </div>
-          <div v-if="proofaddr">
-            <dt>{{ $t('msg.addressbook.send_always') }}</dt>
-            <dd class="e-con-yes"><template v-if="alwaysproof"><EIcon name="okc" size="sm" />{{ $t('msg.modern.settings.yes_every_send') }}</template><template v-else><EIcon name="minusc" size="sm" />{{ $t('msg.modern.settings.no_proof') }}</template></dd>
           </div>
           <div v-if="notice">
             <dt>{{ $t('msg.addressbook.notice') }}</dt>
@@ -197,7 +178,7 @@
       },
       //the line under the name in the list: the first address the contact has
       summary(address) {
-        return address.externalOne || address.externalTwo || address.proofaddr || '';
+        return address.externalOne || address.externalTwo || '';
       },
     },
   });
