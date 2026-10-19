@@ -9,6 +9,7 @@ import { createProcessRegistry, createPidCheck } from './shared/processOwnership
 import { resolveRoot, layout, legacyPaths } from './shared/appPaths'
 import { scanLegacy } from './shared/legacyScan'
 import { readLegacyProfiles } from './legacyProfile'
+import { cleanLeftoverImport } from './shared/tmpCleanup.js'
 import { createPtyHost } from './shared/ptyHost'
 import { createSessionSecret } from './shared/sessionSecret'
 import { registerSessionIpc, wipeWithWindow, wipeWithApp } from './shared/sessionIpc'
@@ -429,6 +430,9 @@ app.on('activate', () => {
 // Some APIs can only be used after this event occurs.
 app.on('ready', async (event) => {
   if (!primaryInstance) return;
+  //a temp copy of an old profile that couldn't be removed at quit (Windows file locks: the reading
+  //session holds its leveldb until the app exits); a scan waits for this, so a retry never meets a new copy
+  leftoverImportCleanup = cleanLeftoverImport({ fs, path, root: appLayout.root, log: (m) => log.info(m) }).catch(() => false);
   //console.log('app', noderuninbackground);
   console.log('noderuninbackground', noderuninbackground);
 
@@ -520,13 +524,17 @@ ipcMain.on('app-paths', (event) => {
   };
 });
 
+//the removal of a leftover <root>/tmp/import at start (app 'ready')
+let leftoverImportCleanup = Promise.resolve(true);
+
 //first start, or Advanced > Import: find older GUIs' wallets and read their profiles (read only).
 //The renderer passes only `known` (dirs to skip); every path that is read is worked out here.
 ipcMain.handle('legacy-scan', async (event, { known } = {}) => {
+  await leftoverImportCleanup;
   const legacy = legacyPaths({ platform: process.platform, env: process.env, home: os.homedir(), appData: app.getPath('appData'), pathMod: path });
   const scan = scanLegacy({ fs, pathMod: path, legacy, known: Array.isArray(known) ? known.filter(k => typeof k === 'string') : [] });
   //the old IndexedDB is read (from a copy) only when there is something to import
-  const profiles = scan.wallets.length ? await readLegacyProfiles({ session, BrowserWindow, fs, path,
+  const profiles = scan.wallets.length ? await readLegacyProfiles({ session, BrowserWindow, fs, path, root: appLayout.root,
     tmpDir: path.join(appLayout.root, 'tmp', 'import'), profiles: legacy.profiles, log: (m) => log.info(m) }) : [];
   return { ...scan, profiles };
 });

@@ -9,6 +9,8 @@
  * a fresh temp dir, read through a throwaway session on that copy, and the copy deleted.
  */
 
+import { removeTmpDir, cleanLeftoverImport } from './shared/tmpCleanup.js';
+
 //the only profiles read: productName up to 5.3.1, package name from 6.0.0 (appPaths.legacyPaths)
 export const PROFILE_NAMES = [
   { app: '≤5.3.1', name: 'EpicWallet' },
@@ -45,7 +47,7 @@ function withTimeout(promise, ms, what) {
   return Promise.race([promise, t]).finally(() => clearTimeout(timer));
 }
 
-async function readOne({ session, BrowserWindow, fs, path, tmpDir, profile, log }) {
+async function readOne({ session, BrowserWindow, fs, path, root, tmpDir, profile, log }) {
   const src = path.join(profile.dir, 'IndexedDB');
   if (!fs.existsSync(src)) return null;
   fs.mkdirSync(tmpDir, { recursive: true });
@@ -78,8 +80,9 @@ async function readOne({ session, BrowserWindow, fs, path, tmpDir, profile, log 
       try { ses.protocol.unhandle('app'); } catch (e) { /* not handled yet */ }
       try { await ses.clearStorageData(); } catch (e) { /* nothing stored */ }
     }
-    //the session may still hold the leveldb open on Windows: retry, then leave it in our temp dir
-    try { fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 }); } catch (e) { log('legacy profile: temp copy not removed: ' + tmp); }
+    //the session may still hold the leveldb open on Windows (until the app exits): a few quick tries, so
+    //the scan isn't held up; a leftover is removed at the next start (background.js)
+    await removeTmpDir({ fs, path, root, dir: tmp, retries: 3, delayMs: 100, log: (m) => log('legacy profile: ' + m + '; removed at the next start') });
   }
 }
 
@@ -89,21 +92,17 @@ async function readOne({ session, BrowserWindow, fs, path, tmpDir, profile, log 
  * (<root>/tmp/import, under 6.1's own folder); profiles: appPaths.legacyPaths().profiles.
  * → [{app, dir, users, contacts}] for each profile that could be read; never throws.
  */
-export async function readLegacyProfiles({ session, BrowserWindow, fs, path, tmpDir, profiles, log = () => {} }) {
-  //Chromium recreates empty caches in a session's dir when it flushes at quit, after the copy was
-  //deleted: remove those leftovers of earlier runs (only our own legacy-profile-* dirs in tmpDir)
-  for (const n of (() => { try { return fs.readdirSync(tmpDir); } catch (e) { return []; } })()) {
-    if (n.startsWith('legacy-profile-')) {
-      try { fs.rmSync(path.join(tmpDir, n), { recursive: true, force: true }); } catch (e) { /* in use: next run */ }
-    }
-  }
+export async function readLegacyProfiles({ session, BrowserWindow, fs, path, root, tmpDir, profiles, log = () => {} }) {
+  //leftovers of earlier runs (Chromium recreates empty caches in a session's dir when it flushes
+  //at quit); background.js also removes <root>/tmp/import at every start
+  await cleanLeftoverImport({ fs, path, root, log, retries: 2, delayMs: 100 });
   const out = [];
   for (const p of Array.isArray(profiles) ? profiles : []) {
     //never any other folder: the IPC caller can't point this at an arbitrary profile
     const known = PROFILE_NAMES.find(n => n.app === p.app && n.name === path.basename(p.dir || ''));
     if (!known || !path.isAbsolute(p.dir)) { log('legacy profile: not accepted: ' + p.dir); continue; }
     try {
-      const r = await readOne({ session, BrowserWindow, fs, path, tmpDir, profile: p, log });
+      const r = await readOne({ session, BrowserWindow, fs, path, root, tmpDir, profile: p, log });
       if (r) out.push(r);
     } catch (e) {
       log('legacy profile ' + p.dir + ': ' + (e && e.message));
