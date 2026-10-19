@@ -143,6 +143,7 @@
   import StartupProgress from "@/components/layout/StartupProgress.vue";
   import useFormValidation from "@/modules/useFormValidation";
   import { walletOpen, walletList, networkBadge, isLoggedIn } from '@/components/wallets';
+  import { splitPhrase } from '@/shared/phraseWords';
 
   const NETWORKS = ['mainnet', 'floonet', 'usernet'];
 
@@ -246,9 +247,9 @@
         }
       },
 
-      /* split pasted or typed text into words: any whitespace, newlines too; numbering like "1. word" is dropped */
+      /* split pasted or typed text into words: spaces, new lines, commas; numbering like "1. word" is dropped */
       splitWords(text){
-        return text.toLowerCase().split(/\s+/).map(w => w.replace(/^\d+[.):]?$/, '').replace(/[^a-z]/g, '')).filter(w => w != '');
+        return splitPhrase(text);
       },
       isInvalid(word){
         return word != '' && !this.wordSet.has(word);
