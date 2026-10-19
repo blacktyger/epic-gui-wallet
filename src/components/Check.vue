@@ -17,12 +17,6 @@
         <div class="columns">
           <div class="column is-half">
             <div class="field">
-              <label class="label">{{ $t("msg.password") }}</label>
-              <div class="control has-icons-right">
-                <PasswordField ref="passwordField" placeholder="********" required="true" name="password" />
-              </div>
-            </div>
-            <div class="field">
               <div class="control">
                   <input class="switch is-success" id="unconfirmedSwitch" type="checkbox" v-model="delete_unconfirmed">
                   <label for="unconfirmedSwitch">{{ $t("msg.check.delete_unconfirmed") }}</label>
@@ -83,24 +77,19 @@
 const log = window.log
 
 import { ref } from 'vue';
-import PasswordField from "@/components/form/passwordField";
 import useFormValidation from "@/modules/useFormValidation";
 export default {
   name: "check",
   components: {
-    PasswordField,
-
   },
   setup() {
 
-    const passwordField = ref('');
     const checking = ref(false);
     const checkOutputs = ref([]);
     const delete_unconfirmed = ref();
     const { resetFormErrors } = useFormValidation();
 
     return {
-      passwordField,
       resetFormErrors,
       checking,
       checkOutputs,
@@ -115,16 +104,12 @@ export default {
     async start(){
       this.resetFormErrors();
 
-      let isFormAllValid = [];
-
-      isFormAllValid.push(this.passwordField.validInput());
-
-      //check now requires settings
-      if(!isFormAllValid.includes(false)){
+      //the unlocked wallet is checked: no password prompt
+      {
         this.checking = true;
         this.checkOutputs = [];
 
-        const res = await this.$walletService.check(this.passwordField.defaultValue, this.delete_unconfirmed, (line) => {
+        const res = await this.$walletService.check(this.delete_unconfirmed, (line) => {
           if(this.checking && line){
             this.checkOutputs.unshift("\n" + line);
           }
@@ -141,7 +126,7 @@ export default {
           this.$toast.success(this.$t("msg.check.scan_finished"));
         }else{
           log.debug('Wallet check failed: ' + res.msg)
-          this.$toast.error(res.wrongPassword ? this.$t("msg.wrongPassword") : this.$t("msg.check.error_scan"));
+          this.$toast.error(this.$t("msg.check.error_scan"));
         }
       }
     },

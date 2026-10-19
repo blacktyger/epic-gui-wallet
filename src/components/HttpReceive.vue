@@ -91,13 +91,6 @@
         <div class="column is-half">
 
             <div class="field">
-              <label class="label">{{ $t("msg.password") }}</label>
-              <div class="control has-icons-right">
-                <PasswordField ref="passwordField" placeholder="********" required="true" name="password" />
-              </div>
-            </div>
-
-            <div class="field">
               <div class="control">
                 <button class="button is-primary" @click="start" :class="{ 'button__loader': isLoading }">
                     <span class="button__text">{{ $t("msg.httpReceive.start") }}</span>
@@ -122,7 +115,6 @@
 
 import { ref,onMounted } from 'vue';
 import { useStore } from '@/store';
-import PasswordField from "@/components/form/passwordField";
 import useFormValidation from "@/modules/useFormValidation";
 
 
@@ -131,7 +123,6 @@ const clipboard = window.clipboard;
 export default {
   name: "http-receive",
   components: {
-    PasswordField,
   },
   setup(){
 
@@ -141,7 +132,6 @@ export default {
     const onionAddress = ref('');
     const epicboxAddress = ref('');
     const proofAddress = ref('');
-    const passwordField = ref('');
     const { resetFormErrors } = useFormValidation();
     const isLoading = ref(false);
     const vueCanvas = ref(null);
@@ -156,7 +146,6 @@ export default {
       onionAddress,
       epicboxAddress,
       proofAddress,
-      passwordField,
       resetFormErrors,
       isLoading,
       addressTypeHeader,
@@ -230,18 +219,13 @@ export default {
 
 
       this.resetFormErrors();
-      let isFormAllValid = [];
 
-      isFormAllValid.push(this.passwordField.validInput());
-
-
-
-      //check now requires settings
-      if(!isFormAllValid.includes(false)){
+      //no password prompt: the main process starts them with the session's (shared/ptyHost.js)
+      {
 
         this.isLoading = true;
-        const isListen = await this.$walletService.startListen(this.passwordField.defaultValue, true, 'http');
-        const isEpicbox = await this.$walletService.startEpicbox(this.passwordField.defaultValue);
+        const isListen = await this.$walletService.startListen(true, 'http');
+        const isEpicbox = await this.$walletService.startEpicbox();
         this.isLoading = false;
         if(isListen && isListen.success){
 

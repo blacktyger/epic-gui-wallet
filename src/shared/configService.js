@@ -259,6 +259,8 @@ class ConfigService {
 
   updateConfig(data){
     for(var key in data){
+      //no longer a setting (the listeners always stop with the app)
+      if(key === 'epicbox_background') continue;
       this.config[key] = data[key]
     }
     return this.saveConfig();
@@ -468,18 +470,19 @@ epicbox_port = 443
 
   /*
    * find epic-wallet, node and Tor processes this app started earlier (a crash, an old session,
-   * a background node or Epicbox listener) and close them if user confirms via prompt.
+   * a background node, an Epicbox listener an older version left running) and close them.
+   * Listeners (http, Epicbox, their Tor) are closed without asking: a new one is started on the
+   * pseudo-terminal after the unlock. The others only if the user confirms via prompt.
    * Processes the app did not start (e.g. the user's own CLI wallet or node) are never listed.
    */
   async killEpicProcess(){
 
-    //the node and the Epicbox listener stay if the user runs them in the background
-    const roles = ['owner_api', 'listen', 'scan',
-      ...(this.config && this.config.epicbox_background ? [] : ['epicbox']),
+    //the node stays if the user runs it in the background
+    const roles = ['owner_api', 'listen', 'scan', 'epicbox',
       ...(this.config && !this.config.node_background ? ['node'] : [])];
 
     //after an update the previous version's node or Epicbox listener may still run, unrecorded:
-    //adopt them once (only the bundled binaries on this account), so they are reused, not doubled
+    //adopt them once (only the bundled binaries on this account), so they are stopped or reused, not doubled
     const adopted = await nodeChildProcess.adopt({
       walletBin: this.epicPath, nodeBin: this.epicNodePath, dir: this.defaultAccountWalletdir,
       nodeConfig: path.join(this.defaultAccountWalletdir, this.nodeTOMLName), network: this.defaultAccountNetwork,
@@ -489,6 +492,23 @@ epicbox_port = 443
     //one process scan for wallet, node and Tor: each scan spawns ps (powershell on Windows, ~1 s there)
     let killPids = await nodeChildProcess.ownedProcesses(roles, {tor: true, torDirs: [this.defaultAccountWalletdir]});
     this.allKilled = true;
+    this.killedPorts = [];
+
+    //our listeners from before (e.g. an Epicbox listener kept running by an older version): stopped
+    const isListener = (p) => p.role == 'listen' || p.role == 'epicbox' || p.role == 'tor';
+    const listeners = killPids.filter(isListener);
+    if(listeners.length){
+      const stopped = await nodeChildProcess.stopPids(listeners.map(p => p.pid));
+      console.log('configService.killEpicProcess stopped listeners ' + listeners.map((p, i) => p.pid + ' ' + p.role + (stopped[i] === false ? ' (failed)' : '')).join(', '));
+      this.allKilled = stopped.every(k => k !== false);
+      if(listeners.some(p => p.role == 'listen')){
+        this.killedPorts.push(this.walletListenerPort);
+      }
+      killPids = killPids.filter(p => !isListener(p));
+      if(!killPids.length){
+        return true;
+      }
+    }
 
     if(killPids.length){
       this.debug ? console.log('configService.killEpicProcess', JSON.stringify(killPids)) : null;
@@ -498,12 +518,12 @@ epicbox_port = 443
           if(confirmed){
             const killed = await nodeChildProcess.stopPids(killPids.map(p => p.pid));
             //false when a process could not be killed (or did not exit in time)
-            this.allKilled = killed.every(k => k !== false);
+            this.allKilled = this.allKilled && killed.every(k => k !== false);
             //the ports these processes held, to wait for before starting new ones
             const has = (role) => killPids.some(p => p.role == role);
             this.killedPorts = [
+              ...this.killedPorts,
               ...(has('owner_api') ? [3420] : []),
-              ...(has('listen') ? [this.walletListenerPort] : []),
               ...(has('node') ? [this.getNodeApiPort()] : []),
             ];
             resolve(true);
@@ -937,6 +957,11 @@ epicbox_port = 443
         //make some settings
         //load settings before change wallet toml
         this.config = this.loadConfig(this.configFile);
+        //"Epicbox listener in background" is gone: the app's listeners always stop with it
+        if(this.config && Object.prototype.hasOwnProperty.call(this.config, 'epicbox_background')){
+          delete this.config.epicbox_background;
+          this.saveConfig();
+        }
 
         this.walletTOMLPath = this.checkTomlFile(defaultAccountWalletdir);
         if(!this.walletTOMLPath){

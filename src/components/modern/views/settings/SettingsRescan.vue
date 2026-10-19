@@ -17,11 +17,7 @@
               <span><b>{{ $t('msg.check.delete_unconfirmed') }}</b><span id="stg-del-unc-h" class="e-help">{{ $t('msg.modern.settings.rescan_unc_hint') }}</span></span>
             </label>
             <div class="e-field">
-              <label class="e-label" for="stg-scan-pw">{{ $t('msg.password') }}</label>
-              <div class="e-stg-inline e-top">
-                <div class="e-grow" data-input-id="stg-scan-pw"><PasswordField ref="passwordField" placeholder="********" required="true" name="password" /></div>
-                <button type="submit" class="e-btn"><EIcon name="scan" />{{ $t('msg.check.start') }}</button>
-              </div>
+              <button type="submit" class="e-btn"><EIcon name="scan" />{{ $t('msg.check.start') }}</button>
             </div>
           </form>
         </div>
@@ -55,12 +51,11 @@
   import Check from '@/components/Check.vue';
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
-  import PasswordField from '@/components/modern/form/PasswordField.vue';
   import SettingsFrame from '@/components/modern/settings/SettingsFrame.vue';
   import { inputIds } from '@/components/modern/settings/inputIds';
 
   export default reskin(Check, {
-    components: { EIcon, PasswordField, SettingsFrame },
+    components: { EIcon, SettingsFrame },
     mixins: [inputIds],
     computed: {
       //newest line first, as in Classic

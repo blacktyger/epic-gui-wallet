@@ -21,10 +21,6 @@
           </div>
         </div>
         <form class="e-rcv-start-form" novalidate @submit.prevent="isLoading || start()">
-          <div class="e-field">
-            <label class="e-label" for="e-rcv-pw">{{ $t('msg.password') }}</label>
-            <div ref="pwBox"><PasswordField ref="passwordField" :placeholder="$t('msg.modern.send.rcv_password_ph')" required="true" name="password" /></div>
-          </div>
           <button type="submit" class="e-btn e-btn-primary" :class="{ 'e-is-busy': isLoading }" :aria-busy="isLoading ? 'true' : null"><EIcon name="antenna" />{{ $t('msg.modern.send.rcv_start') }}</button>
         </form>
       </section>
@@ -149,10 +145,9 @@
   import HttpReceive from '@/components/HttpReceive.vue';
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
-  import PasswordField from '@/components/modern/form/PasswordField.vue';
 
   export default reskin(HttpReceive, {
-    components: { EIcon, PasswordField },
+    components: { EIcon },
     data() {
       return {
         //the port check finished at least once (Classic checks when the page opens)
@@ -162,8 +157,6 @@
         qrChosen: false,
       };
     },
-    mounted() { this.tagInputs(); },
-    updated() { this.tagInputs(); },
     watch: {
       epicShown(v) {
         if (v && !this.qrChosen) this.qrcode(this.epicboxAddress, 'epicbox');
@@ -189,11 +182,6 @@
       },
     },
     methods: {
-      /* the Modern field renders a bare input: give the label something to point at */
-      tagInputs() {
-        const i = this.$refs.pwBox && this.$refs.pwBox.querySelector('input');
-        if (i && i.id != 'e-rcv-pw') i.id = 'e-rcv-pw';
-      },
       showQr(text, type) {
         this.qrChosen = true;
         this.qrcode(text, type);

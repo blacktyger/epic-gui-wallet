@@ -47,18 +47,6 @@
             <p id="stg-relay-h" class="e-help">{{ $t('msg.settings.epicbox_domain_hint') }}</p>
           </div>
         </div>
-        <div class="e-set-row">
-          <div>
-            <b id="stg-boxbg-l">{{ $t('msg.settings.epicbox_background') }}</b>
-            <p id="stg-boxbg-h">{{ $t('msg.settings.epicbox_background_hint') }}</p>
-          </div>
-          <div class="e-ctl">
-            <label class="e-switch">
-              <input type="checkbox" v-model="epicbox_background" :disabled="(nodeInternal && !node_background)" aria-labelledby="stg-boxbg-l" aria-describedby="stg-boxbg-h" />
-              <span class="e-track"></span>
-            </label>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -168,7 +156,7 @@
       current() {
         const f = this.nodeserverField || {};
         return JSON.stringify([f.select, String(f.input || '').trim(), !!this.node_background, this.localeSelected,
-          String(this.epicboxDomain || '').trim(), !!this.walletlisten_on_startup, !!this.epicbox_background]);
+          String(this.epicboxDomain || '').trim(), !!this.walletlisten_on_startup]);
       },
       dirty() {
         return this.saved !== null && this.saved !== this.current;
@@ -190,7 +178,7 @@
       },
       /* back to the saved values */
       discard() {
-        const [select, input, nodeBg, locale, domain, listen, boxBg] = JSON.parse(this.saved);
+        const [select, input, nodeBg, locale, domain, listen] = JSON.parse(this.saved);
         this.nodeserverField.select = select;
         this.nodeserverField.input = input;
         this.nodeInternal = select == 'internal';
@@ -198,7 +186,6 @@
         this.localeSelected = locale;
         this.epicboxDomain = domain;
         this.walletlisten_on_startup = listen;
-        this.epicbox_background = boxBg;
         this.resetFormErrors();
       },
       //forget that the tour was seen and open it on Overview
