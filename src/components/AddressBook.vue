@@ -180,6 +180,7 @@ const log = window.log;
 import { ref } from 'vue';
 import { useStore } from '@/store';
 import ModalBox from '@/components/layout/ModalBox.vue'
+import { contactFields } from '@/shared/contacts.js';
 
 
 export default {
@@ -254,17 +255,19 @@ export default {
   methods: {
     async search(){
       this.clearup(true);
-      let keyword = this.keyword;
-      if(keyword != ''){
-
-        this.addressList = await this.$addressBookService.findAddress(this.keyword);
-        this.searched = true;
-      }
+      //an empty search shows every contact again
+      this.addressList = await this.$addressBookService.findAddress(this.store.state.user.id, this.keyword);
+      this.searched = this.keyword.trim() != '';
     },
-    clearup(keepKeyword){
+    async clearup(keepKeyword){
 
       if(!keepKeyword){
         this.keyword = '';
+        //the search is closed: the whole list again
+        if(this.searched){
+          this.searched = false;
+          this.addressList = await this.$addressBookService.getAddress(this.store.state.user.id);
+        }
       }
       this.searched = false;
     },
@@ -350,10 +353,9 @@ export default {
       }
 
     },
-    async updateAddressById(){
-
-
-      let updated = await this.$addressBookService.updateAddressById( this.id, {
+    /* the form's fields as a save writes them (shared/contacts.js) */
+    formFields(){
+      return contactFields({
         name: this.name,
         country: this.country,
         city: this.city,
@@ -363,35 +365,44 @@ export default {
         externalOne: this.externalOne,
         externalTwo: this.externalTwo,
         notice: this.notice
-
       });
+    },
+    async updateAddressById(){
+
+      let updated;
+      try{
+        updated = await this.$addressBookService.updateAddressById(this.id, this.formFields());
+      }catch(e){
+        console.error('contact not saved', e);
+      }
       if(updated){
         this.addressList = await this.$addressBookService.getAddress(this.store.state.user.id);
+        this.searched = false;
         this.isEditAddress = false;
+      }else{
+        this.$toast.error(this.$t("msg.addressbook.error_save"));
       }
 
     },
     async addAddress(){
 
-
-      let inserted = await this.$addressBookService.addAddress({
-        name: this.name,
-        user_id: this.store.state.user.id,
-        country: this.country,
-        city: this.city,
-        onion: this.onion,
-        alwaysproof: this.alwaysproof,
-        proofaddr: this.proofaddr,
-        externalOne: this.externalOne,
-        externalTwo: this.externalTwo,
-        notice: this.notice
-
-      });
-      if(inserted){
-
+      let inserted;
+      try{
+        inserted = await this.$addressBookService.addAddress({
+          ...this.formFields(),
+          user_id: this.store.state.user.id
+        });
+      }catch(e){
+        //e.g. no saved User row (user.id): nothing is written
+        console.error('contact not saved', e);
+      }
+      if(inserted && inserted.length){
         this.addressList = await this.$addressBookService.getAddress(this.store.state.user.id);
+        this.searched = false;
         this.isNewAddress = false;
         this.isEditAddress = false;
+      }else{
+        this.$toast.error(this.$t("msg.addressbook.error_save"));
       }
 
     }

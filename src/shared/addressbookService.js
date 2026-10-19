@@ -1,4 +1,5 @@
 import { BaseService } from "./base_service";
+import { contactFields, searchContacts } from "./contacts.js";
 
 class AddressbookService extends BaseService {
 
@@ -31,44 +32,16 @@ class AddressbookService extends BaseService {
         return this.connection.insert({
             into: this.tableName,
             //legacy: keybase is a NOT NULL column in the stored schema (see idbService)
-            values: [{keybase: '', ...address}],
+            //every text column a string: JsStore rejects a null or missing NOT NULL one
+            values: [{keybase: '', ...address, ...contactFields(address)}],
             return: true
         })
     }
 
-    findAddress(value) {
-        return this.connection.select({
-            from: this.tableName,
-            where: {
-                name: {
-                  like: '%'+ value +'%'
-                },
-                or: {
-                  country: {
-                    like: '%'+ value +'%'
-                  },
-                  city: {
-                    like: '%'+ value +'%'
-                  },
-                  onion: {
-                    like: '%'+ value +'%'
-                  },
-                  proofaddr: {
-                    like: '%'+ value +'%'
-                  },
-                  externalOne: {
-                    like: '%'+ value +'%'
-                  },
-                  externalTwo: {
-                    like: '%'+ value +'%'
-                  },
-                  notice: {
-                    like: '%'+ value +'%'
-                  }
-                },
-
-            }
-        })
+    /* the wallet's contacts that contain value (plain text, any case): searched here, not by a JsStore
+       'like' (which makes a RegExp of the text and looks at every wallet's contacts) */
+    async findAddress(user_id, value) {
+        return searchContacts(await this.getAddress(user_id), value);
     }
 
     getAddressById(id) {
@@ -92,7 +65,7 @@ class AddressbookService extends BaseService {
     updateAddressById(id, updateData) {
         return this.connection.update({
             in: this.tableName,
-            set: updateData,
+            set: contactFields(updateData),
             where: {
                 id: id
             }

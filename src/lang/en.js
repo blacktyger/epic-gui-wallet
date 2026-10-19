@@ -219,6 +219,7 @@ const messages = {
       send_always: 'send always proof',
       deleted: 'Address deleted!',
       error_delete: 'Error delete address!',
+      error_save: 'The contact could not be saved.',
     },
     remove: {
       warning: 'Warning',
