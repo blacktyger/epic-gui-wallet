@@ -1,5 +1,5 @@
 // src/preload.js
-import { contextBridge, ipcRenderer, shell, webUtils } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import os from 'os'
 import { join } from 'path'
 import path from 'path';
@@ -709,17 +709,21 @@ contextBridge.exposeInMainWorld('config', {
 
 });
 
+/* links and folders are opened by the main process, which checks them (background.js
+   'open-external': http(s) only; 'open-folder': an app or wallet folder, never a file) */
 contextBridge.exposeInMainWorld('explorer', {
-  //can be block height or commit
+  //a block height or a commit
   open(data){
-      shell.openExternal('https://explorer.epic.tech/blockdetail/' + data);
+    const d = String(data == null ? '' : data);
+    if(/^[0-9a-fA-F]{1,66}$/.test(d)){
+      ipcRenderer.invoke('open-external', 'https://explorer.epic.tech/blockdetail/' + d);
+    }
   }
 });
 
 contextBridge.exposeInMainWorld('openlink', {
-  //can be block height or commit
   open(url){
-      shell.openExternal(url);
+    return ipcRenderer.invoke('open-external', String(url == null ? '' : url));
   }
 });
 
@@ -727,7 +731,7 @@ contextBridge.exposeInMainWorld('openepichidden', {
 
   //a wallet's folder, else the app folder
   open(dir = ''){
-      shell.openPath(dir || appPaths.root)
+    return ipcRenderer.invoke('open-folder', String(dir || appPaths.root));
   }
 });
 
