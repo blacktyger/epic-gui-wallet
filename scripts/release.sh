@@ -116,6 +116,7 @@ EOF
   timeout 120 scp -q -o BatchMode=yes "$WIN_HOST:$WDIR_FWD/build.log" "$OUT/windows-build.log" || true
   [ "$WEXIT" = 0 ] || { tail -40 "$OUT/windows-build.log" 2>/dev/null; die "Windows build failed (exit $WEXIT), log: $OUT/windows-build.log"; }
   timeout 600 scp -q -o BatchMode=yes "$WIN_HOST:$WDIR_FWD/$INSTALLER" "$OUT/$INSTALLER"
+  chmod 0644 "$OUT/$INSTALLER" "$OUT/windows-build.log"
   log "unpack the installer for the package check"
   mkdir -p "$OUT/check/win/nsis" "$OUT/check/win/app"
   timeout 600 "$SEVENZ" x -y -bso0 -bsp0 -o"$OUT/check/win/nsis" "$OUT/$INSTALLER"

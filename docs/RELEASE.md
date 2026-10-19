@@ -67,7 +67,8 @@ for the user that builds.
 | `build-paths` | a `/home/<user>/` or `C:\Users\<user>` path (8-bit or UTF-16) in any file, except the upstream `epic`/`epic-wallet` binaries, which carry their own build machine's paths |
 | `size` | the download, the unpacked folder or app.asar is over its budget in `scripts/package-budgets.json` |
 
-The budgets are the 6.1.3 sizes plus about 5% (app.asar about 15%). Raise them in the same commit
+The budgets are the sizes of the 6.1.3 test build (959fc79, tor still in) plus about 5% (app.asar
+about 15%). Lower them once tor is gone. Raise them in the same commit
 as a change that is meant to grow the app, and say why in that commit message.
 
 ## Publishing (separate, by hand)
