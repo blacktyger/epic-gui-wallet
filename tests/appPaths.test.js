@@ -203,3 +203,43 @@ test('S5: wallet ids are never reused: removed ids, broken records kept on disk,
   q.addWallet(rec('w9'));
   assert.equal(q.nextWalletId(), 'w10');
 });
+
+test('S7: save tries the rename again while Windows holds the file, and returns false instead of throwing', (t) => {
+  const root = tmpRoot(t);
+  const file = path.join(root, 'settings.json');
+  const busy = (code) => Object.assign(new Error(code), { code });
+  let fails = 2, renames = 0;
+  const waits = [];
+  const flaky = { ...fs, renameSync: (a, b) => { renames++; if (fails-- > 0) throw busy('EPERM'); return fs.renameSync(a, b); } };
+  const s = createSettingsStore({ fs: flaky, pathMod: path, file, wait: (ms) => waits.push(ms) }).load();
+  assert.equal(s.setApp({ theme: 'light' }), true);
+  assert.equal(renames, 3, 'failed twice, then worked');
+  assert.deepEqual(waits, [10, 20]);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).app.theme, 'light');
+  assert.equal(s.saveError, '');
+
+  //always busy: false, the file as it was, no temp file left, no throw from any setter
+  const before = fs.readFileSync(file, 'utf8');
+  const locked = { ...fs, renameSync: () => { throw busy('EBUSY'); } };
+  const l = createSettingsStore({ fs: locked, pathMod: path, file, wait: () => {} }).load();
+  assert.equal(l.setApp({ theme: 'dark' }), false);
+  assert.equal(l.markScanned(0), false);
+  assert.equal(l.setLegacyDecision('/old', 'fresh'), false);
+  assert.equal(l.saveError, 'EBUSY');
+  assert.equal(fs.readFileSync(file, 'utf8'), before);
+  assert.ok(!fs.existsSync(file + '.tmp'));
+  //a wallet that can't be saved is not listed (registerWallet reports it)
+  assert.throws(() => l.addWallet({ id: 'w1', network: 'mainnet', configDir: '/r/w1', dataDir: '/r/w1' }), /settings not saved \(EBUSY\)/);
+  assert.deepEqual(l.wallets(), []);
+  assert.equal(l.defaultWalletId(), '');
+  assert.equal(l.nextWalletId(), 'w1');
+  //another error is not retried
+  let n = 0;
+  const denied = { ...fs, renameSync: () => { n++; throw busy('ENOSPC'); } };
+  assert.equal(createSettingsStore({ fs: denied, pathMod: path, file, wait: () => {} }).load().setApp({ scale: 110 }), false);
+  assert.equal(n, 1);
+  //a write that throws (a full disk): false too
+  const full = { ...fs, writeFileSync: () => { throw busy('ENOSPC'); } };
+  assert.equal(createSettingsStore({ fs: full, pathMod: path, file }).load().setApp({ scale: 120 }), false);
+  assert.equal(fs.readFileSync(file, 'utf8'), before);
+});

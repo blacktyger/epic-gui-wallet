@@ -329,7 +329,15 @@
       window.api.resize(1024, 768);
 
 
-      await this.routeAtStart();
+      //never a blank window: whatever fails here, the app still opens a page
+      try {
+        await this.routeAtStart();
+      } catch (e) {
+        console.log('[start] routing failed: ' + (e && e.message ? e.message : e));
+        let hasWallets = false;
+        try { hasWallets = this.configService.settings.wallets().length > 0; } catch (e2) { /* none */ }
+        this.$router.push(hasWallets ? '/login' : '/new');
+      }
 
     },
     methods: {
@@ -360,9 +368,10 @@
             this.$router.push({name: 'found'});
             return;
           }
-          //a failed scan is not recorded: it runs again on the next start
-          if(scan){
-            settings.markScanned(0);
+          //a failed scan is not recorded: it runs again on the next start (as when settings.json
+          //can't be saved now: markScanned is false then, and the next start scans again)
+          if(scan && !settings.markScanned(0)){
+            console.log('[start] settings not saved: ' + settings.saveError);
           }
         }
         this.$router.push(settings.wallets().length ? '/login' : '/new');

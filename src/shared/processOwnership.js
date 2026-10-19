@@ -303,6 +303,24 @@ function pause(ms) {
   while (Date.now() < end) { /* wait */ }
 }
 
+/* fs.renameSync, tried again a few times (10, 20, 30 ms apart) while Windows says the file is busy
+   (antivirus, an indexer or another process reading it: EPERM, EBUSY, EACCES); throws the last error.
+   Also used by settingsStore.js. */
+export function renameRetry(fs, from, to, { tries = RENAME_TRIES, wait = pause } = {}) {
+  for (let i = 1; ; i++) {
+    try {
+      fs.renameSync(from, to);
+      return;
+    } catch (e) {
+      if (i < tries && e && RENAME_BUSY.includes(e.code)) {
+        wait(10 * i);
+        continue;
+      }
+      throw e;
+    }
+  }
+}
+
 /*
  * The record of spawned processes, kept in `file` (JSON array), with the I/O passed in:
  *   fs: node fs; findProcess: find-process; kill(pid) → Promise<boolean>; win: Windows
@@ -350,18 +368,12 @@ export function createProcessRegistry({ fs, file, findProcess, kill, win = false
     } catch (e) {
       return direct(e.code || e.message);
     }
-    for (let i = 1; ; i++) {
-      try {
-        fs.renameSync(tmp, file);
-        return true;
-      } catch (e) {
-        if (i < RENAME_TRIES && RENAME_BUSY.includes(e.code)) {
-          pause(10 * i);
-          continue;
-        }
-        try { fs.unlinkSync(tmp); } catch (e2) { /* gone already */ }
-        return direct('rename ' + (e.code || e.message));
-      }
+    try {
+      renameRetry(fs, tmp, file);
+      return true;
+    } catch (e) {
+      try { fs.unlinkSync(tmp); } catch (e2) { /* gone already */ }
+      return direct('rename ' + (e.code || e.message));
     }
   }
 

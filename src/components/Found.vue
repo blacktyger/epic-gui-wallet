@@ -197,11 +197,16 @@
           }
           //the importer sets the chain data for the networks it imported; with nothing imported
           //(Start fresh, or chain data only) the built-in node still reuses it when ticked
+          let saved = true;
           if (reuseChain && !settings.nodeChainDir(this.chain.network)) {
-            settings.setNodeChainDir(this.chain.network, this.chain.dir);
+            saved = settings.setNodeChainDir(this.chain.network, this.chain.dir) && saved;
           }
           if (firstRun) {
-            settings.markScanned(this.wallets.length);
+            saved = settings.markScanned(this.wallets.length) && saved;
+          }
+          //settings.json could not be written (the choices stay for this session): say so, go on
+          if (!saved) {
+            this.$toast.error(this.$t('msg.settings.error_save'));
           }
           const imported = (result && result.imported) || [];
           //(the importer makes the first imported wallet the default when there was none)

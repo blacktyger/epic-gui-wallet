@@ -1,7 +1,7 @@
 /*
  * GUI 6.1's settings file, <root>/settings.json (paths: shared/appPaths.js). It replaces the old
  * ~/.epic/epic_3-0-0_config.json (account list, theme), each wallet's config.json and the
- * settings half of the IndexedDB User row. Plain ESM, fs passed in: tests/settingsStore.test.js.
+ * settings half of the IndexedDB User row. Plain ESM, fs passed in: tests/appPaths.test.js.
  *
  * {
  *   "schema": 1,
@@ -22,12 +22,14 @@
  *   }]
  * }
  *
- * Saving writes settings.json.tmp, keeps the previous file as settings.json.bak, then renames.
+ * Saving writes settings.json.tmp, keeps the previous file as settings.json.bak, then renames
+ * (again a few times while Windows holds the file); a save that fails returns false, never throws.
  * A file that exists but can't be read is never overwritten (readOnly): a hand edit with a typo
  * must not lose the wallet list. Keys this version doesn't know are kept.
  */
 
 import { localNodeUrl } from './walletToml.js';
+import { renameRetry } from './processOwnership.js';
 
 export const SCHEMA = 1;
 export const NETWORKS = ['mainnet', 'floonet', 'usernet'];
@@ -117,8 +119,9 @@ function normalize(raw) {
   return d;
 }
 
-/* fs: node's fs (sync calls only); file: <root>/settings.json; now: () => ISO string */
-export function createSettingsStore({ fs, pathMod, file, now = () => new Date().toISOString() }) {
+/* fs: node's fs (sync calls only); file: <root>/settings.json; now: () => ISO string;
+   wait(ms): the pause between rename tries (tests) */
+export function createSettingsStore({ fs, pathMod, file, now = () => new Date().toISOString(), wait }) {
   let data = emptyData();
   let fileExists = false;
   let readOnly = false;
@@ -145,14 +148,27 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
     return api;
   }
 
+  /* true when written; false (never a throw) when the file is unreadable (readOnly) or can't be
+     written: the change stays in memory and goes out with the next save that works. The rename is
+     tried again while Windows holds the file (processOwnership.renameRetry); settings.json is
+     never left half written. */
+  let saveError = '';
   function save() {
     if (readOnly) return false;
-    fs.mkdirSync(pathMod.dirname(file), { recursive: true });
     const tmp = file + '.tmp';
-    const out = { ...data, schema: SCHEMA, wallets: [...data.wallets, ...(data.invalidWallets || [])] };
-    fs.writeFileSync(tmp, JSON.stringify(out, null, 2), 'utf8');
-    if (fs.existsSync(file)) fs.copyFileSync(file, file + '.bak');
-    fs.renameSync(tmp, file);
+    try {
+      fs.mkdirSync(pathMod.dirname(file), { recursive: true });
+      const out = { ...data, schema: SCHEMA, wallets: [...data.wallets, ...(data.invalidWallets || [])] };
+      fs.writeFileSync(tmp, JSON.stringify(out, null, 2), 'utf8');
+      if (fs.existsSync(file)) fs.copyFileSync(file, file + '.bak');
+      renameRetry(fs, tmp, file, wait ? { wait } : {});
+    } catch (e) {
+      saveError = String(e && (e.code || e.message) || e);
+      try { if (fs.existsSync(tmp)) fs.unlinkSync(tmp); } catch (e2) { /* left for the next save */ }
+      console.log('settings not saved: ' + file + ': ' + saveError);
+      return false;
+    }
+    saveError = '';
     fileExists = true;
     return true;
   }
@@ -169,6 +185,8 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
     get exists() { return fileExists; },
     get readOnly() { return readOnly; },
     get loadError() { return loadError; },
+    /* why the last save failed ('' after one that worked) */
+    get saveError() { return saveError; },
     /* a copy: change it through the setters, so every change is saved */
     get data() { return JSON.parse(JSON.stringify(data)); },
 
@@ -200,10 +218,16 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
     addWallet(w) {
       const rec = normalizeWallet({ createdAt: now(), ...w });
       if ([...data.wallets, ...(data.invalidWallets || [])].some(x => x && x.id === rec.id)) throw new Error('wallet ' + rec.id + ' exists');
+      const before = { defaultWallet: data.defaultWallet, nextId: data.nextId };
       data.wallets.push(rec);
       data.nextId = Math.max(data.nextId, idNumber(rec.id) + 1);
       if (!data.defaultWallet) data.defaultWallet = rec.id;
-      save();
+      if (!save()) {
+        //a wallet that isn't on disk would be gone after a restart: not listed, the caller says so
+        data.wallets = data.wallets.filter(x => x !== rec);
+        Object.assign(data, before);
+        throw new Error('settings not saved (' + (saveError || 'read only') + '): ' + file);
+      }
       return { ...rec, settings: { ...rec.settings } };
     },
     updateWallet(id, patch) {
