@@ -242,6 +242,10 @@ const messages = {
       networkErr: 'Network type can not be determined.<br/>Please select one.',
       selectNetwork: 'continue',
     },
+    walletfolder: {
+      onedrive_title: 'This folder is in OneDrive',
+      onedrive_warning: '{0} is synced by OneDrive. Syncing can damage the wallet database while the wallet is open, a second computer can create conflicting copies, and the built-in node would upload gigabytes of chain data. Choose a folder outside OneDrive, for example {1}.',
+    },
     restore:{
       title: 'Restore wallet via seed phrase',
       addSeedsInfo: 'Add seed phrase by clicking the word(s) please',

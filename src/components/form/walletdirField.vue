@@ -7,11 +7,19 @@
   <div style="color:red;" v-if="errors.walletdir">
      {{ errors.walletdir }}
   </div>
+  <!-- a warning, not an error: the user may keep the folder -->
+  <article class="message is-warning" v-if="oneDriveRoot" role="status" style="margin-top: 0.75rem;">
+    <div class="message-body">
+      <strong>{{ $t("msg.walletfolder.onedrive_title") }}</strong><br/>
+      {{ $t("msg.walletfolder.onedrive_warning", [chosenDir, configService.defaultWalletRoot]) }}
+    </div>
+  </article>
 </template>
 
 <script>
   import { ref, computed } from "vue";
   import useFormValidation from "@/modules/useFormValidation";
+  import { oneDriveRootOf } from "@/shared/oneDrive";
 
   export default {
 
@@ -28,6 +36,17 @@
       };
 
       return { errors, defaultValue, validInput, selectedDir };
+    },
+    computed: {
+      /* the folder new wallets go to: the one picked, else the default */
+      chosenDir(){
+        return this.selectedDir || (this.configService && this.configService.defaultWalletRoot) || '';
+      },
+      /* the OneDrive root that folder is in, '' if none */
+      oneDriveRoot(){
+        const roots = window.config && window.config.getOneDriveRoots ? window.config.getOneDriveRoots() : [];
+        return oneDriveRootOf(this.chosenDir, {roots, platform: this.configService ? this.configService.platform : 'linux'});
+      },
     },
     methods:{
 
