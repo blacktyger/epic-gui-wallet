@@ -12,8 +12,10 @@ const path = require('path')
 const ps = require('ps-node');
 const findProcess = require('find-process');
 const log = require('electron-log');
-const { migrateFromEpicWallet } = require('./userDataMigration');
-//before any window or session touches userData: bring over the 5.x profile (address book, settings)
+const { migrateFromEpicWallet, pinUserDataDir } = require('./userDataMigration');
+//before any window or session touches userData: freeze its folder name (a package rename must not
+//move the profile again), then bring over the 5.x profile (address book, settings)
+pinUserDataDir(app, log);
 migrateFromEpicWallet(app, log);
 const {autoUpdater} = require("electron-updater");
 autoUpdater.channel = "latest";
