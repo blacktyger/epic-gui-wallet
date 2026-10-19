@@ -461,3 +461,30 @@ test('nits: Windows: a folder already listed in another case is "listed"', () =>
   fs.put('d:\\backup\\MAIN\\wallet_data\\wallet.seed');
   assert.deepEqual(cs.openExistingWallet('d:\\backup\\MAIN', 'mainnet'), { ok: false, reason: 'listed' });
 });
+
+test('S1: ~/.epic-gui is not "inside ~/.epic": whole path segments are compared (POSIX and Windows)', () => {
+  //POSIX: the default root is ~/.epic-gui, next to ~/.epic
+  const root = '/home/jane/.epic-gui';
+  const p = setup({ root });
+  p.cs.paths.legacy = { epicDir: '/home/jane/.epic', appConfigFile: '/home/jane/.epic/epic_3-0-0_config.json', profiles: [] };
+  assert.equal(p.cs.isSameOrInside(root, '/home/jane/.epic'), false);
+  assert.equal(p.cs.isSameOrInside(root + '/sub', '/home/jane/.epic'), false);
+  assert.equal(p.cs.isSameOrInside('/home/jane/.epic/x', '/home/jane/.epic'), true);
+  assert.deepEqual(p.cs.setRoot(root), { ok: true }, 'the default root');
+  assert.deepEqual(p.cs.setRoot(root + '/elsewhere'), { ok: true }, 'a new folder under it');
+  assert.deepEqual(p.cs.setRoot('/home/jane/.epic-guix'), { ok: true });
+  assert.deepEqual(p.cs.setRoot('/home/jane/.epic'), { ok: false, reason: 'legacy' });
+  assert.deepEqual(p.cs.setRoot('/home/jane/.epic/gui'), { ok: false, reason: 'legacy' });
+
+  //Windows: %USERPROFILE%\.epic-gui next to %USERPROFILE%\.epic, any case
+  const W = path.win32;
+  const wroot = 'C:\\Users\\Jane\\.epic-gui';
+  const w = setup({ P: W, root: wroot, resourcePath: 'C:\\Epic\\resources', platform: 'win' });
+  w.cs.paths.legacy = { epicDir: 'C:\\Users\\Jane\\.epic', appConfigFile: 'C:\\Users\\Jane\\.epic\\epic_3-0-0_config.json', profiles: [] };
+  assert.equal(w.cs.isSameOrInside('c:\\users\\jane\\.EPIC-GUI', 'C:\\Users\\Jane\\.epic'), false);
+  assert.equal(w.cs.isSameOrInside('c:\\users\\jane\\.EPIC\\x', 'C:\\Users\\Jane\\.epic'), true);
+  assert.deepEqual(w.cs.setRoot('c:\\users\\jane\\.EPIC-GUI'), { ok: true }, 'the default root in another case');
+  assert.deepEqual(w.cs.setRoot('C:\\Users\\Jane\\.epic-gui\\data'), { ok: true });
+  assert.deepEqual(w.cs.setRoot('c:\\USERS\\jane\\.Epic'), { ok: false, reason: 'legacy' });
+  assert.deepEqual(w.cs.setRoot('C:\\Users\\Jane\\.epic\\gui'), { ok: false, reason: 'legacy' });
+});
