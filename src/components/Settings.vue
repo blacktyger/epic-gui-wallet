@@ -78,11 +78,34 @@
           <div class="field">
             <div class="control">
               <p>&nbsp;</p>
-              <button class="button is-primary" :class="{'is-loading': nodeserverField.checking}" :disabled="nodeserverField.checking" @click="save" >{{ $t("msg.save") }}</button>
+              <button ref="saveButton" class="button is-primary" :class="{'is-loading': nodeserverField.checking || chainChecking}" :disabled="nodeserverField.checking || chainChecking" @click="save" >{{ $t("msg.save") }}</button>
+              <p v-if="chainChecking" class="help" role="status">{{ $t('msg.chaindata.checking') }}</p>
             </div>
           </div>
 
 
+      </div>
+    </div>
+    <!-- the built-in node switched on: older chain data found, asked once (shared/chainOffer.js) -->
+    <div class="modal" :class="{ 'is-active': !!chainOffer }" role="dialog" aria-modal="true" aria-labelledby="chainOfferTitle" aria-describedby="chainOfferLead" @keydown.esc="answerChainOffer('cancel')">
+      <div class="modal-background" @click="answerChainOffer('cancel')"></div>
+      <div v-if="chainOffer" class="modal-card chain-offer">
+        <header class="modal-card-head"><p id="chainOfferTitle" class="modal-card-title">{{ $t('msg.chaindata.offer_title') }}</p></header>
+        <section class="modal-card-body content">
+          <p id="chainOfferLead">{{ $t('msg.chaindata.offer_lead') }}</p>
+          <dl class="chain-offer-facts">
+            <dt>{{ $t('msg.chaindata.offer_folder') }}</dt><dd class="is-family-monospace chain-offer-dir" translate="no">{{ chainOffer.chain.dir }}</dd>
+            <dt>{{ $t('msg.chaindata.offer_size') }}</dt><dd>{{ chainOfferSize }}</dd>
+            <template v-if="chainOfferDate"><dt>{{ $t('msg.chaindata.offer_modified') }}</dt><dd>{{ chainOfferDate }}</dd></template>
+          </dl>
+          <p v-if="chainOffer.others">{{ $t('msg.chaindata.offer_others', [chainOffer.others]) }}</p>
+          <p><strong>{{ $t('msg.chaindata.offer_question') }}</strong></p>
+          <p class="is-size-7 has-text-grey">{{ $t('msg.chaindata.offer_older_app') }}</p>
+        </section>
+        <footer class="modal-card-foot chain-offer-foot">
+          <button type="button" class="button" @click="answerChainOffer('declined')">{{ $t('msg.chaindata.offer_fresh') }}</button>
+          <button ref="chainOfferUse" type="button" class="button is-primary" @click="answerChainOffer('used')">{{ $t('msg.chaindata.offer_use') }}</button>
+        </footer>
       </div>
     </div>
   </section>
@@ -97,6 +120,8 @@ import NodeserverField from "@/components/form/nodeserverField";
 import useFormValidation from "@/modules/useFormValidation";
 import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } from '@/shared/theme';
 import { supportedLocale } from "@/shared/setupDefaults";
+import { shouldCheck, pickOffer, offerRecord } from "@/shared/chainOffer";
+import { formatBytes, formatDate } from "@/components/wallets";
 
   export default {
     name: "settings",
@@ -133,9 +158,17 @@ import { supportedLocale } from "@/shared/setupDefaults";
     },
     data() {
       //the interface (Modern / Classic) and the Modern colour scheme, app-wide (shared/theme.js)
-      return { uiSelected: getUi(), uiSaved: getUi(), schemeSelected: getScheme(), scaleSelected: getScale(), scales: SCALES };
+      //chainOffer: the chain data offered ({chain, others}, shared/chainOffer.js pickOffer) while asked
+      return { uiSelected: getUi(), uiSaved: getUi(), schemeSelected: getScheme(), scaleSelected: getScale(), scales: SCALES,
+        chainChecking: false, chainOffer: null, chainOfferResolve: null };
     },
     computed: {
+      chainOfferSize() {
+        return this.chainOffer ? formatBytes(this.chainOffer.chain.bytes) : '';
+      },
+      chainOfferDate() {
+        return this.chainOffer ? formatDate(this.chainOffer.chain.modified, this.$i18n.locale) : '';
+      },
       //the saved interface differs from the one running: it applies after a restart
       uiRestartNeeded() {
         return this.uiSaved !== this.store.state.ui;
@@ -206,6 +239,52 @@ import { supportedLocale } from "@/shared/setupDefaults";
 
 
 
+      /*
+       * The built-in node is about to be used: once per network, while it has no chain data of its
+       * own, offer older chain data found on this machine (Use this data / Download fresh). The answer
+       * is kept in settings.json; 'used' sets the node's chain folder before its toml is written.
+       * false: the prompt was closed without an answer, so nothing is saved.
+       */
+      async offerChainData(){
+        const cs = this.configService;
+        const network = cs.defaultAccountNetwork;
+        let own = true;
+        try {
+          own = cs.fs.existsSync(cs.path.join(cs.nodeDir(network), 'chain_data', 'lmdb'));
+        } catch (e) { /* unknown: don't ask */ }
+        let ask = false;
+        try { ask = shouldCheck(cs.settings, network, own); } catch (e) { ask = false; }
+        if (!ask) return true;
+
+        this.chainChecking = true;
+        let offer = null;
+        try {
+          offer = pickOffer(await this.$importer.scanChains(), network);
+        } finally {
+          this.chainChecking = false;
+        }
+        if (!offer) {
+          cs.settings.setChainOffer(network, offerRecord('none'));
+          return true;
+        }
+        const answer = await new Promise((resolve) => {
+          this.chainOfferResolve = resolve;
+          this.chainOffer = offer;
+          this.$nextTick(() => { if (this.$refs.chainOfferUse) this.$refs.chainOfferUse.focus(); });
+        });
+        this.chainOffer = null;
+        this.chainOfferResolve = null;
+        if (this.$refs.saveButton) this.$refs.saveButton.focus();
+        if (answer === 'cancel') return false;
+        if (!cs.settings.setChainOffer(network, offerRecord(answer, offer.chain.dir)) && answer === 'used') {
+          this.$toast.error(this.$t('msg.chaindata.offer_not_saved'));
+        }
+        return true;
+      },
+      answerChainOffer(answer){
+        if (this.chainOfferResolve) this.chainOfferResolve(answer);
+      },
+
       async save(){
 
         this.resetFormErrors();
@@ -222,6 +301,10 @@ import { supportedLocale } from "@/shared/setupDefaults";
           const savedEpicbox = this.$walletService.readEpicboxConfig();
 
           const nodeInternal = this.nodeserverField.select != 'external';
+          //before the node's toml is written: it may get an older chain folder (db_root)
+          if(nodeInternal && !(await this.offerChainData())){
+            return false;
+          }
           const epicboxDomain = this.epicboxDomain.trim();
           let updated = false;
           try{
@@ -273,3 +356,13 @@ import { supportedLocale } from "@/shared/setupDefaults";
     }
   }
 </script>
+
+<style scoped>
+  .chain-offer { width: min(640px, calc(100vw - 32px)); }
+  .chain-offer-facts { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; margin: 0.75rem 0; }
+  .chain-offer-facts dt { font-weight: 600; }
+  .chain-offer-facts dd { margin: 0; min-width: 0; }
+  .chain-offer-dir { overflow-wrap: anywhere; user-select: text; font-size: 0.85rem; }
+  .chain-offer-foot { justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; }
+  .chain-offer-foot .button { margin: 0; }
+</style>
