@@ -7,7 +7,7 @@ import { isUnknownRecipient } from '@/shared/sendForm';
 const errors = reactive({});
 
 
-const { isEmpty, isEqual, minLength, isSpendable, isDirEmpty, isHttpAddress, isEpicboxAddress } = useValidators();
+const { isEmpty, minLength, isSpendable, isDirEmpty, isHttpAddress, isEpicboxAddress } = useValidators();
 
 export default function useFormValidation() {
 
@@ -15,7 +15,7 @@ export default function useFormValidation() {
         let message = null;
 
         if(repeat){
-          message = !fieldValue ? isEmpty(fieldName, fieldValue) : minLength(fieldName, fieldValue, 4) || isEqual(fieldName, fieldValue, repeat);
+          message = !fieldValue ? isEmpty(fieldName, fieldValue) : minLength(fieldName, fieldValue, 4) || (fieldValue !== repeat ? i18n.global.t("msg.validators.password_mismatch") : null);
         }else{
           message = !fieldValue ? isEmpty(fieldName, fieldValue) : minLength(fieldName, fieldValue, 4);
         }

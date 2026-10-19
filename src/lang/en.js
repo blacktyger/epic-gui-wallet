@@ -467,6 +467,7 @@ const messages = {
     validators:{
       empty: 'The {0} field is required',
       equal: 'The {0} must be equal',
+      password_mismatch: 'The passwords don\'t match',
       http_address: 'No valid HTTP(S) Address',
       epicbox_address: 'No valid Epicbox Address',
       min_length: 'The {0} field must be at least {1} characters long',
