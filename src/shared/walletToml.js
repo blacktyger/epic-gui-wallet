@@ -137,3 +137,27 @@ export function renderNodeToml({ template, network, nodeDir, chainDir, foundatio
   t = setTomlKeys(t, 'logging', { stdout_log_level: 'Debug', log_file_path: joinPath(nodeDir, 'epic-server.log') });
   return t;
 }
+
+/*
+ * WALLET.txt in a wallet's 6.1 folder (<root>/wallets/<id>): tells someone browsing the folders
+ * which wallet wN is. Informational only; the app never reads it. eol: '\r\n' on Windows, so
+ * any editor shows the lines.
+ */
+export const WALLET_MARKER = 'WALLET.txt';
+
+export function walletMarkerText({ id, label, network, createdAt, dataDir, configDir, importedFrom }, eol = '\n') {
+  const day = typeof createdAt === 'string' && /^\d{4}-\d\d-\d\d/.test(createdAt) ? createdAt.slice(0, 10) : '';
+  //one line: no line breaks from a label can make it look like more
+  const one = (s) => String(s == null ? '' : s).replace(/[\r\n\t]+/g, ' ');
+  const lines = [
+    'Epic Wallet: ' + (one(label) || '(no label)') + ' · ' + one(network) + (day ? ' · created ' + day : '') + ' · data: ' + one(dataDir),
+    '',
+    'Wallet id: ' + one(id),
+    'Wallet data (the seed is in wallet_data): ' + one(dataDir),
+    ...(configDir && configDir !== dataDir ? ['Settings of this wallet in Epic Wallet 6.1: ' + one(configDir)] : []),
+    ...(importedFrom && importedFrom.dir ? ['Imported from an older Epic Wallet' + (importedFrom.app ? ' (' + one(importedFrom.app) + ')' : '') + '; the older app can still open it.'] : []),
+    '',
+    'This file is only for you: Epic Wallet writes it and never reads it.',
+  ];
+  return lines.join(eol) + eol;
+}

@@ -125,6 +125,7 @@ test('labels: trimmed, any characters, at most 32, never a path', () => {
   assert.equal(cleanLabel('x'.repeat(40)), 'x'.repeat(32));
   assert.equal(Array.from(cleanLabel('😀'.repeat(40))).length, 32);
   assert.equal(cleanLabel(null), '');
+  assert.equal(cleanLabel('a\nb\tc'), 'a b c');
   const n = normalizeWallet({ id: 'w2', network: 'mainnet', configDir: '/r/wallets/w2', dataDir: '/r/wallets/w2', label: ' A/B ' });
   assert.equal(n.label, 'A/B');
   assert.equal(n.configDir, '/r/wallets/w2');

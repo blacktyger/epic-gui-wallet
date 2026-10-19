@@ -54,7 +54,8 @@ function emptyData() {
    LABEL_MAX characters (counted as code points, so an emoji isn't cut in half); duplicates are fine */
 export const LABEL_MAX = 32;
 export function cleanLabel(label) {
-  return typeof label === 'string' ? Array.from(label.trim()).slice(0, LABEL_MAX).join('').trim() : '';
+  return typeof label === 'string'
+    ? Array.from(label.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim()).slice(0, LABEL_MAX).join('').trim() : '';
 }
 
 /* a wallet record as stored; throws on what would break the app later */

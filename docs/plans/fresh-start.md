@@ -123,6 +123,12 @@ Several wallets (approved):
   its network) and returns to Unlock. One wallet open at a time.
 - Unlock: the last-used wallet is preselected (`setDefaultWallet` after each unlock), so most people
   only type the password. Each wallet has its own password; it is checked against the selected one only.
+- Which folder is which: Settings › Wallet shows the data folder (for an imported wallet, the old
+  folder) and, when it differs, the 6.1 config folder, each with *Open folder* and *Copy path*; the
+  Unlock picker shows the data folder as a second line when there are several wallets. Each
+  `wallets/<id>/` holds a `WALLET.txt` ("Epic Wallet: <label> · <network> · created <day> · data:
+  <path>", plus id and origin), rewritten on register, rename (`configService.renameWallet`) and each
+  unlock. Informational only: the app never reads it. Never written in an old folder.
 
 Found screen: "Found N wallets from an older Epic Wallet", one row each: label (old display name or
 account), folder, network, last used, contacts count; per row Import / Start fresh, plus *Import all* and

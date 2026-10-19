@@ -15,7 +15,7 @@
  */
 import { layout, netFromShort } from './appPaths.js';
 import { createSettingsStore, normalizeWallet, NETWORKS, WALLET_DEFAULTS } from './settingsStore.js';
-import { renderWalletToml, renderNodeToml, networkPorts } from './walletToml.js';
+import { renderWalletToml, renderNodeToml, networkPorts, walletMarkerText, WALLET_MARKER } from './walletToml.js';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -25,7 +25,7 @@ export const FOUNDATION = 'foundation.json';
 const OWNER_SECRET = '.owner_api_secret';
 const NODE_SECRET = '.api_secret';
 //what a new wallet's folder may hold before its seed exists: these files only (see discardWalletDirs)
-const PRE_SEED_FILES = [WALLET_TOML, OWNER_SECRET, NODE_SECRET, 'epic-wallet.log'];
+const PRE_SEED_FILES = [WALLET_TOML, OWNER_SECRET, NODE_SECRET, 'epic-wallet.log', WALLET_MARKER];
 const CHAIN_TYPES = { Mainnet: 'mainnet', Floonet: 'floonet', UserTesting: 'usernet', Usernet: 'usernet' };
 
 /* the preload's I/O, in the app */
@@ -207,7 +207,28 @@ class ConfigService {
     this.fs.mkdirSync(w.configDir, { recursive: true });
     this.writeWalletToml(w);
     if (w.settings.nodeInternal) this.writeNodeToml(w.network);
-    return this.settings.addWallet(rec);
+    const added = this.settings.addWallet(rec);
+    this.writeWalletMarker(added);
+    return added;
+  }
+
+  /* Settings › Wallet: the label only (display; never part of a path), and WALLET.txt with it */
+  renameWallet(id, label) {
+    const ok = this.settings.updateWallet(id, { label });
+    if (ok) this.writeWalletMarker(this.settings.wallet(id));
+    return ok;
+  }
+
+  /* <configDir>/WALLET.txt (walletToml.walletMarkerText): informational, so a failure is only logged */
+  writeWalletMarker(wallet) {
+    try {
+      this.writeFile(this.path.join(wallet.configDir, WALLET_MARKER),
+        walletMarkerText(wallet, this.platform === 'win' ? '\r\n' : '\n'), 0o644);
+      return true;
+    } catch (e) {
+      console.log('WALLET.txt not written: ' + (e && e.message));
+      return false;
+    }
   }
 
   /* the network of a wallet folder: the folder name (main, floo, user), else chain_type in the
@@ -299,9 +320,9 @@ class ConfigService {
   }
 
   /* write via a temp file, so a crash never leaves half a toml */
-  writeFile(file, text) {
+  writeFile(file, text, mode = 0o600) {
     const tmp = file + '.tmp';
-    this.fs.writeFileSync(tmp, text, { encoding: 'utf8', mode: 0o600 });
+    this.fs.writeFileSync(tmp, text, { encoding: 'utf8', mode });
     this.fs.renameSync(tmp, file);
   }
 
@@ -360,6 +381,8 @@ class ConfigService {
       this.emitter && this.emitter.emit('checkFail', 'wallet toml not written: ' + (e && e.message));
       return 'toml';
     }
+    //kept current (a folder copied by hand, a label renamed in another version of the file)
+    this.writeWalletMarker(w);
     this.emitter && this.emitter.emit('checkSuccess', 'wallet toml written');
     return 'login';
   }
