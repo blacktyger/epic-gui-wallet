@@ -4,7 +4,6 @@ import { app, protocol, net, session, BrowserWindow, ipcMain, dialog, Menu, shel
 import contextMenu from 'electron-context-menu'
 import { exec, execFile } from 'child_process'
 import { pathToFileURL } from 'url'
-import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 import { createDirectory } from './shared/nodeDirectory'
 import { createProcessRegistry, createPidCheck } from './shared/processOwnership'
 import { resolveRoot, layout, legacyPaths } from './shared/appPaths'
@@ -385,6 +384,9 @@ app.on('ready', async (event) => {
     setTimeout(() => {
       try {
 
+        //loaded here, in development only: on import it reads app.getPath('userData') before
+        //background.js has set it, which creates ~/.config/epic-desktop-wallet
+        const { default: installExtension, VUEJS3_DEVTOOLS } = require('electron-devtools-installer');
         installExtension(VUEJS3_DEVTOOLS) .then(name => {
           console.log(`Added Extension: ${name}`)
           // get main window
