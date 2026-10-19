@@ -629,6 +629,11 @@ contextBridge.exposeInMainWorld('nodeFs', fs);
 contextBridge.exposeInMainWorld('nodeFsExtra', require('fs-extra'));
 contextBridge.exposeInMainWorld('nodeQr', qr);
 contextBridge.exposeInMainWorld('nodePath', require('path'));
+/* the public lookups (ip, price): no app name or version in User-Agent, no Referer, no cookies, no body headers */
+const LOOKUP_HEADERS = {
+  'Accept': 'application/json',
+  'User-Agent': 'Mozilla/5.0',
+};
 contextBridge.exposeInMainWorld('config', {
 
   async isPortReachable(host, port){
@@ -637,9 +642,9 @@ contextBridge.exposeInMainWorld('config', {
   async getPublicIp(){
     let response = await fetch('https://api.ipify.org?format=json', {
       method:'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: LOOKUP_HEADERS,
+      referrerPolicy: 'no-referrer',
+      credentials: 'omit',
     }).then(function(res){
 
       if (!res.ok) { throw Error(res) }
@@ -656,9 +661,9 @@ contextBridge.exposeInMainWorld('config', {
 
     let response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=epic-cash', {
       method:'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: LOOKUP_HEADERS,
+      referrerPolicy: 'no-referrer',
+      credentials: 'omit',
     }).then(function(res){
 
       if (!res.ok) { throw Error(res) }
