@@ -1,5 +1,5 @@
 <template>
-  <!-- the fee (Base: `fee`, in EPIC) is shown by the Send view's summary -->
+  <!-- the fee (Base: `feeNano`, `fee` in EPIC) is shown by the Send view's summary -->
   <div class="e-input-wrap">
     <input
       class="e-input e-input-lg"
@@ -13,11 +13,16 @@
       :aria-invalid="errors.amount ? 'true' : null"
       :aria-describedby="errors.amount ? uid + '-e' : null"
       v-model="input"
-      @keyup="getFee"
     />
     <div class="e-trail">
       <span class="e-unit">EPIC</span>
-      <button type="button" class="e-btn e-btn-ghost e-btn-sm" @click="sendAll">{{ $t("msg.transaction.sendall") }}</button>
+      <button
+        type="button"
+        class="e-btn e-btn-ghost e-btn-sm"
+        :class="{ 'e-is-busy': sendAllBusy }"
+        :aria-busy="sendAllBusy ? 'true' : null"
+        @click="sendAll"
+      >{{ $t("msg.transaction.sendall") }}</button>
     </div>
   </div>
   <p v-if="errors.amount" :id="uid + '-e'" class="e-error-msg" role="alert"><EIcon name="alertc" /><span>{{ errors.amount }}</span></p>

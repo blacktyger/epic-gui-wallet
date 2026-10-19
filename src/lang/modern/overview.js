@@ -77,6 +77,10 @@ export default {
   rcv_after_balance: 'Starts after the balance update',
   rcv_both: 'Epicbox and HTTP listening',
   rcv_epicbox: 'Epicbox listening',
+  rcv_both_on: 'Epicbox ({s}) and HTTP listening',
+  rcv_epicbox_on: 'Epicbox listening on {s}',
+  rcv_connecting: 'Epicbox connecting to {s}…',
+  rcv_checking: 'Checking the old server {s} for payments…',
   rcv_http_wait: 'HTTP listening · Epicbox starts when the node is synced',
   rcv_http_off: 'HTTP listening · Epicbox is off',
   rcv_off: 'Not listening',
@@ -136,6 +140,7 @@ export default {
 
   //status words
   st_wait_sign: 'Waiting for receiver to sign',
+  st_wait_reply: "Waiting for the recipient's reply. Cancel it if it does not come",
   st_wait_file: 'Waiting for the response file',
   st_wait_finalize: 'Waiting for sender to finalize',
   st_wait_mined: 'Waiting to be mined',

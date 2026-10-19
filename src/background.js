@@ -151,8 +151,9 @@ const ptyHost = createPtyHost({
   env: process.env,
 });
 
-/* on quit: stop the wallet, listener, scan, node and Tor processes the app started, except the
-   node when it runs in the background. Nothing the app did not start. */
+/* on quit: stop the wallet, listener (and the short-lived one that checks an old Epicbox server),
+   scan, node and Tor processes the app started, except the node when it runs in the background.
+   Nothing the app did not start. */
 async function stopOwnProcesses(){
   sessionSecret.wipe();
   const roles = ['owner_api', 'listen', 'scan', 'epicbox',

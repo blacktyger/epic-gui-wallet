@@ -1,5 +1,6 @@
 
 import { i18n } from '../i18n';
+import { fitsSpendable } from '../shared/sendMath';
 
 export default function useValidators() {
 
@@ -41,8 +42,10 @@ export default function useValidators() {
     return isNaN(fieldValue) ? i18n.global.t("msg.validators.number", [fieldName]) : null;
   }
 
-  const isSpendable = (fieldName, fieldValue, spendable) => {
-    return spendable < parseFloat(fieldValue) + 0.01 ? i18n.global.t("msg.validators.spendable") : null;
+  /* amount + fee fit in the spendable balance, exact in nanoepic (no margin: a wallet can be emptied).
+     amountNano, feeNano (null when the fee is not known), spendableNano: integers */
+  const isSpendable = (fieldName, amountNano, feeNano, spendableNano) => {
+    return !fitsSpendable(amountNano, feeNano, spendableNano) ? i18n.global.t("msg.validators.spendable") : null;
   }
 
 

@@ -50,6 +50,8 @@
   import mixin from './mixin.js';
   import { MIN_CONFIRMATIONS, outputConfirmationState } from '@/shared/confirmations';
   import { walletSyncAfterSummary, needsNodeRefresh, nextRefreshDelay } from '@/shared/walletSync';
+  import { wantsRefresh } from '@/shared/epicboxListener';
+  import { serverLabel } from '@/shared/epicboxConfig';
   import { useI18n } from 'vue-i18n';
   import { withoutUserinfo } from '@/shared/nodeVersion';
   import { ref, onUnmounted } from 'vue';
@@ -146,12 +148,13 @@
 
       });
 
-      /* start epicbox and refresh outputs/summary if node is snyced */
+      /* start epicbox once the node is synced: checked at once, not on the next node poll */
       this.emitter.on('app.startEpicbox', async() => {
 
         const session = this.loginSession;
+        const waitStarted = performance.now();
         //stops at once when the external node's status can't be read (too old, status locked)
-        let confirmed = await this.waitForNodesynced('nodeSynced', undefined, () => this.epicboxBlocked());
+        let confirmed = await this.waitForNodeReady(session, undefined, () => this.epicboxBlocked());
         //logged out while waiting for the node: no Epicbox for that session
         if(session !== this.loginSession){
           return;
@@ -164,11 +167,24 @@
         }
 
         if(confirmed){
+          console.log('[login] node synced, starting Epicbox +' + Math.round(performance.now() - waitStarted) + ' ms');
           const isEpicbox = await this.$walletService.startEpicbox();
+          //logged out meanwhile: the listener goes with the session
+          if(session !== this.loginSession){
+            if(isEpicbox && isEpicbox.pid){
+              await window.nodeChildProcess.stopPids([isEpicbox.pid]);
+            }
+            return;
+          }
           if(isEpicbox && isEpicbox.success){
             this.$toast.success(this.t("msg.login.epicbox_started"));
             this.store.commit('walletEpicboxService', true);
             this.store.commit('walletListenerService', true);
+          }else if(isEpicbox && isEpicbox.pending){
+            //it runs and keeps trying to connect: its events turn it on
+            this.$toast.warning(this.t("msg.app.epicbox_connecting", [serverLabel(isEpicbox.server)]));
+          }else if(isEpicbox && isEpicbox.off){
+            this.store.commit('walletEpicboxService', false);
           }else{
             this.$toast.error(this.t("msg.login.error_epicbox_started"));
             this.store.commit('walletEpicboxService', false);
@@ -185,12 +201,64 @@
 
       });
 
-      /* after login, in the background: the HTTP listener, then Epicbox (it waits for the node to sync) */
+      /* the Epicbox settings were saved (Settings): restart our listener on the new server, tell
+         the owner API, check the old server once (with the session's password, in the main
+         process). saved: the config before */
+      this.emitter.on('app.applyEpicbox', async ({saved}) => {
+        const session = this.loginSession;
+        let r;
+        try{
+          r = await this.$walletService.applyEpicboxChange(saved);
+        }catch(e){
+          console.log('[epicbox] switch failed: ' + (e && e.message ? e.message : String(e)));
+          r = {plan: {restart: true, start: true}, started: {success: false}};
+        }
+        if(session !== this.loginSession){
+          return;
+        }
+        if(r.ownerConfig === false){
+          this.$toast.error(this.t("msg.app.epicbox_owner_config_failed"));
+        }
+        //locked meanwhile: the old server is checked at the next start (epicbox_check_pending)
+        if(r.noSession){
+          return;
+        }
+        if(!r.plan || !r.plan.restart){
+          return;
+        }
+        if(r.checked && r.checked.handled){
+          this.$toast.success(this.t("msg.app.epicbox_old_checked", [r.checked.handled, serverLabel(r.plan.checkOld)]));
+          this.requestRefresh();
+        }
+        if(r.stopFailed){
+          this.$toast.error(this.t("msg.app.epicbox_switch_failed"));
+        }else if(r.started && r.started.success){
+          this.store.commit('walletEpicboxService', true);
+          this.$toast.success(this.t("msg.app.epicbox_switched", [serverLabel(r.started.server)]));
+        }else if(r.started && r.started.pending){
+          this.$toast.warning(this.t("msg.app.epicbox_connecting", [serverLabel(r.started.server)]));
+        }else if(r.plan.start){
+          this.$toast.error(this.t("msg.app.epicbox_switch_failed"));
+        }
+        if(!r.plan.start){
+          this.store.commit('walletEpicboxService', false);
+        }
+      });
+
+      /* what our Epicbox listener does (walletService: its stdout, shared/epicboxListener.js) */
+      this.emitter.on('epicbox.state', (st) => this.store.commit('epicbox', st));
+      this.emitter.on('epicbox.event', (ev) => this.onEpicboxEvent(ev));
+
+      /* after login, in the background: the HTTP listener, and Epicbox alongside (it waits for the node to sync) */
       this.emitter.on('app.startListeners', async () => {
         if(!this.configService.config['walletlisten_on_startup']){
           return;
         }
         const session = this.loginSession;
+        //Epicbox does not wait for the HTTP listener (Tor can take a while), only for the node
+        if(this.configService.config['epicbox_domain'] != undefined && this.configService.config['epicbox_domain'] != '' ){
+          this.emitter.emit('app.startEpicbox');
+        }
         this.store.commit('listenerStarting', true);
         const started = performance.now();
         let isListen;
@@ -212,11 +280,6 @@
         }
         //Tor state only, no toast: Tor is not configurable and fails to bootstrap on most setups
         this.store.commit('torService', !!(isListen && isListen.tor));
-
-        //start epicbox, will be executed when node has synced status
-        if(this.configService.config['epicbox_domain'] != undefined && this.configService.config['epicbox_domain'] != '' ){
-          this.emitter.emit('app.startEpicbox');
-        }
       });
 
       this.emitter.on('app.startRefreshNodeStatus', () => {
@@ -420,6 +483,8 @@
         //switching: the built-in node stays, it serves every wallet of its network
         await this.$walletService.stopAll(opts.switching ? true : cfg.node_background != false);
         this.store.commit('walletEpicboxService', false);
+        this.store.commit('epicbox', null);
+        clearTimeout(this.epicboxRefreshId);
         console.log('[logout] processes stopped +' + Math.round(performance.now() - started) + ' ms');
 
         this.$walletService.logoutClient();
@@ -437,7 +502,64 @@
         }
       },
 
-      /* true once window[variable] is true, false after timeoutMs, 'blocked' as soon as blocked() is true */
+      /* the node is synced, for Epicbox: asked at once and every 2 s (the status poll runs every 10 s
+         and starts 10 s after login), not only read from the poll. false after timeoutMs or logout */
+      async waitForNodeReady(session, timeoutMs = 10*60*1000, blocked = () => false){
+        const started = Date.now();
+        while(session === this.loginSession && Date.now() - started < timeoutMs){
+          if(window.nodeSynced === true){
+            return true;
+          }
+          if(blocked()){
+            return 'blocked';
+          }
+          const s = await this.$nodeService.getNodeStatus(this.store.state.user.nodeInternal).catch(() => false);
+          if(s && s.tip && s.tip.height > 0 && s.sync_status === 'no_sync'){
+            window.nodeSynced = true;
+            return true;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+        return false;
+      },
+
+      /* an event of our Epicbox listener (or of the check of the old server) */
+      onEpicboxEvent(ev){
+        if(!ev){
+          return;
+        }
+        //a slate was handled: show it now, not on the next poll (several in a row: one refresh)
+        if(this.loggedIn && wantsRefresh(ev)){
+          clearTimeout(this.epicboxRefreshId);
+          this.epicboxRefreshId = setTimeout(() => this.requestRefresh(), 400);
+        }
+        //the check of the old server reports through walletService; another wallet's listener: not shown
+        if(ev.check || (ev.dir && ev.dir !== this.configService.walletConfigDir)){
+          return;
+        }
+        const cur = this.store.state.epicbox || {};
+        const busy = cur.state == 'switching' || cur.state == 'checking_old';
+        if(ev.type == 'connecting'){
+          this.store.commit('epicbox', {state: 'connecting', server: ev.url, pid: ev.pid});
+        }else if(ev.type == 'listening'){
+          this.store.commit('epicbox', {state: 'listening', server: ev.url, address: ev.address, pid: ev.pid, checking: ''});
+          if(this.loggedIn){
+            this.store.commit('walletEpicboxService', true);
+          }
+        }else if(ev.type == 'subscribed' && cur.state != 'listening'){
+          this.store.commit('epicbox', {state: 'listening', pid: ev.pid});
+        }else if(ev.type == 'paused'){
+          this.store.commit('epicbox', {state: 'paused', pid: ev.pid});
+        }else if(ev.type == 'disconnected'){
+          this.store.commit('epicbox', {state: 'connecting', pid: ev.pid});
+        }else if(ev.type == 'exit' && (!cur.pid || cur.pid == ev.pid)){
+          this.store.commit('walletEpicboxService', false);
+          if(!busy){
+            this.store.commit('epicbox', {state: 'off', pid: 0});
+          }
+        }
+      },
+
       waitForNodesynced (variable, timeoutMs = 10*60*1000, blocked = () => false) {
         const started = Date.now();
         function waitFor() {
@@ -575,6 +697,8 @@
           this.setNodeProblem(check);
           if(check.statusReadable){
             this.$toast.success(this.t("msg.app.external_node_online"));
+            //Epicbox waits for this; the status poll starts only in 10 s
+            window.nodeSynced = !!(check.status && check.status.tip && check.status.tip.height > 0 && check.status.sync_status === 'no_sync');
             this.store.commit('nodeStatus', check.status);
           }else{
             this.nodeStatusFailed = true;

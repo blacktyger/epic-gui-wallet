@@ -46,6 +46,8 @@ export const WALLET_DEFAULTS = Object.freeze({
   epicbox_domain: 'epicbox.epiccash.com',
   walletlisten_on_startup: true,
   node_background: false,
+  //an old Epicbox server still to be checked once (wss:// url; walletService.pendingEpicboxCheck)
+  epicbox_check_pending: '',
 });
 
 /* a new wallet's settings on its network: mainnet uses the public node; floonet and usernet have

@@ -207,6 +207,7 @@
   //the fiat value last shown, for the balance it was computed for (see mounted)
   const lastFiat = { total: null, usd: 0 };
   import { nodeSyncPercent } from '@/components/modern/format';
+  import { epicboxStatus } from '@/shared/epicboxStatus';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import MoneyText from '@/components/modern/ui/MoneyText.vue';
   import RecentTx from '@/components/modern/activity/RecentTx.vue';
@@ -338,7 +339,15 @@
       receiving() {
         const t = k => this.$t('msg.modern.overview.' + k);
         const st = this.store.state;
+        //the server the Epicbox listener is really on (its own output), not the saved setting
+        const box = epicboxStatus(st.epicbox, st.walletEpicboxService);
+        const ts = (k, s) => this.$t('msg.modern.overview.' + k, { s });
+        if (box.kind == 'checking') return { busy: true, tone: 'warn', text: ts('rcv_checking', box.checking) };
+        if ((box.kind == 'starting' || box.kind == 'connecting') && box.server) return { busy: true, tone: 'warn', text: ts('rcv_connecting', box.server) };
         if (st.listenerStarting) return { busy: true, tone: 'warn', text: t('rcv_starting') };
+        if (st.walletEpicboxService && box.server) {
+          return { busy: false, tone: box.kind == 'paused' ? 'warn' : 'ok', text: ts(st.walletListenerService ? 'rcv_both_on' : 'rcv_epicbox_on', box.server) };
+        }
         if (st.walletListenerService && st.walletEpicboxService) return { busy: false, tone: 'ok', text: t('rcv_both') };
         if (st.walletEpicboxService) return { busy: false, tone: 'ok', text: t('rcv_epicbox') };
         if (st.walletListenerService) return { busy: false, tone: 'warn', text: t(this.nodeSynced ? 'rcv_http_off' : 'rcv_http_wait') };

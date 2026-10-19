@@ -323,6 +323,9 @@
           const nodeInternal = !!this.nodeserverField.nodeInternal;
           const epicboxDomain = this.epicboxDomain.defaultValue || '';
 
+          //a re-run while unlocked may change the Epicbox server: see the config before the save
+          const savedEpicbox = this.$walletService.token ? this.$walletService.readEpicboxConfig() : null;
+
           //settings.json: the wallet's settings (the toml is rendered again), the app's language, the label
           const saved = this.configService.updateConfig({
             check_node_api_http_addr: this.nodeserverField.defaultValue,
@@ -345,6 +348,10 @@
           this.emitter.emit('app.selectLocale', this.localeSelected);
 
           await this.emitter.emit('app.nodeStart');
+          //our Epicbox listener moves to a new server (App.vue, walletService.applyEpicboxChange)
+          if(savedEpicbox){
+            this.emitter.emit('app.applyEpicbox', {saved: savedEpicbox});
+          }
 
           this.isSaving = false;
           this.emitter.emit('app.accountLoggedIn');

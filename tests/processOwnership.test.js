@@ -192,6 +192,35 @@ test('registry: record, list, stop only ours, forget', async () => {
   }
 });
 
+test('registry: an epicbox listener keeps the server it was started with; the old-server check has its own dir', async () => {
+  const { file, done } = tmpFile();
+  try {
+    const CHECK = DIR + '/epicbox_check';
+    const sys = fakeSystem([
+      proc(101, `${BIN} --pass x -t ${DIR} -c ${DIR} listen --method epicbox --no_tor`),
+      proc(102, `${BIN} --pass x -t ${DIR} -c ${CHECK} listen --method epicbox --no_tor`),
+      proc(103, `${BIN} --pass x -t ${DIR} -c ${DIR} listen --method http`),
+    ]);
+    const reg = createProcessRegistry({ fs, file, findProcess: sys.findProcess, kill: sys.kill });
+    assert.equal(reg.record(101, BIN, ['--pass', 'x', '-t', DIR, '-c', DIR, 'listen', '--method', 'epicbox', '--no_tor'], { server: 'wss://epicbox.epicnet.us:443' }).server, 'wss://epicbox.epicnet.us:443');
+    reg.record(102, BIN, ['--pass', 'x', '-t', DIR, '-c', CHECK, 'listen', '--method', 'epicbox', '--no_tor'], { server: 'wss://epicbox.epiccash.com:443' });
+    //only an epicbox listener, only a url
+    assert.equal(reg.record(103, BIN, ['--pass', 'x', '-t', DIR, '-c', DIR, 'listen', '--method', 'http'], { server: 'wss://a.b:1' }).server, undefined);
+    assert.equal(reg.record(101, BIN, ['--pass', 'x', '-t', DIR, '-c', DIR, 'listen', '--method', 'epicbox'], { server: 'x; rm' }).server, undefined);
+    reg.record(101, BIN, ['--pass', 'x', '-t', DIR, '-c', DIR, 'listen', '--method', 'epicbox', '--no_tor'], { server: 'wss://epicbox.epicnet.us:443' });
+
+    const reg2 = createProcessRegistry({ fs, file, findProcess: sys.findProcess, kill: sys.kill });
+    const mine = await reg2.list(['epicbox'], { dir: DIR });
+    assert.deepEqual(mine.map(p => [p.pid, p.server]), [[101, 'wss://epicbox.epicnet.us:443']]);
+    //the check listener is not the wallet's listener, but it is ours: stopped with the rest at logout
+    const all = await reg2.list(['epicbox']);
+    assert.deepEqual(all.map(p => p.pid).sort(), [101, 102]);
+    assert.ok(!fs.readFileSync(file, 'utf8').includes('"x"'), 'no password in the record');
+  } finally {
+    done();
+  }
+});
+
 test('registry: drops records of gone pids, keeps ones spawned during a scan, never kills a reused pid', async () => {
   const { file, done } = tmpFile();
   try {

@@ -41,6 +41,7 @@
             <button v-if="epicShown && addressTypeHeader != 'epicbox'" type="button" class="e-btn e-btn-ghost" @click="showQr(epicboxAddress, 'epicbox')"><EIcon name="qr" />{{ $t('msg.modern.send.rcv_show_qr') }}</button>
             <p class="e-rcv-status" role="status">
               <template v-if="!listening"><EIcon name="minusc" size="sm" class="e-faint" />{{ $t('msg.modern.send.rcv_not_listening') }}</template>
+              <template v-else-if="epicboxLine && epicboxLine.tone != 'ok'"><EIcon :name="epicboxLine.tone == 'busy' ? 'sync' : 'alert'" size="sm" :class="epicboxLine.tone == 'busy' ? 'e-faint' : 'e-warn'" />{{ epicboxLine.text }}</template>
               <template v-else-if="store.state.walletEpicboxService"><EIcon name="okc" size="sm" class="e-ok" />{{ $t('msg.modern.send.rcv_listening_via', { domain: epicDomainName }) }}</template>
               <template v-else><EIcon name="alert" size="sm" class="e-warn" />{{ $t('msg.modern.send.rcv_listening_no_epicbox') }}</template>
             </p>

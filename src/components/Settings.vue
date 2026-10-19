@@ -64,6 +64,7 @@
             </div>
           </div>
 
+
           <div class="field">
             <label class="label">{{ $t("msg.settings.wallet_listener") }}</label>
             <div class="control">
@@ -217,6 +218,8 @@ import { supportedLocale } from "@/shared/setupDefaults";
 
         if(!isFormAllValid.includes(false)){
 
+          //the Epicbox config the wallet uses until now, to see what the save changes
+          const savedEpicbox = this.$walletService.readEpicboxConfig();
 
           const nodeInternal = this.nodeserverField.select != 'external';
           const epicboxDomain = this.epicboxDomain.trim();
@@ -250,6 +253,10 @@ import { supportedLocale } from "@/shared/setupDefaults";
             this.$toast.success(this.$t("msg.settings.settings_saved"));
             this.emitter.emit('app.nodeStart');
             this.emitter.emit('app.selectLocale', this.localeSelected);
+            //a new Epicbox server: our listener moves to it (App.vue, walletService.applyEpicboxChange)
+            if(this.$walletService.token){
+              this.emitter.emit('app.applyEpicbox', {saved: savedEpicbox});
+            }
 
           }else{
             this.$toast.error(this.$t("msg.settings.error_save"));
