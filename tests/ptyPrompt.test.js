@@ -137,3 +137,40 @@ test('ConPTY: a prompt followed by cursor moves (a line of its own) is still ans
   assert.deepEqual(p.answers, ['phrase', 'password']);
   assert.ok(!p.lines.some(l => l.includes('foo bar')));
 });
+
+test('review: a repainted prompt line after its answer is no second prompt (ConPTY)', () => {
+  const a = run(['Password: ', '\u001b[3;1HPassword: \r\n', 'WARN HTTP Foreign listener started.\r\n'], { passwords: 1 });
+  assert.deepEqual(a.answers, ['password']);
+  assert.equal(a.fail, null);
+  assert.deepEqual(a.lines, ['WARN HTTP Foreign listener started.']);
+  const b = run(['Password:\u001b[3;11H', '\r\u001b[3;1HPassword:\u001b[4;1H'], { passwords: 1 });
+  assert.deepEqual(b.answers, ['password']);
+  assert.equal(b.fail, null);
+  //init: a repaint of "New Password:" doesn't use up the Confirm answer
+  const c = run(['New Password: ', '\u001b[3;1HNew Password:\u001b[4;1H', 'Confirm Password: '], { passwords: 2 });
+  assert.deepEqual(c.answers, ['password', 'password']);
+  assert.equal(c.fail, null);
+});
+
+test('review: a log line that ends in "Password:" is not a prompt', () => {
+  const r = run(['INFO something Password:\r\n', 'Password: '], { passwords: 1 });
+  assert.deepEqual(r.answers, ['password']);
+  assert.deepEqual(r.lines, ['INFO something Password:']);
+});
+
+test('review: private CSI sequences after a prompt are removed', () => {
+  assert.deepEqual(run(['Password: \u001b[>4;1m'], { passwords: 1 }).answers, ['password']);
+  assert.deepEqual(run(['Password: \u001b[?1', '004h'], { passwords: 1 }).answers, ['password']);
+});
+
+test('review: no part of the echoed phrase passes, however the terminal wraps it', () => {
+  const p = run([
+    'Please enter your recovery phrase:\r\nphrase> \u001b[5;1H',
+    'must warfare knock circle mother rigid\u001b[6;1Hradio divert jar keen arrive\r\n',
+    'rival broccoli minute skin\r\n',
+    'Please provide a new password for the recovered wallet\r\nNew Password: ',
+  ], { passwords: 2, phrase: true });
+  assert.deepEqual(p.answers, ['phrase', 'password']);
+  assert.ok(!p.lines.some(l => /warfare|radio|broccoli/.test(l)), JSON.stringify(p.lines));
+  assert.ok(p.lines.includes('Please provide a new password for the recovered wallet'));
+});

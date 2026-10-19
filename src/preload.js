@@ -292,6 +292,24 @@ function errorLines(text){
   return String(text || '').split('\n').filter(l => /\bERROR\b|Wallet command failed|Error opening wallet|invalid/i.test(l)).join('\n').trim();
 }
 
+/* one start at a time per role and wallet dir: a second caller while the first one runs (the
+   check above and the record of the new pid are an IPC round trip apart) gets its answer */
+const startsInFlight = new Map();
+function oncePerDir(role, cmd, args, start){
+  const desc = describeSpawn(cmd, args);
+  const key = desc ? role + '\n' + desc.dir : '';
+  if(key && startsInFlight.has(key)){
+    return startsInFlight.get(key);
+  }
+  const p = start();
+  if(key){
+    startsInFlight.set(key, p);
+    const done = () => { if(startsInFlight.get(key) === p) startsInFlight.delete(key); };
+    p.then(done, done);
+  }
+  return p;
+}
+
 contextBridge.exposeInMainWorld('nodeChildProcess', {
 
     /* stop a process by pid, only if the app started it; resolves false if it was not stopped */
@@ -345,8 +363,8 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
         return {success: false, msg: child.error || 'epic-wallet init not started'};
       }
       const done = await new Promise(function(resolve) {
+        //not logged, not even in debug mode: it holds the new recovery phrase
         child.stdout.on('data', (data) => {
-          debug ? console.log('execNew.stdout', data) : null;
           output.push(data);
         });
         child.on('exit', (code) => {
@@ -505,7 +523,8 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
     /* start wallet epicbox (no password: the main process answers its prompt); meta: {server:
        the wss:// url from its toml, check: the old-server check, timeoutMs} */
     async execEpicbox(cmd, args, platform, meta){
-      return startEpicboxListener(cmd, args, meta || {});
+      //two starts at once (login after the node synced, the Receive page) share one listener
+      return oncePerDir('epicbox', cmd, args, () => startEpicboxListener(cmd, args, meta || {}));
     },
 
     /* the wallet's Epicbox listener started by this window, if it runs: {pid, url (the server it
@@ -536,8 +555,8 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
         return {success: false, msg: recover.error || 'epic-wallet init -r not started'};
       }
       const done = await new Promise(function(resolve) {
+        //not logged, not even in debug mode: it holds the recovery phrase
         recover.stdout.on('data', (data) => {
-          debug ? console.log('execRecover.stdout', data) : null;
           output.push(data);
         });
         recover.on('exit', (code, signal, fail) => {
@@ -559,8 +578,8 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
     /* the wallet password of this session goes to the main process, once after the unlock; it is
        never handed back. clear: lock, logout, wallet switch */
-    setSessionPassword(password){
-      return ipcRenderer.invoke('session-password-set', String(password));
+    setSessionPassword(password, dir){
+      return ipcRenderer.invoke('session-password-set', String(password), String(dir || ''));
     },
     clearSessionPassword(){
       return ipcRenderer.invoke('session-password-clear');

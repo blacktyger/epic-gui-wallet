@@ -8,9 +8,10 @@
  *   listen (http, epicbox):  "Password: "
  *   init:                    "New Password: ", "Confirm Password: "
  *   init -r:                 "Please enter your recovery phrase:" / "phrase> ", then the two above
- * The password is not echoed; the recovery phrase is (its line editor), so that line is dropped.
- * On a terminal the output has colours and cursor codes and \r\n: they are removed, so the lines
- * read the same as on a pipe.
+ * The password is not echoed; the recovery phrase is (its line editor), so the lines after it are
+ * dropped until epic-wallet asks for the new password. On a terminal the output has colours and
+ * cursor codes and \r\n: they are removed, so the lines read the same as on a pipe. ConPTY
+ * (Windows) may end a line with a cursor move instead of a newline, and repaint a line.
  */
 
 /* eslint-disable no-control-regex -- terminal escape codes are control characters */
@@ -19,12 +20,16 @@
 const PASSWORD_PROMPT = /(?:^|\s)(?:New |Confirm )?Password:\s*$/;
 const PHRASE_REQUEST = 'Please enter your recovery phrase';
 const PHRASE_PROMPT = /phrase>\s*$/;
+//init -r: after the phrase, before the password prompts
+const NEW_PASSWORD_REQUEST = 'Please provide a new password';
 export const PHRASE_INVALID = 'Recovery word phrase is invalid.';
 
-/* a whole line that is only a prompt */
-function isPromptLine(line) {
-  const t = line.trim();
-  return /^(?:New |Confirm )?Password:$/.test(t) || /^phrase>/.test(t);
+/* a whole line that is only a password prompt / only the phrase prompt (maybe with its echo) */
+function isPasswordPromptLine(line) {
+  return /^(?:New |Confirm )?Password:$/.test(line.trim());
+}
+function isPhrasePromptLine(line) {
+  return /^phrase>/.test(line.trim());
 }
 
 /*
@@ -36,7 +41,7 @@ export function cleanPtyText(input) {
   let s = String(input == null ? '' : input);
   let rest = '';
   //an escape sequence cut off at the end of this chunk: kept for the next one
-  const cut = s.match(/\x1b(?:\][^\x07\x1b]*(?:\x1b)?|\[[0-9;?]*|[()#][0-9A-Za-z]?)?$/);
+  const cut = s.match(/\x1b(?:\][^\x07\x1b]*(?:\x1b)?|\[[0-?]*[ -/]*|[()#][0-9A-Za-z]?)?$/);
   if (cut && cut[0]) {
     rest = cut[0];
     s = s.slice(0, s.length - rest.length);
@@ -45,11 +50,10 @@ export function cleanPtyText(input) {
     .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')
     .replace(/\x1b\[(\d*)C/g, (m, n) => ' '.repeat(Math.min(Number(n || 1), 500)))
     .replace(/\x1b\[\d*(?:;\d*)?[Hf]/g, '\n')
-    .replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '')
+    .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
     .replace(/\x1b[()#][0-9A-Za-z]/g, '')
     .replace(/\x1b[@-_]/g, '')
-    .replace(/[\x07\x08\x00]/g, '')
-    .replace(/\r/g, '');
+    .replace(/[\x00-\x08\x0b-\x1f\x7f]/g, (c) => (c === '\n' ? c : ''));
   return { text: s, rest };
 }
 
@@ -69,42 +73,57 @@ export function createPromptAnswerer({ passwords = 0, phrase = false, isSecret =
   let passwordsGiven = 0;
   let phraseAsked = false;
   let phraseGiven = false;
-  //the line after an answer: its echo (the phrase) or the bare newline
-  let afterAnswer = false;
-  //the phrase was written: its echo follows on the prompt's line, no prompt is read there
+  //the prompt answered last, and how many lines came since: a repaint of it is no new prompt
+  let lastPrompt = '';
+  let sinceAnswer = 99;
+  //the phrase was written: its echo follows on the prompt's line (echoing), and every line up
+  //to the request for the new password is dropped (phraseEcho), however the terminal wraps it
   let echoing = false;
+  let phraseEcho = false;
   let failed = null;
 
   function keep(line, out) {
-    if (afterAnswer) {
-      afterAnswer = false;
-      if (!line.trim() || isSecret(line) || isPromptLine(line)) return;
+    if (isSecret(line)) return;
+    if (phraseEcho) {
+      if (line.includes(NEW_PASSWORD_REQUEST)) phraseEcho = false;
+      else if (line.includes(PHRASE_INVALID)) phraseEcho = false;
+      else return;
     }
-    if (isPromptLine(line) || isSecret(line)) return;
+    //right after an answer: the bare newline, or a repaint of the prompt
+    if (sinceAnswer < 3 && (!line.trim() || line.trim() === lastPrompt)) return;
+    if (isPasswordPromptLine(line) || isPhrasePromptLine(line)) return;
     if (phrase && line.includes(PHRASE_REQUEST)) phraseAsked = true;
     out.lines.push(line);
     if (phrase && line.includes(PHRASE_INVALID)) out.fail = failed = 'invalid_phrase';
   }
 
-  //a prompt at `text` (the unfinished last line, or a whole line when the terminal moved the
-  //cursor after it, as ConPTY may): answer it, or say why to stop. true when it was a prompt
-  function prompt(text, out) {
-    if (PASSWORD_PROMPT.test(text)) {
+  function answered(text, what, out) {
+    out.answers.push(what);
+    lastPrompt = text.trim();
+    sinceAnswer = 0;
+  }
+
+  //a prompt in `text`: answer it, or say why to stop. true when it was a prompt. A whole line
+  //(the terminal moved the cursor after it, as ConPTY may) counts only when it is just the prompt
+  function prompt(text, whole, out) {
+    const t = text.trim();
+    if (whole ? isPasswordPromptLine(text) : PASSWORD_PROMPT.test(text)) {
+      //the same prompt drawn again (a whole line: the cursor moved on) right after it was answered
+      if (whole && sinceAnswer < 3 && t === lastPrompt) return true;
       if (passwordsGiven < passwords) {
         passwordsGiven++;
-        out.answers.push('password');
-        afterAnswer = true;
+        phraseEcho = false;
+        answered(text, 'password', out);
       } else {
         out.fail = failed = 'unexpected_prompt';
       }
       return true;
     }
-    if (phrase && phraseAsked && PHRASE_PROMPT.test(text)) {
+    if (phrase && phraseAsked && (whole ? /^phrase>$/.test(t) : PHRASE_PROMPT.test(text))) {
       if (!phraseGiven) {
         phraseGiven = true;
-        out.answers.push('phrase');
-        //the phrase is echoed after the prompt: that line is dropped
-        afterAnswer = true;
+        answered(text, 'phrase', out);
+        phraseEcho = true;
       } else {
         //asked again: the phrase was not accepted
         out.fail = failed = 'invalid_phrase';
@@ -129,19 +148,17 @@ export function createPromptAnswerer({ passwords = 0, phrase = false, isSecret =
         echoing = false;
         continue;
       }
-      if (prompt(line, out)) continue;
+      if (prompt(line, true, out)) continue;
       keep(line, out);
+      sinceAnswer++;
     }
     if (failed) {
       tail = '';
       return out;
     }
     //the rest of the echoed phrase comes with the next chunks: no prompt is read there
-    if (!echoing && prompt(tail, out)) {
-      if (!failed && out.answers[out.answers.length - 1] === 'phrase') {
-        echoing = true;
-        afterAnswer = false;
-      }
+    if (!echoing && prompt(tail, false, out)) {
+      if (!failed && out.answers[out.answers.length - 1] === 'phrase') echoing = true;
       tail = '';
     }
     if (failed) tail = '';
@@ -150,7 +167,7 @@ export function createPromptAnswerer({ passwords = 0, phrase = false, isSecret =
 
   function end() {
     const out = { lines: [], answers: [], fail: null };
-    if (!failed && tail) keep(tail, out);
+    if (!failed && tail && !echoing) keep(tail, out);
     tail = '';
     return { lines: out.lines };
   }

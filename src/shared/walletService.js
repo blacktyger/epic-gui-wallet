@@ -423,7 +423,7 @@ class WalletService {
             if(this.token){
               //the listeners are started with it from now on, by the main process (shared/ptyHost.js):
               //handed over once, not kept here
-              await window.nodeChildProcess.setSessionPassword(password);
+              await window.nodeChildProcess.setSessionPassword(password, this.configService.defaultAccountWalletdir);
               return {success:true, msg:this.token};
             }
         }

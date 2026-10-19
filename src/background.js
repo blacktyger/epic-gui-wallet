@@ -105,8 +105,19 @@ function loadPty(){
   return __non_webpack_require__(app.isPackaged ? path.join(process.resourcesPath, 'node-pty') : 'node-pty');
 }
 
+//only the app's own epic-wallet in resources/bin (as the preload finds it) is started on the pty
+const bundledBinDir = path.resolve(!process.env.NODE_ENV || process.env.NODE_ENV === 'production'
+  ? process.resourcesPath : path.join(__dirname, '../resources/'), 'bin') + path.sep;
+function isBundledWallet(cmd){
+  const b = path.resolve(String(cmd || ''));
+  const win = process.platform === 'win32';
+  const inside = win ? b.toLowerCase().startsWith(bundledBinDir.toLowerCase()) : b.startsWith(bundledBinDir);
+  return inside && /^epic-wallet(\.exe)?$/i.test(path.basename(b));
+}
+
 const ptyHost = createPtyHost({
   loadPty,
+  isAllowedBin: isBundledWallet,
   spawn: require('child_process').spawn,
   killTree: kill,
   win: process.platform === 'win32',

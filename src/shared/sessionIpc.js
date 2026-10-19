@@ -3,29 +3,32 @@
  * handlers and when the password is wiped (background.js). Plain ESM with Electron's objects
  * passed in (tests/sessionIpc.test.js).
  *
- *   session-password-set (password)  after a successful unlock; kept in memory, never sent back
+ *   session-password-set (password, dir)  after a successful unlock of the wallet in dir; kept in
+ *                                    memory, never sent back; listeners of other dirs don't get it
  *   session-password-clear           lock, logout, wallet switch
  *   session-password-has             → boolean
  *   pty-start {token, cmd, args, kind, password?, phrase?}
  *       a listener (listen, epicbox) gets the session password; init / recover get theirs with
  *       the request, for that one process. Output goes back as 'pty-data' {token, lines} and
  *       'pty-exit' {token, code, signal, fail}. Resolves {ok, pid, mode, id} or {ok: false,
- *       noSession?, error}: never a password.
- *   pty-kill (id)                    init / recover only; listeners are stopped by pid
- * Wiped also when the window reloads or navigates (the interface switch), when its renderer is
- * gone (crash), at quit and when the process exits.
+ *       noSession?, error}: never a password. Only the kind's own command of the app's binary
+ *       (ptyHost, walletArgs.checkPtyArgs).
+ * Only the app's window is served. Wiped also when the window reloads or navigates (the interface
+ * switch), when its renderer is gone (crash) or the window is closed, at quit and when the
+ * process exits.
  */
 
 export function registerSessionIpc({ ipcMain, session, ptyHost, isAppWindow }) {
-  ipcMain.handle('session-password-set', (event, password) => {
-    if (!isAppWindow(event) || typeof password !== 'string') return false;
-    return session.set(password);
+  ipcMain.handle('session-password-set', (event, password, dir) => {
+    if (!isAppWindow(event) || typeof password !== 'string' || typeof dir !== 'string' || !dir) return false;
+    return session.set(password, dir);
   });
-  ipcMain.handle('session-password-clear', () => {
+  ipcMain.handle('session-password-clear', (event) => {
+    //anyone may lock
     session.wipe();
     return true;
   });
-  ipcMain.handle('session-password-has', () => session.has());
+  ipcMain.handle('session-password-has', (event) => isAppWindow(event) && session.has());
 
   ipcMain.handle('pty-start', (event, req) => {
     if (!isAppWindow(event) || !req || typeof req !== 'object') return { ok: false, error: 'refused' };
@@ -46,6 +49,8 @@ export function registerSessionIpc({ ipcMain, session, ptyHost, isAppWindow }) {
         kind: req.kind,
         password,
         phrase: req.kind === 'recover' ? req.phrase : undefined,
+        //a listener only for the unlocked wallet
+        dir: listener ? session.dir() : undefined,
         onLines: (lines) => send('pty-data', { lines }),
         onExit: (e) => send('pty-exit', { code: e.code, signal: e.signal, fail: e.fail }),
       });
@@ -55,14 +60,14 @@ export function registerSessionIpc({ ipcMain, session, ptyHost, isAppWindow }) {
       return { ok: false, error: e && e.message ? e.message : 'start failed' };
     }
   });
-
-  ipcMain.handle('pty-kill', (event, id) => (isAppWindow(event) ? ptyHost.kill(id) : false));
 }
 
-/* the window's session ends with its page: a reload or a crashed renderer */
+/* the window's session ends with its page: a reload, a crashed renderer, the window closed
+   (macOS keeps the app running then) */
 export function wipeWithWindow(webContents, session) {
   webContents.on('did-navigate', () => session.wipe());
   webContents.on('render-process-gone', () => session.wipe());
+  webContents.on('destroyed', () => session.wipe());
 }
 
 /* and with the app */
