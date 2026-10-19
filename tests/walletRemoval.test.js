@@ -526,7 +526,7 @@ test('import → remove (list or app) → the old folder is listed by the scan a
   realFs.writeFileSync(path.join(oldDir, 'wallet_data', 'wallet.seed'), 'old seed');
   realFs.writeFileSync(path.join(oldDir, 'epic-wallet.toml'), 'old toml');
   const users = [];
-  const userService = { async ensureUser(walletId, cols) { const u = { id: users.length + 1, account: walletId, ...cols }; users.push(u); return u; } };
+  const userService = { async removeUser() {}, async ensureUser(walletId, cols) { const u = { id: users.length + 1, account: walletId, ...cols }; users.push(u); return u; } };
   const addressbookService = { async getAddress() { return []; }, async addAddress() { return []; } };
   const legacyBridge = { async scan({ known }) { return { ...scanLegacy({ fs: realFs, pathMod: path, legacy, known }), profiles: [] }; } };
   const importer = createImporter({ configService: cs, userService, addressbookService, legacyBridge, fs: realFs, pathMod: path });
