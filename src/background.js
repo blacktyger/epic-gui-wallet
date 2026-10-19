@@ -5,6 +5,7 @@ import contextMenu from 'electron-context-menu'
 import { execFile, spawn } from 'child_process'
 import { pathToFileURL } from 'url'
 import { createDirectory } from './shared/nodeDirectory'
+import { createReleaseLink } from './shared/releaseLink'
 import { createProcessRegistry, createPidCheck } from './shared/processOwnership'
 import { resolveRoot, layout, legacyPaths } from './shared/appPaths'
 import { scanLegacy } from './shared/legacyScan'
@@ -611,6 +612,14 @@ ipcMain.handle('node-directory', async (event, chain) => {
   } catch (e) {
     return null;
   }
+});
+
+//the version number's link (shared/releaseLink.js): this version's GitHub release page when it
+//exists, else the releases page; one HEAD request to github.com on the first click, cached
+const releaseLink = createReleaseLink({ fetch: (url, opts) => net.fetch(url, opts), timeoutMs: 3000 });
+ipcMain.handle('release-url', async () => {
+  const version = process.env.NODE_ENV === 'development' ? require('../package.json').version : app.getVersion();
+  return await releaseLink.get(version);
 });
 
 //the clipboard module is not available in renderer processes since Electron 44

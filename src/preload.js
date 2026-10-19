@@ -768,6 +768,8 @@ contextBridge.exposeInMainWorld('api', {
     },
     //live public nodes from status.btlabs.uk, fetched by the main process (null when unavailable)
     nodeDirectory: (chain) => ipcRenderer.invoke('node-directory', chain),
+    //the url of this version's GitHub release (or the releases page), checked by the main process
+    releaseUrl: () => ipcRenderer.invoke('release-url'),
     //start the app again: after choosing another app folder (configService.setRoot), which is read at start
     relaunch: () => ipcRenderer.invoke('app-relaunch'),
     
