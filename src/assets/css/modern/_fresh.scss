@@ -18,14 +18,21 @@
 .e-oldw .e-auth-title h1[tabindex='-1']:focus { outline: none; }
 .e-oldw > form > .e-notice,
 .e-oldw > .e-notice { text-align: left; }
-.e-oldw-list { list-style: none; margin: var(--sp-4) 0 0; padding: 0; }
+.e-oldw-list { list-style: none; margin: var(--sp-5) 0 0; padding: 0; overflow: hidden; }
+.e-oldw-list > li + li { border-top: 1px solid var(--line); }
+/* one row per wallet: the whole row is the checkbox's label */
 .e-oldw-row {
-  display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: var(--sp-3) var(--sp-4); align-items: start;
-  padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--line);
+  display: grid; grid-template-columns: 20px 40px minmax(0, 1fr); gap: var(--sp-3) var(--sp-4); align-items: start;
+  padding: var(--sp-4) var(--sp-5); cursor: pointer;
 }
-.e-oldw-row:last-child { border-bottom: 0; }
-.e-oldw-row.e-is-fresh .e-oldw-info { opacity: 0.6; }
-.e-oldw-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.e-oldw-row:hover { background: var(--hover); }
+.e-oldw-row:has(.e-oldw-check:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+.e-oldw-check { width: 20px; height: 20px; margin: 10px 0 0; accent-color: var(--accent); cursor: pointer; }
+.e-oldw-check:focus-visible { outline: none; }
+.e-oldw-check:disabled, .e-oldw-check:disabled ~ * { cursor: progress; }
+.e-oldw-row.e-is-off .e-glyph-sq,
+.e-oldw-row.e-is-off .e-oldw-info { opacity: 0.55; }
+.e-oldw-info, .e-oldw-details { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .e-oldw-name { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
 .e-oldw-name b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .e-oldw-dir { font-size: 0.75rem; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -33,22 +40,15 @@
 .e-oldw-legacy { display: flex; gap: 6px; align-items: flex-start; margin-top: var(--sp-1); font-size: var(--fs-sm); color: var(--warn); }
 .e-oldw-legacy .e-icon { flex: none; margin-top: 2px; }
 
-/* Import / Start fresh: a radio pair drawn as the segmented control */
-.e-oldw-choice { display: inline-flex; padding: 3px; gap: 2px; margin: 0; border-radius: var(--r-sm); background: var(--s2); border: 1px solid var(--line); align-self: center; }
-.e-oldw-choice label { position: relative; cursor: pointer; }
-.e-oldw-choice input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
-.e-oldw-choice span {
-  display: inline-flex; align-items: center; height: 32px; padding: 0 var(--sp-3); border-radius: 6px;
-  color: var(--dim); font-weight: 500; font-size: var(--fs-sm); white-space: nowrap;
-}
-.e-oldw-choice label:hover span { color: var(--text); background: var(--hover); }
-.e-oldw-choice input:checked + span { background: var(--s3); color: var(--accent-text); box-shadow: inset 0 -2px 0 var(--accent); }
-.e-oldw-choice input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-.e-oldw-chain { margin-top: var(--sp-4); align-items: flex-start; font-weight: 400; color: var(--dim); }
+.e-oldw-chain { margin-top: var(--sp-4); padding-inline: var(--sp-5); align-items: flex-start; }
 .e-oldw-chain input { margin-top: 2px; }
-.e-oldw-chain span { overflow-wrap: anywhere; }
-.e-oldw-actions { margin-top: var(--sp-6); align-items: center; gap: var(--sp-3); }
+.e-oldw-chain > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.e-oldw-chain-where { font-size: 0.75rem; font-weight: 400; color: var(--faint); overflow-wrap: anywhere; }
+.e-oldw-actions { margin-top: var(--sp-6); align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.e-oldw-later { margin: 0; font-size: var(--fs-sm); color: var(--faint); }
+.e-oldw-note { margin: var(--sp-3) 0 0; text-align: right; font-size: var(--fs-sm); color: var(--dim); }
+.e-oldw .e-btn-primary[aria-disabled='true']:not([aria-busy='true']) { background: var(--s3); border-color: var(--line-strong); color: var(--faint); cursor: not-allowed; }
+.e-oldw .e-btn-primary[aria-disabled='true']:not([aria-busy='true']):hover { background: var(--s3); }
 .e-oldw-center { justify-content: center; }
 .e-oldw-error { margin-top: var(--sp-3); }
 .e-oldw-failed { margin: var(--sp-2) 0 0; padding-left: var(--sp-5); font-size: var(--fs-sm); color: var(--dim); }

@@ -131,11 +131,16 @@ Several wallets (approved):
   <path>", plus id and origin), rewritten on register, rename (`configService.renameWallet`) and each
   unlock. Informational only: the app never reads it. Never written in an old folder.
 
-Found screen: "Found N wallets from an older Epic Wallet", one row each: label (old display name or
-account), folder, network, last used, contacts count; per row Import / Start fresh, plus *Import all* and
-*Start fresh* (all). Note: "Use the password you had in the older wallet. The older app keeps working."
-Each choice is stored in `legacy`, so the screen never asks again; the first imported wallet becomes
-the default.
+Found screen (Patryk, 2026-10-19): "We found N wallets from an older Epic Wallet", "Use them here? Your
+coins and recovery phrase stay the same." One row each with a checkbox, all ticked: label (old display
+name or account), network badge (not mainnet), folder (short, full path in a tooltip), last used,
+contacts count, the `legacyDb` note. *Reuse the downloaded blockchain* (ticked) when chain data was found.
+*Use selected wallets* imports the ticked ones (`legacy[dir] = 'imported'`, the first imported becomes
+the default, then Unlock); unticked ones get no decision. *Not now* changes nothing but `markScanned`, then
+Welcome (or back to Settings). Either way the screen doesn't come back at start; Settings › Add another
+wallet › Import from an older Epic Wallet lists every wallet still undecided. The decisions are in
+`src/components/foundPlan.js` (tests/foundPlan.test.js). Notes: "Close the older Epic Wallet first. Unlock
+with the password you had there." and "You can import them later in Settings."
 
 ## Importer
 

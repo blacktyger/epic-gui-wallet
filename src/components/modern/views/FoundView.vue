@@ -45,53 +45,49 @@
       <form v-else novalidate @submit.prevent="submit">
         <div class="e-auth-title">
           <h1 ref="heading" tabindex="-1">{{ title }}</h1>
-        </div>
-        <div class="e-notice e-gold">
-          <EIcon name="info" />
-          <div><p>{{ $t('msg.wallets.found_note') }}</p></div>
+          <p v-if="wallets.length">{{ $t('msg.wallets.found_lead', wallets.length) }}</p>
         </div>
 
         <ul v-if="wallets.length" class="e-panel e-oldw-list" :aria-label="$t('msg.wallets.found_list')">
-          <li v-for="(w, i) in wallets" :key="w.key" class="e-oldw-row" :class="{ 'e-is-fresh': choice[w.key] === 'fresh' }">
-            <div class="e-glyph-sq" aria-hidden="true"><EIcon name="wallet" /></div>
-            <div class="e-oldw-info">
-              <p class="e-oldw-name">
-                <b :id="'found-n-' + i">{{ rowName(w, i) }}</b>
-                <span v-if="badge(w.network)" class="e-tag e-warn">{{ badge(w.network) }}</span>
-              </p>
-              <p class="e-mono e-oldw-dir" :title="w.dir" translate="no">{{ short(w.dir) }}</p>
-              <p v-if="rowMeta(w)" class="e-oldw-meta">{{ rowMeta(w) }}</p>
-              <p v-if="w.legacyDb" class="e-oldw-legacy"><EIcon name="history" size="sm" /><span>{{ $t('msg.wallets.found_legacy_db') }}</span></p>
-            </div>
-            <fieldset class="e-oldw-choice">
-              <legend class="e-sr-only">{{ $t('msg.wallets.found_choice_label', [rowName(w, i)]) }}</legend>
-              <label>
-                <input type="radio" :name="'found-' + i" value="import" v-model="choice[w.key]" />
-                <span>{{ $t('msg.wallets.found_import') }}</span>
-              </label>
-              <label>
-                <input type="radio" :name="'found-' + i" value="fresh" v-model="choice[w.key]" />
-                <span>{{ $t('msg.wallets.found_fresh') }}</span>
-              </label>
-            </fieldset>
+          <li v-for="(w, i) in wallets" :key="w.key">
+            <label class="e-oldw-row" :class="{ 'e-is-off': !checked[w.key] }">
+              <input type="checkbox" class="e-oldw-check" v-model="checked[w.key]" :disabled="busy"
+                :aria-labelledby="'found-n-' + i" :aria-describedby="'found-d-' + i" />
+              <span class="e-glyph-sq" aria-hidden="true"><EIcon name="wallet" /></span>
+              <span class="e-oldw-info">
+                <span class="e-oldw-name">
+                  <b :id="'found-n-' + i">{{ rowName(w, i) }}</b>
+                  <span v-if="badge(w.network)" class="e-tag e-warn">{{ badge(w.network) }}</span>
+                </span>
+                <span :id="'found-d-' + i" class="e-oldw-details">
+                  <span class="e-mono e-oldw-dir" :title="w.dir" translate="no">{{ short(w.dir) }}</span>
+                  <span v-if="rowMeta(w)" class="e-oldw-meta">{{ rowMeta(w) }}</span>
+                  <span v-if="w.legacyDb" class="e-oldw-legacy"><EIcon name="history" size="sm" /><span>{{ $t('msg.wallets.found_legacy_db') }}</span></span>
+                </span>
+              </span>
+            </label>
           </li>
         </ul>
 
         <label v-if="chain" class="e-onb-check e-oldw-chain">
-          <input type="checkbox" v-model="reuseChain" />
-          <span :title="chain.dir">{{ $t('msg.wallets.found_reuse_chain', [short(chain.dir), size(chain.bytes)]) }}</span>
+          <input type="checkbox" v-model="reuseChain" :disabled="busy" aria-describedby="found-chain-d" />
+          <span>
+            {{ $t('msg.wallets.found_reuse_chain') }}
+            <small id="found-chain-d" class="e-mono e-oldw-chain-where" :title="chain.dir" translate="no">{{ chainWhere }}</small>
+          </span>
         </label>
 
         <p v-if="error" class="e-error-msg e-oldw-error" role="alert"><EIcon name="alertc" /><span>{{ error }}</span></p>
 
         <div class="e-row e-oldw-actions">
-          <button v-if="from" type="button" class="e-btn e-btn-ghost" :disabled="busy" @click="back"><EIcon name="chevl" />{{ $t('msg.back') }}</button>
+          <p v-if="wallets.length && from !== 'settings'" class="e-oldw-later">{{ $t('msg.wallets.found_later', wallets.length) }}</p>
           <span class="e-grow"></span>
-          <button v-if="wallets.length" type="button" class="e-btn" :disabled="busy" @click="startFresh">{{ $t('msg.wallets.found_fresh_all') }}</button>
-          <button type="submit" class="e-btn e-btn-primary" :aria-disabled="busy ? 'true' : null" :aria-busy="busy ? 'true' : null">
+          <button type="button" class="e-btn e-btn-ghost" :disabled="busy" @click="notNow">{{ $t('msg.wallets.found_not_now') }}</button>
+          <button type="submit" class="e-btn e-btn-primary" :aria-disabled="usable && !busy ? null : 'true'" :aria-busy="busy ? 'true' : null">
             <span v-if="busy" class="e-spinner" aria-hidden="true"></span><EIcon v-else name="download" />{{ primaryLabel }}
           </button>
         </div>
+        <p class="e-oldw-note">{{ $t('msg.wallets.found_note') }}</p>
       </form>
     </div>
     <AuthFoot />
