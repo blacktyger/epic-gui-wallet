@@ -26,10 +26,10 @@ const messages = {
 
     sent_confirmed: 'Sent',
     received_confirmed: 'Received',
-    sent_unconfirmed: '... waiting for receiver to sign',
-    sent_waiting_reply: "... waiting for the recipient's reply. Cancel it if it does not come",
-    received_unconfirmed: '... waiting for sender to finalize',
-    received_mempool: '... waiting for confirmation',
+    sent_unconfirmed: 'Waiting for receiver to sign',
+    sent_waiting_reply: "Waiting for the recipient's reply. Cancel it if it does not come",
+    received_unconfirmed: 'Waiting for sender to finalize',
+    received_mempool: 'Waiting for confirmations',
 
     locked: 'Locked',
     send: 'Send',
@@ -347,7 +347,7 @@ const messages = {
       confirmed: 'Confirmed',
       confirmed_count: 'Confirmed ({0} confirmations)',
       confirmed_spendable_count: 'Confirmed, spendable ({0} confirmations)',
-      waiting: 'Waiting to be mined',
+      waiting: 'Waiting for confirmations',
     },
     fileSend:{
       sendAmount: 'Amount to send',
