@@ -50,6 +50,13 @@ function emptyData() {
   return { schema: SCHEMA, app: { ...APP_DEFAULTS }, legacy: {}, node: {}, defaultWallet: '', wallets: [] };
 }
 
+/* a wallet's label is only shown, never part of a path: any characters, trimmed, at most
+   LABEL_MAX characters (counted as code points, so an emoji isn't cut in half); duplicates are fine */
+export const LABEL_MAX = 32;
+export function cleanLabel(label) {
+  return typeof label === 'string' ? Array.from(label.trim()).slice(0, LABEL_MAX).join('').trim() : '';
+}
+
 /* a wallet record as stored; throws on what would break the app later */
 export function normalizeWallet(w) {
   if (!isObj(w)) throw new Error('wallet: not an object');
@@ -60,7 +67,7 @@ export function normalizeWallet(w) {
   }
   return {
     ...w,
-    label: typeof w.label === 'string' ? w.label : '',
+    label: cleanLabel(w.label),
     origin: ORIGINS.includes(w.origin) ? w.origin : 'created',
     importedFrom: isObj(w.importedFrom) ? w.importedFrom : null,
     settings: { ...WALLET_DEFAULTS, ...(isObj(w.settings) ? w.settings : {}) },

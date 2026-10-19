@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { defaultRoot, resolveRoot, layout, legacyPaths, netShort, netFromShort, ENV_ROOT } from '../src/shared/appPaths.js';
-import { createSettingsStore, WALLET_DEFAULTS, APP_DEFAULTS } from '../src/shared/settingsStore.js';
+import { createSettingsStore, WALLET_DEFAULTS, APP_DEFAULTS, cleanLabel, normalizeWallet } from '../src/shared/settingsStore.js';
 
 const W = path.win32, P = path.posix;
 const winEnv = { LOCALAPPDATA: 'C:\\Users\\Jane Doe\\AppData\\Local', APPDATA: 'C:\\Users\\Jane Doe\\AppData\\Roaming', USERPROFILE: 'C:\\Users\\Jane Doe' };
@@ -117,6 +117,17 @@ test('settings: wallets, defaults, ids, save with backup, reload', (t) => {
   assert.equal(r.nextWalletId(), 'w3');
   r.removeWallet('w2');
   assert.equal(r.defaultWalletId(), '');
+});
+
+test('labels: trimmed, any characters, at most 32, never a path', () => {
+  assert.equal(cleanLabel('  Savings  '), 'Savings');
+  assert.equal(cleanLabel('../../etc ✨ "x"'), '../../etc ✨ "x"');
+  assert.equal(cleanLabel('x'.repeat(40)), 'x'.repeat(32));
+  assert.equal(Array.from(cleanLabel('😀'.repeat(40))).length, 32);
+  assert.equal(cleanLabel(null), '');
+  const n = normalizeWallet({ id: 'w2', network: 'mainnet', configDir: '/r/wallets/w2', dataDir: '/r/wallets/w2', label: ' A/B ' });
+  assert.equal(n.label, 'A/B');
+  assert.equal(n.configDir, '/r/wallets/w2');
 });
 
 test('settings: an unreadable or newer file is never overwritten, unknown keys are kept', (t) => {
