@@ -36,6 +36,7 @@ export default {
   hint_errors: 'Fix the fields marked in red.',
   hint_sync: 'Waiting for the node to sync.',
   hint_epicbox: 'Waiting for Epicbox to connect.',
+  hint_sent: 'Sent. The form is clear: enter a new amount and recipient to send again.',
   sync_done: '{p} done. You can fill in the form now.',
   review_title: 'Check and send',
   review_desc: 'Once it’s posted to the chain a send can’t be undone.',

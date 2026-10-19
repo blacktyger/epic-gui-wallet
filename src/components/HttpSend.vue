@@ -69,9 +69,10 @@
 
             <div class="field is-grouped">
               <div class="control">
-                <button class="button is-primary" :class="{ 'button__loader': isLoadingSend }" :disabled="!nodeSynced || (epicboxSelected && !epicboxConnected)" @click="send">
+                <button class="button is-primary" :class="{ 'button__loader': isLoadingSend }" :disabled="!nodeSynced || (epicboxSelected && !epicboxConnected) || isLoadingSend || sent" @click="send">
                   <span class="button__text">{{ $t("msg.send") }}</span>
                 </button>
+                <p v-if="sent" class="help is-success" role="status">{{ $t("msg.httpSend.success") }}</p>
 
               </div>
               <div class="control">
@@ -104,6 +105,7 @@ import AmountField from "@/components/form/amountField";
 import ProofAddressField from "@/components/form/proofAddressField";
 import AddressField from "@/components/form/addressField";
 import useFormValidation from "@/modules/useFormValidation";
+import { clearSendForm, inputAfterSend } from "@/shared/sendForm";
 
 export default {
   name: "http-send",
@@ -115,7 +117,11 @@ export default {
 
 
   watch: {
+      //after a send the form is clear and Send disabled until something new is typed
+      'amountField.input': function (newVal) { inputAfterSend(this, newVal); },
+      message: function (newVal) { inputAfterSend(this, newVal); },
       'addressField.input': function (newVal) {
+        inputAfterSend(this, newVal);
         if(newVal == ''){
           this.addressSelected = false;
           this.withproof = false;
@@ -139,6 +145,8 @@ export default {
     const message = ref('');
     const isLoadingSend = ref(false);
     const isLoadingSendFile = ref(false);
+    //the last send went through and nothing new is typed yet (shared/sendForm.js)
+    const sent = ref(false);
     const address = ref({});
     const dandelion = ref('');
 
@@ -159,6 +167,7 @@ export default {
       resetFormErrors,
       isLoadingSend,
       isLoadingSendFile,
+      sent,
       address,
       dandelion
     }
@@ -328,13 +337,20 @@ export default {
 
     async send(){
 
-      if(!this.nodeSynced || (this.epicboxSelected && !this.epicboxConnected) || this.isLoadingSend) return;
-      this.resetFormErrors();
-      let isFormAllValid = [];
-
+      if(!this.nodeSynced || (this.epicboxSelected && !this.epicboxConnected) || this.isLoadingSend || this.sent) return;
       //the amount check asks the wallet for the fee of exactly this amount: busy from here
       //(the Modern review dialog keeps its busy state through the check and the send)
       this.isLoadingSend = true;
+      try {
+        await this.sendNow();
+      } finally {
+        this.isLoadingSend = false;
+      }
+    },
+
+    async sendNow(){
+      this.resetFormErrors();
+      let isFormAllValid = [];
       let amountValid = false;
       try {
         amountValid = await this.amountField.validInput(this.store.state.summary.spendable);
@@ -393,6 +409,7 @@ export default {
             });
 
             this.$toast.success(this.$t("msg.httpSend.success"));
+            clearSendForm(this);
             this.emitter.emit('app.update');
 
         }else{
@@ -409,11 +426,6 @@ export default {
           this.$toast.error(this.$t('msg.httpSend.TxFailed'));
 
         }
-
-        this.isLoadingSend = false;
-      }else{
-        this.isLoadingSend = false;
-        return;
       }
 
     },

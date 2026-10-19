@@ -200,6 +200,7 @@
         class="e-btn e-btn-primary"
         :class="{ 'e-is-busy': isLoadingSend }"
         :aria-busy="isLoadingSend ? 'true' : null"
+        :disabled="isLoadingSend"
         @click="confirmSend"
       ><EIcon name="send" />{{ isLoadingSend || !rv ? $t('msg.modern.send.sending') : $t('msg.modern.send.send_amount', { n: rvAmountText }) }}</button>
     </template>
@@ -289,8 +290,9 @@
         const p = this.withproof && this.proofAddressField && this.proofAddressField.errors && this.proofAddressField.errors.proof_address;
         return !!(a || t || p);
       },
-      canSend() { return this.nodeSynced && !(this.epicboxSelected && !this.epicboxConnected) },
+      canSend() { return this.nodeSynced && !(this.epicboxSelected && !this.epicboxConnected) && !this.sent },
       hint() {
+        if (this.sent) return this.$t('msg.modern.send.hint_sent');
         if (!this.nodeSynced) return this.$t('msg.modern.send.hint_sync');
         if (this.epicboxSelected && !this.epicboxConnected) return this.$t('msg.modern.send.hint_epicbox');
         if (this.formHasErrors) return this.$t('msg.modern.send.hint_errors');
@@ -388,7 +390,7 @@
       },
       /* the dialog's Send button: the Classic send(), then the dialog goes away whatever the outcome */
       async confirmSend() {
-        if (this.isLoadingSend) return;
+        if (this.isLoadingSend || this.sent) return;
         try {
           await this.send();
         } finally {
