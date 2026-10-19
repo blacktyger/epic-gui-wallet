@@ -100,9 +100,9 @@ git checkout -q --detach $SHA >> %LOG% 2>&1 || exit /b 12
 for /f %%h in ('git rev-parse HEAD') do if not "%%h"=="$SHA" exit /b 13
 node -v >> %LOG% 2>&1
 call npm ci --no-audit --no-fund >> %LOG% 2>&1 || exit /b 14
-call npm test >> %LOG% 2>&1 || exit /b 15
-call npx vue-cli-service electron:build --win nsis --publish never >> %LOG% 2>&1 || exit /b 16
-copy /y "build\\EpicWallet Setup $VERSION.exe" "$WDIR\\$INSTALLER" >> %LOG% 2>&1 || exit /b 17
+rem no npm test here: the suite's fixtures are POSIX paths (it runs on Linux, step 2)
+call npx vue-cli-service electron:build --win nsis --publish never >> %LOG% 2>&1 || exit /b 15
+copy /y "build\\EpicWallet Setup $VERSION.exe" "$WDIR\\$INSTALLER" >> %LOG% 2>&1 || exit /b 16
 echo END %DATE% %TIME% >> %LOG%
 EOF
   sed -i 's/$/\r/' "$CMD"

@@ -32,8 +32,9 @@ for the user that builds.
    (`scripts/afterPack.js`) strips the helper binaries in `resources/bin/linux`.
 4. Windows: writes `build.cmd` to `C:\EpicRig\release-<version>-<short sha>\`, then runs it over
    plain `ssh` (session 0: nothing shows on the Windows desktop, and no scheduled task is used).
-   It does a fresh clone pinned to the same SHA, checks HEAD, then runs `npm ci`, `npm test` and
-   `electron:build --win nsis --publish never`. The installer and `build.log` are copied back.
+   It does a fresh clone pinned to the same SHA, checks HEAD, then runs `npm ci` and
+   `electron:build --win nsis --publish never`. There's no `npm test` on Windows: the test
+   fixtures use POSIX paths (8 of them fail on Windows), so step 2 on Linux is the gate. The installer and `build.log` are copied back.
    The script stops if that folder already exists. Remove it first to rebuild the same commit
    (the folder holds a full `node_modules`, about 1–2 GB).
 5. Unpacks what a user downloads (`--appimage-extract`, and the installer's `app-64.7z` with
