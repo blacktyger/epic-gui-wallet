@@ -14,8 +14,8 @@
     "electron:build": "vue-cli-service electron:build",
     "electron:publish": "vue-cli-service electron:build --publish=always",
     "electron:serve": "vue-cli-service electron:serve",
-    "postinstall": "electron-builder install-app-deps",
-    "postuninstall": "electron-builder install-app-deps"
+    "postinstall": "node scripts/install-app-deps.js",
+    "postuninstall": "node scripts/install-app-deps.js"
   },
   "main": "index.js",
   "dependencies": {
