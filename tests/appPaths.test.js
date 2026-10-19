@@ -170,3 +170,36 @@ test('B1: wallet defaults per network: public node on mainnet, the local node on
   assert.equal(normalizeWallet({ id: 'w2', network: 'usernet', configDir: '/r/w2', dataDir: '/r/w2',
     settings: { check_node_api_http_addr: 'http://10.0.0.5:23413' } }).settings.check_node_api_http_addr, 'http://10.0.0.5:23413');
 });
+
+test('S5: wallet ids are never reused: removed ids, broken records kept on disk, nextId only grows', (t) => {
+  const root = tmpRoot(t);
+  const file = path.join(root, 'settings.json');
+  const rec = (id, network = 'mainnet') => ({ id, network, configDir: '/r/wallets/' + id, dataDir: '/r/wallets/' + id });
+  const s = createSettingsStore({ fs, pathMod: path, file }).load();
+  assert.equal(s.nextWalletId(), 'w1');
+  s.addWallet(rec('w1'));
+  s.addWallet(rec(s.nextWalletId()));
+  assert.equal(s.nextWalletId(), 'w3');
+  s.removeWallet('w2');
+  assert.equal(s.nextWalletId(), 'w3', 'a removed id is not given out again');
+  s.removeWallet('w1');
+  assert.equal(s.nextWalletId(), 'w3');
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).nextId, 3);
+  assert.equal(createSettingsStore({ fs, pathMod: path, file }).load().nextWalletId(), 'w3', 'kept in settings.json');
+
+  //an older file without nextId and with a broken record (kept on disk): past both
+  fs.writeFileSync(file, JSON.stringify({ schema: 1, wallets: [rec('w2'), { id: 'w7', network: 'nonet' }] }));
+  const r = createSettingsStore({ fs, pathMod: path, file }).load();
+  assert.deepEqual(r.wallets().map(w => w.id), ['w2']);
+  assert.equal(r.nextWalletId(), 'w8');
+  assert.throws(() => r.addWallet(rec('w7')), /exists/, 'not over a broken record');
+  //a stored nextId lower than the ids (a hand edit) never wins
+  fs.writeFileSync(file, JSON.stringify({ schema: 1, nextId: 1, wallets: [rec('w4')] }));
+  assert.equal(createSettingsStore({ fs, pathMod: path, file }).load().nextWalletId(), 'w5');
+  fs.writeFileSync(file, JSON.stringify({ schema: 1, nextId: 'x', wallets: [] }));
+  assert.equal(createSettingsStore({ fs, pathMod: path, file }).load().nextWalletId(), 'w1');
+  //an id given explicitly past nextId moves it on
+  const q = createSettingsStore({ fs, pathMod: path, file }).load();
+  q.addWallet(rec('w9'));
+  assert.equal(q.nextWalletId(), 'w10');
+});

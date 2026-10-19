@@ -166,8 +166,11 @@ export function createImporter({ configService, userService, addressbookService,
         catch (e) { log('import ' + id + ': a contact was not added: ' + (e && e.message)); }
       }
     } catch (e) {
-      //undo the list entry so a retry starts clean; nothing of the old wallet was touched
+      //undo the list entry and the new config folder (its toml, WALLET.txt: discardWalletDirs removes
+      //only those names, and never a folder holding wallet_data) so a retry starts clean; configDir
+      //is 6.1's own, never the old wallet's folder, which is not touched
       try { s.removeWallet(id); } catch (e2) { /* already gone */ }
+      if (configDir !== row.key) configService.discardWalletDirs({ configDir });
       throw e;
     }
     s.setLegacyDecision(row.dir, 'imported');

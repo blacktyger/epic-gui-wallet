@@ -10,6 +10,7 @@
  *   "legacy": { "<old wallet dir>": "imported" | "fresh" },  // what the user chose per found wallet
  *   "node": { "mainnet": { "chainDir": "<dir>" } },          // built-in node; absent = <root>/node/main/chain_data
  *   "defaultWallet": "w1",
+ *   "nextId": 2,                        // the next wallet id's number: only grows, so an id is never reused
  *   "wallets": [{
  *     "id": "w1", "label": "", "network": "mainnet",
  *     "configDir": "<root>/wallets/w1",   // epic-wallet.toml, secrets, log: always 6.1's own
@@ -65,8 +66,11 @@ function cleanSettings(s, network) {
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
 function emptyData() {
-  return { schema: SCHEMA, app: { ...APP_DEFAULTS }, legacy: {}, node: {}, defaultWallet: '', wallets: [] };
+  return { schema: SCHEMA, app: { ...APP_DEFAULTS }, legacy: {}, node: {}, defaultWallet: '', nextId: 1, wallets: [] };
 }
+
+/* the number of a wN id, 0 for any other id */
+const idNumber = (id) => { const m = typeof id === 'string' && /^w(\d+)$/.exec(id); return m ? Number(m[1]) : 0; };
 
 /* a wallet's label is only shown, never part of a path: any characters, trimmed, at most
    LABEL_MAX characters (counted as code points, so an emoji isn't cut in half); duplicates are fine */
@@ -107,6 +111,9 @@ function normalize(raw) {
   d.wallets = wallets;
   Object.defineProperty(d, 'invalidWallets', { value: invalid, enumerable: false });
   if (!wallets.some(w => w.id === d.defaultWallet)) d.defaultWallet = wallets.length ? wallets[0].id : '';
+  //past every id in the file, the broken records' too (they are written back and may be fixed by hand)
+  const stored = Number.isSafeInteger(raw.nextId) && raw.nextId > 0 ? raw.nextId : 1;
+  d.nextId = Math.max(stored, ...[...wallets, ...invalid].map(w => idNumber(w && w.id) + 1));
   return d;
 }
 
@@ -185,15 +192,16 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
     defaultWalletId() { return data.defaultWallet; },
     setDefaultWallet(id) { find(id); data.defaultWallet = id; return save(); },
 
-    /* w1, w2, …: never reused while the list holds it, so a wallet's folder is never shared */
+    /* w1, w2, …: never reused, also after a wallet was removed from the list, so a wallet's
+       folder is never shared (settings.json keeps nextId, which only grows) */
     nextWalletId() {
-      const n = data.wallets.map(w => /^w(\d+)$/.exec(w.id)).filter(Boolean).map(m => +m[1]);
-      return 'w' + ((n.length ? Math.max(...n) : 0) + 1);
+      return 'w' + data.nextId;
     },
     addWallet(w) {
       const rec = normalizeWallet({ createdAt: now(), ...w });
-      if (data.wallets.some(x => x.id === rec.id)) throw new Error('wallet ' + rec.id + ' exists');
+      if ([...data.wallets, ...(data.invalidWallets || [])].some(x => x && x.id === rec.id)) throw new Error('wallet ' + rec.id + ' exists');
       data.wallets.push(rec);
+      data.nextId = Math.max(data.nextId, idNumber(rec.id) + 1);
       if (!data.defaultWallet) data.defaultWallet = rec.id;
       save();
       return { ...rec, settings: { ...rec.settings } };

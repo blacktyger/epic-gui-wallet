@@ -9,6 +9,7 @@ import { createImporter, fallbackNodeAddress, fallbackLocale, cleanEpicbox } fro
 import { createSettingsStore, WALLET_DEFAULTS } from '../src/shared/settingsStore.js';
 import { scanLegacy } from '../src/shared/legacyScan.js';
 import { legacyPaths } from '../src/shared/appPaths.js';
+import ConfigService from '../src/shared/configService.js';
 
 /* an fs that throws on any write under the old GUIs' folders (the test home minus 6.1's root) */
 function guardedFs(home, root) {
@@ -85,8 +86,11 @@ function setup(t, { profiles, failUserFor = '', cleanNodeAddress, supportedLocal
     async registerWallet(rec) {
       fs.mkdirSync(rec.configDir, { recursive: true });
       fs.writeFileSync(path.join(rec.configDir, 'epic-wallet.toml'), '# rendered');
+      fs.writeFileSync(path.join(rec.configDir, 'WALLET.txt'), 'Epic Wallet: ...');
       return settings.addWallet(rec);
     },
+    //the real one: only known file names, never a folder holding wallet_data
+    discardWalletDirs(dirs) { return ConfigService.prototype.discardWalletDirs.call({ fs, path }, dirs); },
   };
   const users = [], book = [];
   const userService = {
@@ -213,13 +217,14 @@ test('importWallets: one failure does not stop the others and leaves no half ent
   const r = await b.importer.scan();
   const keys = ['alpha', 'beta', 'gamma'].map(acc => r.wallets.find(w => w.account === acc).key);
   const res = await b.importer.importWallets([...keys, '/no/such/wallet'], { reuseChain: false });
-  //beta's entry was undone, so its id is free again (its config dir holds only the rendered toml)
-  assert.deepEqual(res.imported.map(i => [i.key, i.walletId]), [[keys[0], 'w1'], [keys[2], 'w2']]);
+  //beta's entry was undone and its new config folder removed; its id is never given out again (S5)
+  assert.deepEqual(res.imported.map(i => [i.key, i.walletId]), [[keys[0], 'w1'], [keys[2], 'w3']]);
+  assert.ok(!realFs.existsSync(path.join(b.root, 'wallets', 'w2')), 'the failed import\'s config folder is gone');
   assert.deepEqual(res.failed, [
     { key: keys[1], reason: 'Null value is not allowed' },
     { key: '/no/such/wallet', reason: 'not found' },
   ]);
-  assert.deepEqual(b.settings.wallets().map(w => [w.id, w.importedFrom.account]), [['w1', 'alpha'], ['w2', 'gamma']]);
+  assert.deepEqual(b.settings.wallets().map(w => [w.id, w.importedFrom.account]), [['w1', 'alpha'], ['w3', 'gamma']]);
   assert.ok(!(path.join(b.home, 'My Wallets', 'beta', 'floo') in b.settings.legacyDecisions()));
   assert.equal(b.settings.nodeChainDir('mainnet'), '');   //reuseChain off
   assert.ok(b.unchanged());
