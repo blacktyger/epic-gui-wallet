@@ -1,5 +1,6 @@
 /* check required files and folder on on app start */
 import { tomlString } from './tomlString.js';
+import { migrateNodeAddress } from './nodeAddressMigration.js';
 const defaultAppConfigDir = window.config.getUserHomedir();
 const defaultUserdir = 'epicguiwallet';
 const path = window.nodePath;
@@ -304,7 +305,9 @@ class ConfigService {
         const re3 = /^check_node_api_http_addr(\s)*=(\s).*/gm;
 
         let nodeApiHttp = '';
-        if(this.config.nodesynced == false && this.config.check_node_api_http_addr == 'http://127.0.0.1:3413'){
+        //the fallback is a mainnet node: floonet/usernet wallets stay on the built-in node while it syncs
+        if(this.config.nodesynced == false && this.config.check_node_api_http_addr == 'http://127.0.0.1:3413'
+           && (this.defaultAccountNetwork || 'mainnet') == 'mainnet'){
           nodeApiHttp = this.nodeFallBack;
         }else{
           nodeApiHttp = this.config.check_node_api_http_addr;
@@ -938,6 +941,12 @@ epicbox_port = 443
         //make some settings
         //load settings before change wallet toml
         this.config = this.loadConfig(this.configFile);
+        //once per account: clean up a node address saved by an older GUI, before the toml gets it
+        const migrated = await migrateNodeAddress(this.config, {network: this.defaultAccountNetwork});
+        this.nodeAddressChange = migrated.change;
+        if(migrated.updated){
+          this.saveConfig();
+        }
 
         this.walletTOMLPath = this.checkTomlFile(defaultAccountWalletdir);
         if(!this.walletTOMLPath){
