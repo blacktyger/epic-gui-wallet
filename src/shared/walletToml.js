@@ -117,7 +117,7 @@ export function setTomlKeys(text, section, values) {
  *   configDir: 6.1's folder of this wallet (secrets, log, Tor send config)
  *   dataDir: the folder holding wallet_data (== configDir for wallets made in 6.1)
  *   nodeUrl: check_node_api_http_addr; nodeApiSecretPath: the built-in node's .api_secret, or
- *   empty for <configDir>/.api_secret (epic-wallet creates it when missing)
+ *   empty for none (no node_api_secret_path in the toml)
  */
 export function renderWalletToml({ template, network, configDir, dataDir, nodeUrl, nodeApiSecretPath, epicboxDomain }) {
   const n = net(network);
@@ -127,12 +127,15 @@ export function renderWalletToml({ template, network, configDir, dataDir, nodeUr
     chain_type: n.walletChain,
     api_listen_port: ports.walletListener,
     api_secret_path: joinPath(configDir, '.owner_api_secret'),
-    node_api_secret_path: nodeApiSecretPath || joinPath(configDir, '.api_secret'),
     check_node_api_http_addr: nodeUrl || 'http://127.0.0.1:' + ports.nodeApi,
     //the GUI reaches the foreign API (receive_tx) through the owner API's port
     owner_api_include_foreign: true,
     data_file_dir: joinPath(dataDir, 'wallet_data'),
   });
+  //only the built-in node has a secret. With the key absent epic-wallet reads node_api_secret_path
+  //as None and sends no Authorization header (a path is sent as Basic auth on every node call)
+  if (nodeApiSecretPath) t = setTomlKeys(t, 'wallet', { node_api_secret_path: nodeApiSecretPath });
+  else t = t.replace(/^[ \t]*node_api_secret_path[ \t]*=.*(\r?\n|$)/gm, '');
   t = setTomlKeys(t, 'tor', { send_config_dir: configDir });
   t = setTomlKeys(t, 'epicbox', { epicbox_domain: epicboxDomain || 'epicbox.epiccash.com', epicbox_port: 443 });
   //the GUI reads the wallet's stdout (start, listener and Epicbox messages)

@@ -148,11 +148,16 @@ test('updateConfig: locale to the app, wallet keys to the wallet, unknown keys d
   cs.updateConfig({ nodeInternal: true, nodesynced: false, check_node_api_http_addr: 'http://127.0.0.1:3413' });
   const t2 = fs.readFileSync(d.configDir + '/epic-wallet.toml');
   assert.equal(tomlStr(t2, 'check_node_api_http_addr'), 'https://node.epiccash.com:3413');
-  assert.equal(tomlStr(t2, 'node_api_secret_path'), d.configDir + '/.api_secret');
+  assert.equal(tomlStr(t2, 'node_api_secret_path'), undefined);
   cs.updateConfig({ nodesynced: true });
   assert.equal(tomlStr(fs.readFileSync(d.configDir + '/epic-wallet.toml'), 'check_node_api_http_addr'), 'http://127.0.0.1:3413');
   assert.equal(cs.apiSecretPath, cs.nodeDir('mainnet') + '/.api_secret');
   assert.match(cs.apisecret, /^[A-Za-z0-9]{20}$/);
+  //any other node: the GUI has no secret to send
+  cs.updateConfig({ nodeInternal: false });
+  assert.equal(cs.apiSecretPath, '');
+  assert.equal(cs.apisecret, '');
+  cs.updateConfig({ nodeInternal: true });
   //no current wallet: only the locale is stored
   cs.resetConfig();
   assert.equal(cs.updateConfig({ locale: 'en', epicbox_domain: 'x' }), true);
@@ -464,16 +469,16 @@ test('S2: the built-in node\'s secret goes only to a node on this machine', () =
   cs.registerWallet({ ...d, network: 'mainnet', origin: 'created' });
   cs.startCheck('w1');
   const secretPath = () => tomlStr(fs.readFileSync(cs.walletTOMLPath), 'node_api_secret_path');
-  //built-in node on, not synced: the public node gets the wallet's own secret file
+  //built-in node on, not synced: the public node gets no secret at all
   cs.updateConfig({ nodeInternal: true, nodesynced: false, check_node_api_http_addr: 'http://127.0.0.1:3413' });
   assert.equal(tomlStr(fs.readFileSync(cs.walletTOMLPath), 'check_node_api_http_addr'), 'https://node.epiccash.com:3413');
-  assert.equal(secretPath(), d.configDir + '/.api_secret');
+  assert.equal(secretPath(), undefined);
   //synced: the local node and its secret
   cs.updateConfig({ nodesynced: true });
   assert.equal(secretPath(), cs.nodeDir('mainnet') + '/.api_secret');
   //a remote address with nodeInternal still on (hand edit): no node secret
   cs.updateConfig({ check_node_api_http_addr: 'https://node.example.org:3413' });
-  assert.equal(secretPath(), d.configDir + '/.api_secret');
+  assert.equal(secretPath(), undefined);
   for (const url of ['http://localhost:3413', 'http://[::1]:3413']) {
     cs.updateConfig({ check_node_api_http_addr: url });
     assert.equal(secretPath(), cs.nodeDir('mainnet') + '/.api_secret', url);
