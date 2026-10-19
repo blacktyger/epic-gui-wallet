@@ -650,6 +650,14 @@ ipcMain.handle('pick-wallet-folder', async (event, title) => {
   return resolveWalletFolder({ fs, pathMod: path, picked: res.filePaths[0] });
 });
 
+//Quit from the renderer (the settings-error screen, which has no wallet and no menu of its own): the
+//same way out as the menu's Quit, own processes stopped first (feedback #31: there was no handler)
+ipcMain.handle('quit', async (event) => {
+  if (!fromAppWindow(event)) return;
+  await shutdown.run();
+  app.quit();
+});
+
 //start again, after another app folder was chosen (it is read only at start)
 ipcMain.handle('app-relaunch', async (event) => {
   if (!fromAppWindow(event)) return;
