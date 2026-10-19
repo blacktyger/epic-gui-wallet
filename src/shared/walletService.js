@@ -348,7 +348,7 @@ class WalletService {
 
         //only an owner_api this app started for this wallet is reused, never someone else's
         if(!knownNotRunning){
-          walletProcess = await window.nodeChildProcess.ownedProcesses(['owner_api'], {dir: this.configService.defaultAccountWalletdir});
+          walletProcess = await window.nodeChildProcess.ownedProcesses(['owner_api'], {dir: this.configService.walletConfigDir});
         }
 
         if(!walletProcess.length){
@@ -358,12 +358,14 @@ class WalletService {
             return {success:false, msg:'port ' + ownerApiPort + ' in use', portInUse: ownerApiPort};
           }
 
-          //no password: the wallet is opened below, over the encrypted API (shared/walletArgs.js)
-          const dir = this.configService.defaultAccountWalletdir;
+          //no password: the wallet is opened below, over the encrypted API (shared/walletArgs.js).
+          //The start dir is in 6.1's config dir: nothing is created in an imported wallet's folder
+          const configDir = this.configService.walletConfigDir;
           let args = ownerApiArgs({
             network: this.configService.defaultAccountNetwork,
-            dir: dir,
-            startDir: window.nodePath.join(dir, OWNER_API_START_DIR),
+            configDir: configDir,
+            dataDir: this.configService.walletDataDir,
+            startDir: window.nodePath.join(configDir, OWNER_API_START_DIR),
           });
 
           let walletOpenId = await window.nodeChildProcess.execStart(this.configService.epicPath, args, this.configService.platform, emitOutput);
@@ -379,9 +381,10 @@ class WalletService {
         }
 
         onStage('unlock');
-        let userTopDir = await this.jsonRPC('set_top_level_directory', {dir: this.configService.defaultAccountWalletdir}, false)
+        //the folder holding wallet_data: an older GUI's folder for an imported wallet
+        let userTopDir = await this.jsonRPC('set_top_level_directory', {dir: this.configService.walletDataDir}, false)
 
-        if(userTopDir.result){
+        if(userTopDir && userTopDir.result){
 
             let tokenResponse = await this.jsonRPC('open_wallet', {"name": "", password: password}, false)
 
@@ -413,7 +416,7 @@ class WalletService {
         let torBooted = false;
         //our Epicbox listener for this wallet may still run (epicbox_background, or the previous version's,
         //adopted at login): reuse it. execEpicbox doesn't start a second one either while ours runs
-        let walletIsEpicbox = await window.nodeChildProcess.ownedProcesses(['epicbox'], {dir: this.configService.defaultAccountWalletdir});
+        let walletIsEpicbox = await window.nodeChildProcess.ownedProcesses(['epicbox'], {dir: this.configService.walletConfigDir});
 
         if(!walletIsEpicbox.length){
 
@@ -422,7 +425,8 @@ class WalletService {
 
           let args = epicboxArgs({
             network: this.configService.defaultAccountNetwork,
-            dir: this.configService.defaultAccountWalletdir,
+            configDir: this.configService.walletConfigDir,
+            dataDir: this.configService.walletDataDir,
             password: password,
           });
 
@@ -445,7 +449,7 @@ class WalletService {
 
         let args = [];
         let torBooted = false;
-        let walletIsListen = await window.nodeChildProcess.ownedProcesses(['listen'], {dir: this.configService.defaultAccountWalletdir});
+        let walletIsListen = await window.nodeChildProcess.ownedProcesses(['listen'], {dir: this.configService.walletConfigDir});
 
         if(!walletIsListen.length){
 
@@ -460,7 +464,8 @@ class WalletService {
           //the GUI only listens via http (Epicbox has its own startEpicbox); method is kept for callers
           let args = listenArgs({
             network: this.configService.defaultAccountNetwork,
-            dir: this.configService.defaultAccountWalletdir,
+            configDir: this.configService.walletConfigDir,
+            dataDir: this.configService.walletDataDir,
             password: password,
             tor: tor,
           });
@@ -482,7 +487,7 @@ class WalletService {
 
     async isListen(){
 
-      let walletIsListen = await window.nodeChildProcess.ownedProcesses(['listen'], {dir: this.configService.defaultAccountWalletdir});
+      let walletIsListen = await window.nodeChildProcess.ownedProcesses(['listen'], {dir: this.configService.walletConfigDir});
       return walletIsListen.length > 0;
     }
 
@@ -490,7 +495,7 @@ class WalletService {
     async stopListen(epicbox_background){
 
       const roles = epicbox_background ? ['listen'] : ['listen', 'epicbox'];
-      const res = await window.nodeChildProcess.stopOwned(roles, {tor: true, torDirs: [this.configService.defaultAccountWalletdir]});
+      const res = await window.nodeChildProcess.stopOwned(roles, {tor: true, torDirs: [this.configService.walletDataDir].filter(Boolean)});
       this.debug ? console.log('WalletService.listener_stopped', JSON.stringify(res.stopped)) : null;
       return true;
     }
@@ -503,7 +508,7 @@ class WalletService {
     async stopAll(epicbox_background, node_background){
 
       const roles = ['owner_api', 'listen', ...(epicbox_background ? [] : ['epicbox']), ...(node_background ? [] : ['node'])];
-      const res = await window.nodeChildProcess.stopOwned(roles, {tor: true, torDirs: [this.configService.defaultAccountWalletdir]});
+      const res = await window.nodeChildProcess.stopOwned(roles, {tor: true, torDirs: [this.configService.walletDataDir].filter(Boolean)});
       this.debug ? console.log('WalletService.stopAll', JSON.stringify(res.stopped)) : null;
       return true;
     }
@@ -516,18 +521,44 @@ class WalletService {
       return true;
     }
 
-    async new(password, network, userhomedir){
-
-        let args = initArgs({network: network, dir: userhomedir, password: password});
-        return await window.nodeChildProcess.execNew(this.configService.epicPath, args, this.configService.platform, password);
-
+    /* a new wallet in 6.1's folder (<root>/wallets/<id>), listed once its seed exists.
+       Resolves {success, msg: the recovery phrase or the error, wallet: the list entry} */
+    async new(password, network, {label = ''} = {}){
+        return this.initWallet(network, label, 'created', (cmd, args) =>
+          window.nodeChildProcess.execNew(cmd, args, this.configService.platform, password), password, false);
     }
 
-    async recover(seeds, password, network, userhomedir){
+    /* the same from a recovery phrase */
+    async recover(seeds, password, network, {label = ''} = {}){
+        return this.initWallet(network, label, 'restored', (cmd, args) =>
+          window.nodeChildProcess.execRecover(cmd, args, this.configService.platform, seeds, password), password, true);
+    }
 
-        let args = initArgs({network: network, dir: userhomedir, password: password, recover: true});
-
-        return await window.nodeChildProcess.execRecover(this.configService.epicPath, args, this.configService.platform, seeds, password);
+    /* init (or init -r) on a new, empty folder: 4.1.0 refuses a folder that already holds an
+       epic-wallet.toml, and writes its own default there, which registerWallet then replaces
+       with 6.1's. A failed init lists nothing and removes the folder while it holds no
+       wallet_data (configService.discardWalletDirs). */
+    async initWallet(network, label, origin, run, password, recover){
+        const cs = this.configService;
+        const dirs = cs.newWalletDirs(network);
+        let res;
+        try{
+          res = await run(cs.epicPath, initArgs({network: network, configDir: dirs.configDir, password: password, recover: recover}));
+        }catch(e){
+          res = {success: false, msg: e && e.message ? e.message : String(e)};
+        }
+        const seed = window.nodePath.join(dirs.dataDir, 'wallet_data', 'wallet.seed');
+        if(!res || !res.success || !window.nodeFs.existsSync(seed)){
+          cs.discardWalletDirs(dirs);
+          return {success: false, msg: res && !res.success ? res.msg : 'epic-wallet created no wallet seed'};
+        }
+        try{
+          const wallet = cs.registerWallet({id: dirs.id, network: network, configDir: dirs.configDir, dataDir: dirs.dataDir, origin: origin, label: label});
+          return {success: true, msg: res.msg, wallet: wallet};
+        }catch(e){
+          //the seed exists: the folder stays, it can be added with Open a wallet folder
+          return {success: false, msg: 'the wallet was created in ' + dirs.configDir + ' but could not be listed: ' + (e && e.message)};
+        }
     }
 
     /* check the wallet against the chain (scan) on the running owner API, no extra process.

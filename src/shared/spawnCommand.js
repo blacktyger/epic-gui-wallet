@@ -26,3 +26,19 @@ export function spawnCommand(cmd, args, { cwd } = {}) {
     options: { shell: false, windowsHide: true, ...(cwd ? { cwd: String(cwd) } : {}) },
   };
 }
+
+/* the working dir for an epic spawn, from its arguments: the wallet's config dir (-c), else the
+   node's folder (the dir of --config_file); '' when neither is given. A password ("-c" is one)
+   is skipped with its flag. */
+export function epicCwd(args) {
+  const a = [];
+  const list = Array.isArray(args) ? args.map(x => plainBin(x)) : [];
+  for (let i = 0; i < list.length; i++) {
+    if (['--pass', '--password', '-p'].includes(list[i])) { i++; continue; }
+    a.push(list[i]);
+  }
+  const after = (flag) => { const i = a.indexOf(flag); return i >= 0 && i + 1 < a.length ? a[i + 1] : ''; };
+  if (after('-c')) return after('-c');
+  const m = after('--config_file').match(/^(.*)[\\/][^\\/]+$/);
+  return m ? m[1] : '';
+}

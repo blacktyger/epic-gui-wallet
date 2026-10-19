@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnCommand, plainBin } from '../src/shared/spawnCommand.js';
+import { spawnCommand, plainBin, epicCwd } from '../src/shared/spawnCommand.js';
 import { describeSpawn, cmdMatchesEntry, findOwned } from '../src/shared/processOwnership.js';
 
 //what cmd.exe broke on: spaces, & | ^ % ! < > ( ), quotes, plus a trailing backslash
@@ -73,4 +73,14 @@ test('cwd: the child runs in the dir given (the wallet config dir), none when no
   assert.equal(fs.realpathSync(r.stdout), fs.realpathSync(dir));
   assert.equal('cwd' in spawnCommand('x', [], {}).options, false);
   assert.equal('cwd' in spawnCommand('x', []).options, false);
+});
+
+test('epicCwd: the wallet config dir (-c) or the node folder; a password is never taken for it', () => {
+  assert.equal(epicCwd(['--usernet', '--pass', '-c', '-c', '/r/wallets/w1', 'init']), '/r/wallets/w1');
+  assert.equal(epicCwd(['--usernet', '-c', '/r/wallets/w1', 'init']), '/r/wallets/w1');
+  assert.equal(epicCwd(['--pass', 'x', '-t', '/old/main', '-c', '/r/wallets/w2', 'listen']), '/r/wallets/w2');
+  assert.equal(epicCwd(['--floonet', 'server', '--config_file', '/r/node/floo/epic-server.toml', 'run']), '/r/node/floo');
+  assert.equal(epicCwd(['server', '--config_file', 'C:\\Epic GUI\\node\\main\\epic-server.toml', 'run']), 'C:\\Epic GUI\\node\\main');
+  assert.equal(epicCwd(['server', 'run']), '');
+  assert.equal(epicCwd(undefined), '');
 });

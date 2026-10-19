@@ -7,6 +7,7 @@ import { pathToFileURL } from 'url'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 import { createDirectory } from './shared/nodeDirectory'
 import { createProcessRegistry, createPidCheck } from './shared/processOwnership'
+import { resolveRoot, layout, legacyPaths } from './shared/appPaths'
 
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -16,6 +17,16 @@ const findProcess = require('find-process');
 const os = require('os');
 const fs = require('fs');
 const log = require('electron-log');
+
+//GUI 6.1 keeps everything under its own folder (shared/appPaths.js), Electron's userData too: set
+//before anything (electron-updater, the session, IndexedDB) reads userData
+const rootInfo = resolveRoot({ platform: process.platform, env: process.env, home: os.homedir(), pathMod: path,
+  readFile: (f) => fs.readFileSync(f, 'utf8') });
+const appLayout = layout(rootInfo.root, path);
+app.setPath('userData', appLayout.userData);
+fs.mkdirSync(appLayout.logsDir, { recursive: true });
+log.transports.file.resolvePath = () => path.join(appLayout.logsDir, 'main.log');
+
 const {autoUpdater} = require("electron-updater");
 autoUpdater.channel = "latest";
 //setting the channel turns on downgrades: an older release would be offered as an update
@@ -77,7 +88,7 @@ async function kill(pid){
 //the processes the app started, recorded by the preload (see shared/processOwnership.js)
 const ownProcesses = createProcessRegistry({
   fs,
-  file: path.join(os.homedir(), '.epic', 'gui_processes.json'),
+  file: appLayout.processesFile,
   findProcess,
   kill,
   win: process.platform === 'win32',
@@ -414,6 +425,29 @@ ipcMain.handle('show-open-dialog', async (event, title, message, defaultPath) =>
       properties:["openDirectory", "showHiddenFiles", "createDirectory"]
     });
     return responce;
+});
+
+//the folders, for the preload (sync: it needs them before the page loads)
+ipcMain.on('app-paths', (event) => {
+  event.returnValue = {
+    root: appLayout.root,
+    source: rootInfo.source,
+    defaultRoot: rootInfo.defaultRoot,
+    settingsFile: appLayout.settingsFile,
+    walletsDir: appLayout.walletsDir,
+    userData: appLayout.userData,
+    logsDir: appLayout.logsDir,
+    processesFile: appLayout.processesFile,
+    //older GUIs' files, read only by the importer
+    legacy: legacyPaths({ platform: process.platform, env: process.env, home: os.homedir(), appData: app.getPath('appData'), pathMod: path }),
+  };
+});
+
+//start again, after another app folder was chosen (it is read only at start)
+ipcMain.handle('app-relaunch', async () => {
+  await stopOwnProcesses();
+  app.relaunch();
+  app.exit(0);
 });
 
 ipcMain.handle('locale', async() => {
