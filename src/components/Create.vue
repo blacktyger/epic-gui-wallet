@@ -126,6 +126,7 @@
 <script>
 
 import { ref, computed } from 'vue';
+import { forgetLeftoverAccountData } from "@/shared/accountData";
 import { useI18n } from 'vue-i18n';
 import { useRouter } from '@/router';
 import { useRoute } from 'vue-router';
@@ -198,6 +199,9 @@ export default {
   },
 
   methods: {
+    async forgetLeftoverAccountData(account){
+      return forgetLeftoverAccountData({appConfig: this.configService.appConfig, userService: this.$userService, account});
+    },
     async qrcode(text){
 
       this.vueCanvas = document.getElementById("qrcodeCanvas");
@@ -250,6 +254,9 @@ export default {
             this.$toast.error(created.msg, {duration:false});
           }else{
             this.createStage = 'save';
+            //a wallet of this name that was removed from the list left its settings and contacts
+            //behind: the new wallet starts clean instead of taking them over
+            await this.forgetLeftoverAccountData(this.accountField.defaultValue);
             //save new account settings and run a check against recoverd wallet
             if(await this.configService.updateAppConfig('account_dirs', {
                 account: this.accountField.defaultValue,
