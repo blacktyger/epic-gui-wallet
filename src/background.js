@@ -412,12 +412,15 @@ autoUpdater.on('error', (err) => {
 
 
 //the importer's temp copy (<root>/tmp/import): removed now; what the reading session still locks
-//(Windows, until this process exits) a detached cleaner removes right after the exit, else the next start
+//(Windows, until this process exits) a detached cleaner removes right after the exit, else the next start.
+//After a read the cleaner runs even when the copy is gone now: Chromium flushes the reading session's
+//caches into it again as the app exits (Linux too)
+let importReadThisRun = false;
 app.on('will-quit', () => {
   if (!primaryInstance) return;
   try {
-    if (!cleanImportNow({ fs, path, root: appLayout.root })) {
-      log.info('import temp copy still locked at quit: removed after the exit');
+    if (!cleanImportNow({ fs, path, root: appLayout.root }) || importReadThisRun) {
+      log.info('import temp copy: removed after the exit');
       spawnAfterExitCleaner({ spawn, execPath: process.execPath, pid: process.pid, root: appLayout.root, env: process.env, log: (m) => log.info(m) });
     }
   } catch (e) { /* never holds up the quit */ }
@@ -553,6 +556,7 @@ async function legacyScan({ known } = {}){
   const legacy = legacyPaths({ platform: process.platform, env: process.env, home: os.homedir(), appData: app.getPath('appData'), pathMod: path });
   const scan = scanLegacy({ fs, pathMod: path, legacy, known: Array.isArray(known) ? known.filter(k => typeof k === 'string') : [] });
   //the old IndexedDB is read (from a copy) only when there is something to import
+  if (scan.wallets.length) importReadThisRun = true;
   const profiles = scan.wallets.length ? await readLegacyProfiles({ session, BrowserWindow, fs, path, root: appLayout.root,
     tmpDir: path.join(appLayout.root, 'tmp', 'import'), profiles: legacy.profiles, log: (m) => log.info(m) }) : [];
   return { ...scan, profiles };
