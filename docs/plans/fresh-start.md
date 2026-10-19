@@ -144,6 +144,14 @@ the default.
    new IndexedDB; `legacy[dir] = 'imported'`. Listener/background flags take the 6.1 defaults.
 5. Start fresh: `legacy[dir] = 'fresh'`. Nothing else.
 
+Old GUI "accounts" are separate epic-wallet instances (own folder, seed, password; the GUI never called
+`create_account_path` or `set_active_account`). Every one found is offered, on every network, in both
+layouts and in custom `userhomedir`s; each imported wallet keeps its own password, and its old name
+becomes the label only (no rules). Internal epic-wallet accounts made with the CLI (`account -c`) are not
+listed: the owner API opens a wallet on `default` (m/0/0, `LMDBBackend::default_path`), so 6.1 shows that
+account's balance and history only, as every older GUI did. The other accounts' coins stay in the wallet,
+usable with the CLI. No change planned; a notice when `accounts` returns more than one is a possible follow-up.
+
 The importer never calls the old app's code paths (`walletDirExist`, `checkAccountsFolderStructure`).
 
 ## What is dropped
