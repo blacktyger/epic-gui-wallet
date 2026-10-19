@@ -94,7 +94,7 @@
                     <div v-if="adding" class="field">
                         <label class="label" for="restoreLabel">{{ $t('msg.wallets.label') }}</label>
                         <div class="control">
-                          <input id="restoreLabel" class="input" type="text" v-model="label" maxlength="60" autocomplete="off" />
+                          <input id="restoreLabel" class="input" type="text" v-model="label" maxlength="32" autocomplete="off" />
                           <p class="help">{{ $t('msg.wallets.label_hint') }}</p>
                         </div>
                     </div>
@@ -142,7 +142,7 @@
   import PasswordField from "@/components/form/passwordField";
   import StartupProgress from "@/components/layout/StartupProgress.vue";
   import useFormValidation from "@/modules/useFormValidation";
-  import { walletOpen, networkBadge, isLoggedIn } from '@/components/wallets';
+  import { walletOpen, walletList, networkBadge, isLoggedIn } from '@/components/wallets';
 
   const NETWORKS = ['mainnet', 'floonet', 'usernet'];
 
@@ -191,8 +191,8 @@
     },
     data() {
       return {
-        //Settings › Add another wallet: an optional label
-        label: '',
+        //Settings › Add another wallet: an optional label, prefilled "Wallet 2", "Wallet 3"…
+        label: this.$route.query.add === '1' ? this.$t('msg.wallets.wallet_n', [walletList(this.configService).length + 1]) : '',
         //recovering, then opening the wallet
         restoring: false,
         //'restore' while recovering, 'open' while it opens (the unlock steps follow)

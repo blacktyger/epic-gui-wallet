@@ -13,7 +13,7 @@
       <p v-if="networkName" class="e-net-note e-create-net"><span class="e-tag e-warn">{{ networkName }}</span><span class="e-small e-dim">{{ $t('msg.wallets.network_wallet', [networkName]) }}</span></p>
       <div v-if="adding" class="e-field">
         <label class="e-label" for="createLabel">{{ $t('msg.wallets.label') }} <span class="e-faint e-small">{{ $t('msg.wallets.optional') }}</span></label>
-        <input id="createLabel" class="e-input" type="text" v-model="label" maxlength="60" autocomplete="off" spellcheck="false" aria-describedby="createLabelHelp" />
+        <input id="createLabel" class="e-input" type="text" v-model="label" maxlength="32" autocomplete="off" spellcheck="false" aria-describedby="createLabelHelp" />
         <p id="createLabelHelp" class="e-help">{{ $t('msg.wallets.label_hint') }}</p>
       </div>
       <div class="e-field">

@@ -99,6 +99,9 @@ export default {
   remove_text: 'Only the entry in this app’s list goes. The wallet’s files are not touched; open its folder again to add it back.',
   removed: '{0} was removed from the list.',
 
+  //switching: lock this wallet, then Unlock with the picker
+  switch: 'Switch wallet',
+
   //settings › wallet
   data_folder: 'Data folder',
   data_folder_hint: 'The wallet itself: its seed and database.',

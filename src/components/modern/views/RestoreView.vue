@@ -114,7 +114,7 @@
       <p v-if="networkName" class="e-net-note e-create-net"><span class="e-tag e-warn">{{ networkName }}</span><span class="e-small e-dim">{{ $t('msg.wallets.network_wallet', [networkName]) }}</span></p>
       <div v-if="adding" class="e-field">
         <label class="e-label" for="restoreLabel">{{ $t('msg.wallets.label') }} <span class="e-faint e-small">{{ $t('msg.wallets.optional') }}</span></label>
-        <input id="restoreLabel" class="e-input" type="text" v-model="label" maxlength="60" autocomplete="off" spellcheck="false" aria-describedby="restoreLabelHelp" />
+        <input id="restoreLabel" class="e-input" type="text" v-model="label" maxlength="32" autocomplete="off" spellcheck="false" aria-describedby="restoreLabelHelp" />
         <p id="restoreLabelHelp" class="e-help">{{ $t('msg.wallets.label_hint') }}</p>
       </div>
       <div class="e-field">

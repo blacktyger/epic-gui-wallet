@@ -55,7 +55,7 @@
                     <div v-if="adding" class="field">
                         <label class="label" for="createLabel">{{ $t('msg.wallets.label') }}</label>
                         <div class="control">
-                          <input id="createLabel" class="input" type="text" v-model="label" maxlength="60" autocomplete="off" />
+                          <input id="createLabel" class="input" type="text" v-model="label" maxlength="32" autocomplete="off" />
                           <p class="help">{{ $t('msg.wallets.label_hint') }}</p>
                         </div>
                     </div>
@@ -105,7 +105,7 @@ import { useRoute } from 'vue-router';
 import PasswordField from "@/components/form/passwordField";
 import StartupProgress from "@/components/layout/StartupProgress.vue";
 import useFormValidation from "@/modules/useFormValidation";
-import { walletOpen, networkBadge, isLoggedIn } from '@/components/wallets';
+import { walletOpen, walletList, networkBadge, isLoggedIn } from '@/components/wallets';
 
 const NETWORKS = ['mainnet', 'floonet', 'usernet'];
 
@@ -162,8 +162,8 @@ export default {
   },
   data() {
     return {
-      //Settings › Add another wallet: an optional label
-      label: '',
+      //Settings › Add another wallet: an optional label, prefilled "Wallet 2", "Wallet 3"…
+      label: this.$route.query.add === '1' ? this.$t('msg.wallets.wallet_n', [walletList(this.configService).length + 1]) : '',
       //the wallet just made (settings record)
       wallet: null,
       //opening it after the phrase

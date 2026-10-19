@@ -7,7 +7,7 @@
         <div class="field">
           <label class="label" for="accountLabel">{{ $t("msg.wallets.label") }}</label>
           <div class="control">
-            <input id="accountLabel" class="input" type="text" v-model="label" maxlength="60" autocomplete="off" :placeholder="defaultName" />
+            <input id="accountLabel" class="input" type="text" v-model="label" maxlength="32" autocomplete="off" :placeholder="defaultName" />
           </div>
           <p class="help">{{ $t('msg.wallets.label_hint') }}</p>
         </div>

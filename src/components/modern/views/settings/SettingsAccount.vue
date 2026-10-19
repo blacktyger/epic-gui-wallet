@@ -9,7 +9,7 @@
             <p id="stg-label-h">{{ $t('msg.wallets.label_hint') }}</p>
           </div>
           <div class="e-stg-inline e-top">
-            <input id="stg-label" class="e-input e-grow e-stg-w" type="text" v-model="label" maxlength="60" autocomplete="off" spellcheck="false" :placeholder="defaultName" aria-describedby="stg-label-h" />
+            <input id="stg-label" class="e-input e-grow e-stg-w" type="text" v-model="label" maxlength="32" autocomplete="off" spellcheck="false" :placeholder="defaultName" aria-describedby="stg-label-h" />
             <button type="submit" class="e-btn e-btn-primary"><EIcon name="check" />{{ $t('msg.save') }}</button>
           </div>
         </form>

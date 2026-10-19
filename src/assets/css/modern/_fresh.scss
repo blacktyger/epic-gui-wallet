@@ -103,6 +103,7 @@
 .e-wlist .e-wlist-info b { display: flex; align-items: center; gap: var(--sp-2); }
 .e-wlist .e-wlist-info p { font-size: 0.75rem; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .e-add-wallet { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
-.e-add-wallet .e-btn { justify-content: flex-start; }
+.e-add-wallet .e-btn { justify-content: flex-start; text-align: left; white-space: normal; height: auto; min-height: var(--ctl); padding-block: 6px; }
+.e-add-wallet .e-btn .e-icon { flex: none; }
 .e-stg-origin { display: flex; gap: 6px; align-items: flex-start; margin-top: var(--sp-1); color: var(--dim); font-size: var(--fs-sm); }
 .e-stg-origin .e-icon { flex: none; margin-top: 2px; color: var(--faint); }

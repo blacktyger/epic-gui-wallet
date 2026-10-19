@@ -85,6 +85,12 @@
                 </span>
               </a>
               <hr class="navbar-divider">
+              <a v-if="canSwitch" @click="switchWallet" class="navbar-item">
+                <span class="button__text">
+                  <span class="icon"><mdicon name="swap-horizontal" /></span>
+                  <span>{{ $t("msg.wallets.switch") }}</span>
+                </span>
+              </a>
               <a :class="{ 'button__loader': isLoading }" @click="logout" class="navbar-item">
                 <span class="button__text">
                   <span class="icon"><mdicon name="logout" /></span>
@@ -213,6 +219,10 @@ export default {
       if (name) return name;
       return walletName(this.configService.wallet, walletList(this.configService));
     },
+    //Switch wallet: only with more than one wallet in the list
+    canSwitch() {
+      return walletList(this.configService).length > 1;
+    },
   },
 
   methods: {
@@ -224,6 +234,15 @@ export default {
     async logout(){
       this.isLoading = true;
       this.emitter.emit('app.logout')
+    },
+    /* lock this wallet as Log out does, but also stop its Epicbox listener even when it runs in the
+       background; then Unlock shows the wallet picker. One wallet is open at a time */
+    async switchWallet(){
+      if(this.isLoading){
+        return;
+      }
+      this.isLoading = true;
+      this.emitter.emit('app.logout', {switching: true})
     },
     
   }

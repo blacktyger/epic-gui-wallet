@@ -29,6 +29,15 @@
           <div class="e-avatar" aria-hidden="true">{{ initials }}</div>
           <div class="e-grow"><b class="e-truncate">{{ accountName }}</b><small>{{ network }}</small></div>
           <button
+            v-if="canSwitch"
+            type="button"
+            class="e-icon-btn e-sm"
+            :disabled="isLoading"
+            :title="$t('msg.wallets.switch')"
+            :aria-label="$t('msg.wallets.switch')"
+            @click="switchWallet"
+          ><EIcon name="swap" /></button>
+          <button
             type="button"
             class="e-icon-btn e-sm"
             :class="{ 'e-is-busy': isLoading }"
