@@ -4,6 +4,7 @@ import { REFRESH_CALL_TIMEOUT } from '@/shared/walletSync';
 import { parseEpicboxToml, normalizeEpicbox, sameServer, serverUrl, serverFromUrl, ownerApiEpicboxParams, withEpicboxSection, epicboxSwitchPlan } from '@/shared/epicboxConfig';
 import { createOldServerCheck, oldServerCheckStep, CHECK_TIMES } from '@/shared/epicboxListener';
 import { EPICBOX_CHECK_DIR, isEpicboxCheckDir } from '@/shared/processOwnership';
+import { ownerApiArgs, listenArgs, epicboxArgs as buildEpicboxArgs, initArgs, statusMessageText, OWNER_API_START_DIR } from '@/shared/walletArgs';
 const Buffer = require('buffer').Buffer;
 const crypto = window.nodeCrypto;
 
@@ -377,13 +378,13 @@ class WalletService {
             return {success:false, msg:'port ' + ownerApiPort + ' in use', portInUse: ownerApiPort};
           }
 
-          let args = [
-            ...(this.configService.defaultAccountNetwork != 'mainnet' ? ['--' + this.configService.defaultAccountNetwork] : []),
-            '--offline_mode',
-            '-c',this.configService.defaultAccountWalletdir,
-            '--pass', password,
-            'owner_api'
-          ];
+          //no password: the wallet is opened below, over the encrypted API (shared/walletArgs.js)
+          const dir = this.configService.defaultAccountWalletdir;
+          let args = ownerApiArgs({
+            network: this.configService.defaultAccountNetwork,
+            dir: dir,
+            startDir: window.nodePath.join(dir, OWNER_API_START_DIR),
+          });
 
           let walletOpenId = await window.nodeChildProcess.execStart(this.configService.epicPath, args, this.configService.platform, emitOutput);
 
@@ -408,6 +409,11 @@ class WalletService {
               this.token = tokenResponse.result.Ok;
             }else if(tokenResponse.error){
 
+              //a wrong password: the same plain message as when epic-wallet itself refused it
+              const err = tokenResponse.error.message || String(tokenResponse.error);
+              if(err.includes('Error opening wallet')){
+                return {success:false, msg:'Error opening wallet (is password correct?)'};
+              }
               return {success:false, msg: tokenResponse.error};
             }
 
@@ -458,16 +464,11 @@ class WalletService {
     }
 
     epicboxArgs(password){
-      return [
-        ...(this.configService.defaultAccountNetwork != 'mainnet' ? ['--' + this.configService.defaultAccountNetwork] : []),
-        '--pass', password,
-        '-t', this.configService.defaultAccountWalletdir,
-        '-c', this.configService.defaultAccountWalletdir,
-        'listen',
-        '--method',
-        'epicbox',
-        '--no_tor'
-      ];
+      return buildEpicboxArgs({
+        network: this.configService.defaultAccountNetwork,
+        dir: this.configService.defaultAccountWalletdir,
+        password: password,
+      });
     }
 
     /* tell the owner API (used for our own address when sending) */
@@ -798,19 +799,13 @@ class WalletService {
 
           let walletListenId = 0;
 
-          let args = [
-            ...(this.configService.defaultAccountNetwork != 'mainnet' ? ['--' + this.configService.defaultAccountNetwork] : []),
-            '--pass', password,
-            '-t', this.configService.defaultAccountWalletdir,
-            '-c', this.configService.defaultAccountWalletdir,
-            'listen',
-            //the GUI only listens via http (Epicbox has its own startEpicbox); method is kept for callers
-            '--method', 'http'
-          ];
-
-          if(tor == false){
-            args.push('--no_tor');
-          }
+          //the GUI only listens via http (Epicbox has its own startEpicbox); method is kept for callers
+          let args = listenArgs({
+            network: this.configService.defaultAccountNetwork,
+            dir: this.configService.defaultAccountWalletdir,
+            password: password,
+            tor: tor,
+          });
 
           walletListenId = await window.nodeChildProcess.execListen(this.configService.epicPath, args, this.configService.platform, password);
 
@@ -877,44 +872,66 @@ class WalletService {
 
     async new(password, network, userhomedir){
 
-        let args = [
-          ...(network != 'mainnet' ? ['--' + network] : []),
-          //epic-wallet 4.x: pass the password as an argument, like the other wallet commands
-          '--pass', password,
-          '-c', userhomedir,
-          'init'
-        ];
+        let args = initArgs({network: network, dir: userhomedir, password: password});
         return await window.nodeChildProcess.execNew(this.configService.epicPath, args, this.configService.platform, password);
 
     }
 
     async recover(seeds, password, network, userhomedir){
 
-        let args = [
-          ...(network != 'mainnet' ? ['--' + network] : []),
-          //epic-wallet 4.x: pass the password as an argument, like the other wallet commands
-          '--pass', password,
-          '-c', userhomedir,
-          'init', '-r'
-        ];
+        let args = initArgs({network: network, dir: userhomedir, password: password, recover: true});
 
         return await window.nodeChildProcess.execRecover(this.configService.epicPath, args, this.configService.platform, seeds, password);
     }
 
-    async check(password, delete_unconfirmed){
+    /* check the wallet against the chain (scan) on the running owner API, no extra process.
+       The password is checked first, as the wallet CLI did. onMessage gets the progress lines.
+       Resolves {success, wrongPassword?, msg?}; once stopCheck() was called, {success:false, stopped:true}. */
+    async check(password, delete_unconfirmed, onMessage = () => {}){
 
-        let args = [
-          '--pass', password,
-          '-t', this.configService.defaultAccountWalletdir,
-          'scan', '-s', 0,
-          ...(delete_unconfirmed ? ['--delete_unconfirmed'] : []),
-        ];
-        await window.nodeChildProcess.execScan(this.configService.epicPath, args, this.configService.platform, password);
+        this.checkStopped = false;
+        const proof = await this.jsonRPC('get_mnemonic', {name: "", password: password}, false);
+        if(!proof || !proof.result || proof.result.Ok == undefined){
+          const err = proof && proof.error ? (proof.error.message || String(proof.error)) : (this.lastError || 'wallet API not reachable');
+          return {success: false, wrongPassword: err.includes('Error opening wallet') || err.includes('check password'), msg: err};
+        }
 
+        //progress: the owner API keeps its status messages until they are read
+        let polling = true;
+        const poll = async () => {
+          while(polling){
+            const res = await this.jsonRPC('get_updater_messages', {count: 100}, false, REFRESH_CALL_TIMEOUT);
+            if(polling && res && res.result && Array.isArray(res.result.Ok)){
+              //newest first: oldest first to the caller
+              res.result.Ok.slice().reverse().forEach(m => onMessage(statusMessageText(m)));
+            }
+            await new Promise(r => setTimeout(r, 1000));
+          }
+        };
+        const poller = poll();
+
+        const res = await this.jsonRPC('scan', {
+          token: this.token,
+          start_height: 0,
+          delete_unconfirmed: !!delete_unconfirmed,
+        }, false);
+        polling = false;
+        await poller;
+
+        if(this.checkStopped){
+          return {success: false, stopped: true};
+        }
+        if(res && res.result && 'Ok' in res.result){
+          return {success: true};
+        }
+        return {success: false, msg: res && res.error ? (res.error.message || String(res.error)) : (this.lastError || 'scan failed')};
     }
 
+    /* the scan on the owner API can't be cancelled: stop waiting for it (and stop a scan process
+       a previous version started) */
     async stopCheck(){
 
+        this.checkStopped = true;
         const res = await window.nodeChildProcess.stopOwned(['scan']);
         this.debug ? console.log('WalletService.stopCheck', JSON.stringify(res.stopped)) : null;
 
