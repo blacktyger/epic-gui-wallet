@@ -180,7 +180,8 @@
 .e-onb-restored-actions .e-btn { min-width: 200px; }
 
 /* Recovery phrase: the QR code kept from the Classic screen, behind the reveal */
-.e-onb-qr { margin-top: var(--sp-4); }
+.e-onb-qr { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-4); }
+.e-onb-qr > div { flex-basis: 100%; }
 .e-onb-qr-box { display: grid; place-items: center; margin-top: var(--sp-3); }
 .e-onb-qr-box canvas { max-width: 100%; padding: 14px; border-radius: var(--r-sm); background: #fff; box-shadow: 0 0 0 1px var(--line-strong); }
 

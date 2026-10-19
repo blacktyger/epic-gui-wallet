@@ -104,15 +104,15 @@
             </div>
           </div>
         </div>
-        <!-- the Classic screen shows the phrase as a QR code too: kept, behind the reveal (drawn by reveal()) -->
-        <button v-if="revealed" type="button" class="e-btn e-btn-ghost e-btn-sm" @click="hide"><EIcon name="eyeoff" />{{ $t('msg.modern.unlock.phrase_hide') }}</button>
-        <details v-if="revealed" class="e-tech e-onb-qr">
-          <summary><EIcon name="chevr" />{{ $t('msg.modern.unlock.phrase_qr') }}</summary>
-          <div class="e-tech-body">
+        <!-- the phrase as a QR code too: behind the reveal, and hidden until asked for (toggleQr draws it) -->
+        <div v-if="revealed" class="e-onb-qr">
+          <button type="button" class="e-btn e-btn-ghost e-btn-sm" @click="hide"><EIcon name="eyeoff" />{{ $t('msg.modern.unlock.phrase_hide') }}</button>
+          <button type="button" class="e-btn e-btn-ghost e-btn-sm" :aria-expanded="qrShown ? 'true' : 'false'" aria-controls="e-onb-qr-box" @click="toggleQr"><EIcon :name="qrShown ? 'eyeoff' : 'eye'" />{{ qrShown ? $t('msg.modern.unlock.phrase_qr_hide') : $t('msg.modern.unlock.phrase_qr') }}</button>
+          <div v-if="qrShown" id="e-onb-qr-box">
             <p class="e-help">{{ $t('msg.modern.unlock.phrase_qr_hint') }}</p>
             <div class="e-onb-qr-box"><canvas id="qrcodeCanvas" role="img" :aria-label="$t('msg.modern.unlock.phrase_qr')"></canvas></div>
           </div>
-        </details>
+        </div>
       </div>
       <template #actions>
         <span class="e-grow"></span>

@@ -12,8 +12,12 @@
         <div class="tags" style="justify-content: center;">
           <span style="color:#000000" class="mnemonic-word tag is-light is-medium is-rounded is-link" v-for="seed in seeds" :key="seed">{{seed}}<span class="space"> </span></span>
         </div>
+        <!-- the QR code: hidden until asked for, like the balance hide/show -->
         <div style="text-align: center;">
-          <canvas id="qrcodeCanvas" ></canvas>
+          <button type="button" class="button is-small is-light" :aria-expanded="qrShown ? 'true' : 'false'" aria-controls="seed-qr" @click="toggleQr">
+            <mdicon :name="qrShown ? 'eye-off' : 'eye'" size="16" />&nbsp;{{ qrShown ? $t('msg.modern.unlock.phrase_qr_hide') : $t('msg.modern.unlock.phrase_qr') }}
+          </button>
+          <div v-if="qrShown" id="seed-qr"><canvas id="qrcodeCanvas" ></canvas></div>
         </div>
       </div>
 
@@ -52,10 +56,17 @@ export default {
   components: {
     PasswordField
   },
-  watch: {
-    qrText: function (val) {
-      this.qrcode(val);
-    }
+  data() {
+    return {
+      //the phrase's QR code: shown only on request, hidden again on leaving the screen
+      qrShown: false,
+    };
+  },
+  //leaving the screen: the words and the QR code leave the page
+  beforeUnmount() {
+    this.qrShown = false;
+    this.seeds = [];
+    this.qrText = '';
   },
   setup() {
 
@@ -76,9 +87,14 @@ export default {
 
 
   methods: {
+    toggleQr(){
+      this.qrShown = !this.qrShown;
+      if(this.qrShown) this.$nextTick(() => this.qrcode(this.qrText));
+    },
     async qrcode(text){
 
       this.vueCanvas = document.getElementById("qrcodeCanvas");
+      if(!this.vueCanvas || !text) return;
       window.nodeQr.toCanvas(this.vueCanvas, text, function (error) {
         if (error) console.error('HttpReceive.qrcode', error)
       })

@@ -26,8 +26,12 @@
                         <li style="color:#000000" class="mnemonic-word tag is-light is-medium is-rounded is-link" v-for="(seed, index) in newseeds" :key="index"><small style="opacity:0.6;">{{ index + 1 }}.&nbsp;</small>{{seed}}<span class="space"> </span></li>
                       </ol>
 
+                      <!-- the QR code: hidden until asked for, like the balance hide/show -->
                       <div style="text-align: center;">
-                        <canvas id="qrcodeCanvas" ></canvas>
+                        <button type="button" class="button is-small is-light" :aria-expanded="qrShown ? 'true' : 'false'" aria-controls="create-qr" @click="toggleQr">
+                          <mdicon :name="qrShown ? 'eye-off' : 'eye'" size="16" />&nbsp;{{ qrShown ? $t('msg.modern.unlock.phrase_qr_hide') : $t('msg.modern.unlock.phrase_qr') }}
+                        </button>
+                        <div v-if="qrShown" id="create-qr"><canvas id="qrcodeCanvas" ></canvas></div>
                       </div>
                     </template>
                     <div class="buttons is-centered">
@@ -179,6 +183,8 @@ export default {
       opening: false,
       //the recovery words are in the page only after "Reveal phrase" (never just hidden by CSS)
       revealed: false,
+      //the phrase's QR code: shown only on request, hidden again with the phrase and on leaving
+      qrShown: false,
     };
   },
   computed: {
@@ -196,16 +202,21 @@ export default {
 
   beforeUnmount() {
     this.revealed = false;
+    this.qrShown = false;
     this.newseeds = [];
     this.qrText = '';
   },
   methods: {
     reveal(){
       this.revealed = true;
-      this.$nextTick(() => this.qrcode(this.qrText));
     },
     hide(){
       this.revealed = false;
+      this.qrShown = false;
+    },
+    toggleQr(){
+      this.qrShown = !this.qrShown;
+      if(this.qrShown) this.$nextTick(() => this.qrcode(this.qrText));
     },
     async qrcode(text){
       const canvas = document.getElementById("qrcodeCanvas");

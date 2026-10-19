@@ -110,7 +110,7 @@
 .e-stg-panes .e-seed-wrap { max-width: 640px; }
 .e-stg-panes .e-seed { margin: 0; padding: 0; }
 .e-stg-panes .e-seed li { min-height: 40px; }
-.e-stg-qr { display: flex; justify-content: center; margin-top: var(--sp-4); }
+.e-stg-qr { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); margin-top: var(--sp-4); }
 .e-stg-qr canvas { max-width: 100%; border-radius: var(--r-sm); }
 
 /* Update log */

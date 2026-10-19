@@ -74,6 +74,7 @@ export default {
   phrase_hide: 'Hide phrase',
   phrase_written_q: 'All {n} words on paper?',
   phrase_qr: 'Show the phrase as a QR code',
+  phrase_qr_hide: 'Hide the QR code',
   phrase_qr_hint: 'Anyone who scans this code can take your EPIC. Only scan it into another wallet you trust.',
   written_down: 'I’ve written it down',
 
