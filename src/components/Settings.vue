@@ -99,7 +99,6 @@ import EpicboxServers from "@/components/form/EpicboxServers.vue";
 import useFormValidation from "@/modules/useFormValidation";
 import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } from '@/shared/theme';
 import { supportedLocale } from "@/shared/setupDefaults";
-import { nodeLoadWarning } from "@/shared/nodeLoad";
 
   export default {
     name: "settings",
@@ -213,8 +212,6 @@ import { nodeLoadWarning } from "@/shared/nodeLoad";
       async save(){
 
         this.resetFormErrors();
-        //the node as saved until now: switching the built-in node or background sync on warns once
-        const nodeBefore = {internal: !!(this.store.state.user || {}).nodeInternal, background: !!(this.configService.config || {}).node_background};
         let isFormAllValid = [];
 
         isFormAllValid.push(this.nodeserverField.validInput());
@@ -257,9 +254,6 @@ import { nodeLoadWarning } from "@/shared/nodeLoad";
           if(updated){
             this.store.commit('nodeType', this.nodeserverField.select);
             this.$toast.success(this.$t("msg.settings.settings_saved"));
-            if(nodeLoadWarning(nodeBefore, {internal: nodeInternal, background: !!this.node_background})){
-              this.$toast.warning(this.$t("msg.settings.node_load_warning"), {duration: 10000});
-            }
             this.emitter.emit('app.nodeStart');
             this.emitter.emit('app.selectLocale', this.localeSelected);
             //a new Epicbox server: our listener moves to it (App.vue, walletService.applyEpicboxChange)
