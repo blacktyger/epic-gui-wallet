@@ -64,37 +64,12 @@
             </div>
           </div>
 
-          <!-- a server change while this session can't restart the listener by itself -->
-          <form v-if="store.state.epicboxNeedsPassword" class="message is-warning" novalidate @submit.prevent="applyEpicboxWithPassword">
-            <div class="message-body">
-              <label class="label" style="color: inherit;" for="settingsEpicboxPassword">{{ $t("msg.settings.epicbox_password_title") }}</label>
-              <p class="mb-2">{{ $t("msg.settings.epicbox_password_text") }}</p>
-              <p v-if="store.state.epicboxNeedsPassword.wrong" class="has-text-danger mb-2" role="alert">{{ $t("msg.app.epicbox_wrong_password") }}</p>
-              <div class="field has-addons">
-                <div class="control is-expanded has-icons-right" ref="epicboxPwWrap">
-                  <PasswordField ref="epicboxPasswordField" placeholder="********" required="true" name="password" />
-                </div>
-                <div class="control">
-                  <button type="submit" class="button is-primary">{{ $t("msg.settings.epicbox_apply") }}</button>
-                </div>
-              </div>
-              <a href="#" @click.prevent="dismissEpicboxPassword">{{ $t("msg.settings.epicbox_apply_later") }}</a>
-            </div>
-          </form>
 
           <div class="field">
             <label class="label">{{ $t("msg.settings.wallet_listener") }}</label>
             <div class="control">
                 <input class="switch is-success" id="nodeBackgroundSync" type="checkbox" v-model="walletlisten_on_startup">
                 <label for="nodeBackgroundSync">{{ $t("msg.settings.auto_start") }}</label>
-            </div>
-          </div>
-          <div class="field">
-
-            <div class="control">
-                <input :disabled="(nodeInternal && !node_background)" class="switch is-success" id="walletListenEpicbox" type="checkbox" v-model="epicbox_background">
-                <label for="walletListenEpicbox">{{ $t("msg.settings.epicbox_background") }}</label>
-                <p class="help">{{ $t("msg.settings.epicbox_background_hint") }}</p>
             </div>
           </div>
 
@@ -119,7 +94,6 @@
 import { ref, onUnmounted } from 'vue';
 import { useStore } from '@/store';
 import NodeserverField from "@/components/form/nodeserverField";
-import PasswordField from "@/components/form/passwordField";
 import useFormValidation from "@/modules/useFormValidation";
 import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } from '@/shared/theme';
 
@@ -127,13 +101,11 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
     name: "settings",
     components: {
       NodeserverField,
-      PasswordField,
     },
     setup(){
 
       const { resetFormErrors } = useFormValidation();
       const nodeserverField = ref('');
-      const epicboxPasswordField = ref('');
       const store = useStore();
       const localeSelected = ref('en');
       const epicboxDomain = ref('');
@@ -141,7 +113,6 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
       const check_node_api_http_addr = ref('');
       const walletlisten_on_startup = ref(false);
       const node_background = ref(false);
-      const epicbox_background = ref(false);
       const nodeInternal = ref(false);
 
 
@@ -149,7 +120,6 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
       return{
         store,
         nodeserverField,
-        epicboxPasswordField,
         resetFormErrors,
         localeSelected,
         epicboxDomain,
@@ -157,7 +127,6 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
         check_node_api_http_addr,
         walletlisten_on_startup,
         node_background,
-        epicbox_background,
         nodeInternal
       }
     },
@@ -180,22 +149,6 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
     beforeUnmount(){
       this.emitter.off('settings.nodeserverFieldChanged');
     },
-    updated(){
-      this.tagEpicboxPassword();
-    },
-    watch: {
-      //the prompt appeared (or said the password was wrong): its field gets the focus
-      'store.state.epicboxNeedsPassword'(v){
-        if(v){
-          this.$nextTick(() => {
-            this.tagEpicboxPassword();
-            const wrap = this.$refs.epicboxPwWrap || this.$refs.boxPwWrap;
-            const i = wrap && wrap.querySelector('input');
-            if(i) i.focus();
-          });
-        }
-      },
-    },
     mounted(){
       this.nodeInternal = this.store.state.user.nodeInternal;
       this.nodeserverField.select = !this.store.state.user.nodeInternal ? 'external' : 'internal';
@@ -207,7 +160,6 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
       this.node_background = this.configService.config['node_background'];
 
 
-      this.epicbox_background = (this.node_background && this.nodeInternal) ? this.configService.config['epicbox_background'] : false;
 
       //an internal user's address is the local node's: leave it empty so external gets the default
       if(!this.nodeInternal){
@@ -248,9 +200,6 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
           this.nodeInternal = true;
         }
 
-        if(!this.node_background && this.nodeserverField.select == 'internal')
-          this.epicbox_background = false;
-
       },
 
 
@@ -276,7 +225,6 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
             locale: this.localeSelected,
             walletlisten_on_startup: this.walletlisten_on_startup,
             node_background: this.node_background,
-            epicbox_background: this.epicbox_background,
             epicbox_domain: this.epicboxDomain.trim(),
 
           });
@@ -310,29 +258,6 @@ import { getUi, getScheme, getScale, saveUi, saveScheme, saveScale, SCALES } fro
           return;
         }
 
-      },
-
-      /* the listener can't be started again on the new server without the password (this session
-         did not start it): from the prompt, used for this one start, not kept by the page */
-      applyEpicboxWithPassword(){
-        if(!this.epicboxPasswordField.validInput()){
-          return;
-        }
-        const password = this.epicboxPasswordField.defaultValue;
-        this.epicboxPasswordField.input = '';
-        this.emitter.emit('app.applyEpicbox', {saved: this.store.state.epicboxNeedsPassword, password});
-      },
-      /* the password field renders a bare input: give the prompt's label something to point at */
-      tagEpicboxPassword(){
-        const wrap = this.$refs.epicboxPwWrap || this.$refs.boxPwWrap;
-        const i = wrap && wrap.querySelector('input');
-        if(i && !i.id){
-          i.id = this.$refs.boxPwWrap ? 'stg-boxpw' : 'settingsEpicboxPassword';
-        }
-      },
-      dismissEpicboxPassword(){
-        this.epicboxPasswordField.input = '';
-        this.store.commit('epicboxNeedsPassword', null);
       },
 
     }

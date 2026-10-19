@@ -147,7 +147,7 @@
       });
 
       /* start epicbox once the node is synced: checked at once, not on the next node poll */
-      this.emitter.on('app.startEpicbox', async(res) => {
+      this.emitter.on('app.startEpicbox', async() => {
 
         const session = this.loginSession;
         const waitStarted = performance.now();
@@ -159,10 +159,10 @@
 
         if(confirmed){
           console.log('[login] node synced, starting Epicbox +' + Math.round(performance.now() - waitStarted) + ' ms');
-          const isEpicbox = await this.$walletService.startEpicbox(res);
-          //logged out meanwhile: a listener that does not run in the background goes with the session
+          const isEpicbox = await this.$walletService.startEpicbox();
+          //logged out meanwhile: the listener goes with the session
           if(session !== this.loginSession){
-            if(isEpicbox && isEpicbox.pid && !(this.configService.config || {}).epicbox_background){
+            if(isEpicbox && isEpicbox.pid){
               await window.nodeChildProcess.stopPids([isEpicbox.pid]);
             }
             return;
@@ -193,14 +193,13 @@
       });
 
       /* the Epicbox settings were saved (Settings): restart our listener on the new server, tell
-         the owner API, check the old server once. saved: the config before; password: from the
-         prompt, when the listener can't be started again without it */
-      this.emitter.on('app.applyEpicbox', async ({saved, password}) => {
+         the owner API, check the old server once (with the session's password, in the main
+         process). saved: the config before */
+      this.emitter.on('app.applyEpicbox', async ({saved}) => {
         const session = this.loginSession;
-        this.store.commit('epicboxNeedsPassword', null);
         let r;
         try{
-          r = await this.$walletService.applyEpicboxChange(saved, password);
+          r = await this.$walletService.applyEpicboxChange(saved);
         }catch(e){
           console.log('[epicbox] switch failed: ' + (e && e.message ? e.message : String(e)));
           r = {plan: {restart: true, start: true}, started: {success: false}};
@@ -211,17 +210,8 @@
         if(r.ownerConfig === false){
           this.$toast.error(this.t("msg.app.epicbox_owner_config_failed"));
         }
-        if(r.needPassword){
-          if(r.badPassword){
-            this.$toast.error(this.t("msg.app.epicbox_wrong_password"));
-          }else if(r.noAnswer){
-            this.$toast.error(this.t("msg.app.wallet_api_unreachable"));
-          }
-          //Settings shows the prompt; elsewhere (Setup Assistant re-run) a toast says where it is
-          this.store.commit('epicboxNeedsPassword', Object.assign({}, saved || {}, {wrong: !!r.badPassword}));
-          if(!String(this.$route && this.$route.path || '').startsWith('/settings')){
-            this.$toast.warning(this.t("msg.app.epicbox_needs_password"), {duration: 10000});
-          }
+        //locked meanwhile: the old server is checked at the next start (epicbox_check_pending)
+        if(r.noSession){
           return;
         }
         if(!r.plan || !r.plan.restart){
@@ -238,8 +228,6 @@
           this.$toast.success(this.t("msg.app.epicbox_switched", [serverLabel(r.started.server)]));
         }else if(r.started && r.started.pending){
           this.$toast.warning(this.t("msg.app.epicbox_connecting", [serverLabel(r.started.server)]));
-        }else if(r.started && r.started.needPassword){
-          this.store.commit('epicboxNeedsPassword', saved || {});
         }else if(r.plan.start){
           this.$toast.error(this.t("msg.app.epicbox_switch_failed"));
         }
@@ -253,26 +241,20 @@
       this.emitter.on('epicbox.event', (ev) => this.onEpicboxEvent(ev));
 
       /* after login, in the background: the HTTP listener, and Epicbox alongside (it waits for the node to sync) */
-      this.emitter.on('app.startListeners', async (password) => {
+      this.emitter.on('app.startListeners', async () => {
         if(!this.configService.config['walletlisten_on_startup']){
-          //a background Epicbox listener of ours still runs: take it into this session (it may be on
-          //an old server, and only one started by this window reports its server and slates)
-          const domain = this.configService.config['epicbox_domain'];
-          if(domain && (await window.nodeChildProcess.ownedProcesses(['epicbox'], {dir: this.configService.defaultAccountWalletdir})).length){
-            this.emitter.emit('app.startEpicbox', password);
-          }
           return;
         }
         const session = this.loginSession;
         //Epicbox does not wait for the HTTP listener (Tor can take a while), only for the node
         if(this.configService.config['epicbox_domain'] != undefined && this.configService.config['epicbox_domain'] != '' ){
-          this.emitter.emit('app.startEpicbox', password);
+          this.emitter.emit('app.startEpicbox');
         }
         this.store.commit('listenerStarting', true);
         const started = performance.now();
         let isListen;
         try{
-          isListen = await this.$walletService.startListen(password, true, 'http');
+          isListen = await this.$walletService.startListen(true, 'http');
         }finally{
           this.store.commit('listenerStarting', false);
         }
@@ -449,10 +431,9 @@
         //one process scan for listener, Tor, wallet and node (walletService.stopAll)
         const started = performance.now();
         const cfg = this.configService.config || {};
-        await this.$walletService.stopAll(cfg.epicbox_background, cfg.node_background != false);
+        await this.$walletService.stopAll(cfg.node_background != false);
         this.store.commit('walletEpicboxService', false);
         this.store.commit('epicbox', null);
-        this.store.commit('epicboxNeedsPassword', null);
         clearTimeout(this.epicboxRefreshId);
         console.log('[logout] processes stopped +' + Math.round(performance.now() - started) + ' ms');
 
@@ -618,7 +599,6 @@
 
       async nodeStatus(){
         await window.api.nodebackground(this.configService.config.node_background);
-        await window.api.epicboxbackground(this.configService.config.epicbox_background);
 
         let respNode = await this.$nodeService.getNodeStatus(this.store.state.user.nodeInternal);
         if(respNode){

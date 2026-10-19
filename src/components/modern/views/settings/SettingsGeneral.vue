@@ -47,35 +47,6 @@
             <p id="stg-relay-h" class="e-help">{{ $t('msg.settings.epicbox_domain_hint') }}</p>
           </div>
           <p v-if="listenerServerLine" class="e-help e-stg-relay-now" role="status"><EIcon :name="listenerServerLine.icon" size="sm" /><span>{{ listenerServerLine.text }}</span></p>
-          <!-- a server change while this session can't restart the listener by itself -->
-          <form v-if="store.state.epicboxNeedsPassword" class="e-notice e-gold e-stg-boxpw" novalidate @submit.prevent="applyEpicboxWithPassword">
-            <EIcon name="lock" />
-            <div role="group" aria-labelledby="stg-boxpw-t" aria-describedby="stg-boxpw-h">
-              <b id="stg-boxpw-t">{{ $t('msg.settings.epicbox_password_title') }}</b>
-              <p id="stg-boxpw-h">{{ $t('msg.settings.epicbox_password_text') }}</p>
-              <p v-if="store.state.epicboxNeedsPassword.wrong" class="e-error-msg" role="alert"><EIcon name="alertc" /><span>{{ $t('msg.app.epicbox_wrong_password') }}</span></p>
-              <div class="e-field" ref="boxPwWrap">
-                <label class="e-label" for="stg-boxpw">{{ $t('msg.password') }}</label>
-                <PasswordField ref="epicboxPasswordField" :placeholder="$t('msg.modern.send.rcv_password_ph')" required="true" name="password" />
-              </div>
-              <div class="e-actions">
-                <button type="submit" class="e-btn e-btn-primary e-sm">{{ $t('msg.settings.epicbox_apply') }}</button>
-                <button type="button" class="e-btn e-btn-ghost e-sm" @click="dismissEpicboxPassword">{{ $t('msg.settings.epicbox_apply_later') }}</button>
-              </div>
-            </div>
-          </form>
-        </div>
-        <div class="e-set-row">
-          <div>
-            <b id="stg-boxbg-l">{{ $t('msg.settings.epicbox_background') }}</b>
-            <p id="stg-boxbg-h">{{ $t('msg.settings.epicbox_background_hint') }}</p>
-          </div>
-          <div class="e-ctl">
-            <label class="e-switch">
-              <input type="checkbox" v-model="epicbox_background" :disabled="(nodeInternal && !node_background)" aria-labelledby="stg-boxbg-l" aria-describedby="stg-boxbg-h" />
-              <span class="e-track"></span>
-            </label>
-          </div>
         </div>
       </div>
     </section>
@@ -174,12 +145,11 @@
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import NodeserverField from '@/components/modern/form/NodeserverField.vue';
-  import PasswordField from '@/components/modern/form/PasswordField.vue';
   import SettingsFrame from '@/components/modern/settings/SettingsFrame.vue';
   import { resetNotice } from '@/shared/theme';
   import { epicboxStatus } from '@/shared/epicboxStatus';
   export default reskin(Settings, {
-    components: { EIcon, NodeserverField, PasswordField, SettingsFrame },
+    components: { EIcon, NodeserverField, SettingsFrame },
     data() {
       //the saved values, to tell whether the form has unsaved changes
       return { saved: null };
@@ -188,7 +158,7 @@
       current() {
         const f = this.nodeserverField || {};
         return JSON.stringify([f.select, String(f.input || '').trim(), !!this.node_background, this.localeSelected,
-          String(this.epicboxDomain || '').trim(), !!this.walletlisten_on_startup, !!this.epicbox_background]);
+          String(this.epicboxDomain || '').trim(), !!this.walletlisten_on_startup]);
       },
       dirty() {
         return this.saved !== null && this.saved !== this.current;
@@ -223,7 +193,7 @@
       },
       /* back to the saved values */
       discard() {
-        const [select, input, nodeBg, locale, domain, listen, boxBg] = JSON.parse(this.saved);
+        const [select, input, nodeBg, locale, domain, listen] = JSON.parse(this.saved);
         this.nodeserverField.select = select;
         this.nodeserverField.input = input;
         this.nodeInternal = select == 'internal';
@@ -231,7 +201,6 @@
         this.localeSelected = locale;
         this.epicboxDomain = domain;
         this.walletlisten_on_startup = listen;
-        this.epicbox_background = boxBg;
         this.resetFormErrors();
       },
       //forget that the tour was seen and open it on Overview

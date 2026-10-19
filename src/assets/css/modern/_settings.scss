@@ -159,6 +159,3 @@ html[data-ui='modern'][data-theme='light'] .e-stg-btl-logo .e-btl-light { displa
 /* Epicbox: the server the listener is really on, and the password prompt after a server change */
 .e-stg-relay-now { display: grid; grid-template-columns: 16px 1fr; gap: var(--sp-2); align-items: start; margin-top: var(--sp-2); overflow-wrap: anywhere; }
 .e-stg-relay-now .e-icon { margin-top: 2px; }
-.e-stg-boxpw { grid-template-columns: 20px 1fr; margin-top: var(--sp-3); }
-.e-stg-boxpw .e-field { margin-top: var(--sp-3); max-width: 420px; }
-.e-stg-boxpw .e-actions { justify-content: flex-start; margin-top: var(--sp-3); flex-wrap: wrap; }

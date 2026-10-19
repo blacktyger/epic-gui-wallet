@@ -430,8 +430,6 @@ const messages = {
       epicbox_domain_hint: `The domain of the relay server, where your epicbox is connected to. Leave field blank if you don't want to use this service. Default: epicbox.epiccash.com`,
       node_background: 'sync in background',
       node_background_hint: 'the built-in node server continues to sync in the background even when the app is closed. The next time you run the wallet, you do not have to wait for the synchronization with the blockchain.',
-      epicbox_background: 'Run Epicbox listener in background',
-      epicbox_background_hint: 'the Epicbox listener continues to listen for incoming transactions in background even when the app is closed.'
 
     },
 

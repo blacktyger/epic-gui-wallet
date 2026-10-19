@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ownerApiArgs, listenArgs, epicboxArgs, initArgs, statusMessageText, networkArgs, OWNER_API_START_DIR,
+  PTY_KINDS, hasPassArg, withPassArg,
 } from '../src/shared/walletArgs.js';
 import { describeSpawn, redactArgs } from '../src/shared/processOwnership.js';
 
@@ -27,22 +28,44 @@ test('owner_api refuses a missing or wallet start dir', () => {
   assert.throws(() => ownerApiArgs({ network: 'mainnet', startDir: START }));
 });
 
-test('listeners and init still take the password (4.1.0 reads it only from a terminal otherwise)', () => {
+test('listeners and init: no password anywhere in their args (the pty prompt gets it)', () => {
   const cases = [
     [listenArgs({ network: 'mainnet', dir: DIR, password: PASS, tor: false }), 'listen'],
     [listenArgs({ network: 'floonet', dir: DIR, password: PASS, tor: true }), 'listen'],
     [epicboxArgs({ network: 'mainnet', dir: DIR, password: PASS }), 'epicbox'],
+    [epicboxArgs({ network: 'usernet', dir: DIR, password: PASS }), 'epicbox'],
   ];
   for (const [args, role] of cases) {
-    assert.equal(args[args.indexOf('--pass') + 1], PASS);
+    //even a caller that still passes one gets none
+    assert.ok(!hasPassArg(args) && !args.includes(PASS), args.join(' '));
     assert.equal(describeSpawn(BIN, args).role, role);
     assert.equal(describeSpawn(BIN, args).dir, DIR);
-    assert.ok(!redactArgs(args).includes(PASS), 'redacted for logs');
   }
-  assert.deepEqual(listenArgs({ network: 'mainnet', dir: DIR, password: PASS, tor: false }).slice(-3), ['--method', 'http', '--no_tor']);
-  assert.ok(!listenArgs({ network: 'mainnet', dir: DIR, password: PASS, tor: true }).includes('--no_tor'));
-  assert.deepEqual(initArgs({ network: 'usernet', dir: DIR, password: PASS }), ['--usernet', '--pass', PASS, '-c', DIR, 'init']);
-  assert.deepEqual(initArgs({ network: 'mainnet', dir: DIR, password: PASS, recover: true }), ['--pass', PASS, '-c', DIR, 'init', '-r']);
+  assert.deepEqual(listenArgs({ network: 'mainnet', dir: DIR, tor: false }), ['-t', DIR, '-c', DIR, 'listen', '--method', 'http', '--no_tor']);
+  assert.ok(!listenArgs({ network: 'mainnet', dir: DIR, tor: true }).includes('--no_tor'));
+  assert.deepEqual(epicboxArgs({ network: 'floonet', dir: DIR }), ['--floonet', '-t', DIR, '-c', DIR, 'listen', '--method', 'epicbox', '--no_tor']);
+  assert.deepEqual(initArgs({ network: 'usernet', dir: DIR, password: PASS }), ['--usernet', '-c', DIR, 'init']);
+  assert.deepEqual(initArgs({ network: 'mainnet', dir: DIR, password: PASS, recover: true }), ['-c', DIR, 'init', '-r']);
+  //init is not a tracked process
+  assert.equal(describeSpawn(BIN, initArgs({ network: 'mainnet', dir: DIR })), null);
+});
+
+test('every pty kind says how many password prompts it answers', () => {
+  assert.deepEqual(PTY_KINDS.listen, { passwords: 1, phrase: false });
+  assert.deepEqual(PTY_KINDS.epicbox, { passwords: 1, phrase: false });
+  assert.deepEqual(PTY_KINDS.init, { passwords: 2, phrase: false });
+  assert.deepEqual(PTY_KINDS.recover, { passwords: 2, phrase: true });
+});
+
+test('fallback only: withPassArg puts --pass before the dir options, as before', () => {
+  assert.deepEqual(withPassArg(listenArgs({ network: 'floonet', dir: DIR, tor: false }), PASS),
+    ['--floonet', '--pass', PASS, '-t', DIR, '-c', DIR, 'listen', '--method', 'http', '--no_tor']);
+  assert.deepEqual(withPassArg(initArgs({ network: 'mainnet', dir: DIR, recover: true }), PASS), ['--pass', PASS, '-c', DIR, 'init', '-r']);
+  const args = withPassArg(epicboxArgs({ network: 'mainnet', dir: DIR }), PASS);
+  assert.ok(hasPassArg(args));
+  assert.deepEqual(describeSpawn(BIN, args), { role: 'epicbox', bin: BIN, dir: DIR, network: 'mainnet' });
+  assert.ok(!redactArgs(args).includes(PASS), 'redacted for logs');
+  assert.ok(hasPassArg(['--pass=x']) && hasPassArg(['-p', 'x']) && !hasPassArg(['-c', DIR]));
 });
 
 test('no scan process: nothing builds scan args any more', async () => {

@@ -298,8 +298,6 @@ const messages = {
       epicbox_switch_failed: 'Epicbox could not be started on the new server. Start it from the Receive page.',
       epicbox_old_checked: '{0} payment message(s) picked up from the old server {1}',
       epicbox_owner_config_failed: 'The wallet API did not take the new Epicbox server: lock and unlock the wallet before sending.',
-      epicbox_wrong_password: 'Wrong password. The Epicbox listener stays on the old server.',
-      epicbox_needs_password: 'To move the Epicbox listener to the new server, enter your password in Settings.',
       node_unreachable: 'node unreachable',
       wallet_api_unreachable: 'Wallet API not reachable',
       balance_loading: 'Reading balance…',
@@ -441,12 +439,6 @@ const messages = {
 
       node_background: 'sync in background',
       node_background_hint: 'the built-in node server continues to sync in the background even when the app is closed. The next time you run the wallet, you do not have to wait for the synchronization with the blockchain.',
-      epicbox_background: 'Run Epicbox listener in background',
-      epicbox_background_hint: 'the Epicbox listener continues to listen for incoming transactions in background even when the app is closed.',
-      epicbox_password_title: 'Enter your password to apply the new Epicbox server',
-      epicbox_password_text: 'The Epicbox listener has to start again on the new server, and it needs your wallet password for that. Until then it stays on the old one.',
-      epicbox_apply: 'Apply',
-      epicbox_apply_later: 'Not now',
     },
     validators:{
       empty: 'The {0} field is required',

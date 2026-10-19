@@ -56,7 +56,6 @@ export default {
   rcv_off: 'Receiving is off',
   rcv_start_title: 'Start the listener to receive online',
   rcv_start_text: 'Epicbox and HTTP payments need the listener running. Payments already sent to your Epic address wait on the relay and arrive once it starts. Files work either way.',
-  rcv_password_ph: 'Your wallet password…',
   rcv_start: 'Start listener',
   rcv_stop: 'Stop receiving',
   rcv_addr_title: 'Your Epic address',

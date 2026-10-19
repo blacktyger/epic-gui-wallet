@@ -7,7 +7,7 @@ import * as secp256k1 from "@noble/secp256k1";
 import isPortReachable from 'is-port-reachable';
 import { createProcessRegistry, createPidCheck, describeSpawn, redactArgs } from './shared/processOwnership';
 import { spawnCommand, plainBin } from './shared/spawnCommand';
-import { createLineSplitter, parseListenerLine } from './shared/epicboxListener';
+import { parseListenerLine } from './shared/epicboxListener';
 
 const moment = require('moment');
 const base32 = require('rfc-3548-b32');
@@ -17,6 +17,7 @@ const sha3_256 = require('js-sha3').sha3_256;
 const ps = require('ps-node');
 const fs = require('fs');
 const log = require('electron-log');
+const { EventEmitter } = require('events');
 
 const homedir = os.homedir();
 const rootdir = require('app-root-dir');
@@ -54,7 +55,7 @@ const spawn = require('child_process').spawn;
 const fork = require('child_process').fork;
 const exec = require('child_process').exec;
 const execFile = require('child_process').execFile;
-const validChannels = ['firstscan-stdout', 'scan-stdout', 'scan-finish', 'scan-error', 'walletExisted', 'walletCreated', 'walletCreateFailed', 'nodeBackground', 'epicboxBackground'];
+const validChannels = ['firstscan-stdout', 'scan-stdout', 'scan-finish', 'scan-error', 'walletExisted', 'walletCreated', 'walletCreateFailed', 'nodeBackground'];
 
 //extract the recovery phrase from epic-wallet init / init -r stdout (4.1 mixes log lines into stdout)
 function parseRecoveryPhrase(stdout){
@@ -69,8 +70,9 @@ function parseRecoveryPhrase(stdout){
 function killPid(pid){
   return new Promise(function(resolve) {
     if (process.platform === 'win32') {
-      //the tree: epic-wallet.exe and its tor.exe (and a cmd.exe wrapper started by 6.0.0)
-      exec(`taskkill /pid ${Number(pid)} /f /t`, function( err ) {
+      //the tree: epic-wallet.exe and its tor.exe (and a cmd.exe wrapper started by 6.0.0); no
+      //cmd.exe, no console window. Processes on a pseudo-terminal are stopped this way too
+      execFile('taskkill', ['/pid', String(Number(pid)), '/f', '/t'], {windowsHide: true}, function( err ) {
         resolve(!err);
       });
     }else{
@@ -143,15 +145,6 @@ function isBundled(bin){
 const epicboxLive = new Map();
 //the renderer's callbacks for listener events (App.vue, walletService)
 const epicboxSubscribers = new Set();
-/*
- * How to start a wallet's Epicbox listener again after a server change: its spawn arguments,
- * password included, exactly as the listener running now got them. Kept in this preload's memory
- * only (never written, logged or handed to the renderer) while that session is unlocked; dropped
- * at lock (forgetEpicboxSpecs). wallet dir → {cmd, args, password}
- */
-const epicboxSpecs = new Map();
-//bumped at lock: a listener started before it does not put its spec (and password) back
-let epicboxSpecGen = 0;
 
 function emitEpicbox(ev){
   for(const fn of epicboxSubscribers){
@@ -159,57 +152,46 @@ function emitEpicbox(ev){
   }
 }
 
-//the args with the -c (config dir) value replaced: the old-server check reads its own toml
-function withConfigDir(args, configDir){
-  const out = args.slice();
-  const i = out.indexOf('-c');
-  if(i >= 0 && i + 1 < out.length) out[i + 1] = configDir;
-  return out;
-}
-
-/* start an Epicbox listener; meta: {server: the wss:// url it is started with, check: the old-server check} */
-function startEpicboxListener(cmd, args, password, meta = {}){
+/* start an Epicbox listener on the main process's pseudo-terminal (spawnPty: it answers the
+   password prompt with the session's); meta: {server: the wss:// url it is started with, check:
+   the old-server check, timeoutMs} */
+async function startEpicboxListener(cmd, args, meta = {}){
 
   //one Epicbox listener per wallet dir: a second one (a scan that missed ours, two starts at once) reuses it
   const desc = describeSpawn(cmd, args);
   const running = desc ? liveChildOf('epicbox', desc.dir) : 0;
   if(running){
     debug ? console.log('execEpicbox: already running', running) : null;
-    return Promise.resolve({success: true, msg: running, reused: true});
+    return {success: true, msg: running, reused: true};
   }
+
+  const check = !!meta.check;
+  const listenProcess = await spawnPty(cmd, args, 'epicbox');
+  if(!listenProcess.pid){
+    return {success: false, pid: 0, state: 'off', msg: listenProcess.error || 'not started', noSession: !!listenProcess.noSession};
+  }
+  track(listenProcess, cmd, args, {server: meta.server});
+  const pid = listenProcess.pid;
+  const dir = desc ? desc.dir : '';
+  const live = {dir, check, url: '', address: '', state: 'starting'};
+  epicboxLive.set(pid, live);
 
   return new Promise(function(resolve) {
 
-      const check = !!meta.check;
-      const specGen = epicboxSpecGen;
-      let listenProcess = track(spawnEpic(cmd, args), cmd, args, {server: meta.server});
-      const pid = listenProcess.pid;
-      const dir = desc ? desc.dir : '';
-      const live = {dir, check, url: '', address: '', state: 'starting'};
-      if(pid) epicboxLive.set(pid, live);
-      const split = createLineSplitter();
       let settled = false;
       //every answer names the pid and how far the listener got (state: its last event)
       const done = (res) => {
         if(settled) return;
         settled = true;
-        //the wallet's own listener (not the check): it can be started again after a server change,
-        //unless the session was locked since it was started
-        if((res.success || res.pending) && !check && desc && specGen === epicboxSpecGen){
-          epicboxSpecs.set(desc.dir, {cmd, args: args.slice(), password});
-        }
-        resolve(Object.assign({pid: pid || 0, state: live.state}, res));
+        resolve(Object.assign({pid, state: live.state}, res));
       };
 
-      listenProcess.stdout.setEncoding('utf8');
+      //whole lines (shared/ptyHost.js), stdout and stderr together
       listenProcess.stdout.on('data', (data) => {
 
           debug ? console.log('execEpicbox.stdout', data) : null;
-          if(data.includes('Password:')){
-            listenProcess.stdin.write(password+"\n");
-          }
 
-          for(const line of split(data)){
+          for(const line of data.split('\n')){
             const ev = parseListenerLine(line);
             if(!ev) continue;
             if(ev.type == 'connecting'){ live.url = ev.url; live.state = 'connecting'; }
@@ -229,13 +211,11 @@ function startEpicboxListener(cmd, args, password, meta = {}){
             done({success: false, msg: 'node not synced', tor: false});
           }
 
-      });
+          //a wrong password, or another error that ends it
+          if(data.includes('Wallet command failed') || data.includes('Error opening wallet')){
+            done({success: false, msg: errorLines(data) || 'listener failed'});
+          }
 
-      listenProcess.stderr.setEncoding('utf8');
-      listenProcess.stderr.on('data', (data) => {
-          debug ? console.log('execEpicbox.stderr', data) : null;
-
-          done({success: false, msg: data});
       });
 
       //no connection within timeoutMs: the check gives up; the wallet's listener keeps trying
@@ -249,11 +229,67 @@ function startEpicboxListener(cmd, args, password, meta = {}){
         emitEpicbox({type: 'exit', pid, dir, check, code});
         done({success: false, msg: 'exited', exited: true});
       });
-      listenProcess.on('error', (e) => {
-        done({success: false, msg: e && e.message ? e.message : 'spawn failed'});
-      });
 
   });
+}
+
+/*
+ * The listeners and init/recover run on a pseudo-terminal in the main process (shared/ptyHost.js),
+ * which answers their password prompt: neither the command line nor this preload has the password
+ * of a listener. Their output comes back as lines (stdout and stderr together, prompts left out).
+ * spawnPty resolves a child-like object {pid, id, mode, stdout ('data': text), on('exit', (code,
+ * signal, fail))}; pid 0 with {error, noSession} when nothing was started. Events that arrive
+ * before the caller attached its handlers are kept for it.
+ */
+const ptyChildren = new Map();
+ipcRenderer.on('pty-data', (event, m) => {
+  const c = m && ptyChildren.get(m.token);
+  if(c) c.deliver('data', (m.lines || []).join('\n') + '\n');
+});
+ipcRenderer.on('pty-exit', (event, m) => {
+  const c = m && ptyChildren.get(m.token);
+  if(c){
+    ptyChildren.delete(m.token);
+    c.deliver('exit', m);
+  }
+});
+let ptySeq = 0;
+
+async function spawnPty(cmd, args, kind, secrets){
+  const token = process.pid + '-' + (++ptySeq) + '-' + Date.now();
+  const child = new EventEmitter();
+  child.stdout = new EventEmitter();
+  let queue = [];
+  const emit = (what, v) => what === 'data' ? child.stdout.emit('data', v) : child.emit('exit', v.code, v.signal, v.fail);
+  ptyChildren.set(token, {deliver: (what, v) => queue ? queue.push([what, v]) : emit(what, v)});
+  let r;
+  try{
+    r = await ipcRenderer.invoke('pty-start', Object.assign({token, cmd: plainBin(cmd), args: (args || []).map(String), kind}, secrets || {}));
+  }catch(e){
+    r = {ok: false, error: e && e.message ? e.message : 'start failed'};
+  }
+  if(!r || !r.ok){
+    ptyChildren.delete(token);
+    child.pid = 0;
+    child.error = r && r.error;
+    child.noSession = !!(r && r.noSession);
+    return child;
+  }
+  child.pid = r.pid;
+  child.id = r.id;
+  child.mode = r.mode;
+  //the caller attaches its handlers right after this resolves
+  setTimeout(() => {
+    const q = queue;
+    queue = null;
+    q.forEach(([what, v]) => emit(what, v));
+  }, 0);
+  return child;
+}
+
+//the error lines of epic-wallet output, for a message
+function errorLines(text){
+  return String(text || '').split('\n').filter(l => /\bERROR\b|Wallet command failed|Error opening wallet|invalid/i.test(l)).join('\n').trim();
 }
 
 contextBridge.exposeInMainWorld('nodeChildProcess', {
@@ -299,52 +335,32 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
     },
 
+    /* init: a new wallet; the password goes to the main process for this one process only and
+       answers epic-wallet's prompts there (shared/ptyHost.js). Resolves {success, msg: phrase | error} */
     async execNew(cmd, args, platform, password){
 
-      return new Promise(function(resolve, reject) {
-
-          let createProcess = spawnEpic(cmd, args);
-
-          let newSeedData = '';
-          let errorData = '';
-
-          createProcess.stdout.setEncoding('utf8');
-          createProcess.stdout.on('data', (data) => {
-
-            debug ? console.log('execNew.stdout', data) : null;
-
-            if(data.includes('Password:')){
-              createProcess.stdin.write( password+"\n");
-            }
-            newSeedData += data;
-
-          });
-
-          createProcess.stderr.setEncoding('utf8');
-          createProcess.stderr.on('data', (data) => {
-            debug ? console.log('execNew.stderr', data) : null;
-            errorData += data;
-          });
-
-          createProcess.stdout.on('end', function () {
-
-            if(errorData != ''){
-              resolve({success: false, msg: errorData});
-            }else if(newSeedData != ''){
-
-              let phrase = parseRecoveryPhrase(newSeedData);
-              if(phrase){
-                resolve({success: true, msg: phrase});
-              }else{
-                resolve({success: false, msg: 'could not read the recovery phrase from epic-wallet output'});
-              }
-            }else{
-              resolve({success: false, msg: 'unknow error'})
-            }
-
-          });
-
+      let output = [];
+      const child = await spawnPty(cmd, args, 'init', {password: String(password)});
+      if(!child.pid){
+        return {success: false, msg: child.error || 'epic-wallet init not started'};
+      }
+      const done = await new Promise(function(resolve) {
+        child.stdout.on('data', (data) => {
+          debug ? console.log('execNew.stdout', data) : null;
+          output.push(data);
+        });
+        child.on('exit', (code) => {
+          const text = output.join('');
+          const phrase = parseRecoveryPhrase(text);
+          if(code === 0 && phrase){
+            resolve({success: true, msg: phrase});
+          }else{
+            resolve({success: false, msg: errorLines(text) || (code === 0 ? 'could not read the recovery phrase from epic-wallet output' : 'epic-wallet init failed (' + code + ')')});
+          }
+        });
       });
+      output = [];
+      return done;
     },
     on:(channel, func) => {
       if (validChannels.includes(channel)) {
@@ -436,20 +452,22 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
           });
       });
     },
-    /* start wallet listen */
-    async execListen(cmd, args, platform, password){
+    /* start wallet listen; the main process answers its password prompt with the session's */
+    async execListen(cmd, args, platform){
 
-      return new Promise(function(resolve, reject) {
+      const listenProcess = await spawnPty(cmd, args, 'listen');
+      if(!listenProcess.pid){
+        return {success: false, msg: listenProcess.error || 'not started', noSession: !!listenProcess.noSession, tor: false};
+      }
+      track(listenProcess, cmd, args);
 
-          let listenProcess = track(spawnEpic(cmd, args), cmd, args);
+      return new Promise(function(resolve) {
+
           let isTorBooted = false;
-          listenProcess.stdout.setEncoding('utf8');
+          let errors = [];
           listenProcess.stdout.on('data', (data) => {
 
               debug ? console.log('execListen.stdout', data) : null;
-              if(data.includes('Password:')){
-                listenProcess.stdin.write(password+"\n");
-              }
 
               /* todo check why tor is not Bootstrapped on Linux */
               if(data.includes('[notice] Bootstrapped 100% (done): Done')){
@@ -466,54 +484,30 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
 
                 resolve({success: false, msg: 'node not synced', tor: isTorBooted});
               }
-
-              
+              const err = errorLines(data);
+              if(err){
+                errors.push(err);
+              }
+              //a wrong password: the same plain message epic-wallet gives
+              if(data.includes('Wallet command failed') || data.includes('Error opening wallet')){
+                resolve({success: false, msg: err || data, tor: isTorBooted});
+              }
 
           });
 
-          listenProcess.stderr.setEncoding('utf8');
-          listenProcess.stderr.on('data', (data) => {
-              debug ? console.log('execListen.stderr', data) : null;
-
-              resolve({success: false, msg: data, tor: isTorBooted});
-          })
+          listenProcess.on('exit', (code) => {
+            resolve({success: false, msg: errors.join('\n') || 'listener exited (' + code + ')', tor: isTorBooted});
+          });
 
       });
     },
 
-    /* start wallet epicbox; meta: {server: the wss:// url from its toml, check: the old-server check} */
-    async execEpicbox(cmd, args, platform, password, meta){
-      return startEpicboxListener(cmd, args, password, meta || {});
+    /* start wallet epicbox (no password: the main process answers its prompt); meta: {server:
+       the wss:// url from its toml, check: the old-server check, timeoutMs} */
+    async execEpicbox(cmd, args, platform, meta){
+      return startEpicboxListener(cmd, args, meta || {});
     },
 
-    /* start the wallet's Epicbox listener again as it was started last in this session (its
-       password stays here); meta.configDir: read the toml from there (the old-server check).
-       {success: false, noSpec: true} when this session started none */
-    async respawnEpicbox(dir, meta){
-      const spec = epicboxSpecs.get(dir);
-      if(!spec){
-        return {success: false, noSpec: true};
-      }
-      const m = meta || {};
-      const args = m.configDir ? withConfigDir(spec.args, m.configDir) : spec.args;
-      return startEpicboxListener(spec.cmd, args, spec.password, m);
-    },
-    /* can respawnEpicbox start this wallet's listener without asking for the password */
-    hasEpicboxSpec(dir){
-      return epicboxSpecs.has(dir);
-    },
-    /* a listener of ours runs already (reused at login): keep how it is started, for a server change */
-    rememberEpicboxSpec(cmd, args, password){
-      const desc = describeSpawn(cmd, args);
-      if(desc && desc.role == 'epicbox'){
-        epicboxSpecs.set(desc.dir, {cmd, args: args.slice(), password});
-      }
-    },
-    /* lock: no password is kept */
-    forgetEpicboxSpecs(){
-      epicboxSpecGen++;
-      epicboxSpecs.clear();
-    },
     /* the wallet's Epicbox listener started by this window, if it runs: {pid, url (the server it
        connected to), address, state}; null otherwise (e.g. one left running by an earlier start) */
     liveEpicbox(dir){
@@ -532,73 +526,48 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
       }
     },
 
+    /* init -r: the phrase and the new password go to the main process for this one process only
+       and answer epic-wallet's prompts there. Resolves {success, msg: '' | error} */
     async execRecover(cmd, args, platform, seeds, password){
 
-      return new Promise(function(resolve, reject) {
-
-          let recover = spawnEpic(cmd, args);
-
-
-          let newSeedData = '';
-          let errorData = '';
-
-          recover.stdout.setEncoding('utf8');
-          recover.stdout.on('data', (data) => {
-            debug ? console.log('execRecover.stdout', data) : null;
-
-            if(data.includes('Password:')){
-              recover.stdin.write(password+"\n");
-            }
-
-            if(data.includes('Please enter your recovery phrase')){
-              recover.stdin.write(seeds+"\n");
-            }
-
-            newSeedData += data;
-
-          });
-
-
-          recover.stderr.setEncoding('utf8');
-          recover.stderr.on('data', (data) => {
-
-            debug ? console.log('execRecover.stderr', data) : null;
-
-            errorData += data;
-
-            if(data.includes('Recovery word phrase is invalid.')){
-              recover.stdin.pause();
-              recover.kill();
-              resolve({success: false, msg: errorData});
-            }
-
-          });
-
-          recover.stdout.on('end', function () {
-
-            debug ? console.log('execRecover.stdout.end') : null;
-
-            if(errorData != ''){
-
-              resolve({success: false, msg: errorData});
-
-            }else if(newSeedData != ''){
-
-              let phrase = parseRecoveryPhrase(newSeedData);
-              if(phrase){
-                resolve({success: true, msg: phrase});
-              }else{
-                resolve({success: false, msg: 'could not read the recovery phrase from epic-wallet output'});
-              }
-            }else{
-              resolve({success: false, msg: 'unknow error'})
-            }
-
-          });
-
+      let output = [];
+      const recover = await spawnPty(cmd, args, 'recover', {password: String(password), phrase: String(seeds)});
+      if(!recover.pid){
+        return {success: false, msg: recover.error || 'epic-wallet init -r not started'};
+      }
+      const done = await new Promise(function(resolve) {
+        recover.stdout.on('data', (data) => {
+          debug ? console.log('execRecover.stdout', data) : null;
+          output.push(data);
+        });
+        recover.on('exit', (code, signal, fail) => {
+          debug ? console.log('execRecover.exit', code) : null;
+          const text = output.join('');
+          if(fail === 'invalid_phrase' || text.includes('Recovery word phrase is invalid.')){
+            resolve({success: false, msg: 'Recovery word phrase is invalid.'});
+          }else if(code === 0 && (text.includes("Command 'init' completed successfully") || text.includes('Your recovery phrase is'))){
+            //the phrase is not passed back: the form has it
+            resolve({success: true, msg: ''});
+          }else{
+            resolve({success: false, msg: errorLines(text) || 'epic-wallet init -r failed (' + code + ')'});
+          }
+        });
       });
+      output = [];
+      return done;
     },
 
+    /* the wallet password of this session goes to the main process, once after the unlock; it is
+       never handed back. clear: lock, logout, wallet switch */
+    setSessionPassword(password){
+      return ipcRenderer.invoke('session-password-set', String(password));
+    },
+    clearSessionPassword(){
+      return ipcRenderer.invoke('session-password-clear');
+    },
+    hasSessionPassword(){
+      return ipcRenderer.invoke('session-password-has');
+    },
 });
 
 const aes256gcm = (shared_secret) => {
@@ -784,9 +753,6 @@ contextBridge.exposeInMainWorld('api', {
     },
     nodebackground:(nodebackground) => {
       ipcRenderer.send('nodeBackground', nodebackground);
-    },
-    epicboxbackground:(epicboxbackground) => {
-      ipcRenderer.send('epicboxBackground', epicboxbackground);
     },
     //reload the renderer at index.html, after switching between the Modern and Classic interface
     reloadUi: () => {

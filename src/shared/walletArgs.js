@@ -8,8 +8,10 @@
  * over the encrypted JSON-RPC (open_wallet). A wallet check runs on that owner API too (scan).
  *
  * epic-wallet 4.1.0 reads a missing password only from a terminal (/dev/tty, CONIN$), never from
- * stdin, and has no env var or password file: the listeners (http, Epicbox) and init/recover,
- * which need the open wallet from their start, still get --pass.
+ * stdin, and has no env var or password file. The listeners (http, Epicbox) and init/recover,
+ * which need the password at their start, run on a pseudo-terminal in the main process, which
+ * answers the prompt (shared/ptyHost.js): their args have no password either. Only when a
+ * pseudo-terminal can't be used on a platform does the main process add it (withPassArg).
  */
 
 //the -t dir of the owner API: inside the wallet dir, never holds a wallet (epic-wallet doesn't create it)
@@ -25,19 +27,47 @@ export function ownerApiArgs({ network, dir, startDir }) {
   return [...networkArgs(network), '--offline_mode', '-c', dir, '-t', startDir, 'owner_api'];
 }
 
-/* http listener (method is always http: Epicbox has epicboxArgs) */
-export function listenArgs({ network, dir, password, tor }) {
-  return [...networkArgs(network), '--pass', password, '-t', dir, '-c', dir, 'listen', '--method', 'http',
+/* http listener (method is always http: Epicbox has epicboxArgs); asks for the password */
+export function listenArgs({ network, dir, tor }) {
+  return [...networkArgs(network), '-t', dir, '-c', dir, 'listen', '--method', 'http',
     ...(tor === false ? ['--no_tor'] : [])];
 }
 
-export function epicboxArgs({ network, dir, password }) {
-  return [...networkArgs(network), '--pass', password, '-t', dir, '-c', dir, 'listen', '--method', 'epicbox', '--no_tor'];
+/* Epicbox listener; asks for the password */
+export function epicboxArgs({ network, dir }) {
+  return [...networkArgs(network), '-t', dir, '-c', dir, 'listen', '--method', 'epicbox', '--no_tor'];
 }
 
-/* init, or init -r (recover): the recovery phrase goes to stdin */
-export function initArgs({ network, dir, password, recover }) {
-  return [...networkArgs(network), '--pass', password, '-c', dir, 'init', ...(recover ? ['-r'] : [])];
+/* init, or init -r (recover): asks for the new password twice (and first the recovery phrase) */
+export function initArgs({ network, dir, recover }) {
+  return [...networkArgs(network), '-c', dir, 'init', ...(recover ? ['-r'] : [])];
+}
+
+/* the commands the main process runs on a pseudo-terminal: how many password prompts each has,
+   and whether it asks for the recovery phrase */
+export const PTY_KINDS = {
+  listen: { passwords: 1, phrase: false },
+  epicbox: { passwords: 1, phrase: false },
+  init: { passwords: 2, phrase: false },
+  recover: { passwords: 2, phrase: true },
+};
+
+const PASS_FLAGS = ['--pass', '--password', '-p'];
+
+/* do these args carry a password (they must not, except in withPassArg's fallback) */
+export function hasPassArg(args) {
+  return (Array.isArray(args) ? args : []).some(a => PASS_FLAGS.includes(String(a)) || PASS_FLAGS.some(f => String(a).startsWith(f + '=')));
+}
+
+/* fallback only (no pseudo-terminal on this platform): the args with `--pass <password>` before
+   the first dir option, where epic-wallet reads its global options */
+export function withPassArg(args, password) {
+  const out = (Array.isArray(args) ? args : []).map(String);
+  let i = out.findIndex(a => a === '-t' || a === '-c');
+  if (i < 0) i = out.findIndex(a => !a.startsWith('--'));
+  if (i < 0) i = out.length;
+  out.splice(i, 0, '--pass', String(password));
+  return out;
 }
 
 /* an owner API status message ({Scanning: [text, percent]}, {ScanningComplete: text}, ...) as one line */

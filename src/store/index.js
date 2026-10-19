@@ -60,7 +60,6 @@ export const store = createStore({
        checked after a server change; address: the address it listens for */
     epicbox: {state: '', server: '', address: '', checking: '', pid: 0},
     //a server change needs the password to restart the listener: the config before the save, else null
-    epicboxNeedsPassword: null,
     torService: false,
     nodeType: '',
     nodeStatus: {
@@ -112,9 +111,6 @@ export const store = createStore({
     /* merge into state.epicbox; null resets it (logout) */
     epicbox(state, payload){
       state.epicbox = payload ? Object.assign({}, state.epicbox, payload) : {state: '', server: '', address: '', checking: '', pid: 0};
-    },
-    epicboxNeedsPassword(state, payload){
-      state.epicboxNeedsPassword = payload || null;
     },
     walletListenerService(state, payload){
       state.walletListenerService = payload;
