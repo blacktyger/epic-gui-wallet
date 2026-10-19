@@ -2,7 +2,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { removeTmpDir, cleanLeftoverImport, isInsideTmp, importTmpDir } from '../src/shared/tmpCleanup.js';
+import os from 'node:os';
+import realFs from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import {
+  removeTmpDir, cleanLeftoverImport, cleanImportNow, isInsideTmp, importTmpDir, AFTER_EXIT_CLEANER, spawnAfterExitCleaner,
+} from '../src/shared/tmpCleanup.js';
 
 const P = path.posix, W = path.win32;
 const ROOT = '/home/jane/.epic-gui';
@@ -56,14 +61,71 @@ test('refuses paths outside <root>/tmp', async () => {
   assert.equal(isInsideTmp('C:\\Users\\j\\.epic-gui', 'C:\\Users\\j\\Documents', W), false);
 });
 
-test('leftover <root>/tmp/import is removed at start; absent is fine', async () => {
-  const imp = importTmpDir(ROOT, P);
-  const fs = fakeFs(new Set([imp]), ['EBUSY']);
-  const logs = [];
-  assert.equal(await cleanLeftoverImport({ fs, path: P, root: ROOT, sleep: noSleep, log: (m) => logs.push(m) }), true);
-  assert.deepEqual(fs.calls, [imp, imp]);
-  assert.equal(fs.existsSync(imp), false);
-  const none = fakeFs(new Set());
-  assert.equal(await cleanLeftoverImport({ fs: none, path: P, root: ROOT, sleep: noSleep }), true);
-  assert.equal(none.calls.length, 0);
+/* on a real folder: a root with the importer's copies, an empty tmp/import, and someone's own files */
+function realRoot() {
+  const root = realFs.mkdtempSync(path.join(os.tmpdir(), 'tmpcleanup-'));
+  const imp = importTmpDir(root, path);
+  realFs.mkdirSync(path.join(imp, 'legacy-profile-a', 'GPUCache'), { recursive: true });
+  realFs.writeFileSync(path.join(imp, 'legacy-profile-a', 'GPUCache', 'index'), 'x');
+  realFs.mkdirSync(path.join(imp, 'legacy-profile-b'));
+  return { root, imp, done: () => realFs.rmSync(root, { recursive: true, force: true }) };
+}
+
+test('at start: the importer\'s copies go, then tmp/import and tmp once empty; absent is fine', async () => {
+  const r = realRoot();
+  try {
+    const logs = [];
+    assert.equal(await cleanLeftoverImport({ fs: realFs, path, root: r.root, sleep: noSleep, log: (m) => logs.push(m) }), true);
+    assert.equal(realFs.existsSync(path.join(r.root, 'tmp')), false);
+    assert.equal(logs.length, 2);
+    assert.equal(await cleanLeftoverImport({ fs: realFs, path, root: r.root, sleep: noSleep }), true);
+  } finally { r.done(); }
+});
+
+test('at start: nothing but legacy-profile-* is removed (a root that is someone\'s own folder)', async () => {
+  const r = realRoot();
+  try {
+    realFs.writeFileSync(path.join(r.imp, 'mine.txt'), 'keep');
+    assert.equal(await cleanLeftoverImport({ fs: realFs, path, root: r.root, sleep: noSleep }), true);
+    assert.deepEqual(realFs.readdirSync(r.imp), ['mine.txt']);
+    assert.equal(await cleanLeftoverImport({ fs: realFs, path, root: 'relative/root', sleep: noSleep }), false);
+  } finally { r.done(); }
+});
+
+test('at quit: cleanImportNow removes the copies and the empty folders, true when none is left', () => {
+  const r = realRoot();
+  try {
+    assert.equal(cleanImportNow({ fs: realFs, path, root: r.root }), true);
+    assert.equal(realFs.existsSync(path.join(r.root, 'tmp')), false);
+    assert.equal(cleanImportNow({ fs: realFs, path, root: r.root }), true);
+  } finally { r.done(); }
+  const locked = { ...fakeFs(new Set([importTmpDir(ROOT, P), DIR]), Array(5).fill('EBUSY')), readdirSync: () => ['legacy-profile-x'], rmdirSync: () => {} };
+  assert.equal(cleanImportNow({ fs: locked, path: P, root: ROOT }), false);
+});
+
+test('after exit: the cleaner script waits for the pid to go, then removes the copies and empty folders', () => {
+  const r = realRoot();
+  try {
+    realFs.writeFileSync(path.join(r.imp, 'mine.txt'), 'keep');
+    //a pid that has exited: the cleaner starts at once
+    const gone = spawnSync(process.execPath, ['-e', '0']).pid;
+    const res = spawnSync(process.execPath, ['-e', AFTER_EXIT_CLEANER, String(gone), r.root], { timeout: 20000 });
+    assert.equal(res.status, 0, String(res.stderr));
+    assert.deepEqual(realFs.readdirSync(r.imp), ['mine.txt']);
+    realFs.rmSync(path.join(r.imp, 'mine.txt'));
+    spawnSync(process.execPath, ['-e', AFTER_EXIT_CLEANER, String(gone), r.root], { timeout: 20000 });
+    assert.equal(realFs.existsSync(path.join(r.root, 'tmp')), false);
+  } finally { r.done(); }
+});
+
+test('spawnAfterExitCleaner: detached, the app binary as node, never throws', () => {
+  const calls = [];
+  const spawn = (cmd, args, opts) => { calls.push({ cmd, args, opts }); return { on() {}, unref() {} }; };
+  assert.equal(spawnAfterExitCleaner({ spawn, execPath: '/opt/app/epic', pid: 42, root: ROOT, env: { A: '1' } }), true);
+  assert.equal(calls[0].cmd, '/opt/app/epic');
+  assert.deepEqual(calls[0].args.slice(2), ['42', ROOT]);
+  assert.equal(calls[0].opts.detached, true);
+  assert.equal(calls[0].opts.env.ELECTRON_RUN_AS_NODE, '1');
+  assert.equal(calls[0].opts.env.A, '1');
+  assert.equal(spawnAfterExitCleaner({ spawn: () => { throw new Error('no'); }, execPath: 'x', pid: 1, root: ROOT }), false);
 });

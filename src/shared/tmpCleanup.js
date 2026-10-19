@@ -41,11 +41,103 @@ export async function removeTmpDir({ fs, path, root, dir, retries = 8, delayMs =
   return false;
 }
 
-/* at start: remove a leftover <root>/tmp/import from an earlier run, independent of any import */
-export async function cleanLeftoverImport({ fs, path, root, log = () => {}, ...opts }) {
+//the importer's copies in <root>/tmp/import (legacyProfile.js); nothing else there is ever removed
+export const PROFILE_PREFIX = 'legacy-profile-';
+
+const rootOk = (root, pathMod) => typeof root === 'string' && !!root && pathMod.isAbsolute(root);
+
+/* rmdir dir only when it is empty; never throws */
+function removeIfEmpty(fs, dir) {
+  try {
+    if (fs.existsSync(dir) && fs.readdirSync(dir).length === 0) fs.rmdirSync(dir);
+  } catch (e) { /* in use or not empty: left */ }
+}
+
+/* <root>/tmp/import, then <root>/tmp, each only when empty: the importer leaves no empty folders */
+export function removeEmptyImportDirs({ fs, path, root }) {
+  if (!rootOk(root, path)) return;
+  removeIfEmpty(fs, importTmpDir(root, path));
+  removeIfEmpty(fs, path.join(root, 'tmp'));
+}
+
+/* the importer's copies now in <root>/tmp/import (legacy-profile-*), [] if none */
+function leftoverCopies(fs, path, root) {
   const dir = importTmpDir(root, path);
-  if (!fs.existsSync(dir)) return true;
-  const ok = await removeTmpDir({ fs, path, root, dir, log, ...opts });
-  if (ok) log('removed leftover import temp dir: ' + dir);
+  try {
+    return fs.existsSync(dir) ? fs.readdirSync(dir).filter((n) => n.startsWith(PROFILE_PREFIX)).map((n) => path.join(dir, n)) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+/* at start: remove the importer's copies left by an earlier run, then the folders once empty.
+   → true when no copy is left */
+export async function cleanLeftoverImport({ fs, path, root, log = () => {}, ...opts }) {
+  if (!rootOk(root, path)) return false;
+  let ok = true;
+  for (const dir of leftoverCopies(fs, path, root)) {
+    const removed = await removeTmpDir({ fs, path, root, dir, log, ...opts });
+    if (removed) log('removed leftover import temp dir: ' + dir);
+    ok = ok && removed;
+  }
+  removeEmptyImportDirs({ fs, path, root });
   return ok;
+}
+
+/* at quit, synchronously, one try each: → true when no copy is left */
+export function cleanImportNow({ fs, path, root }) {
+  if (!rootOk(root, path)) return true;
+  let left = 0;
+  for (const dir of leftoverCopies(fs, path, root)) {
+    if (!isInsideTmp(root, dir, path)) continue;
+    try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* locked */ }
+    if (fs.existsSync(dir)) left++;
+  }
+  removeEmptyImportDirs({ fs, path, root });
+  return left === 0;
+}
+
+/*
+ * What is still locked at quit (Windows: the reading session keeps its leveldb open until the app
+ * exits) is removed right after the app exits by this script, run detached by the app's own binary
+ * as plain node (ELECTRON_RUN_AS_NODE) with the args <app pid> <root>: it waits for the pid to go
+ * (at most a minute), then removes <root>/tmp/import/legacy-profile-* (20 tries, half a second
+ * apart) and the two folders once empty. Anything it can't remove, the next start does.
+ */
+export const AFTER_EXIT_CLEANER = `
+const fs = require('fs'), path = require('path');
+const [pid, root] = process.argv.slice(1);
+if (!root || !path.isAbsolute(root) || !(Number(pid) > 0)) process.exit(0);
+const imp = path.join(root, 'tmp', 'import');
+const alive = () => { try { process.kill(Number(pid), 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+const started = Date.now();
+let tries = 0;
+const clean = () => {
+  let left = 0, names = [];
+  try { names = fs.readdirSync(imp); } catch (e) { names = []; }
+  for (const n of names) {
+    if (!n.startsWith(${JSON.stringify(PROFILE_PREFIX)})) continue;
+    try { fs.rmSync(path.join(imp, n), { recursive: true, force: true }); } catch (e) { left++; }
+  }
+  for (const d of [imp, path.join(root, 'tmp')]) {
+    try { if (fs.readdirSync(d).length === 0) fs.rmdirSync(d); } catch (e) {}
+  }
+  if (left && ++tries < 20) setTimeout(clean, 500);
+};
+const wait = () => (alive() && Date.now() - started < 60000 ? setTimeout(wait, 200) : clean());
+wait();
+`;
+
+/* starts AFTER_EXIT_CLEANER detached (spawn: child_process.spawn, execPath: the app's binary); never throws */
+export function spawnAfterExitCleaner({ spawn, execPath, pid, root, env = {}, log = () => {} }) {
+  try {
+    const child = spawn(execPath, ['-e', AFTER_EXIT_CLEANER, String(pid), root],
+      { detached: true, stdio: 'ignore', windowsHide: true, env: { ...env, ELECTRON_RUN_AS_NODE: '1' } });
+    if (child && typeof child.on === 'function') child.on('error', () => {});
+    if (child && typeof child.unref === 'function') child.unref();
+    return true;
+  } catch (e) {
+    log('import temp cleaner not started: ' + (e && e.message));
+    return false;
+  }
 }

@@ -2,14 +2,14 @@
 
 import { app, protocol, net, session, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard } from 'electron'
 import contextMenu from 'electron-context-menu'
-import { execFile } from 'child_process'
+import { execFile, spawn } from 'child_process'
 import { pathToFileURL } from 'url'
 import { createDirectory } from './shared/nodeDirectory'
 import { createProcessRegistry, createPidCheck } from './shared/processOwnership'
 import { resolveRoot, layout, legacyPaths } from './shared/appPaths'
 import { scanLegacy } from './shared/legacyScan'
 import { readLegacyProfiles } from './legacyProfile'
-import { cleanLeftoverImport } from './shared/tmpCleanup.js'
+import { cleanLeftoverImport, cleanImportNow, spawnAfterExitCleaner } from './shared/tmpCleanup.js'
 import { createPtyHost } from './shared/ptyHost'
 import { createSessionSecret } from './shared/sessionSecret'
 import { registerSessionIpc, wipeWithWindow, wipeWithApp } from './shared/sessionIpc'
@@ -411,6 +411,18 @@ autoUpdater.on('error', (err) => {
 });*/
 
 
+//the importer's temp copy (<root>/tmp/import): removed now; what the reading session still locks
+//(Windows, until this process exits) a detached cleaner removes right after the exit, else the next start
+app.on('will-quit', () => {
+  if (!primaryInstance) return;
+  try {
+    if (!cleanImportNow({ fs, path, root: appLayout.root })) {
+      log.info('import temp copy still locked at quit: removed after the exit');
+      spawnAfterExitCleaner({ spawn, execPath: process.execPath, pid: process.pid, root: appLayout.root, env: process.env, log: (m) => log.info(m) });
+    }
+  } catch (e) { /* never holds up the quit */ }
+});
+
 //someone started the app again: show this window instead
 app.on('second-instance', () => {
   if (!win || win.isDestroyed()) return;
@@ -529,7 +541,14 @@ let leftoverImportCleanup = Promise.resolve(true);
 
 //first start, or Advanced > Import: find older GUIs' wallets and read their profiles (read only).
 //The renderer passes only `known` (dirs to skip); every path that is read is worked out here.
-ipcMain.handle('legacy-scan', async (event, { known } = {}) => {
+//one scan at a time: a second one would remove the first one's copy at its start
+let legacyScanRunning = Promise.resolve();
+ipcMain.handle('legacy-scan', (event, args) => {
+  const run = legacyScanRunning.catch(() => {}).then(() => legacyScan(args));
+  legacyScanRunning = run;
+  return run;
+});
+async function legacyScan({ known } = {}){
   await leftoverImportCleanup;
   const legacy = legacyPaths({ platform: process.platform, env: process.env, home: os.homedir(), appData: app.getPath('appData'), pathMod: path });
   const scan = scanLegacy({ fs, pathMod: path, legacy, known: Array.isArray(known) ? known.filter(k => typeof k === 'string') : [] });
@@ -537,7 +556,7 @@ ipcMain.handle('legacy-scan', async (event, { known } = {}) => {
   const profiles = scan.wallets.length ? await readLegacyProfiles({ session, BrowserWindow, fs, path, root: appLayout.root,
     tmpDir: path.join(appLayout.root, 'tmp', 'import'), profiles: legacy.profiles, log: (m) => log.info(m) }) : [];
   return { ...scan, profiles };
-});
+}
 
 //start again, after another app folder was chosen (it is read only at start)
 ipcMain.handle('app-relaunch', async () => {

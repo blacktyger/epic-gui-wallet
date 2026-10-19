@@ -9,7 +9,7 @@
  * a fresh temp dir, read through a throwaway session on that copy, and the copy deleted.
  */
 
-import { removeTmpDir, cleanLeftoverImport } from './shared/tmpCleanup.js';
+import { removeTmpDir, cleanLeftoverImport, removeEmptyImportDirs } from './shared/tmpCleanup.js';
 
 //the only profiles read: productName up to 5.3.1, package name from 6.0.0 (appPaths.legacyPaths)
 export const PROFILE_NAMES = [
@@ -81,8 +81,10 @@ async function readOne({ session, BrowserWindow, fs, path, root, tmpDir, profile
       try { await ses.clearStorageData(); } catch (e) { /* nothing stored */ }
     }
     //the session may still hold the leveldb open on Windows (until the app exits): a few quick tries, so
-    //the scan isn't held up; a leftover is removed at the next start (background.js)
-    await removeTmpDir({ fs, path, root, dir: tmp, retries: 3, delayMs: 100, log: (m) => log('legacy profile: ' + m + '; removed at the next start') });
+    //the scan isn't held up; a leftover goes at quit or right after (background.js), else at the next start
+    await removeTmpDir({ fs, path, root, dir: tmp, retries: 3, delayMs: 100, log: (m) => log('legacy profile: ' + m + '; removed at quit') });
+    //no empty tmp/import (or tmp) left behind
+    removeEmptyImportDirs({ fs, path, root });
   }
 }
 
@@ -93,8 +95,7 @@ async function readOne({ session, BrowserWindow, fs, path, root, tmpDir, profile
  * → [{app, dir, users, contacts}] for each profile that could be read; never throws.
  */
 export async function readLegacyProfiles({ session, BrowserWindow, fs, path, root, tmpDir, profiles, log = () => {} }) {
-  //leftovers of earlier runs (Chromium recreates empty caches in a session's dir when it flushes
-  //at quit); background.js also removes <root>/tmp/import at every start
+  //copies left by earlier runs (background.js also removes them at every start; scans run one at a time)
   await cleanLeftoverImport({ fs, path, root, log, retries: 2, delayMs: 100 });
   const out = [];
   for (const p of Array.isArray(profiles) ? profiles : []) {
