@@ -142,6 +142,7 @@ html[data-ui='modern'] { -webkit-text-size-adjust: 100%; }
 button.e-svc:hover { background: var(--hover); }
 .e-svc b { color: var(--text); font-weight: 500; }
 .e-svc small { grid-column: 2; color: var(--faint); font-size: var(--fs-xs); }
+.e-svc small.e-svc-act { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
 .e-svc .e-icon { width: 16px; height: 16px; }
 .e-svc.e-is-ok .e-icon { color: var(--ok); }
 .e-svc.e-is-warn .e-icon { color: var(--warn); }

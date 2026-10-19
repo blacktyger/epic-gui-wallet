@@ -193,7 +193,8 @@
 
 
 
-        }else{
+        }else if(!(this.store.state.nodeStatus && this.store.state.nodeStatus.node_behind)){
+          //a node shown as "N blocks behind" already says why (with Switch node): no toast on top
           this.$toast.error(this.t("msg.app.epicbox_wait_timeout"));
         }
 
@@ -514,7 +515,7 @@
             return 'blocked';
           }
           const s = await this.$nodeService.getNodeStatus(this.store.state.user.nodeInternal).catch(() => false);
-          if(s && s.tip && s.tip.height > 0 && s.sync_status === 'no_sync' && !s.node_behind){
+          if(s && s.tip && s.tip.height > 0 && s.sync_status === 'no_sync'){
             window.nodeSynced = true;
             return true;
           }
@@ -650,6 +651,7 @@
         this.stopRefreshNode();
         this.nodeStatusFailed = false;
         window.nodeSynced = null;
+        this.$nodeService.resetHealth();
         this.store.commit('nodeStatus', {});
         this.store.commit('nodeProblem', null);
         //a newer nodeStart (node switched meanwhile) wins
@@ -698,7 +700,7 @@
           if(check.statusReadable){
             this.$toast.success(this.t("msg.app.external_node_online"));
             //Epicbox waits for this; the status poll starts only in 10 s
-            window.nodeSynced = !!(check.status && check.status.tip && check.status.tip.height > 0 && check.status.sync_status === 'no_sync' && !check.status.node_behind);
+            window.nodeSynced = !!(check.status && check.status.tip && check.status.tip.height > 0 && check.status.sync_status === 'no_sync');
             this.store.commit('nodeStatus', check.status);
           }else{
             this.nodeStatusFailed = true;
@@ -714,15 +716,16 @@
       async nodeStatus(){
         await window.api.nodebackground(this.configService.config.node_background);
 
-        let respNode = await this.$nodeService.getNodeStatus(this.store.state.user.nodeInternal);
+        let respNode = await this.$nodeService.getNodeStatus(this.store.state.user.nodeInternal, {poll: true});
         if(respNode){
           this.nodeStatusFailed = false;
           if(!this.store.state.user.nodeInternal && this.store.state.nodeProblem && this.store.state.nodeProblem.kind == 'unreachable'){
             this.reclassifyNode();
           }
 
-          //a node behind the network tip (nodeHealth.js) does not start Epicbox; sending still keys on sync_status
-          window.nodeSynced = !!(respNode.tip && respNode.tip.height > 0 && respNode.sync_status === 'no_sync' && !respNode.node_behind);
+          //sync_status as nodeHealth.js assessed it (at the network tip is synced); a node behind the tip
+          //only gets the "N blocks behind" line, it holds back neither Epicbox nor sending
+          window.nodeSynced = !!(respNode.tip && respNode.tip.height > 0 && respNode.sync_status === 'no_sync');
 
           if(this.store.state.user.nodeInternal && this.configService.config.nodesynced == false){
             if(respNode.tip && respNode.tip.height > 0 && respNode.sync_status === 'no_sync'){

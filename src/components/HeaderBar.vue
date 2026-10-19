@@ -51,7 +51,7 @@
 
                   <div v-if="store.state.nodeType == 'internal' && !this.configService.config.nodesynced">{{ $t('msg.headerbar.node_sync_status') }}</div>
                   <!-- behind the network tip (shared/nodeHealth.js): Settings has the node field and the node list -->
-                  <div v-if="store.state.nodeStatus.node_behind > 0" role="status">{{ $t('msg.headerbar.node_behind', { n: store.state.nodeStatus.node_behind }) }} <router-link to="/settings">{{ $t('msg.headerbar.switch_node') }}</router-link></div>
+                  <div v-if="store.state.nodeStatus.node_behind > 0" role="status">{{ $t('msg.headerbar.node_behind', { n: Number(store.state.nodeStatus.node_behind).toLocaleString($i18n.locale) }) }} <router-link to="/settings">{{ $t('msg.headerbar.switch_node') }}</router-link></div>
                   <div>{{ $t('msg.headerbar.version') }}: {{store.state.nodeStatus.user_agent}}</div>
                   <!-- unknown for a node read via /v2/foreign get_tip -->
                   <div v-if="store.state.nodeStatus.connections != null">{{ $t('msg.headerbar.peers') }}: {{store.state.nodeStatus.connections}}</div>

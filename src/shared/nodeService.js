@@ -1,12 +1,13 @@
 require('promise.prototype.finally').shim();
-import { fetchNodeVersion, fetchNodeStatus, classifyNode, fetchTipHeight } from './nodeVersion.js';
+import { fetchNodeVersion, fetchNodeStatus, classifyNode } from './nodeVersion.js';
 import { loadDirectory, CHAINS } from './nodeDirectory.js';
 import { assessNodeStatus, directoryReferenceHeight, createBehindTracker } from './nodeHealth.js';
 
-//the node list is asked for at most once a minute (the main process caches it as long), and a
-//network tip older than this is not used
-const DIRECTORY_EVERY_MS = 60 * 1000;
-const DIRECTORY_MAX_AGE_MS = 10 * 60 * 1000;
+//the node list is asked for once at the first status and then at most every 10 minutes (the main
+//process caches it for a minute, so the Settings node list may have fetched it already), and a
+//network tip older than DIRECTORY_MAX_AGE_MS is not used
+const DIRECTORY_EVERY_MS = 10 * 60 * 1000;
+const DIRECTORY_MAX_AGE_MS = 15 * 60 * 1000;
 
 const log = window.log;
 console.log = log.log;
@@ -110,15 +111,16 @@ class NodeService {
   }
 
   /* the height a node with only a tip (POST /v2/foreign get_tip) is compared with to call it synced:
-     the public node's tip on mainnet (asked at most once a minute), else the highest height seen */
+     the network tip from the last node list, else the highest height seen. Asks nothing itself */
   async referenceHeight(){
-    const now = Date.now();
-    if((this.configService.defaultAccountNetwork || 'mainnet') == 'mainnet' && (!this.referenceTip || now - this.referenceTip.at > 60000)){
-      const height = await fetchTipHeight(this.configService.getNodeFallBack(), {timeoutMs: 5000});
-      //a failed ask keeps the last known one and is tried again in a minute
-      this.referenceTip = {height: height || (this.referenceTip ? this.referenceTip.height : 0), at: now};
-    }
-    return Math.max(this.referenceTip ? this.referenceTip.height : 0, this.highestSeenHeight || 0);
+    this.refreshNetworkTip();
+    return Math.max(this.networkTipHeight(), this.highestSeenHeight || 0);
+  }
+
+  /* a node was (re)started or switched: its "behind" count starts again */
+  resetHealth(){
+    this.behindTracker.reset();
+    this.highestSeenHeight = 0;
   }
 
   /* remember the highest tip a status showed (the reference when there is no public node) */
@@ -153,16 +155,21 @@ class NodeService {
   }
 
   /* the status as the wallet uses it (nodeHealth.assessNodeStatus): at the network tip is synced,
-     whatever the node says. node_behind: how many blocks behind once BEHIND_CONFIRMATIONS checks in
-     a row said so, else 0 (the UI's "Your node is N blocks behind") */
-  assessStatus(status){
+     whatever the node says. node_behind: how many blocks behind once BEHIND_CONFIRMATIONS counted
+     checks in a row said so, else 0 (the UI's "Your node is N blocks behind"). Only the 10 s status
+     poll counts (count: true); other reads (the Epicbox wait, the check at node start) get the
+     last counted value */
+  assessStatus(status, {count = false} = {}){
     this.refreshNetworkTip();
     const assessed = assessNodeStatus(status, {referenceHeight: this.networkTipHeight()});
-    const behind = this.behindTracker.update(assessed && assessed.behind_blocks);
-    return assessed && typeof assessed === 'object' && !assessed.error ? {...assessed, node_behind: behind} : assessed;
+    const ok = assessed && typeof assessed === 'object' && !assessed.error;
+    const behind = count ? this.behindTracker.update(ok && assessed.behind_blocks) : this.behindTracker.current();
+    return ok ? {...assessed, node_behind: behind} : assessed;
   }
 
-  async getNodeStatus(internal){
+  /* the node's status (assessStatus); poll: the regular 10 s status poll, the only read counted for
+     the "behind" line */
+  async getNodeStatus(internal, {poll = false} = {}){
 
     let baseURL = this.configService.config['check_node_api_http_addr'] ? this.configService.config['check_node_api_http_addr'] : this.configService.defaultEpicNode;
 
@@ -226,7 +233,7 @@ class NodeService {
     }
 
     //the restart checks above read the status as the node gave it
-    response = this.assessStatus(response);
+    response = this.assessStatus(response, {count: poll});
     this.debug ? console.log('NodeService.getNodeStatus', response) : null;
     return response;
 

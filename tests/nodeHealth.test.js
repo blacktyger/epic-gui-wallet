@@ -130,3 +130,20 @@ test('behind: one check not behind clears it, and the count starts again', () =>
   assert.equal(t.update(10), 0);
   assert.equal(t.update(10), 10);
 });
+
+test('behind: current() is what the last counted check showed; reset() starts again (a new node)', () => {
+  const t = createBehindTracker();
+  t.update(10);
+  assert.equal(t.current(), 0);
+  t.update(10);
+  assert.equal(t.current(), 10);
+  t.reset();
+  assert.equal(t.current(), 0);
+  assert.equal(t.update(10), 0);
+});
+
+test('at the tip with 0 peers: as it says (it relays nothing); peers unknown (get_tip): synced', () => {
+  const s = status(1000, 'awaiting_peers', 0);
+  assert.equal(assessNodeStatus(s, { referenceHeight: 1000 }), s);
+  assert.equal(assessNodeStatus(status(1000, 'awaiting_peers', null), { referenceHeight: 1000 }).sync_status, 'no_sync');
+});

@@ -14,6 +14,7 @@
       <EIcon :name="line.tone == 'busy' ? 'sync' : line.icon" />
       <span><b>{{ line.name }}</b></span>
       <small>{{ line.detail }}</small>
+      <small v-if="line.action" class="e-svc-act">{{ line.action }}</small>
     </button>
   </div>
 </template>

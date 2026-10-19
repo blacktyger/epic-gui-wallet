@@ -43,8 +43,8 @@ export function directoryReferenceHeight(dir){
 
 /*
  * A node status (GET /v1/status shape) checked against the network tip referenceHeight (0: unknown).
- *  - at the tip (at most NODE_TIP_TOLERANCE below), whatever it says: sync_status 'no_sync', the
- *    reported one kept in reported_sync_status;
+ *  - at the tip (at most NODE_TIP_TOLERANCE below) with peers (or a peer count unknown), whatever
+ *    it says: sync_status 'no_sync', the reported one kept in reported_sync_status;
  *  - clearly below it while it says no_sync or awaiting_peers: behind_blocks = how far. sync_status
  *    is not changed, so nothing that worked before stops (sending keys on it);
  *  - tip unknown: awaiting_peers with peers (connections > 0) and a tip above 0 is 'no_sync';
@@ -63,7 +63,8 @@ export function assessNodeStatus(status, {referenceHeight = 0} = {}){
 
   if(reference > 0 && tip > 0){
     if(tip >= reference - NODE_TIP_TOLERANCE){
-      return synced(status);
+      //with no peers it relays nothing: as it says (connections null: unknown, via get_tip)
+      return status.connections === 0 ? status : synced(status);
     }
     if(SETTLED_STATES.includes(status.sync_status)){
       return {...status, behind_blocks: reference - tip};
@@ -77,16 +78,27 @@ export function assessNodeStatus(status, {referenceHeight = 0} = {}){
 }
 
 /*
- * Debounce for the "node is behind" line: update(behindBlocks) after each check returns the blocks
- * to show, 0 until BEHIND_CONFIRMATIONS checks in a row were behind; one check not behind clears it.
+ * Debounce for the "node is behind" line: update(behindBlocks) after each counted check returns the
+ * blocks to show, 0 until BEHIND_CONFIRMATIONS checks in a row were behind; one check not behind
+ * clears it. Only the regular status poll counts (nodeService), so two checks are a poll apart.
+ * current(): what update last returned, for the other status reads. reset(): a new node.
  */
 export function createBehindTracker({confirmations = BEHIND_CONFIRMATIONS} = {}){
   let streak = 0;
+  let shown = 0;
   return {
     update(behindBlocks){
       const n = Number(behindBlocks) || 0;
       streak = n > 0 ? streak + 1 : 0;
-      return streak >= confirmations ? n : 0;
+      shown = streak >= confirmations ? n : 0;
+      return shown;
+    },
+    current(){
+      return shown;
+    },
+    reset(){
+      streak = 0;
+      shown = 0;
     },
   };
 }
