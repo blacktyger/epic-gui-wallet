@@ -145,14 +145,16 @@ export default {
     //userData is fixed when the app starts, so the new folder applies after a restart
     confirmRoot() {
       this.rootError = '';
-      let ok = false;
+      let res = { ok: false, reason: 'failed' };
       try {
-        ok = this.configService.setRoot(this.rootPicked);
+        res = this.configService.setRoot(this.rootPicked) || res;
       } catch (e) {
         console.log('[welcome] setRoot failed: ' + (e && e.message ? e.message : e));
       }
-      if (!ok) {
-        this.rootError = this.$t('msg.wallets.root_failed');
+      if (!res.ok) {
+        //why: an older app's folder, a wallet folder, a folder with files in it, or not writable
+        const why = { legacy: 'root_legacy', wallet: 'root_wallet', notempty: 'root_notempty' }[res.reason] || 'root_failed';
+        this.rootError = this.$t('msg.wallets.' + why);
         return;
       }
       window.api.relaunch();

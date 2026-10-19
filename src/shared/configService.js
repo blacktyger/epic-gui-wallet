@@ -410,18 +410,54 @@ class ConfigService {
     return !this.settings.readOnly && this.settings.wallets().length === 0 && this.paths.source !== 'env' && !!this.locationFile();
   }
 
+  /* a path as the OS compares it: resolved, through symlinks when it exists, any case on Windows */
+  comparablePath(p) {
+    let r = this.path.resolve(p);
+    if (typeof this.fs.realpathSync === 'function') {
+      try { r = this.fs.realpathSync(r); } catch (e) { /* not there (yet): as given */ }
+    }
+    return this.path.sep === '\\' ? r.toLowerCase() : r;
+  }
+
+  /* is `dir` the folder `parent` or inside it */
+  isSameOrInside(dir, parent) {
+    if (!parent) return false;
+    const rel = this.path.relative(this.comparablePath(parent), this.comparablePath(dir));
+    return rel === '' || (!rel.startsWith('..') && !this.path.isAbsolute(rel));
+  }
+
+  /*
+   * Advanced › Keep app data in another folder. Resolves {ok: true} or {ok: false, reason}:
+   *   'notallowed' wallets in the list, root set by EPIC_GUI_HOME, broken settings, or not an absolute path
+   *   'legacy'     ~/.epic or an older GUI's profile folder (or a folder inside one): never written by 6.1
+   *   'wallet'     a wallet folder (wallet_data in it or in a folder above it)
+   *   'notempty'   the folder holds files: 6.1's root must be new or empty
+   *   'failed'     the folder or location.json could not be written
+   * The default root itself clears location.json (clearRoot).
+   */
   setRoot(dir) {
-    if (!this.canMoveRoot() || !dir || !this.path.isAbsolute(dir)) return false;
+    if (!this.canMoveRoot() || !dir || typeof dir !== 'string' || !this.path.isAbsolute(dir)) return { ok: false, reason: 'notallowed' };
     const root = this.path.resolve(dir);
-    if (root === this.path.resolve(this.paths.defaultRoot)) return this.clearRoot();
+    if (this.comparablePath(root) === this.comparablePath(this.paths.defaultRoot)) {
+      return this.clearRoot() ? { ok: true } : { ok: false, reason: 'failed' };
+    }
+    const legacy = this.paths.legacy || {};
+    const legacyDirs = [legacy.epicDir, legacy.appConfigFile && this.path.dirname(legacy.appConfigFile),
+      ...(Array.isArray(legacy.profiles) ? legacy.profiles.map(p => p && p.dir) : [])].filter(d => typeof d === 'string' && d);
+    if (legacyDirs.some(d => this.isSameOrInside(root, d))) return { ok: false, reason: 'legacy' };
+    for (let d = root; ; d = this.path.dirname(d)) {
+      if (this.fs.existsSync(this.path.join(d, 'wallet_data'))) return { ok: false, reason: 'wallet' };
+      if (this.path.dirname(d) === d) break;
+    }
+    if (this.dirHasFiles(root)) return { ok: false, reason: 'notempty' };
     try {
       this.fs.mkdirSync(root, { recursive: true });
       this.fs.mkdirSync(this.paths.defaultRoot, { recursive: true });
       this.writeFile(this.locationFile(), JSON.stringify({ root }, null, 2));
-      return true;
+      return { ok: true };
     } catch (e) {
       console.log('configService.setRoot', e && e.message);
-      return false;
+      return { ok: false, reason: 'failed' };
     }
   }
 

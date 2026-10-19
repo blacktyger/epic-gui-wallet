@@ -245,21 +245,59 @@ test('discardWalletDirs: only an empty new folder, never once wallet_data exists
 
 test('setRoot / clearRoot: location.json in the default root, only while the list is empty', () => {
   const { cs, fs, root } = setup();
-  assert.equal(cs.setRoot('relative'), false);
-  assert.equal(cs.setRoot('/media/usb/epic gui'), true);
+  assert.deepEqual(cs.setRoot('relative'), { ok: false, reason: 'notallowed' });
+  assert.deepEqual(cs.setRoot('/media/usb/epic gui'), { ok: true });
   assert.deepEqual(JSON.parse(fs.readFileSync(root + '/location.json')), { root: '/media/usb/epic gui' });
   assert.ok(!fs.existsSync(root + '/location.json.tmp'));
   assert.equal(cs.clearRoot(), true);
   assert.equal(fs.existsSync(root + '/location.json'), false);
   cs.setRoot('/media/usb/x');
-  assert.equal(cs.setRoot(root), true, 'the default root: the file goes');
+  assert.deepEqual(cs.setRoot(root), { ok: true }, 'the default root: the file goes');
   assert.equal(fs.existsSync(root + '/location.json'), false);
   const d = cs.newWalletDirs('mainnet');
   cs.registerWallet({ ...d, network: 'mainnet' });
-  assert.equal(cs.setRoot('/media/usb/y'), false);
+  assert.deepEqual(cs.setRoot('/media/usb/y'), { ok: false, reason: 'notallowed' });
   assert.equal(cs.clearRoot(), false);
   //EPIC_GUI_HOME wins over location.json: nothing to set
-  assert.equal(setup({ source: 'env' }).cs.setRoot('/media/usb/z'), false);
+  assert.deepEqual(setup({ source: 'env' }).cs.setRoot('/media/usb/z'), { ok: false, reason: 'notallowed' });
+});
+
+test('S1: setRoot refuses older apps\' folders, wallet folders and folders with files', () => {
+  const { cs, fs, root } = setup();
+  cs.paths.legacy = { epicDir: '/home/jane/.epic', appConfigFile: '/home/jane/.epic/epic_3-0-0_config.json',
+    profiles: [{ app: '≤5.3.1', dir: '/home/jane/.config/EpicWallet' }, { app: '6.0+', dir: '/home/jane/.config/epic-desktop-wallet' }] };
+  for (const d of ['/home/jane/.epic', '/home/jane/.epic/', '/home/jane/.epic/main', '/home/jane/.epic/new-empty',
+    '/home/jane/.config/EpicWallet', '/home/jane/.config/epic-desktop-wallet/x']) {
+    assert.deepEqual(cs.setRoot(d), { ok: false, reason: 'legacy' }, d);
+  }
+  //a folder next to them is fine
+  assert.deepEqual(cs.setRoot('/home/jane/.epic-other'), { ok: true });
+  fs.put('/media/usb/old/wallet_data/wallet.seed');
+  assert.deepEqual(cs.setRoot('/media/usb/old'), { ok: false, reason: 'wallet' });
+  assert.deepEqual(cs.setRoot('/media/usb/old/sub'), { ok: false, reason: 'wallet' }, 'inside a wallet folder');
+  fs.put('/media/usb/photos/a.jpg');
+  assert.deepEqual(cs.setRoot('/media/usb/photos'), { ok: false, reason: 'notempty' });
+  fs.mkdirSync('/media/usb/empty');
+  assert.deepEqual(cs.setRoot('/media/usb/empty'), { ok: true });
+  assert.deepEqual(JSON.parse(fs.readFileSync(root + '/location.json')), { root: '/media/usb/empty' });
+  //nothing was written in a refused folder
+  assert.ok(!fs.existsSync('/home/jane/.epic/new-empty'));
+  //location.json can't be written
+  const write = fs.writeFileSync;
+  fs.writeFileSync = () => { throw new Error('EACCES'); };
+  assert.deepEqual(cs.setRoot('/media/usb/other'), { ok: false, reason: 'failed' });
+  fs.writeFileSync = write;
+});
+
+test('S1: Windows: an older app\'s folder in any case', () => {
+  const W = path.win32;
+  const { cs } = setup({ P: W, root: 'C:\\Users\\Jane\\AppData\\Local\\EpicCash\\Wallet', resourcePath: 'C:\\Epic\\resources', platform: 'win' });
+  cs.paths.legacy = { epicDir: 'C:\\Users\\Jane\\.epic', appConfigFile: 'C:\\Users\\Jane\\.epic\\epic_3-0-0_config.json',
+    profiles: [{ dir: 'C:\\Users\\Jane\\AppData\\Roaming\\EpicWallet' }] };
+  assert.deepEqual(cs.setRoot('c:\\users\\jane\\.EPIC\\x'), { ok: false, reason: 'legacy' });
+  assert.deepEqual(cs.setRoot('c:\\users\\jane\\appdata\\roaming\\epicwallet'), { ok: false, reason: 'legacy' });
+  assert.deepEqual(cs.setRoot('c:\\users\\jane\\appdata\\local\\epiccash\\wallet'), { ok: true }, 'the default root, any case');
+  assert.deepEqual(cs.setRoot('D:\\Epic'), { ok: true });
 });
 
 test('a broken settings file: nothing is registered or written', () => {
@@ -275,7 +313,7 @@ test('a broken settings file: nothing is registered or written', () => {
   assert.throws(() => cs.newWalletDirs('mainnet'), /not readable/);
   assert.throws(() => cs.registerWallet({ id: 'w1', network: 'mainnet', configDir: '/a', dataDir: '/a' }), /not readable/);
   assert.deepEqual(cs.openExistingWallet('/x'), { ok: false, reason: 'readonly' });
-  assert.equal(cs.setRoot('/media/x'), false);
+  assert.deepEqual(cs.setRoot('/media/x'), { ok: false, reason: 'notallowed' });
   assert.equal(fs.readFileSync(cs.paths.settingsFile), '{ broken');
   assert.ok(fs0);
 });
