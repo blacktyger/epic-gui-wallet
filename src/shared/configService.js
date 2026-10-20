@@ -610,7 +610,7 @@ class ConfigService {
     }
 
     if (killPids.length) {
-      this.debug ? console.log('configService.killEpicProcess', JSON.stringify(killPids)) : null;
+      console.log('configService.killEpicProcess ' + JSON.stringify(killPids));
       return new Promise((resolve) => {
         this.emitter.emit('killEpicProcess', {pid: killPids, callback: async (confirmed) => {
           if (confirmed) {

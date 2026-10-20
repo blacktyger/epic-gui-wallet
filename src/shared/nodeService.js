@@ -41,10 +41,10 @@ class NodeService {
 
     //if restart failed at some point we stop restarting the node
     if(this.restartSuccess){
-      this.debug ? console.log('NodeService.restartNode') : null;
       this.restartSuccess = false;
       await this.stopNode();
       this.restartSuccess = await this.internalNodeStart();
+      console.log('[node] built-in node restart ' + (this.restartSuccess ? 'started' : 'failed' + (this.portInUse ? ': port ' + this.portInUse + ' in use' : '')));
       return this.restartSuccess;
     }
 
@@ -53,7 +53,7 @@ class NodeService {
   async stopNode(){
 
       const res = await window.nodeChildProcess.stopOwned(['node']);
-      this.debug ? console.log('NodeService.stopNode', JSON.stringify(res.stopped)) : null;
+      console.log('[node] built-in node stopped: ' + JSON.stringify(res.stopped));
   }
 
 
@@ -180,7 +180,7 @@ class NodeService {
     //else the tip from POST /v2/foreign get_tip. The node secret is sent to the local node only
     const res = await fetchNodeStatus(baseURL, {apiSecret: this.configService.apisecret, timeoutMs: 10000, referenceHeight: () => this.referenceHeight(), version: this.nodeVersion || ''});
     if(!res.ok){
-      window.log ? console.log('NodeService.fetch', res.reason) : null;
+      this.logNodeLine(baseURL, 'no status: ' + res.reason);
     }
     //how the status was read last: 'v1', 'owner' or null
     this.statusVia = res.ok ? res.via : null;
@@ -194,6 +194,7 @@ class NodeService {
 
       if(!response){
         this.syncStatusCheckedTime = Math.floor(Date.now() / 1000);
+        if(this.restartSuccess) console.log('[node] built-in node does not answer, restarting');
         await this.restartNode();
       }else{
         //check some other indicators that node is not stalled
@@ -207,22 +208,22 @@ class NodeService {
 
             //no peers
             if(response.connections == 0 && response.sync_status !== 'awaiting_peers'){
-              this.debug ? console.log('NodeService.nopeers', response.connections) : null;
+              console.log('[node] built-in node stalled (no peers, ' + response.sync_status + '), restarting');
               restart = true;
             }
             //if node is synced but has no tip height
             if(response.tip && response.tip.height == 0 && response.sync_status === 'no_sync'){
-              this.debug ? console.log('NodeService.notipheight', response.sync_status) : null;
+              console.log('[node] built-in node stalled (synced but no tip height, ' + response.sync_status + '), restarting');
               restart = true;
             }
 
             if(response.sync_info && response.sync_info.highest_height == 0 && response.sync_status !== 'awaiting_peers'){
-              this.debug ? console.log('NodeService.nohighest_height', response.sync_info.highest_height) : null;
+              console.log('[node] built-in node stalled (no highest height, ' + response.sync_status + '), restarting');
               restart = true;
             }
             // body_sync has latest block height but do not switch to no_sync
             if(response.sync_status === 'body_sync' && response.tip.height == response.sync_info.current_height && response.sync_info.highest_height == response.sync_info.current_height){
-              this.debug ? console.log('NodeServicen.not_switch_to_no_sync', response) : null;
+              console.log('[node] built-in node stalled (body sync at the tip but not done, ' + response.sync_status + '), restarting');
               restart = true;
             }
 
@@ -237,9 +238,24 @@ class NodeService {
 
     //the restart checks above read the status as the node gave it
     response = this.assessStatus(response, {count: poll && epoch === this.healthEpoch});
-    this.debug ? console.log('NodeService.getNodeStatus', response) : null;
+    if(response){
+      const tip = response.tip && response.tip.height;
+      this.logNodeLine(baseURL, (internal ? 'built-in' : 'remote') + ', ' + response.sync_status + (response.connections == 0 ? ', no peers' : ''),
+        'height ' + tip + ', ' + response.connections + ' peers' + (response.node_behind ? ', ' + response.node_behind + ' behind' : ''));
+    }
     return response;
 
+  }
+
+  /* one log line when the node's state changes (not every 10 s poll): the state, and details that
+     change all the time (height, peers) only with it. The address without user:password@ */
+  logNodeLine(url, state, detail = ''){
+    let addr = String(url || '');
+    try{ const u = new URL(addr); u.username = ''; u.password = ''; addr = u.origin; }catch(e){ /* as it is */ }
+    const key = addr + ' ' + state;
+    if(key === this.lastNodeLine) return;
+    this.lastNodeLine = key;
+    console.log('[node] ' + addr + ': ' + state + (detail ? ' (' + detail + ')' : ''));
   }
 
 }

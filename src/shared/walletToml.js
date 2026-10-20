@@ -58,6 +58,17 @@ export function isLocalNodeUrl(url) {
   }
 }
 
+/*
+ * The log files epic-wallet and the built-in node write (log4rs: when a file reaches log_max_size it
+ * is rotated, older rotations gzipped, at most log_max_files kept). The wallet logs at Debug: what
+ * support needs to see (node calls, Epicbox, slates by id). The node at Info: its Debug is per-peer
+ * p2p traffic, megabytes an hour, and Info already shows sync, peers and errors.
+ */
+export const LOG_FILES = Object.freeze({
+  wallet: Object.freeze({ log_to_file: true, file_log_level: 'Debug', log_max_size: 5 * 1024 * 1024, log_max_files: 4 }),
+  node: Object.freeze({ log_to_file: true, file_log_level: 'Info', log_max_size: 5 * 1024 * 1024, log_max_files: 3 }),
+});
+
 /* a value as TOML: strings through JSON.stringify, numbers and booleans as they are */
 export function tomlValue(v) {
   if (typeof v === 'string') return JSON.stringify(v);
@@ -140,8 +151,10 @@ export function renderWalletToml({ template, network, configDir, dataDir, nodeUr
   //(an older wallet's toml is written whole again when it is opened)
   t = setTomlKeys(t, 'tor', { use_tor_listener: false, send_config_dir: configDir });
   t = setTomlKeys(t, 'epicbox', { epicbox_domain: epicboxDomain || 'epicbox.epiccash.com', epicbox_port: 443 });
-  //the GUI reads the wallet's stdout (start, listener and Epicbox messages)
-  t = setTomlKeys(t, 'logging', { stdout_log_level: 'Debug', log_file_path: joinPath(configDir, 'epic-wallet.log') });
+  //the GUI reads the wallet's stdout (start, listener and Epicbox messages); the log file is on by
+  //default (support reports attach it, cleaned and encrypted: docs/support/DESIGN.md), bounded
+  t = setTomlKeys(t, 'logging', { stdout_log_level: 'Debug', log_file_path: joinPath(configDir, 'epic-wallet.log'),
+    ...LOG_FILES.wallet });
   return t;
 }
 
@@ -167,7 +180,8 @@ export function renderNodeToml({ template, network, nodeDir, chainDir, foundatio
     stratum_server_addr: '127.0.0.1:' + ports.stratum,
     wallet_listener_url: 'http://127.0.0.1:' + ports.walletListener,
   });
-  t = setTomlKeys(t, 'logging', { stdout_log_level: 'Debug', log_file_path: joinPath(nodeDir, 'epic-server.log') });
+  t = setTomlKeys(t, 'logging', { stdout_log_level: 'Debug', log_file_path: joinPath(nodeDir, 'epic-server.log'),
+    ...LOG_FILES.node });
   return t;
 }
 

@@ -61,3 +61,21 @@ test('the main process builds its menu from the template and takes the state onl
   assert.match(app, /if \(this\.loggedIn && !this\.loggingOut\) this\.emitter\.emit\('app\.logout'\)/);
   assert.match(app, /this\.loggingOut = true;\n\s*try \{\n\s*await this\.closeSession\(opts\);\n\s*\} finally \{\n\s*this\.loggingOut = false;/);
 });
+
+test('Help › Get help / Report a problem… opens the support report, locked or not; its labels translate', () => {
+  for (const unlocked of [false, true]) {
+    const calls = [];
+    const tpl = menuTemplate({ platform: 'linux', unlocked, onSupport: () => calls.push('support') });
+    const help = tpl.find(m => m.label === 'Help');
+    const item = help.submenu.find(i => i.id === 'support');
+    assert.equal(item.label, 'Get help / Report a problem…');
+    assert.notEqual(item.enabled, false);
+    item.click();
+    assert.deepEqual(calls, ['support']);
+  }
+  assert.equal(menuTemplate({ platform: 'darwin' }).find(m => m.label === 'Help').role, 'help');
+  const pl = menuTemplate({ platform: 'linux', labels: { help: 'Pomoc', support: 'Pomoc / Zgłoś problem…' } });
+  assert.equal(pl.find(m => m.label === 'Pomoc').submenu[0].label, 'Pomoc / Zgłoś problem…');
+  assert.deepEqual(menuState({ labels: { help: 'Pomoc', support: 'Zgłoś problem…' } }).labels,
+    Object.assign({}, DEFAULT_LABELS, { help: 'Pomoc', support: 'Zgłoś problem…' }));
+});

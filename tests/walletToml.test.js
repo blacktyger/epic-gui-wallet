@@ -111,7 +111,7 @@ test('wallet toml matches what epic-wallet 4.1.0 itself writes, apart from the k
   const r = readToml(renderWalletToml({ template: WALLET_TEMPLATE, network: 'floonet', configDir: '/r/w', dataDir: '/r/w' }));
   const t = readToml(WALLET_TEMPLATE);
   const set = { wallet: ['chain_type', 'api_listen_port', 'api_secret_path', 'node_api_secret_path', 'check_node_api_http_addr', 'owner_api_include_foreign', 'data_file_dir'],
-    tor: ['use_tor_listener', 'send_config_dir'], epicbox: ['epicbox_domain', 'epicbox_port'], logging: ['stdout_log_level', 'log_file_path'] };
+    tor: ['use_tor_listener', 'send_config_dir'], epicbox: ['epicbox_domain', 'epicbox_port'], logging: ['stdout_log_level', 'log_file_path', 'log_to_file', 'file_log_level', 'log_max_size', 'log_max_files'] };
   assert.deepEqual(Object.keys(r), Object.keys(t));
   for (const sec of Object.keys(t)) {
     assert.deepEqual(Object.keys(r[sec]), Object.keys(t[sec]).filter(k => k !== 'node_api_secret_path'), sec);
@@ -205,4 +205,26 @@ test('chainTypeToNetwork / tomlNetwork: one rule for configService and legacySca
   assert.equal(localNodeUrl('mainnet'), 'http://127.0.0.1:3413');
   assert.equal(localNodeUrl('floonet'), 'http://127.0.0.1:13413');
   assert.equal(localNodeUrl('usernet'), 'http://127.0.0.1:23413');
+});
+
+test('log files on by default and bounded: wallet at Debug, node at Info, a few MiB each', () => {
+  const w = readToml(renderWalletToml({ template: WALLET_TEMPLATE, network: 'mainnet', configDir: '/r/w', dataDir: '/r/w' })).logging;
+  assert.equal(w.log_to_file, true);
+  assert.equal(w.file_log_level, 'Debug');
+  assert.equal(w.log_file_path, '/r/w/epic-wallet.log');
+  const n = readToml(renderNodeToml({ template: NODE_TEMPLATE, network: 'mainnet', nodeDir: '/r/node/main' })).logging;
+  assert.equal(n.log_to_file, true);
+  assert.equal(n.file_log_level, 'Info');
+  assert.equal(n.log_file_path, '/r/node/main/epic-server.log');
+  for (const l of [w, n]) {
+    //never unbounded: a size cap and a file count, at most ~25 MiB a log
+    assert.ok(l.log_max_size > 0 && l.log_max_size <= 8 * 1024 * 1024, 'log_max_size ' + l.log_max_size);
+    assert.ok(l.log_max_files >= 2 && l.log_max_files <= 5, 'log_max_files ' + l.log_max_files);
+    assert.equal(l.log_file_append, true);
+  }
+  //an older toml with file logging off (6.1.5 and before) gets it on when it is written again
+  const old = WALLET_TEMPLATE.replace(/^log_max_size = .*$/m, '#log_max_size = 1');
+  const r = readToml(renderWalletToml({ template: old, network: 'mainnet', configDir: '/r/w', dataDir: '/r/w' })).logging;
+  assert.equal(r.log_max_size, 5 * 1024 * 1024);
+  assert.equal(r.log_to_file, true);
 });

@@ -8,9 +8,12 @@
  * with 'menu-state'), so a disabled item's Ctrl+L does nothing on the Welcome or Unlock screen.
  * Ctrl+L in the page and in the menu may both arrive; logging out twice is harmless (App.logoutApp).
  *
- * labels: {lock, quit} in the app's language (the renderer sends them, English until then)
+ * Help › Get help / Report a problem… opens the support report (docs/support/DESIGN.md) wherever the
+ * user is, locked or not: main sends 'open-support' to the window. Nothing is sent from the menu.
+ *
+ * labels: {lock, quit, help, support} in the app's language (the renderer sends them, English until then)
  */
-export const DEFAULT_LABELS = { lock: 'Lock wallet', quit: 'Quit' };
+export const DEFAULT_LABELS = { lock: 'Lock wallet', quit: 'Quit', help: 'Help', support: 'Get help / Report a problem…' };
 export const LOCK_ACCELERATOR = 'CmdOrCtrl+L';
 
 const label = (labels, key) => {
@@ -18,7 +21,7 @@ const label = (labels, key) => {
   return v && v.length <= 60 ? v : DEFAULT_LABELS[key];
 };
 
-export function menuTemplate({ platform = process.platform, labels = {}, unlocked = false, onLock = () => {}, onQuit = () => {}, onSource = () => {} } = {}) {
+export function menuTemplate({ platform = process.platform, labels = {}, unlocked = false, onLock = () => {}, onQuit = () => {}, onSource = () => {}, onSupport = () => {} } = {}) {
   const mac = platform === 'darwin';
   return [
     {
@@ -48,10 +51,17 @@ export function menuTemplate({ platform = process.platform, labels = {}, unlocke
         },
       ],
     },
+    {
+      label: label(labels, 'help'),
+      ...(mac ? { role: 'help' } : {}),
+      submenu: [
+        { id: 'support', label: label(labels, 'support'), click: () => onSupport() },
+      ],
+    },
   ];
 }
 
-/* what the renderer may report: {unlocked, labels: {lock, quit}}; anything else is dropped */
+/* what the renderer may report: {unlocked, labels: {lock, quit, help, support}}; anything else is dropped */
 export function menuState(data) {
   const d = data && typeof data === 'object' ? data : {};
   const labels = {};
