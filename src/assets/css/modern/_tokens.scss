@@ -27,6 +27,10 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F,
     U+20A0-20AB, U+20AD-20C0, U+2C60-2C7F, U+A720-A7FF;
 }
+/* JetBrains Mono without ligatures: its calt/liga/clig/dlig features are emptied in the two files
+ * (fontTools; every glyph, the hinting and 'zero' stay). Its "//" ligature draws the first slash in
+ * the empty cell before it, and Chromium on Windows dropped that slash ("http: /host" in Settings
+ * › Node). In the font, not in CSS: the many `font:` shorthands reset font-variant-ligatures. */
 @font-face {
   font-family: 'JetBrains Mono';
   font-style: normal;
