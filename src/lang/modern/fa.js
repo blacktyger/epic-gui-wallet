@@ -508,7 +508,7 @@ export default {
   settings: {
     sections: 'بخش‌های تنظیمات',
     nav_general: 'نود و دریافت',
-    nav_wallet: 'کیف پول',
+    nav_wallet: 'این کیف پول',
     nav_phrase: 'عبارت بازیابی',
     nav_rescan: 'اسکن مجدد',
     nav_about: 'درباره',

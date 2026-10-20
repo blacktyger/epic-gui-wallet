@@ -508,7 +508,7 @@ export default {
   settings: {
     sections: 'Раздели на настройките',
     nav_general: 'Възел и получаване',
-    nav_wallet: 'Портфейл',
+    nav_wallet: 'Този портфейл',
     nav_phrase: 'Фраза за възстановяване',
     nav_rescan: 'Повторно сканиране',
     nav_about: 'Относно',

@@ -508,7 +508,7 @@ export default {
   settings: {
     sections: 'Bereiche der Einstellungen',
     nav_general: 'Netzwerkknoten und Empfang',
-    nav_wallet: 'Wallet',
+    nav_wallet: 'Diese Wallet',
     nav_phrase: 'Wiederherstellungsphrase',
     nav_rescan: 'Neu scannen',
     nav_about: 'Über',

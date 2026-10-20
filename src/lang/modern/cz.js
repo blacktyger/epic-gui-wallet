@@ -508,7 +508,7 @@ export default {
   settings: {
     sections: 'Sekce nastavení',
     nav_general: 'Uzel a příjem',
-    nav_wallet: 'Peněženka',
+    nav_wallet: 'Tato peněženka',
     nav_phrase: 'Obnovovací fráze',
     nav_rescan: 'Nové prohledání',
     nav_about: 'O aplikaci',

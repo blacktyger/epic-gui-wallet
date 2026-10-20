@@ -508,7 +508,7 @@ export default {
   settings: {
     sections: 'Sekcje ustawień',
     nav_general: 'Węzeł i odbieranie',
-    nav_wallet: 'Portfel',
+    nav_wallet: 'Ten portfel',
     nav_phrase: 'Fraza odzyskiwania',
     nav_rescan: 'Ponowne skanowanie',
     nav_about: 'O programie',

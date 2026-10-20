@@ -508,7 +508,7 @@ export default {
   settings: {
     sections: 'सेटिंग्स के भाग',
     nav_general: 'नोड और प्राप्त करना',
-    nav_wallet: 'वॉलेट',
+    nav_wallet: 'यह वॉलेट',
     nav_phrase: 'रिकवरी वाक्यांश',
     nav_rescan: 'रीस्कैन',
     nav_about: 'ऐप के बारे में',
