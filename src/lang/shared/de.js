@@ -308,7 +308,7 @@ export default {
     error_full: 'Ihre Liste ist voll ({n} Knoten). Entfernen Sie zuerst einen.',
     error_missing: 'Dieser Knoten ist nicht mehr in Ihrer Liste.',
     error_not_saved: 'Ihre Liste konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.',
-
+  },
   //Contacts and the Send screen's contact picker (msg.contacts.*), shared by both interfaces. The same keys, in the same order, as src/lang/contacts.js
   contacts: {
     //the list
@@ -377,6 +377,7 @@ export default {
     picker_none: 'Kein Kontakt passt zu „{q}“.',
     use_http: 'HTTP',
     use_http_label: 'An die HTTP-Adresse von {name} senden',
+  },
   //Get help / Report a problem: the report dialog, its entry points and the tour step (see lang/support.js). Short, like the English. The whole report is encrypted and goes to the Epic GUI Wallet developer only; never name a channel, group or service.
   support: {
     menu_help: 'Hilfe',

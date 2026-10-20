@@ -308,7 +308,7 @@ export default {
     error_full: 'आपकी सूची भर गई है ({n} नोड)। पहले कोई एक हटाएं।',
     error_missing: 'यह नोड अब आपकी सूची में नहीं है।',
     error_not_saved: 'आपकी सूची सहेजी नहीं जा सकी। कृपया फिर से कोशिश करें।',
-
+  },
   //Contacts and the Send screen's contact picker (msg.contacts.*), shared by both interfaces. The same keys, in the same order, as src/lang/contacts.js
   contacts: {
     //the list
@@ -377,6 +377,7 @@ export default {
     picker_none: '“{q}” से कोई संपर्क मेल नहीं खाता।',
     use_http: 'HTTP',
     use_http_label: '{name} के HTTP एड्रेस पर भेजें',
+  },
   //Get help / Report a problem: the report dialog, its entry points and the tour step (see lang/support.js). Short, like the English. The whole report is encrypted and goes to the Epic GUI Wallet developer only; never name a channel, group or service.
   support: {
     menu_help: 'सहायता',

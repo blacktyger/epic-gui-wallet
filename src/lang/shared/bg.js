@@ -308,7 +308,7 @@ export default {
     error_full: 'Списъкът ви е пълен ({n} възела). Първо премахнете някой.',
     error_missing: 'Този възел вече не е във вашия списък.',
     error_not_saved: 'Списъкът не можа да бъде запазен. Моля, опитайте отново.',
-
+  },
   //Contacts and the Send screen's contact picker (msg.contacts.*), shared by both interfaces. The same keys, in the same order, as src/lang/contacts.js
   contacts: {
     //the list
@@ -377,6 +377,7 @@ export default {
     picker_none: 'Няма контакт, който да съвпада с „{q}“.',
     use_http: 'HTTP',
     use_http_label: 'Изпрати към HTTP адреса на {name}',
+  },
   //Get help / Report a problem: the report dialog, its entry points and the tour step (see lang/support.js). Short, like the English. The whole report is encrypted and goes to the Epic GUI Wallet developer only; never name a channel, group or service.
   support: {
     menu_help: 'Помощ',

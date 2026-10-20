@@ -308,7 +308,7 @@ export default {
     error_full: 'Váš seznam je plný ({n} uzlů). Nejdřív nějaký odeberte.',
     error_missing: 'Tento uzel už ve vašem seznamu není.',
     error_not_saved: 'Seznam se nepodařilo uložit. Zkuste to prosím znovu.',
-
+  },
   //Contacts and the Send screen's contact picker (msg.contacts.*), shared by both interfaces. The same keys, in the same order, as src/lang/contacts.js
   contacts: {
     //the list
@@ -377,6 +377,7 @@ export default {
     picker_none: 'Žádný kontakt neodpovídá „{q}“.',
     use_http: 'HTTP',
     use_http_label: 'Odeslat na adresu HTTP kontaktu {name}',
+  },
   //Get help / Report a problem: the report dialog, its entry points and the tour step (see lang/support.js). Short, like the English. The whole report is encrypted and goes to the Epic GUI Wallet developer only; never name a channel, group or service.
   support: {
     menu_help: 'Nápověda',

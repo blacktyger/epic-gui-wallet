@@ -308,7 +308,7 @@ export default {
     error_full: 'فهرست شما پر است ({n} نود). اول یکی را حذف کنید.',
     error_missing: 'این نود دیگر در فهرست شما نیست.',
     error_not_saved: 'فهرست ذخیره نشد. لطفاً دوباره تلاش کنید.',
-
+  },
   //Contacts and the Send screen's contact picker (msg.contacts.*), shared by both interfaces. The same keys, in the same order, as src/lang/contacts.js
   contacts: {
     //the list
@@ -377,6 +377,7 @@ export default {
     picker_none: 'هیچ مخاطبی با «{q}» مطابقت ندارد.',
     use_http: 'HTTP',
     use_http_label: 'ارسال به آدرس HTTP مخاطب {name}',
+  },
   //Get help / Report a problem: the report dialog, its entry points and the tour step (see lang/support.js). Short, like the English. The whole report is encrypted and goes to the Epic GUI Wallet developer only; never name a channel, group or service.
   support: {
     menu_help: 'راهنما',
