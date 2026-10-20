@@ -167,7 +167,7 @@ H.runCase('mynodes', async (t) => {
       .filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.className + ' ' + e.scrollWidth + '>' + e.clientWidth));
     if (over.length) throw new Error('overflow: ' + over.join('; '));
     return 'nothing overflows';
-  }, { shot: true });
+  });
   await t.step('back to a desktop window (and the stub in the field: Save checks it with the language)', async () => {
     await t.app.evaluate(({ BrowserWindow }) => { const b = BrowserWindow.getAllWindows()[0]; b.webContents.setZoomFactor(1); b.setSize(1200, 860); });
     await w.waitForTimeout(400);

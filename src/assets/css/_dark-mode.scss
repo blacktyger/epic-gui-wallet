@@ -24,8 +24,9 @@ html.is-dark-mode-active {
   }
 
   //the Classic removal dialog is a native <dialog> (layout/RemoveWalletDialog.vue), not a .modal: its
-  //buttons took the dark-mode colours on a white card, and Cancel was white on white
-  .rm-dialog {
+  //buttons took the dark-mode colours on a white card, and Cancel was white on white. The same for
+  //Add to my nodes (form/MyNodeDialog.vue)
+  .rm-dialog, .my-node-dialog {
     color: $grey-lighter;
     .modal-card-title, .rm-choice b {
       color: $dark-mode-color;

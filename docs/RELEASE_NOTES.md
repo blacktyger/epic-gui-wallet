@@ -1,5 +1,12 @@
 # Release notes
 
+## Next version (after 6.1.5)
+
+- Settings › Node › External node: the address is checked while you type it (from a tester's request for a "test the connection" button). A short moment after you stop typing, or at once when you paste, a line under the field says whether an Epic node answers there: Online or Syncing, its version, its block height against the network ("at tip" or "N behind"), its peers and how fast it replied; or, in plain words, why not: it doesn't answer, it's slow, something answers but it isn't an Epic node, or it redirects. Tips cover the usual mistakes: https:// instead of http:// (and the other way round for a node on your own network) and the port (Epic nodes use 3413). The check never blocks typing or Save, and Save still checks the address itself, as before. Nodes from the public list keep their own status from status.btlabs.uk and aren't asked again.
+- My nodes: "Add to my nodes" next to the address field saves the address with a label of your own (optional). The dialog checks the address too, but you can save a node that is offline right now. The same node can't be added twice, however it's written (a trailing "/", capital letters, the default port). Saved nodes are listed under the field with their live status (state, at tip, ms), checked when you open the page and every few minutes while it stays open. Each one has Use (puts the address in the field; Save applies it), Edit and Remove (asks first, in the row).
+  - The list is kept in the app's settings (settings.json, "myNodes"), one list per network, for all your wallets: a node serves every wallet on its network. Older 6.1 versions keep the list untouched if you go back.
+  - Privacy: only addresses you typed or saved are asked, through the same path as the app's other node checks, with a timeout, over http(s) only. The node's API secret is never sent by these checks.
+
 ## 6.1.5
 
 - Removing a wallet: "Remove everything, including the recovery phrase" is now "Remove everything, including the wallet seed". The app never stores your recovery phrase; this option deletes the wallet's seed file, and the wallet can then be restored only with the recovery phrase you wrote down. The confirmation says the same (feedback #29).

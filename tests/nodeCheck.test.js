@@ -53,6 +53,8 @@ test('view: plain-language problems and hints for what fails', () => {
   assert.deepEqual(pick(v({ kind: 'not_epic', address: 'http://n.example.com:3413', reason: 'HTTP 400', code: 'http' })), ['not_epic', 'risk', 'not_epic', 'try_https']);
   assert.deepEqual(pick(v({ kind: 'not_epic', address: 'https://example.com', reason: 'HTTP 404', code: 'http' })), ['not_epic', 'risk', 'not_epic', 'port']);
   assert.deepEqual(pick(v({ kind: 'not_epic', address: 'http://n.example.com:3413', reason: 'redirects elsewhere', code: 'http' })), ['not_epic', 'risk', 'redirect', '']);
+  assert.deepEqual(pick(v({ kind: 'not_epic', address: 'https://n.example.com:3413', reason: 'HTTP 502', code: 'http' })), ['offline', 'risk', 'server_error', ''],
+    'a proxy answering 502: the node behind it is down, not "not an Epic node"');
   assert.deepEqual(pick(v({ kind: 'too_old', address: 'https://n.example.com:3413', code: 'auth' })), ['old', 'warn', 'needs_secret', '']);
   assert.deepEqual(pick(v({ kind: 'too_old', address: 'https://n.example.com:3413', version: '3.0.0' })), ['old', 'warn', 'too_old', '']);
   assert.deepEqual(pick(v({ kind: 'status_locked', address: 'https://n.example.com:3413', version: '4.1.0' })), ['locked', 'warn', 'locked', '']);

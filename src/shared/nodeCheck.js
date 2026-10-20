@@ -52,7 +52,7 @@ function hintFor(address, c){
  *   state    'online' | 'syncing' | 'old' | 'locked' | 'offline' | 'not_epic'
  *   tone     'ok' | 'warn' | 'risk' (the dot)
  *   behind   blocks below the tip (0 = at tip), null when the tip or the height is unknown
- *   problem  '' | 'timeout' | 'unreachable' | 'not_epic' | 'redirect' | 'too_old' | 'needs_secret' | 'locked'
+ *   problem  '' | 'timeout' | 'unreachable' | 'server_error' | 'not_epic' | 'redirect' | 'too_old' | 'needs_secret' | 'locked'
  *   hint     '' | 'try_https' | 'try_http' | 'port' (only with offline / not_epic)
  */
 export function nodeCheckView(classified, {ms = null, tipHeight = 0} = {}){
@@ -88,6 +88,10 @@ export function nodeCheckView(classified, {ms = null, tipHeight = 0} = {}){
     return {...base, state: 'locked', tone: 'warn', problem: 'locked'};
   }
   if(c.kind == 'not_epic'){
+    //a web server (often a proxy in front of the node) answers with an error: the node behind it is down
+    if(/^HTTP 5\d\d$/.test(c.reason || '')){
+      return {...base, state: 'offline', problem: 'server_error'};
+    }
     const redirect = /redirect/.test(c.reason || '');
     return {...base, state: 'not_epic', problem: redirect ? 'redirect' : 'not_epic', hint: redirect ? '' : hintFor(base.address, c)};
   }

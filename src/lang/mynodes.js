@@ -20,6 +20,8 @@ export default {
   problem_too_old: 'This Epic node is older than 4.1.0 and may not work well with this wallet.',
   problem_needs_secret: 'This Epic node only answers with its API secret, so the wallet may not work with it.',
   problem_locked: 'This Epic node hides its status, so the wallet can’t tell whether it is up to date.',
+  //an HTTP 5xx reply: a web server (often a proxy in front of the node) answers, the node behind it doesn't
+  problem_server_error: 'The server at this address answers with an error, so the node behind it may be down. Try again later.',
   hint_try_https: 'Tip: this address may need https:// instead of http://.',
   hint_try_http: 'Tip: a node on your own network usually needs http:// instead of https://.',
   hint_port: 'Tip: Epic nodes usually use port 3413.',
