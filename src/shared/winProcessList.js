@@ -32,7 +32,8 @@ export function parseProcessJson(stdout) {
   const m = /^EPIC_PROCS (.*)$/m.exec(text);
   if (!m) throw new Error('process list: no answer from PowerShell');
   const data = JSON.parse(m[1]);
-  const rows = Array.isArray(data) ? data : [data];
+  //Windows PowerShell 5.1 can wrap an array as {value: [...], Count: n}
+  const rows = Array.isArray(data) ? data : (data && Array.isArray(data.value) ? data.value : [data]);
   return rows.filter(r => r && Number.isInteger(r.pid) && r.pid > 0).map(r => ({
     pid: r.pid,
     ppid: Number.isInteger(r.ppid) ? r.ppid : 0,

@@ -62,6 +62,7 @@ test('parseProcessJson: rows as find-process gives them; a missing field is empt
   //PowerShell 5.1 writes one object, not an array, for a one-element list in some versions
   assert.equal(parseProcessJson('EPIC_PROCS ' + JSON.stringify({ pid: 7, ppid: 1, name: 'a', bin: '', cmd: 'epic' })).length, 1);
   assert.deepEqual(parseProcessJson('EPIC_PROCS []'), []);
+  assert.equal(parseProcessJson('EPIC_PROCS ' + JSON.stringify({ value: [{ pid: 7, ppid: 1, name: 'a', bin: '', cmd: 'epic' }], Count: 1 })).length, 1);
   assert.throws(() => parseProcessJson('Get-CimInstance : Access denied'), /no answer/);
 });
 

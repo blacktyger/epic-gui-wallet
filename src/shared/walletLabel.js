@@ -17,8 +17,9 @@ export function defaultLabelNumber(label, templates) {
   if (!s) return 0;
   for (const tpl of templates || []) {
     if (typeof tpl !== 'string' || !tpl.includes('{0}')) continue;
-    const [before, after] = tpl.split('{0}').map(p => escape(p.trim()));
-    const m = s.match(new RegExp('^' + before + '\\s*(\\d{1,4})\\s*' + after + '$', 'iu'));
+    //exactly the default name, spacing and case as the app wrote it: "WALLET 3" or "Wallet3" was typed
+    const [before, after] = tpl.split('{0}').map(escape);
+    const m = s.match(new RegExp('^' + before + '(\\d{1,4})' + after + '$', 'u'));
     if (m && Number(m[1]) > 0) return Number(m[1]);
   }
   return 0;

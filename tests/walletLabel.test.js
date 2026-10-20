@@ -22,7 +22,6 @@ test('every language has a default name with the number in it', () => {
 test('a default name saved in English shows in Polish, with its own number', () => {
   assert.equal(displayLabel('Wallet 2', templates, polish), 'Portfel 2');
   assert.equal(displayLabel(' Wallet 12 ', templates, polish), 'Portfel 12');
-  assert.equal(displayLabel('wallet 3', templates, polish), 'Portfel 3');
 });
 
 test('a default name saved in any offered language is recognised', () => {
@@ -33,7 +32,7 @@ test('a default name saved in any offered language is recognised', () => {
 });
 
 test('a label the user typed stays as typed', () => {
-  for (const label of ['Savings', 'My Wallet 2', 'Wallet', 'Wallet two', 'Wallet 2b', 'Portfel główny', 'Wallet 0', 'Wallet 12345']) {
+  for (const label of ['Savings', 'My Wallet 2', 'Wallet', 'Wallet two', 'Wallet 2b', 'Portfel główny', 'Wallet 0', 'Wallet 12345', 'wallet 3', 'WALLET 3', 'Wallet3', 'Portfel  3']) {
     assert.equal(defaultLabelNumber(label, templates), 0, label);
     assert.equal(displayLabel(label, templates, polish), label);
   }
