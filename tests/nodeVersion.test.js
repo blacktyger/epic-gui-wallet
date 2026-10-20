@@ -209,7 +209,7 @@ test('fetchNodeStatus: /v1/status first, /v2/owner only after a 401', async () =
   const r3 = await fetchNodeStatus(LOCAL, { fetch: old.fetch });
   assert.equal(r3.ok, true);
   assert.equal(r3.via, 'foreign');
-  assert.deepEqual(old.calls.map(c => c.key), ['GET /v1/status', 'POST /v2/owner get_status', 'POST /v2/foreign get_tip']);
+  assert.deepEqual(old.calls.map(c => c.key), ['GET /v1/status', 'POST /v2/owner get_status', 'POST /v2/foreign get_tip', 'POST /v2/foreign ready_for_txs']);
 
   const dead = recorded('https://fastepic.eu:3413');
   assert.deepEqual(await fetchNodeStatus('https://fastepic.eu:3413', { fetch: dead.fetch }), { ok: false, reason: 'not reachable', locked: false });
@@ -267,6 +267,28 @@ test('403 on /v1/status and owner (status API kept private): the status from /v2
   const other = await fetchNodeStatus('https://epic-node.example.net:443', { fetch: lockedNode(1, { 'GET /v1/status': reply(500, null) }).fetch });
   assert.equal(other.ok, false);
   assert.equal(other.reason, 'HTTP 500');
+});
+
+test('locked status: ready_for_txs decides synced or syncing, get_tip the height against the network tip', async () => {
+  const ready = (v) => reply(200, { id: 1, jsonrpc: '2.0', result: { Ok: { ready_for_txs: v } } });
+  const closed = { 'GET /v1/status': reply(403, null), 'POST /v2/owner get_status': reply(403, null) };
+  //ready: synced, even with no network tip to compare with
+  const a = await classifyNode('https://n.example.net:443', { fetch: lockedNode(3762557, { ...closed, 'POST /v2/foreign ready_for_txs': ready(true) }).fetch });
+  assert.equal(a.kind, 'ok');
+  assert.equal(a.status.sync_status, 'no_sync');
+  //not ready: syncing, N behind the network tip
+  const b = await classifyNode('https://n.example.net:443', { fetch: lockedNode(3762000, { ...closed, 'POST /v2/foreign ready_for_txs': ready(false) }).fetch, referenceHeight: 3762557 });
+  assert.equal(b.kind, 'ok');
+  assert.notEqual(b.status.sync_status, 'no_sync');
+  assert.deepEqual(b.status.sync_info, { current_height: 3762000, highest_height: 3762557 });
+  //not ready although within the tolerance of the reference: ready_for_txs wins
+  const c = await classifyNode('https://n.example.net:443', { fetch: lockedNode(3762556, { ...closed, 'POST /v2/foreign ready_for_txs': ready(false) }).fetch, referenceHeight: 3762557 });
+  assert.notEqual(c.status.sync_status, 'no_sync');
+  //no answer to ready_for_txs: the tolerance against the reference, as before
+  const d = await classifyNode('https://n.example.net:443', { fetch: lockedNode(3762000, closed).fetch, referenceHeight: 3762557 });
+  assert.notEqual(d.status.sync_status, 'no_sync');
+  const e = await classifyNode('https://n.example.net:443', { fetch: lockedNode(3762556, closed).fetch, referenceHeight: 3762557 });
+  assert.equal(e.status.sync_status, 'no_sync');
 });
 
 test('401 on /v1/status and owner: the status from /v2/foreign get_tip, the node is usable', async () => {
@@ -337,7 +359,7 @@ test('regression: a locked node is asked the way that worked last time, not with
   assert.equal(again.ok, true);
   assert.equal(again.via, 'foreign');
   assert.equal(again.locked, true);
-  assert.deepEqual(n.calls.map(c => c.key), ['POST /v2/foreign get_tip']);
+  assert.deepEqual(n.calls.map(c => c.key), ['POST /v2/foreign get_tip', 'POST /v2/foreign ready_for_txs']);
 
   const o = rpcNode({
     'GET /v1/status': reply(401, null),
@@ -352,11 +374,11 @@ test('the hinted way fails: the whole chain again (the node changed or was unloc
   const opened = rpcNode({ 'GET /v1/status': reply(200, { tip: { height: 7 }, sync_status: 'no_sync', connections: 3 }) });
   const r = await fetchNodeStatus('https://n.example', { fetch: opened.fetch, via: 'foreign' });
   assert.equal(r.via, 'v1');
-  assert.deepEqual(opened.calls.map(c => c.key), ['POST /v2/foreign get_tip', 'GET /v1/status']);
+  assert.deepEqual(opened.calls.map(c => c.key), ['POST /v2/foreign get_tip', 'POST /v2/foreign ready_for_txs', 'GET /v1/status']);
   const gone = rpcNode({});
   const g = await fetchNodeStatus('https://n.example', { fetch: gone.fetch, via: 'owner' });
   assert.equal(g.ok, false);
-  assert.deepEqual(gone.calls.map(c => c.key), ['POST /v2/owner get_status', 'POST /v2/foreign get_tip', 'GET /v1/status']);
+  assert.deepEqual(gone.calls.map(c => c.key), ['POST /v2/owner get_status', 'POST /v2/foreign get_tip', 'POST /v2/foreign ready_for_txs', 'GET /v1/status']);
 });
 
 test('regression: a saved address with a trailing slash never asks for //v1/status', async () => {

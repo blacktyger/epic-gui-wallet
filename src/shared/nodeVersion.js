@@ -159,12 +159,15 @@ export const SYNC_TOLERANCE = 5;
 
 /*
  * A POST /v2/foreign get_tip reply in the shape of GET /v1/status, for a node whose status is
- * locked. get_tip has no sync state and no peer count: the node counts as synced when its tip is
- * within SYNC_TOLERANCE of referenceHeight (a public node's tip, or the highest height seen),
- * else as syncing towards it. No reference (0): no_sync (App.vue still needs a height above 0).
+ * locked. get_tip has no sync state and no peer count (connections: null, unknown).
+ * ready: the node's POST /v2/foreign ready_for_txs answer, true exactly when its sync status is
+ * NoSync (api/src/foreign.rs sync_state_ready_for_txs): it decides synced or syncing, and the
+ * height against referenceHeight (a public node's tip, or the highest height seen) gives how far
+ * behind. Without it (null: no answer) the node counts as synced when its tip is within
+ * SYNC_TOLERANCE of referenceHeight; no reference (0): no_sync (App.vue still needs a height above 0).
  * null if the reply has no tip.
  */
-export function foreignTipToV1(reply, {referenceHeight = 0, version = ''} = {}){
+export function foreignTipToV1(reply, {referenceHeight = 0, version = '', ready = null} = {}){
   const ok = reply && reply.result && reply.result.Ok;
   const height = ok && Number(ok.height);
   if(!ok || !Number.isFinite(height) || height < 0){
@@ -172,7 +175,7 @@ export function foreignTipToV1(reply, {referenceHeight = 0, version = ''} = {}){
   }
   const tip = {height, last_block_pushed: ok.last_block_pushed, prev_block_to_last: ok.prev_block_to_last, total_difficulty: ok.total_difficulty};
   const reference = Number(referenceHeight) || 0;
-  const behind = reference > 0 && height < reference - SYNC_TOLERANCE;
+  const behind = typeof ready === 'boolean' ? !ready : reference > 0 && height < reference - SYNC_TOLERANCE;
   const status = {
     tip,
     sync_status: behind ? 'body_sync' : 'no_sync',
@@ -181,9 +184,21 @@ export function foreignTipToV1(reply, {referenceHeight = 0, version = ''} = {}){
     ...(version ? {user_agent: 'MW/Epic ' + version} : {}),
   };
   if(behind){
-    status.sync_info = {current_height: height, highest_height: reference};
+    status.sync_info = {current_height: height, highest_height: Math.max(reference, height)};
   }
   return status;
+}
+
+/* POST /v2/foreign ready_for_txs: true or false, null when the node doesn't answer it */
+async function readyForTxs(fetchFn, base, init){
+  try{
+    const res = await fetchFn(base + '/v2/foreign', {...init, method: 'POST', headers: {'Content-Type': 'application/json'}, body: rpc('ready_for_txs')});
+    const reply = res.ok ? await readJson(res) : null;
+    const ok = reply && reply.result && reply.result.Ok;
+    return ok && typeof ok.ready_for_txs === 'boolean' ? ok.ready_for_txs : null;
+  }catch(e){
+    return null;
+  }
 }
 
 /* a node's tip height from POST /v2/foreign get_tip (public on every node), 0 if none */
@@ -258,12 +273,16 @@ async function readNodeStatus(address, opts){
     }
 
     //the foreign API: public, no secret, and what the wallet itself talks to
-    const res3 = await fetchFn(base + '/v2/foreign', {method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: rpc('get_tip'), signal: controller.signal, timeoutMs, redirect});
+    //get_tip for the height, ready_for_txs for synced or not (both public), at the same time
+    const [res3, ready] = await Promise.all([
+      fetchFn(base + '/v2/foreign', {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: rpc('get_tip'), signal: controller.signal, timeoutMs, redirect}),
+      readyForTxs(fetchFn, base, {signal: controller.signal, timeoutMs, redirect}),
+    ]);
     const tipReply = res3.ok ? await readJson(res3) : null;
     if(tipReply && tipReply.result && tipReply.result.Ok){
       const reference = typeof referenceHeight === 'function' ? await referenceHeight() : referenceHeight;
-      const fromTip = foreignTipToV1(tipReply, {referenceHeight: reference, version});
+      const fromTip = foreignTipToV1(tipReply, {referenceHeight: reference, version, ready});
       if(fromTip){
         return {ok: true, status: fromTip, via: 'foreign', locked: true};
       }

@@ -145,7 +145,7 @@ export function createScopedFs({ fs, pathMod, dirs, copyFrom = [] }) {
  * remote node). Returns {url, method, headers, body, redirect, timeoutMs} or {error}.
  */
 export const NODE_API_PATHS = ['/v1/version', '/v1/status', '/v2/owner', '/v2/foreign'];
-const NODE_RPC = { '/v2/owner': ['get_status'], '/v2/foreign': ['get_version', 'get_tip', 'get_kernel'] };
+const NODE_RPC = { '/v2/owner': ['get_status'], '/v2/foreign': ['get_version', 'get_tip', 'ready_for_txs', 'get_kernel'] };
 /* a call's params, rebuilt, or null when they are not what the call takes: none, except get_kernel
    [excess (a commitment, 33 bytes hex), min_height (a height or null), null] (shared/sendAllKernel.js) */
 function nodeRpcParams(method, params) {

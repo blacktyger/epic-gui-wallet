@@ -101,6 +101,7 @@ test('nodeRequest: node API paths, GET/POST, Authorization to this machine only'
   assert.equal(local.method, 'POST');
   assert.equal(local.body, rpc('get_status'));
   assert.equal(nodeRequest({ url: 'https://n:3413/v2/foreign', method: 'POST', body: rpc('get_tip') }).body, rpc('get_tip'));
+  assert.equal(nodeRequest({ url: 'https://n:3413/v2/foreign', method: 'POST', body: rpc('ready_for_txs') }).body, rpc('ready_for_txs'));
   for (const bad of [{ url: 'file:///etc/passwd' }, { url: 'https://evil.example/upload' }, { url: 'https://n:3413/v1/status?x=1' },
     { url: 'https://n:3413/v2/foreign', method: 'PUT' }, { url: 'https://n:3413/v2/foreign', method: 'POST', body: 'x'.repeat(5000) },
     { url: 'https://n:3413/v2/foreign', method: 'POST', body: rpc('get_tip', { seed: 'twelve words' }) },
