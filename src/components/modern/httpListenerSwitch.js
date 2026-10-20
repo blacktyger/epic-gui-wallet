@@ -30,20 +30,24 @@ export default {
     async httpTurnOn() {
       if (this.httpSwitching) return;
       this.httpSwitching = true;
+      //the login session (App.vue): a lock or wallet switch meanwhile ends it, leaving the page does not
+      const session = this.$root.loginSession;
       let res;
       try {
         res = await this.$walletService.startListen('http');
       } finally {
         this.httpSwitching = false;
       }
-      //the page closed meanwhile (lock, switch): stop the listener this started
-      if (this.$.isUnmounted) {
+      //locked or switched meanwhile: stop the listener this started
+      if (session !== this.$root.loginSession) {
         if (res && res.pid) await window.nodeChildProcess.kill(res.pid);
         return;
       }
       this.store.commit('httpListener', httpListenerState(res, this.configService.walletListenerPort));
+      if (res && res.success) this.store.commit('walletListenerService', true);
+      //the page was left meanwhile: the store has the state, no toast from a closed page
+      if (this.$.isUnmounted) return;
       if (res && res.success) {
-        this.store.commit('walletListenerService', true);
         this.$toast.success(this.$t('msg.login.listener_started'));
       } else {
         this.$toast.error(res && res.portInUse ? this.$t('msg.login.port_in_use', [res.portInUse]) : this.$t('msg.login.error_listener_started'));

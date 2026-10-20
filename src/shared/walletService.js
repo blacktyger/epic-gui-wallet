@@ -854,14 +854,14 @@ class WalletService {
       return {dir: this.configService.walletConfigDir};
     }
 
-    /* stop our listeners */
     /* the HTTP listener alone (Modern Receive › HTTP address › Turn off): Epicbox keeps running */
     async stopHttpListen(){
       const res = await window.nodeChildProcess.stopOwned(['listen'], this.ownedOpts());
-      this.debug ? console.log('WalletService.http_listener_stopped', JSON.stringify(res.stopped)) : null;
+      console.log('[wallet] http listener stopped: ' + procList(res.stopped));
       return true;
     }
 
+    /* stop our listeners */
     async stopListen(){
 
       const roles = ['listen', 'epicbox'];

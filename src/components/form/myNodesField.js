@@ -93,7 +93,10 @@ export const myNodesField = {
     this.loadMyNodes();
     if (this.select == 'external') this.refreshMyNodes();
     this.listTimer = setInterval(() => {
-      if (this.select == 'external' && !(typeof document !== 'undefined' && document.hidden)) this.refreshMyNodes();
+      //App.vue's windowHidden(): minimized or hidden as the main process says (document.hidden isn't on every desktop)
+      const root = this.$root;
+      const hidden = root && typeof root.windowHidden == 'function' ? root.windowHidden() : (typeof document !== 'undefined' && document.hidden);
+      if (this.select == 'external' && !hidden) this.refreshMyNodes();
     }, LIST_EVERY_MS);
   },
   beforeUnmount() {
