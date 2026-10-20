@@ -22,6 +22,8 @@ import Account from '@/components/Account.vue';
 import Seed from '@/components/Seed.vue';
 import New from '@/components/New.vue';
 import Found from '@/components/Found.vue';
+import AddExisting from '@/components/AddExisting.vue';
+import Wallets from '@/components/Wallets.vue';
 import SettingsError from '@/components/SettingsError.vue';
 
 const routes = [
@@ -42,6 +44,15 @@ const routes = [
     path: '/new',
     name: 'new',
     component: New
+  },
+  {
+    //Add a wallet › Add an existing wallet: from an older Epic Wallet, or from a wallet folder
+    meta: {
+      title: 'Add an existing wallet'
+    },
+    path: '/add-existing',
+    name: 'addExisting',
+    component: AddExisting
   },
   {
     //older Epic Wallet wallets were found: import them or start fresh (once, or from Welcome › Advanced)
@@ -95,6 +106,21 @@ const routes = [
     name: 'account',
     components: {
       default: Account,
+      navBar: NavBar,
+      asideMenu: AsideMenu,
+      headerbar: HeaderBar,
+    }
+  },
+  {
+    //Settings › All wallets: the wallet list and Add a wallet (Settings › Wallet is the open wallet only)
+    meta: {
+      title: 'All wallets',
+      titleKey: 'msg.wallets.all_wallets'
+    },
+    path: '/wallets',
+    name: 'wallets',
+    components: {
+      default: Wallets,
       navBar: NavBar,
       asideMenu: AsideMenu,
       headerbar: HeaderBar,

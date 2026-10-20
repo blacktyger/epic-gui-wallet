@@ -95,7 +95,7 @@ H.runCase('confirm615', async (t) => {
     return true;
   };
   const pickerReturns = (dir) => t.app.evaluate(({ dialog }, p) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [p] }); }, dir);
-  const addFromFolder = (dir) => pickerReturns(dir).then(() => w.getByRole('button', { name: 'Add a wallet from a folder…' }).first().click({ timeout: 10000 }));
+  const addFromFolder = (dir) => pickerReturns(dir).then(() => V.addFromFolder(w, ui));
   const setLabel = async (label) => {
     await V.openWalletSettings(w, ui);
     await w.locator(ui === 'modern' ? '#stg-label' : '#accountLabel').fill(label);
@@ -268,7 +268,7 @@ H.runCase('confirm615', async (t) => {
   save();
 
   /* ---------- a second 6.1 wallet and three CLI wallets ---------- */
-  await t.step('wallet B (Settings › Wallet › Create a wallet), named "Bravo"', async () => {
+  await t.step('wallet B (Settings › All wallets › Create a new wallet), named "Bravo"', async () => {
     const r = await V.addWallet(w, ui, pwB); await skipTourIfAny(); await size(); await setLabel('Bravo'); return r;
   }, { fatal: true, timeout: 150000, allowConsole: [E2E_1] });
   const dirB = walletOf('Bravo').dataDir;
@@ -315,7 +315,7 @@ H.runCase('confirm615', async (t) => {
     await snap('e', 'remove-dialog' + (ui === 'classic' ? '-dark' : ''));
     const by = Object.fromEntries(c.map((x) => [x.mode, x]));
     const want = {
-      list: /Remove from the list only All files stay where they are\. You can add the wallet back later with “Add a wallet from a folder”\./,
+      list: /Remove from the list only All files stay where they are\. You can add the wallet back later: Add a wallet › Add an existing wallet\./,
       app: /Remove this app’s files for it Also deletes its settings, its contacts in this app and this app’s files for it\. The wallet itself, with its seed, stays in .+\./,
       everything: /Remove everything, including the wallet seed Deletes this wallet from this computer: .+\. You can restore it only with your recovery phrase; without it the coins are lost\./,
     };
@@ -380,8 +380,9 @@ H.runCase('confirm615', async (t) => {
     return s;
   });
   const importL1 = async () => {
-    await V.openWalletSettings(w, ui);
-    await w.getByRole('button', { name: 'Import from an older Epic Wallet' }).first().click({ timeout: 10000 });
+    await V.openAllWallets(w, ui);
+    await U.clickable(w, 'Add an existing wallet').first().click({ timeout: 10000 });
+    await U.clickable(w, 'Look for wallets').first().click({ timeout: 10000 });
     await w.waitForURL(/found/, { timeout: 15000 });
     const box = w.locator(ui === 'modern' ? 'input.e-oldw-check' : 'input.found-check');
     await box.first().waitFor({ timeout: 30000 });

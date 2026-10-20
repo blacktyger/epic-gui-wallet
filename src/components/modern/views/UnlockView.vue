@@ -1,5 +1,5 @@
 <template>
-  <div class="e-hero-screen">
+  <div class="e-hero-screen e-tall-screen">
     <div class="e-auth-card">
       <BrandTile grid />
 
@@ -9,6 +9,7 @@
           <h1>{{ $t('msg.modern.unlock.unlock_title') }}</h1>
           <p>{{ $t('msg.modern.unlock.unlock_lead') }}</p>
         </div>
+        <p v-if="addedName" class="e-notice e-ok e-unlock-added" role="status" data-added><EIcon name="check" /><span>{{ $t('msg.wallets.added_unlock_m', [addedName]) }}</span></p>
         <form class="e-panel" novalidate @submit.prevent>
           <!-- several wallets: which one -->
           <fieldset v-if="wallets.length > 1" class="e-wpick">
@@ -56,7 +57,7 @@
           ><EIcon name="lockopen" />{{ $t('msg.modern.unlock.unlock') }}</button>
         </form>
         <div class="e-auth-alt">
-          <router-link to="/new">{{ $t('msg.wallets.create_or_add') }}</router-link>
+          <router-link to="/new"><EIcon name="plus" size="sm" />{{ $t('msg.wallets.add_title') }}</router-link>
         </div>
       </div>
 

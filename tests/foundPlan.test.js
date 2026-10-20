@@ -62,7 +62,7 @@ test('checked keys keep the list order and ignore keys not listed', () => {
 });
 
 test('Not now goes back to Settings when it came from there, else Welcome', () => {
-  assert.equal(backRoute('settings', true), 'account');
+  assert.equal(backRoute('settings', true), 'wallets');
   assert.equal(backRoute('', false), 'new');
   assert.equal(backRoute('new', true), 'new');
   assert.equal(backRoute('', true), 'login');

@@ -42,6 +42,17 @@ export function networkBadge(network) {
   return network && network !== 'mainnet' ? network.charAt(0).toUpperCase() + network.slice(1) : '';
 }
 
+/* a wallet's own folder, the one Open wallet folder and Show in folder open: where its seed is
+   (<root>/wallets/<id> for a wallet made here; the older app's folder for an imported or added one) */
+export function walletFolderOf(wallet) {
+  return (wallet && (wallet.dataDir || wallet.configDir)) || '';
+}
+
+/* where the add flows come back to: Settings › All wallets with a wallet open, else Welcome */
+export function addBackRoute(from, store) {
+  return from === 'settings' && isLoggedIn(store) ? { name: 'wallets' } : { name: 'new' };
+}
+
 /* a folder for a secondary line: its last segments, '…/' in front when shortened */
 export function folderTail(dir, segments = 3) {
   const parts = String(dir || '').split(/[\\/]+/).filter(Boolean);
@@ -251,19 +262,41 @@ export const walletOpen = {
       return false;
     },
 
-    /* a wallet is open (Settings › Add another wallet): close it the way Lock does, staying on this page */
+    /* a wallet is open (Settings › Add a wallet): close it the way Lock does, staying on this page.
+       Never waits more than 60 s: the add flows go on to Unlock (App.vue answers done also on a failure) */
     logoutCurrent() {
       if (!isLoggedIn(this.$store)) return Promise.resolve();
-      return new Promise((resolve) => this.emitter.emit('app.logout', { stay: true, done: resolve }));
+      return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          console.log('[wallets] the open wallet did not report locked within 60 s: going on');
+          resolve();
+        }, 60000);
+        this.emitter.emit('app.logout', { stay: true, done: () => { clearTimeout(timer); resolve(); } });
+      });
+    },
+
+    /* a wallet was added (Create, Restore, a wallet folder, an older Epic Wallet's wallet): the wallet
+       open now is locked first, as Lock does (its processes stopped), the new one becomes the default
+       and Unlock opens with it chosen. Every way of adding lists a new wallet next to the others:
+       nothing in the list is replaced (configService.registerWallet) */
+    async unlockAdded(walletId) {
+      await this.logoutCurrent();
+      try {
+        if (this.configService.settings.defaultWalletId() !== walletId) this.configService.settings.setDefaultWallet(walletId);
+      } catch (e) {
+        console.log('[wallets] ' + walletId + ' not made the default: ' + (e && e.message ? e.message : e));
+      }
+      this.$router.push({ name: 'login', query: { wallet: walletId, added: '1' } });
     },
   },
 };
 
 /*
- * Open a wallet folder (Welcome › Advanced, Settings › Add another wallet): pick a folder, which the
+ * Add an existing wallet › From a wallet folder (AddExisting.vue): pick a folder, which the
  * main process works out to the wallet folder(s) it means (shared/walletFolder.js); one wallet opens
  * at once (configService.openExistingWallet), several or none show WalletFolderPick (a choice, or
- * what a wallet folder is). When a wallet's network can't be told, ask for it and try again.
+ * what a wallet folder is). A wallet's network comes from its folder or toml; when neither tells it, the
+ * network chosen on Welcome › Advanced (else Mainnet) is used, without asking.
  * folderOpened(wallet) is called on success (each screen decides where to go).
  */
 export const walletFolder = {
@@ -271,8 +304,7 @@ export const walletFolder = {
   data() {
     return {
       folderError: '',
-      //the folder whose network has to be chosen: {dir}
-      folderAsk: null,
+      //the network for a wallet folder that doesn't tell its own (screens set it from Welcome)
       folderNetwork: 'mainnet',
       folderBusy: false,
       //what was picked when it isn't exactly one wallet: {picked, wallets: [{dir, network}], chainOnly}
@@ -281,14 +313,14 @@ export const walletFolder = {
   },
   methods: {
     async pickWalletFolder() {
+      if (this.folderBusy) return;
       this.folderError = '';
-      this.folderAsk = null;
       //Choose another folder: the picker closes, so focus goes back to the screen's button
       const hadPick = !!this.folderPick;
       this.folderPick = null;
       let r;
       try {
-        r = await window.api.pickWalletFolder(t('msg.chaindata.folder_dialog_title'));
+        r = await window.api.pickWalletFolder(t('msg.wallets.folder_dialog_title'));
       } catch (e) {
         this.folderError = e && e.message ? e.message : String(e);
         if (hadPick) this.focusFolderButton();
@@ -310,7 +342,7 @@ export const walletFolder = {
       this.folderPick = null;
       this.focusFolderButton();
     },
-    /* the screen's Open a wallet folder button (ref folderButton) */
+    /* the screen's From a wallet folder button (ref folderButton) */
     focusFolderButton() {
       this.$nextTick(() => {
         const b = this.$refs.folderButton;
@@ -326,18 +358,13 @@ export const walletFolder = {
       this.folderBusy = true;
       this.folderError = '';
       try {
-        const r = await this.configService.openExistingWallet(dir, network);
+        const r = await this.configService.openExistingWallet(dir, network || this.folderNetwork);
         if (r && r.ok && r.wallet) {
-          this.folderAsk = null;
           await clearStaleUser(this.$userService, r.wallet.id);
           await this.folderOpened(r.wallet);
           return;
         }
         const reason = r && r.reason || '';
-        if (reason === 'network' && !network) {
-          this.folderAsk = { dir };
-          return;
-        }
         this.folderError = this.folderReason(reason, dir);
       } catch (e) {
         this.folderError = e && e.message ? e.message : String(e);
@@ -345,15 +372,11 @@ export const walletFolder = {
         this.folderBusy = false;
       }
     },
-    folderWithNetwork() {
-      if (this.folderAsk) this.openWalletFolder(this.folderAsk.dir, this.folderNetwork);
-    },
     folderReason(reason, dir) {
       switch (reason) {
         case 'noseed': return this.$t('msg.wallets.folder_noseed', [dir]);
         case 'listed': return this.$t('msg.wallets.folder_listed');
         case 'inuse': return this.$t('msg.wallets.folder_inuse');
-        case 'network': return this.$t('msg.wallets.folder_network');
         case 'readonly': return this.$t('msg.wallets.settings_readonly');
         default: return this.$t('msg.wallets.folder_failed', [reason || '?']);
       }

@@ -193,12 +193,14 @@
     },
     data() {
       return {
-        //Settings › Add another wallet: an optional label, prefilled "Wallet 2", "Wallet 3"…
+        //Settings › All wallets › Add a wallet: an optional label, prefilled "Wallet 2", "Wallet 3"…
         label: this.$route.query.add === '1' ? this.$t('msg.wallets.wallet_n', [walletList(this.configService).length + 1]) : '',
         //recovering, then opening the wallet
         restoring: false,
-        //'restore' while recovering, 'open' while it opens (the unlock steps follow)
+        //'restore' while recovering, 'lock' while the wallet open now locks
         restoreStage: '',
+        //a wallet was open when the restore started: it is locked before Unlock
+        locking: false,
         //the wallet just restored (settings record)
         wallet: null,
       };
@@ -214,12 +216,13 @@
       networkName(){
         return networkBadge(this.network);
       },
-      //recovering, then the unlock steps
+      //recovering, then (a wallet is open) locking it; Unlock follows
       restoreAllStages(){
-        return [{key: 'restore', label: this.$t('msg.wallets.stage_restore')}, ...this.stages];
+        return [{key: 'restore', label: this.$t('msg.wallets.stage_restore')},
+          ...(this.locking ? [{key: 'lock', label: this.$t('msg.wallets.stage_lock')}] : [])];
       },
       restoreCurrent(){
-        return this.restoreStage === 'restore' ? 'restore' : (this.restoreStage ? this.$store.state.loginStage || 'check' : '');
+        return this.restoreStage;
       },
       wordSet(){
         return new Set(this.mnemonicWords);
@@ -242,7 +245,7 @@
     methods: {
       back(){
         if(this.adding && isLoggedIn(this.$store)){
-          this.$router.push({name: 'account'});
+          this.$router.push({name: 'wallets'});
         }else{
           this.$router.push({name: this.fromRoute});
         }
@@ -343,21 +346,18 @@
           this.wallet = recovered.wallet;
           //the phrase is not needed any more: drop it from the form
           this.clearup();
-          this.restoreStage = 'open';
-          //Add another wallet: the wallet open now is closed first, as Lock does
-          await this.logoutCurrent();
-          const result = await this.openWallet(this.wallet.id, password);
-          if(result !== 'opened'){
-            this.toUnlock();
-          }
+          //Unlock, with the restored wallet chosen (a wallet open now is locked first, as Lock does)
+          this.locking = isLoggedIn(this.$store);
+          if(this.locking) this.restoreStage = 'lock';
+          await this.unlockAdded(this.wallet.id);
         }catch(e){
           this.$toast.error(e && e.message ? e.message : String(e), {duration:false});
           if(this.wallet){
             this.toUnlock();
           }
         }finally{
-          this.$store.commit('loginStage', '');
           this.restoreStage = '';
+          this.locking = false;
           this.restoring = false;
         }
       },

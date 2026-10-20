@@ -43,10 +43,10 @@
                     <p>&nbsp;</p>
                     <div class="buttons is-centered">
                       <button type="button" class="button is-primary" :class="{ 'button__loader': opening }" :aria-disabled="opening" @click="openNewWallet">
-                        <span class="button__text">{{ $t("msg.wallets.open_my_wallet") }}</span>
+                        <span class="button__text">{{ $t("msg.wallets.written_continue") }}</span>
                       </button>
                     </div>
-                    <StartupProgress v-if="opening && $store.state.loginStage" :stages="stages" :current="$store.state.loginStage" />
+                    <p v-if="opening && locking" class="help has-text-centered" role="status">{{ $t('msg.wallets.stage_lock') }}…</p>
                   </div>
                 </div>
               </div>
@@ -123,10 +123,11 @@ import { walletOpen, walletList, networkBadge, isLoggedIn, clearStaleUser } from
 const NETWORKS = ['mainnet', 'floonet', 'usernet'];
 
 /*
- * A new wallet: a password (twice), then its recovery phrase, then it opens with that password.
+ * A new wallet: a password (twice), then its recovery phrase, then Unlock with it chosen (the
+ * password is asked there, once the phrase has left the screen; components/wallets.js unlockAdded).
  * No name and no folder: walletService.new makes it in the app's folder and adds it to the list.
- * Route query: network (from Welcome › Advanced), add=1 (Settings › Add another wallet: an
- * optional label, and the wallet that is open is closed before the new one opens).
+ * Route query: network (from Welcome › Advanced), add=1 (Settings › All wallets › Add a wallet: an
+ * optional label, and the wallet that is open is locked before Unlock).
  */
 export default {
   name: "create",
@@ -176,12 +177,14 @@ export default {
   },
   data() {
     return {
-      //Settings › Add another wallet: an optional label, prefilled "Wallet 2", "Wallet 3"…
+      //Settings › All wallets › Add a wallet: an optional label, prefilled "Wallet 2", "Wallet 3"…
       label: this.$route.query.add === '1' ? this.$t('msg.wallets.wallet_n', [walletList(this.configService).length + 1]) : '',
       //the wallet just made (settings record)
       wallet: null,
-      //opening it after the phrase
+      //going on to Unlock after the phrase
       opening: false,
+      //and a wallet that was open is being locked first
+      locking: false,
       //the recovery words are in the page only after "Reveal phrase" (never just hidden by CSS)
       revealed: false,
       //the phrase's QR code: shown only on request, hidden again with the phrase and on leaving
@@ -237,7 +240,7 @@ export default {
 
     back(){
       if(this.adding && isLoggedIn(this.$store)){
-        this.$router.push({name: 'account'});
+        this.$router.push({name: 'wallets'});
       }else{
         this.$router.push({name: this.fromRoute});
       }
@@ -282,25 +285,22 @@ export default {
       }
     },
 
-    /* the phrase is written down: open the new wallet with the password just chosen */
+    /* the phrase is written down: Unlock, with the new wallet chosen (a wallet open now is locked
+       first, as Lock does). The password is asked there, once the phrase has left the screen */
     async openNewWallet(){
       if(this.opening || !this.wallet){
         return;
       }
       this.opening = true;
+      this.locking = isLoggedIn(this.$store);
       try{
-        //Add another wallet: the wallet open now is closed first, as Lock does
-        await this.logoutCurrent();
-        const result = await this.openWallet(this.wallet.id, this.passwordField.defaultValue);
-        if(result !== 'opened'){
-          this.toUnlock();
-        }
+        await this.unlockAdded(this.wallet.id);
       }catch(e){
         this.$toast.error(e && e.message ? e.message : String(e));
         this.toUnlock();
       }finally{
-        this.$store.commit('loginStage', '');
         this.opening = false;
+        this.locking = false;
       }
     },
 

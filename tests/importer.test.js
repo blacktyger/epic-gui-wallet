@@ -399,3 +399,27 @@ test('importWallets: a new id never takes over an earlier wallet\'s User row, co
   assert.deepEqual(b.book.map(c => c.name).sort(), ['Carol', 'Dan', 'Finn']);
   assert.ok(b.book.every(c => c.user_id === u.id));
 });
+
+test('importWallets next to wallets already listed (#34): a new id each, the listed ones keep their record, files and User row', async (t) => {
+  const b = setup(t, { profiles: PROFILES('') });
+  //a wallet made in 6.1 is listed and open: w1, with its User row
+  const own = path.join(b.root, 'wallets', 'w1');
+  realFs.mkdirSync(path.join(own, 'wallet_data'), { recursive: true });
+  realFs.writeFileSync(path.join(own, 'wallet_data', 'wallet.seed'), 'own seed');
+  b.settings.addWallet({ id: 'w1', network: 'mainnet', configDir: own, dataDir: own, origin: 'created', label: 'Mine' });
+  await b.userService.ensureUser('w1', { name: 'Mine' });
+  const recordBefore = b.settings.wallet('w1');
+  const filesBefore = hashTree(own);
+  const r = await b.importer.scan();
+  const alpha = r.wallets.find(w => w.account === 'alpha').key;
+  const res = await b.importer.importWallets([alpha]);
+  assert.deepEqual(res.imported, [{ key: alpha, walletId: 'w2' }]);
+  assert.deepEqual(b.settings.wallets().map(w => w.id), ['w1', 'w2']);
+  assert.deepEqual(b.settings.wallet('w1'), recordBefore);
+  assert.equal(hashTree(own), filesBefore);
+  assert.ok(!b.userService.removed.includes('w1'), 'the listed wallet\'s User row was not touched');
+  assert.deepEqual(b.users.filter(u => u.account === 'w1').map(u => u.name), ['Mine']);
+  //the default stays: Unlock chooses the imported one by the route (components/wallets.js unlockAdded)
+  assert.equal(b.settings.defaultWalletId(), 'w1');
+  assert.ok(b.unchanged());
+});

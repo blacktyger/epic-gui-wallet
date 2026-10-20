@@ -27,6 +27,17 @@
 - Logs are on by default, at debug level, and bounded: the app's own logs (`logs/main.log`, `logs/renderer.log`, 2 MiB each plus one older file), each wallet's `epic-wallet.log` (5 MiB × 4 files) and the built-in node's `epic-server.log` (Info level, 5 MiB × 3 files). Existing wallets get it the next time they are opened. The page log used to be a new file every day that started empty on every start.
 - The logs hold what is needed to find a problem, with less noise: versions and system at start, every process the app starts (passwords redacted), node state changes (not every 10 seconds), send and receive steps with their transaction ids, wallet errors once instead of on every refresh. They never contain passwords, recovery phrases, seeds, API secrets, slates or the clipboard.
 - The first-unlock tour (BT Labs Theme) has one more step: "Need help? Settings › Help › Report a problem."
+## Next (branch feat/add-wallet-flow)
+
+- Adding a wallet, made clear (feedback #34). There are three ways, the same everywhere: on the Welcome screen, behind "Add a wallet" on the Unlock screen, and in Settings › All wallets:
+  - **Create a new wallet**: a new wallet with a new recovery phrase.
+  - **Add an existing wallet**: a wallet already on this computer, either one an older Epic Wallet left (the app looks for them) or any wallet folder you choose. The picker still finds the wallet when you choose a folder above it. The wallet stays where it is.
+  - **Restore from recovery phrase**.
+
+  Each one adds a new wallet to the list. Nothing replaces or overwrites a wallet you already have, and tests check this for every way of adding.
+- After you create, add or restore a wallet, the open wallet is locked (its background programs are stopped) and the Unlock screen opens with the new wallet already chosen. It says "… was added. Enter its password to unlock it." After creating a wallet you now unlock it on that screen. It no longer opens straight from the recovery-phrase page.
+- Settings › This wallet (it was "Wallet") is about the open wallet only. Its "Open wallet folder" button opens that wallet's own folder in your file manager. The confusing "Add a wallet from a folder…" button is gone from this page. Your other wallets, each with "Show in folder" and "Remove…", and the three ways to add one are on the new Settings › All wallets page. In Classic it is in the gear menu.
+- Welcome › Advanced › App data folder: one short line saying what it is, with the rest under "More about this". It works as before: choose a new, empty folder, the app restarts and uses it, and "Use the default folder" goes back.
 
 ## 6.1.5
 

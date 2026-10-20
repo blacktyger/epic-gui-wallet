@@ -138,7 +138,6 @@ export default {
     welcome_lead: 'Ihre Schlüssel und Ihre Coins bleiben auf diesem Computer, gesichert mit Ihrem Passwort.',
     welcome_create: 'Neue Wallet erstellen',
     welcome_restore: 'Mit einer Wiederherstellungsphrase wiederherstellen',
-    welcome_note: 'Das Erstellen einer Wallet dauert etwa fünf Minuten. Halten Sie Stift und Papier für Ihre Wiederherstellungsphrase bereit.',
     create_title: 'Wallet erstellen',
     create_lead: 'Das Passwort entsperrt diese Wallet auf diesem Computer. Es kann Ihre Coins nicht wiederherstellen; das erledigt die Wiederherstellungsphrase im nächsten Schritt.',
     password: 'Passwort',
@@ -513,7 +512,7 @@ export default {
   settings: {
     sections: 'Bereiche der Einstellungen',
     nav_general: 'Netzwerkknoten und Empfang',
-    nav_wallet: 'Wallet',
+    nav_wallet: 'Diese Wallet',
     nav_phrase: 'Wiederherstellungsphrase',
     nav_rescan: 'Neu scannen',
     nav_about: 'Über',

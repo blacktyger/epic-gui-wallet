@@ -250,6 +250,14 @@ test('discardWalletDirs: only an empty new folder, never once wallet_data exists
   assert.ok(fs.existsSync(c.configDir + '/someone-else.txt'));
 });
 
+test('setRoot leaves a one-time marker for Welcome after the restart', () => {
+  const { cs } = setup();
+  assert.equal(cs.takeRootMoved(), false);
+  cs.setRoot('/media/usb/epic gui');
+  assert.equal(cs.takeRootMoved(), true);
+  assert.equal(cs.takeRootMoved(), false);
+});
+
 test('setRoot / clearRoot: location.json in the default root, only while the list is empty', () => {
   const { cs, fs, root } = setup();
   assert.deepEqual(cs.setRoot('relative'), { ok: false, reason: 'notallowed' });

@@ -12,7 +12,7 @@ export default {
   ready: 'Choose one of the options below.',
 
   list_label: 'Remove from the list only',
-  list_hint: 'All files stay where they are. You can add the wallet back later with “Add a wallet from a folder”.',
+  list_hint: 'All files stay where they are. You can add the wallet back later: Add a wallet › Add an existing wallet.',
   app_label: 'Remove this app’s files for it',
   app_hint: 'Also deletes its settings, its contacts in this app and this app’s files for it. The wallet itself, with its seed, stays in {0}.',
   app_hint_missing: 'Also deletes its settings, its contacts in this app and this app’s files for it in {0}.',

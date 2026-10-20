@@ -18,59 +18,31 @@
         </div>
 
         <div class="field">
-          <label class="label">{{ $t('msg.wallets.data_folder') }}</label>
-          <p><code style="word-break: break-all;">{{ dataDir }}</code></p>
+          <label class="label">{{ $t('msg.wallets.wallet_folder') }}</label>
+          <p class="help">{{ importedDir ? $t('msg.wallets.wallet_folder_imported') : $t('msg.wallets.wallet_folder_hint') }}</p>
+          <p><code style="word-break: break-all;" translate="no">{{ dataDir }}</code></p>
           <div class="buttons" style="margin-top: 0.25rem;">
-            <button type="button" class="button is-small is-outlined" @click="openFolder(dataDir)">{{ $t('msg.wallets.open_folder') }}</button>
+            <button type="button" class="button is-small is-outlined" data-open="wallet" @click="openFolder(dataDir)">{{ $t('msg.wallets.open_this_folder') }}</button>
             <button type="button" class="button is-small is-outlined" @click="copyPath(dataDir)">{{ $t('msg.wallets.copy_path') }}</button>
           </div>
         </div>
         <div v-if="showConfigDir" class="field">
           <label class="label">{{ $t('msg.wallets.config_folder') }}</label>
-          <p><code style="word-break: break-all;">{{ configDir }}</code></p>
+          <p><code style="word-break: break-all;" translate="no">{{ configDir }}</code></p>
           <div class="buttons" style="margin-top: 0.25rem;">
             <button type="button" class="button is-small is-outlined" @click="openFolder(configDir)">{{ $t('msg.wallets.open_folder') }}</button>
             <button type="button" class="button is-small is-outlined" @click="copyPath(configDir)">{{ $t('msg.wallets.copy_path') }}</button>
           </div>
         </div>
-        <p v-if="importedDir" class="help">{{ importedDir === dataDir ? $t('msg.wallets.data_folder_imported') : $t('msg.wallets.imported_from', [importedDir]) }}</p>
+        <p v-if="importedDir && importedDir !== dataDir" class="help">{{ $t('msg.wallets.imported_from', [importedDir]) }}</p>
 
         <hr>
-        <h2 class="title is-5">{{ $t('msg.wallets.other_wallets') }}</h2>
-        <p v-if="!others.length" class="help">{{ $t('msg.wallets.no_other_wallets') }}</p>
-        <div v-for="w in others" :key="w.id" class="level">
-          <div class="level-left"><div>
-            <b>{{ nameOf(w) }}</b> <span v-if="badge(w.network)" class="tag is-warning is-light">{{ badge(w.network) }}</span>
-            <p class="is-size-7"><code :title="w.dataDir">{{ short(w.dataDir) }}</code></p>
-          </div></div>
-          <div class="level-right"><div class="buttons">
-            <button type="button" class="button is-small is-outlined" @click="showInFolder(w)" :aria-label="$t('msg.wallets.show_in_folder_named', [nameOf(w)])">{{ $t('msg.wallets.show_in_folder') }}</button>
-            <button type="button" class="button is-small is-danger is-outlined" @click="askRemove(w)" :aria-label="$t('msg.removal.open_named', [nameOf(w)])">{{ $t('msg.removal.open') }}</button>
-          </div></div>
-        </div>
-
-        <h2 class="title is-5" style="margin-top: 1.5rem;">{{ $t('msg.wallets.add_wallet') }}</h2>
-        <p class="help" style="margin-bottom: 0.5rem;">{{ $t('msg.wallets.add_wallet_hint') }}</p>
-        <div class="buttons">
-          <button type="button" class="button is-small" @click="addCreate">{{ $t('msg.wallets.create') }}</button>
-          <button type="button" class="button is-small" @click="addRestore">{{ $t('msg.wallets.restore') }}</button>
-          <button ref="folderButton" type="button" class="button is-small" :class="{ 'is-loading': folderBusy }" @click="pickWalletFolder">{{ $t('msg.wallets.open_wallet_folder') }}</button>
-          <button type="button" class="button is-small" @click="addImport">{{ $t('msg.wallets.import_older') }}</button>
-        </div>
-        <div v-if="folderAsk" class="field is-grouped">
-          <p class="control">{{ $t('msg.wallets.folder_network') }}</p>
-          <div class="control"><div class="select is-small"><select v-model="folderNetwork" :aria-label="$t('msg.wallets.network')">
-            <option value="mainnet">Mainnet</option><option value="floonet">Floonet</option><option value="usernet">Usernet</option>
-          </select></div></div>
-          <div class="control"><button type="button" class="button is-small is-primary" @click="folderWithNetwork">{{ $t('msg.wallets.open') }}</button></div>
-        </div>
-        <p v-if="folderError" class="help is-danger" role="alert">{{ folderError }}</p>
-        <WalletFolderPick v-if="folderPick" :pick="folderPick" :busy="folderBusy" @open="folderPicked" @again="pickWalletFolder" @cancel="folderPickCancel" />
+        <p class="help">{{ $t('msg.wallets.this_wallet_only') }}</p>
+        <router-link class="button is-small is-outlined" :to="{ name: 'wallets' }">{{ $t('msg.wallets.all_wallets') }}</router-link>
 
       </div>
     </div>
 
-    <RemoveWalletDialog v-if="removing" :wallet="removing.wallet" :name="removing.name" @close="removing = null" @done="removed" />
   </section>
 
 </template>
@@ -78,17 +50,15 @@
 <script>
 
 import { useStore } from '@/store';
-import { walletList, walletName, labelShown, networkBadge, shortFolder, appLocale, walletFolder, walletOpen } from '@/components/wallets';
-import RemoveWalletDialog from '@/components/layout/RemoveWalletDialog.vue';
+import { walletList, walletName, labelShown, appLocale, walletFolderOf } from '@/components/wallets';
 
   /*
-   * This wallet: its label, its folders, where it was imported from; the other wallets in the
-   * list (Remove: components/removalPlan.js) and Add another wallet (Create, Restore, Open folder, Import).
+   * Settings › Wallet, about the open wallet only: its label, its folder (Open wallet folder opens
+   * it in the file manager), this app's files for it, where it was imported from. The other wallets
+   * and Add a wallet are in Settings › All wallets (Wallets.vue).
    */
   export default {
     name: "account",
-    mixins: [walletFolder, walletOpen],
-    components: { RemoveWalletDialog },
     setup(){
       return { store: useStore() };
     },
@@ -96,8 +66,6 @@ import RemoveWalletDialog from '@/components/layout/RemoveWalletDialog.vue';
       return {
         label: '',
         wallets: [],
-        //the wallet being removed (RemoveWalletDialog): {wallet, name}
-        removing: null,
       };
     },
     computed: {
@@ -111,9 +79,10 @@ import RemoveWalletDialog from '@/components/layout/RemoveWalletDialog.vue';
       defaultName() {
         return this.wallet ? walletName({ ...this.wallet, label: '' }, this.wallets) : '';
       },
-      //where the wallet itself is (for an imported wallet: the older app's folder)
+      //the wallet's own folder, where its seed is (<root>/wallets/<id>; for an imported or added wallet
+      //the folder it was added from): what Open wallet folder opens
       dataDir() {
-        return (this.wallet && this.wallet.dataDir) || this.configService.walletDataDir || '';
+        return walletFolderOf(this.wallet) || this.configService.walletDataDir || '';
       },
       //6.1's own folder for it (toml, secrets, log); shown only when it is not the data folder
       configDir() {
@@ -129,9 +98,6 @@ import RemoveWalletDialog from '@/components/layout/RemoveWalletDialog.vue';
         const w = this.wallet;
         return w && w.origin === 'imported' && w.importedFrom ? w.importedFrom.dir || w.dataDir : '';
       },
-      others() {
-        return this.wallets.filter(w => w.id !== this.walletId);
-      },
     },
 
     mounted(){
@@ -143,26 +109,15 @@ import RemoveWalletDialog from '@/components/layout/RemoveWalletDialog.vue';
       refresh() {
         this.wallets = walletList(this.configService);
       },
-      nameOf(w) {
-        return walletName(w, this.wallets);
-      },
-      badge: networkBadge,
-      short(dir) {
-        return shortFolder(dir, this.configService, 52);
-      },
-      openFolder(dir) {
-        if (dir) window.openepichidden.open(dir);
-      },
-      /* another listed wallet's own folder in the file manager: <root>/wallets/<id> (its WALLET.txt
-         names the data folder), else its data folder. open-folder (background.js) opens only a
-         folder of the app or of a listed wallet */
-      async showInFolder(w) {
-        for (const dir of [w && w.configDir, w && w.dataDir]) {
-          try {
-            if (dir && await window.openepichidden.open(dir)) return;
-          } catch (e) { /* the next one */ }
-        }
-        this.$toast.error(this.$t('msg.wallets.missing', [(w && (w.configDir || w.dataDir)) || '']));
+      /* a folder of this wallet in the file manager; open-folder (background.js) opens only a folder
+         of the app or of a listed wallet, and says false when it could not */
+      async openFolder(dir) {
+        if (!dir) return;
+        let opened = false;
+        try {
+          opened = await window.openepichidden.open(dir);
+        } catch (e) { /* said below */ }
+        if (!opened) this.$toast.error(this.$t('msg.wallets.missing', [dir]));
       },
       async copyPath(dir) {
         if (!dir) return;
@@ -199,29 +154,6 @@ import RemoveWalletDialog from '@/components/layout/RemoveWalletDialog.vue';
           console.log('[account] label not saved: ' + (e && e.message ? e.message : e));
           this.$toast.error(this.$t("msg.account.error_save"));
         }
-      },
-
-      addCreate() {
-        this.$router.push({ name: 'create', query: { add: '1', network: this.network === 'mainnet' ? undefined : this.network } });
-      },
-      addRestore() {
-        this.$router.push({ name: 'restore', query: { add: '1', network: this.network === 'mainnet' ? undefined : this.network } });
-      },
-      addImport() {
-        this.$router.push({ name: 'found', query: { from: 'settings' } });
-      },
-      //a wallet folder was added: it needs its password, so this wallet closes and Unlock opens with it
-      async folderOpened(wallet) {
-        await this.logoutCurrent();
-        this.$router.push({ name: 'login', query: { wallet: wallet.id } });
-      },
-
-      askRemove(w) {
-        this.removing = { wallet: w, name: this.nameOf(w) };
-      },
-      removed() {
-        this.removing = null;
-        this.refresh();
       },
 
     }
