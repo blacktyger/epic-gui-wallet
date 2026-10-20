@@ -197,11 +197,11 @@ describe.each(BOOKS)('Contacts ($name)', (ui) => {
     const { w, book, avatars } = await openBook(ui, { avatars: fakeAvatars({ 5: WEBP }) });
     await pick(w, 'Café');
     expect(w.find('.cav img').attributes('src')).toBe(WEBP);
-    await button(w, t('msg.delete'), { partial: true }).trigger('click');
+    await w.find('.e-con-del, .cbook-del-btn').trigger('click');
     await flushPromises();
     await button(w, t('msg.modern.settings.keep_contact')).trigger('click');
     expect(book.removeAddress).not.toHaveBeenCalled();
-    await button(w, t('msg.delete'), { partial: true }).trigger('click');
+    await w.find('.e-con-del, .cbook-del-btn').trigger('click');
     await button(w, t('msg.modern.settings.delete_contact'), { partial: true }).trigger('click');
     await flushPromises();
     expect(book.removeAddress).toHaveBeenCalledWith(5);

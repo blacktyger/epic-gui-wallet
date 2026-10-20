@@ -145,7 +145,7 @@
             <EIcon name="send" />{{ selectedAddresses.length > 1 ? $t('msg.contacts.send_' + a.kind) : $t('msg.contacts.send') }}
           </button>
           <button type="button" class="e-btn" @click="edit()"><EIcon name="pencil" />{{ $t('msg.edit') }}</button>
-          <button type="button" class="e-btn e-btn-ghost e-con-del" @click="trashModalOpen(selectedAddress)"><EIcon name="trash" />{{ $t('msg.delete') }}</button>
+          <button type="button" class="e-icon-btn e-con-del" :aria-label="$t('msg.modern.settings.delete_contact')" :title="$t('msg.modern.settings.delete_contact')" @click="trashModalOpen(selectedAddress)"><EIcon name="trash" /></button>
         </div>
 
         <dl class="e-con-facts">

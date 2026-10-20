@@ -312,31 +312,32 @@ async function wrongPassword(w, ui, bad) {
   return `"${msg}", still on the unlock screen`;
 }
 
-/* ---------- Contacts (Modern: Contacts, Classic: Address Book); problems show as toasts ---------- */
+/* ---------- Contacts (both interfaces since 6.1.6: a list of rows, the form says what is wrong under the field) ---------- */
 async function contactNames(w, ui) {
-  return w.evaluate((ui) => [...document.querySelectorAll(ui === 'modern' ? '.e-contact-list .e-contact b' : 'a.panel-block')]
+  return w.evaluate((ui) => [...document.querySelectorAll(ui === 'modern' ? '.e-con-list .e-con-row b' : '.cbook-list .cbook-row b')]
     .map((e) => e.innerText.replace(/\s+/g, ' ').trim()), ui);
 }
-/** Open a new contact form, fill name / Epicbox address, save; returns the toasts seen. */
-async function addContact(w, ui, { name = '', epicbox = '' } = {}) {
-  if (ui === 'modern') {
-    await w.getByRole('button', { name: 'Add contact' }).first().click({ timeout: 8000 });
-    await w.locator('#con-f-name').fill(name);
-    await w.locator('#con-f-box').fill(epicbox);
-    await w.locator('.e-con-form-foot button[type=submit]').click();
-  } else {
-    await w.locator('section.is-main-section button.is-primary.is-small').first().click({ timeout: 8000 });
-    const field = (label) => w.locator(`xpath=//label[normalize-space(.)="${label}"]/following::input[1]`).first();
-    await field('Name').fill(name);
-    await field('Epicbox Address').fill(epicbox);
-    await w.locator('a.card-footer-item').filter({ hasText: /^\s*Save\s*$/ }).first().click();
-  }
+/* the form's messages under its fields, and the toasts */
+async function contactMessages(w) {
+  const inline = await w.evaluate(() => [...document.querySelectorAll('.e-con-form .e-error-msg, .cbook-card .help.is-danger')]
+    .map((e) => e.innerText.replace(/\s+/g, ' ').trim()).filter(Boolean));
+  return inline.concat(await toasts(w));
+}
+/** Open a new contact form, fill name / Epicbox address, save; returns the messages and toasts seen. */
+async function addContact(w, ui, { name = '', epicbox = '', http = '' } = {}) {
+  const p = ui === 'modern' ? 'con' : 'cb';
+  if (ui === 'modern') await w.getByRole('button', { name: 'Add contact' }).first().click({ timeout: 8000 });
+  else await w.locator('.cbook-head button.is-primary').first().click({ timeout: 8000 });
+  await w.locator(`#${p}-f-name`).fill(name);
+  await w.locator(`#${p}-f-box`).fill(epicbox);
+  if (http) await w.locator(`#${p}-f-ext`).fill(http);
+  await w.locator(ui === 'modern' ? '.e-con-form-foot button[type=submit]' : '.cbook-foot button[type=submit]').click();
   const seen = new Set();
-  await waitFor(async () => { for (const x of await toasts(w)) seen.add(x); return seen.size ? 'toast' : null; }, { timeout: 4000, interval: 150 });
+  await waitFor(async () => { for (const x of await contactMessages(w)) seen.add(x); return seen.size ? 'message' : null; }, { timeout: 4000, interval: 150 });
   return [...seen];
 }
 async function cancelContact(w, ui) {
-  const c = ui === 'modern' ? w.locator('.e-con-form-foot').getByRole('button', { name: 'Cancel' }) : w.locator('a.card-footer-item').filter({ hasText: /^\s*Cancel\s*$/ });
+  const c = ui === 'modern' ? w.locator('.e-con-form-foot').getByRole('button', { name: 'Cancel' }) : w.locator('.cbook-foot').getByRole('button', { name: 'Cancel' });
   if (await c.count()) await c.first().click();
 }
 
@@ -355,6 +356,6 @@ async function setLanguage(w, ui, code) {
   return a;
 }
 
-module.exports = { ADDR_RE, toasts, contactNames, addContact, cancelContact, htmlAttrs, setLanguage, NODE_URL, PAGES, clickable, text, route, main, waitText, welcome, createWallet, skipTour, nav, heading, visit,
+module.exports = { ADDR_RE, toasts, contactNames, contactMessages, addContact, cancelContact, htmlAttrs, setLanguage, NODE_URL, PAGES, clickable, text, route, main, waitText, welcome, createWallet, skipTour, nav, heading, visit,
   openSettings, typeNodeAddress, saveNode, sendTo, sendAmt, sendBtn, sendErrors, trySend, epicAddress, receiveAddress, stopListener,
   lock, unlock, wrongPassword, openGear, setupAssistant };

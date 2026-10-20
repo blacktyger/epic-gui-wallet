@@ -124,7 +124,7 @@
                 <mdicon name="send" size="18" /><span>{{ selectedAddresses.length > 1 ? $t('msg.contacts.send_' + a.kind) : $t('msg.contacts.send') }}</span>
               </button>
               <button type="button" class="button" @click="edit()"><mdicon name="pencil" size="18" /><span>{{ $t('msg.edit') }}</span></button>
-              <button type="button" class="button is-danger is-outlined" @click="trashModalOpen(selectedAddress)"><mdicon name="delete-outline" size="18" /><span>{{ $t('msg.delete') }}</span></button>
+              <button type="button" class="button is-danger is-outlined cbook-del-btn" :aria-label="$t('msg.modern.settings.delete_contact')" :title="$t('msg.modern.settings.delete_contact')" @click="trashModalOpen(selectedAddress)"><mdicon name="delete-outline" size="18" /></button>
             </div>
 
             <dl class="cbook-facts">
@@ -692,7 +692,7 @@ export default {
   .cbook-facts > div + div { margin-top: 1rem; }
   .cbook-facts dt { font-size: 0.8rem; opacity: 0.75; margin-bottom: 0.25rem; }
   .cbook-addr { display: flex; align-items: center; gap: 0.5rem; }
-  .cbook-addr code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 0.8rem; background: transparent; padding: 0; }
+  .cbook-addr code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 0.8rem; background: transparent; padding: 0; color: inherit; }
   .cbook-addr .button { flex: none; }
   .cbook-note { white-space: pre-wrap; overflow-wrap: anywhere; }
   .cbook-txs-t { margin-top: 1.5rem; margin-bottom: 0.5rem !important; }
@@ -701,10 +701,11 @@ export default {
   .cbook-txs-amt { margin-inline-start: auto; font-family: monospace; }
   .cbook-foot { display: flex; gap: 0.5rem; padding: 0.75rem 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); }
   .cbook-del { max-width: 28rem; }
-  .cbook-back { display: none; }
+  .cbook .cbook-back.button { display: none; }
+  .cbook-actions .cbook-del-btn { margin-inline-start: auto; }
   @media (max-width: 768px) {
     .cbook-has-sel .cbook-side { display: none; }
-    .cbook-back { display: inline-flex; margin-bottom: 0.5rem; }
+    .cbook .cbook-back.button { display: inline-flex; margin-bottom: 0.5rem; }
     .cbook-list { max-height: none; }
   }
 </style>
