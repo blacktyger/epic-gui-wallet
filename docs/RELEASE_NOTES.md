@@ -1,5 +1,17 @@
 # Release notes
 
+## Next version (branch feat/contacts)
+
+- Contacts, redesigned in both interfaces (feedback #38):
+  - Send: a Contacts button next to the recipient field opens a searchable list of your contacts. Choosing a name fills in their address and takes you back to the amount. A contact with both kinds of address has a small "HTTP" button for the other one. The address is still checked as if you had typed it, so a Tor address is refused.
+  - Each contact has a Send button (Send via Epicbox / Send via HTTP when it has both) that opens Send with its address filled in.
+  - The list looks like a messaging app's: a picture or initials, the name, a short address (start…end of the key and the server), the kind of address, and when you last sent to or received from them. Search as you type; sort by name or by most recent.
+  - A contact's page: copy each address (the button says "Copied"), Send, Edit, Delete (it asks first, quietly), and the transactions with this contact (sends you made to them from Send).
+  - The form checks each address as you leave the field and says what is wrong under it (an incomplete Epicbox address, a non-HTTP address, a Tor address), instead of a message that disappears.
+  - Pictures: the initials sit on a colour taken from the name, the same every time, readable in both themes. You can also pick a photo (PNG, JPEG, WebP or GIF, up to 10 MB): the app makes a small 128-pixel copy, which drops the photo's hidden details (location, camera, date), and keeps only that copy, separately from your contacts. SVG files and pictures from the internet are not accepted.
+  - On a narrow window or with large text, the list and the contact take turns, with an "All contacts" button to go back.
+  - Nothing changes in how contacts are stored: older versions still open them, and the hidden fields of very old contacts (a Tor address, payment proof settings) are kept.
+
 ## 6.1.5
 
 - Removing a wallet: "Remove everything, including the recovery phrase" is now "Remove everything, including the wallet seed". The app never stores your recovery phrase; this option deletes the wallet's seed file, and the wallet can then be restored only with the recovery phrase you wrote down. The confirmation says the same (feedback #29).
