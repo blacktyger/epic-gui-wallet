@@ -253,6 +253,10 @@
           s('balance', '[data-tour=balance]'),
           s('send', '[data-tour=send]'),
           s('receive', '[data-tour=receive]'),
+          //the ways to send and receive, one step each (on the Receive item)
+          s('epicbox', '[data-tour=receive]'),
+          s('http', '[data-tour=receive]'),
+          s('files', '[data-tour=receive]'),
           s('activity', '[data-tour=activity]'),
           s('settings', '[data-tour=settings]'),
         ];

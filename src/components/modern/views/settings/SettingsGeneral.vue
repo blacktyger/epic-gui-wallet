@@ -51,12 +51,42 @@
       <div class="e-set-list">
         <div class="e-set-row">
           <div>
-            <b id="stg-auto-l">{{ $t('msg.settings.wallet_listener') }}</b>
-            <p>{{ $t('msg.settings.auto_start') }}</p>
+            <b id="stg-auto-l">{{ $t('msg.modern.settings.epicbox_auto_l') }}</b>
+            <p id="stg-auto-h">{{ $t('msg.modern.settings.epicbox_auto_text') }}</p>
           </div>
           <div class="e-ctl">
             <label class="e-switch">
-              <input type="checkbox" v-model="walletlisten_on_startup" aria-labelledby="stg-auto-l" />
+              <input type="checkbox" v-model="walletlisten_on_startup" aria-labelledby="stg-auto-l" aria-describedby="stg-auto-h" />
+              <span class="e-track"></span>
+            </label>
+          </div>
+        </div>
+        <!-- the HTTP listener on demand (modern/httpListenerSwitch.js): on or off now, its own state -->
+        <div class="e-set-row">
+          <div>
+            <b id="stg-http-l">{{ $t('msg.modern.settings.http_l') }}</b>
+            <p id="stg-http-h">{{ $t('msg.modern.settings.http_text') }}</p>
+            <p class="e-stg-why" role="status">
+              <template v-if="httpFailed"><EIcon name="alert" size="sm" class="e-warn" /><span><b>{{ $t('msg.modern.send.rcv_http_failed') }}</b>{{ httpFailed.reason == 'port_in_use' ? $t('msg.modern.send.rcv_http_failed_port', { port: httpFailed.port }) : $t(httpFailed.reason == 'node' ? 'msg.modern.send.rcv_http_failed_node' : 'msg.modern.send.rcv_http_failed_error') }}</span></template>
+              <template v-else-if="httpOn"><EIcon name="okc" size="sm" class="e-ok" /><span>{{ $t('msg.modern.settings.http_on', { port: configService.walletListenerPort }) }}</span></template>
+              <template v-else><EIcon name="minusc" size="sm" class="e-faint" /><span>{{ $t('msg.modern.settings.http_off') }}</span></template>
+            </p>
+          </div>
+          <div class="e-ctl">
+            <label class="e-switch">
+              <input type="checkbox" data-test="http-switch" :checked="httpOn" :disabled="httpSwitching" :aria-busy="httpSwitching ? 'true' : null" aria-labelledby="stg-http-l" aria-describedby="stg-http-h" @change="httpSwitchChanged" />
+              <span class="e-track"></span>
+            </label>
+          </div>
+        </div>
+        <div class="e-set-row">
+          <div>
+            <b id="stg-http-auto-l">{{ $t('msg.modern.settings.http_auto_l') }}</b>
+            <p id="stg-http-auto-h">{{ $t('msg.modern.settings.http_auto_text') }}</p>
+          </div>
+          <div class="e-ctl">
+            <label class="e-switch">
+              <input type="checkbox" data-test="http-autostart" :checked="httpAutostartOn" aria-labelledby="stg-http-auto-l" aria-describedby="stg-http-auto-h" @change="(e) => saveHttpAutostart(e.target.checked)" />
               <span class="e-track"></span>
             </label>
           </div>
@@ -203,13 +233,16 @@
   import { resetNotice } from '@/shared/theme';
   import { epicboxStatus } from '@/shared/epicboxStatus';
   import { toastLift } from '@/components/modern/ui/toastLift';
+  import httpListenerSwitch from '@/components/modern/httpListenerSwitch';
   export default reskin(Settings, {
     components: { EIcon, EDialog, NodeserverField, EpicboxServers, SettingsFrame },
+    mixins: [httpListenerSwitch],
     //toasts (Settings saved, the node check) appear above the bar, never over its Save button
     directives: { toastLift },
     data() {
-      //the saved values, to tell whether the form has unsaved changes
-      return { saved: null };
+      //the saved values, to tell whether the form has unsaved changes; httpAutostartOn: saved at once
+      //(not part of the form), like the interface choice
+      return { saved: null, httpAutostartOn: !!(this.configService.config || {}).http_listener_autostart };
     },
     computed: {
       current() {
@@ -260,6 +293,11 @@
         this.epicboxDomain = domain;
         this.walletlisten_on_startup = listen;
         this.resetFormErrors();
+      },
+      /* Start with wallet for the HTTP listener: saved at once (config http_listener_autostart) */
+      saveHttpAutostart(on) {
+        this.httpAutostartOn = !!on;
+        this.configService.updateConfig({ http_listener_autostart: !!on });
       },
       //forget that the tour was seen and open it on Overview
       showTourAgain() {

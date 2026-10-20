@@ -122,7 +122,7 @@ import useFormValidation from "@/modules/useFormValidation";
 import { epicboxStatus } from '@/shared/epicboxStatus';
 import { serverFromUrl, serverLabel, PORT_SECURE } from '@/shared/epicboxConfig';
 import { epicAddressView } from '@/shared/receiveAddress';
-import { httpListenerState } from '@/shared/httpListener';
+import { httpListenerState, httpAutostart } from '@/shared/httpListener';
 
 
 const clipboard = window.clipboard;
@@ -268,12 +268,16 @@ export default {
       {
 
         this.isLoading = true;
-        const isListen = await this.$walletService.startListen('http');
+        //Modern: HTTP only with Start with wallet on (httpAutostart), else turned on by itself; Classic as before
+        const wantHttp = httpAutostart(this.configService.config, this.store.state.ui);
+        const isListen = wantHttp ? await this.$walletService.startListen('http') : null;
         const isEpicbox = await this.$walletService.startEpicbox();
         this.isLoading = false;
         //HTTP has its own state (QA W01): a port another program holds stops HTTP, not Epicbox
-        this.store.commit('httpListener', httpListenerState(isListen, this.configService.walletListenerPort));
-        if(isListen && isListen.success){
+        this.store.commit('httpListener', wantHttp ? httpListenerState(isListen, this.configService.walletListenerPort) : null);
+        if(!wantHttp){
+          this.store.commit('walletListenerService', !!(isEpicbox && (isEpicbox.success || isEpicbox.pending)));
+        }else if(isListen && isListen.success){
 
           this.$toast.success(this.$t("msg.login.listener_started"));
           this.store.commit('walletListenerService', true);

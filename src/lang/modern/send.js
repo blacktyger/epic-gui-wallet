@@ -68,6 +68,12 @@ export default {
   rcv_http_closed_text: ' Only wallets on your network can send here. To receive from anywhere, forward TCP port {port} on your router to this computer.',
   rcv_http_checking: 'Checking port {port}…',
   rcv_http_off: 'Not listening. Start the listener to use this address.',
+  //the HTTP listener on demand (off unless turned on, or Settings › Start with wallet)
+  rcv_http_on_demand: 'Off. Most wallets send to your Epic address; turn this on only when someone pays you over HTTP.',
+  //epic-wallet.toml listens on 127.0.0.1: other computers can't reach it, a forwarded port changes nothing
+  rcv_http_local_only: 'Listening on this computer only (127.0.0.1): other computers can\'t reach this address, even with port {port} forwarded on your router.',
+  rcv_http_turn_on: 'Turn on',
+  rcv_http_turn_off: 'Turn off',
   //the HTTP listener couldn't start while Epicbox runs (QA W01): the bold part, then the reason
   rcv_http_failed: 'HTTP is not receiving.',
   rcv_http_failed_port: ' Port {port} is used by another program. Close that program, then try again.',
@@ -89,6 +95,8 @@ export default {
   rcv_finalize_text: 'You sent a transaction file and got a response back. Finalize it to post the payment.',
   rcv_open: 'Open',
   rcv_listener: 'Listener',
+  //only Epicbox listens (HTTP is off)
+  rcv_listener_on_epicbox: 'Epicbox is listening. If you stop it, payments to your Epic address wait on the Epicbox server for a while, and transaction files still work.',
   rcv_listener_on_text: 'Epicbox and HTTP are listening. If you stop it, Epicbox payments wait at the relay for a while, HTTP payments to you fail, and transaction files still work.',
 
   //Sign / finalize a transaction file

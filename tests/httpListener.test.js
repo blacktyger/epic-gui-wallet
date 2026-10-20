@@ -1,7 +1,8 @@
 // Tests for src/shared/httpListener.js: the HTTP listener's own state (QA W01). `npm test`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isAddrInUse, httpListenerState, httpShown, HTTP_OFF } from '../src/shared/httpListener.js';
+import { isAddrInUse, httpListenerState, httpShown, HTTP_OFF, httpAutostart } from '../src/shared/httpListener.js';
+import { WALLET_DEFAULTS } from '../src/shared/settingsStore.js';
 
 test('the listener\'s bind errors on Linux, macOS and Windows read as a busy port', () => {
   assert.equal(isAddrInUse('ERROR Address already in use (os error 98)'), true);
@@ -45,4 +46,19 @@ test('the status mentions HTTP only while it runs, says "failed" when it couldn\
   //Epicbox alone turned receiving on, or Stop/lock reset it: no HTTP in the status (it said "Receiving … · HTTP")
   assert.equal(httpShown(HTTP_OFF), 'off');
   assert.equal(httpShown(undefined), 'off');
+});
+
+test('the HTTP listener is off by default: a new or older wallet does not start it at unlock (Modern)', () => {
+  assert.equal(WALLET_DEFAULTS.http_listener_autostart, false);
+  assert.equal(httpAutostart(WALLET_DEFAULTS, 'modern'), false);
+  //a wallet from before 6.1.6 has no such key: off
+  assert.equal(httpAutostart({ walletlisten_on_startup: true }, 'modern'), false);
+  assert.equal(httpAutostart(null, 'modern'), false);
+  assert.equal(httpAutostart({ http_listener_autostart: 'yes' }, 'modern'), false);
+});
+
+test('Start with wallet on: the HTTP listener starts at unlock; Classic (frozen) as before', () => {
+  assert.equal(httpAutostart({ http_listener_autostart: true }, 'modern'), true);
+  assert.equal(httpAutostart({}, 'classic'), true);
+  assert.equal(httpAutostart({ http_listener_autostart: false }, 'classic'), true);
 });

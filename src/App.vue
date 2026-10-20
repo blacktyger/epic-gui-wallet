@@ -53,7 +53,7 @@
   import { nextNodePollDelay } from '@/shared/nodePoll';
   import { wantsRefresh } from '@/shared/epicboxListener';
   import { serverLabel } from '@/shared/epicboxConfig';
-  import { httpListenerState } from '@/shared/httpListener';
+  import { httpListenerState, httpAutostart } from '@/shared/httpListener';
   import { kernelsDue, minHeightFor, fetchKernelHeight } from '@/shared/sendAllKernel';
   import { useI18n } from 'vue-i18n';
   import { withoutUserinfo, isLocal } from '@/shared/nodeVersion';
@@ -284,13 +284,21 @@
 
       /* after login, in the background: the HTTP listener, and Epicbox alongside (it waits for the node to sync) */
       this.emitter.on('app.startListeners', async () => {
-        if(!this.configService.config['walletlisten_on_startup']){
+        const config = this.configService.config || {};
+        //Classic (frozen): both only with "start the listener at unlock", as before
+        if(this.isClassic && !config['walletlisten_on_startup']){
           return;
         }
         const session = this.loginSession;
         //Epicbox does not wait for the HTTP listener, only for the node
-        if(this.configService.config['epicbox_domain'] != undefined && this.configService.config['epicbox_domain'] != '' ){
+        if(config['walletlisten_on_startup'] && config['epicbox_domain'] != undefined && config['epicbox_domain'] != '' ){
           this.emitter.emit('app.startEpicbox');
+        }
+        //Modern: the HTTP listener only with Start with wallet on (httpAutostart, default off): one
+        //epic-wallet process less asking the node every 10 s
+        if(!httpAutostart(config, this.store.state.ui)){
+          console.log('[login] http listener not started (Start with wallet is off)');
+          return;
         }
         this.store.commit('listenerStarting', true);
         const started = performance.now();
