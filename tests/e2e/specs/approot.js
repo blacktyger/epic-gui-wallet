@@ -1,4 +1,5 @@
 // e2e-timeout: 420
+// e2e-ui: modern
 /*
  * Welcome › Advanced › App data folder, once per interface (behaviour unchanged since 6.1; the
  * explanation is now one line with the rest folded). The real relaunch is watched: after

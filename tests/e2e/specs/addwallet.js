@@ -1,4 +1,5 @@
 // e2e-timeout: 600
+// e2e-ui: modern
 /*
  * Adding wallets (tester item #34), once per interface. Every way of adding lists a NEW wallet;
  * none replaces the open one. After each, the open wallet locks (its epic-wallet stops) and Unlock
