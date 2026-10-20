@@ -171,7 +171,10 @@ describe.each(INTERFACES)('Node address live check ($name)', (ui) => {
     expect(wrapper.text()).toContain(t('msg.mynodes.title'));
     expect(wrapper.text()).toContain('Home node');
     //the field's address is in the list now: the button says so
-    expect(button(wrapper, t('msg.mynodes.in_list'), { partial: true }).element.disabled).toBe(true);
+    const inList = button(wrapper, t('msg.mynodes.in_list'), { partial: true });
+    expect(inList.attributes('aria-disabled')).toBe('true');
+    await inList.trigger('click');
+    expect(dialog()).toBeNull();
     wrapper.unmount();
   });
 
@@ -234,6 +237,32 @@ describe.each(INTERFACES)('Node address live check ($name)', (ui) => {
     await button(wrapper, t('msg.mynodes.remove_yes')).trigger('click');
     expect(settings.removeMyNode).toHaveBeenCalledWith('mainnet', 'https://a.example.com:3413');
     expect(wrapper.text()).not.toContain('Alpha');
+    wrapper.unmount();
+  });
+
+  test('a text selection dragged out of the dialog does not close it; a real backdrop click does; Keep gives focus back', async () => {
+    const nodes = [{ address: 'https://a.example.com:3413', label: 'Alpha', addedAt: '' }];
+    const { wrapper } = setup(ui.Component, { nodes });
+    await flushPromises();
+    await listLoaded(wrapper);
+    await ui.addressInput(wrapper).setValue('https://b.example.com');
+    await button(wrapper, t('msg.mynodes.add')).trigger('click');
+    await flushPromises();
+    const d = dialog();
+    d.querySelector('input').dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    d.dispatchEvent(new Event('click', { bubbles: true }));
+    await flushPromises();
+    expect(dialog()).not.toBeNull();
+    d.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    d.dispatchEvent(new Event('click', { bubbles: true }));
+    await flushPromises();
+    expect(dialog()).toBeNull();
+
+    const removeBtn = wrapper.findAll('button').find(b => b.attributes('aria-label') === t('msg.mynodes.remove_named', { name: 'Alpha' }));
+    await removeBtn.trigger('click');
+    await button(wrapper, t('msg.mynodes.remove_keep')).trigger('click');
+    await flushPromises();
+    expect(document.activeElement && document.activeElement.getAttribute('aria-label')).toBe(t('msg.mynodes.remove_named', { name: 'Alpha' }));
     wrapper.unmount();
   });
 

@@ -100,13 +100,14 @@ export function nodeCheckView(classified, {ms = null, tipHeight = 0} = {}){
 }
 
 /*
- * One check of an address (nodeCheckAddress first: '' asks nothing and gives null).
+ * One check of an address (nodeCheckAddress({complete: false}) first: '' asks nothing and gives null).
  * opts: fetch (the main process's by default, see nodeVersion.js), signal, tipHeight (a number or
  * an async function), timeoutMs, now (ms clock).
  * returns the view of nodeCheckView, or null when the address is not one to ask or the check was cancelled
  */
 export async function probeNode(text, {fetch: fetchFn, signal, tipHeight = 0, timeoutMs = 6000, now = () => Date.now()} = {}){
-  const address = nodeCheckAddress(text);
+  //the field's checker has already waited for a finished host; a saved one ("http://umbrel:3413") is asked as it is
+  const address = nodeCheckAddress(text, {complete: false});
   if(!address || (signal && signal.aborted)){
     return null;
   }

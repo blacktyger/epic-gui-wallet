@@ -6,6 +6,7 @@
 .e-nodeaddr-row { display: flex; align-items: stretch; gap: var(--sp-2); flex-wrap: wrap; }
 .e-nodeaddr-row .e-input-wrap { flex: 1 1 260px; min-width: 0; }
 .e-nodeaddr-add { flex: none; white-space: nowrap; }
+.e-nodeaddr-add[aria-disabled='true'] { cursor: default; color: var(--dim); }
 
 /* the status line under the field */
 .e-nodecheck { margin-top: var(--sp-2); font-size: var(--fs-sm); animation: e-fade var(--dur) var(--ease); }
@@ -14,7 +15,7 @@
 .e-nodecheck-spin { width: 12px; height: 12px; }
 .e-nodecheck-state { font-weight: 600; }
 .e-nodecheck-facts { display: flex; flex-wrap: wrap; gap: 0 var(--sp-2); margin: 2px 0 0; margin-inline-start: calc(8px + var(--sp-2)); color: var(--dim); font-variant-numeric: tabular-nums; }
-.e-nodecheck-facts > span + span::before { content: "·"; margin-right: var(--sp-2); color: var(--faint); }
+.e-nodecheck-facts > span + span::before { content: "·"; margin-inline-end: var(--sp-2); color: var(--faint); }
 .e-nodecheck-again { display: inline-flex; align-items: center; gap: 4px; margin-inline-start: auto; font-size: var(--fs-xs); min-height: 24px; }
 .e-nodecheck-note { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 0; margin-inline-start: calc(8px + var(--sp-2)); color: var(--dim); overflow-wrap: anywhere; }
 .e-nodecheck-hint { display: inline-flex; align-items: flex-start; gap: 6px; color: var(--faint); }
@@ -35,6 +36,7 @@
 }
 .e-mynodes-row:first-child { border-top: 0; }
 .e-mynodes-row.e-is-on { background: var(--accent-faint); box-shadow: inset 2px 0 0 var(--accent); }
+[dir='rtl'] .e-mynodes-row.e-is-on { box-shadow: inset -2px 0 0 var(--accent); }
 .e-mynodes-row.e-is-asking { grid-template-columns: minmax(0, 1fr) auto; background: var(--risk-soft); }
 .e-mynodes-name { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .e-mynodes-line { display: flex; align-items: center; gap: 4px var(--sp-2); min-width: 0; }

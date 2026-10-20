@@ -27,12 +27,14 @@ export function cleanNodeLabel(label){
       .trim()).slice(0, NODE_LABEL_MAX).join('').trim() : '';
 }
 
-/* one stored entry, or null when its address is not a node address */
+/* one stored entry, or null when its address is not a node address. Keys a later version may add
+   are kept, so going back to this version doesn't lose them */
 function cleanEntry(e){
   if(!isObj(e)) return null;
-  const address = nodeCheckAddress(typeof e.address === 'string' ? e.address : '');
+  const address = nodeCheckAddress(typeof e.address === 'string' ? e.address : '', {complete: false});
   if(!address) return null;
   return {
+    ...e,
     address,
     label: cleanNodeLabel(e.label),
     addedAt: typeof e.addedAt === 'string' && e.addedAt.length <= 40 ? e.addedAt : '',
@@ -53,10 +55,14 @@ export function cleanMyNodeList(list){
   return out;
 }
 
-/* settings.json "myNodes" as read: {network: list} for the networks given; anything else → {} */
+/* settings.json "myNodes" as read: {network: list} for the networks given; anything else → {}.
+   Other keys (a network or setting a later version adds) are kept as they are */
 export function normalizeMyNodes(raw, networks){
   const out = {};
   if(!isObj(raw)) return out;
+  for(const [key, value] of Object.entries(raw)){
+    if(!networks.includes(key)) out[key] = value;
+  }
   for(const net of networks){
     const list = cleanMyNodeList(raw[net]);
     if(list.length) out[net] = list;
@@ -92,7 +98,7 @@ export function updateMyNode(list, was, {address, label} = {}){
   const current = cleanMyNodeList(list);
   const old = findMyNode(current, was);
   if(!old) return {ok: false, error: 'missing'};
-  const entry = cleanEntry({address, label, addedAt: old.addedAt});
+  const entry = cleanEntry({...old, address, label});
   if(!entry) return {ok: false, error: 'invalid'};
   const existing = findMyNode(current, entry.address);
   if(existing && existing !== old) return {ok: false, error: 'duplicate', existing};

@@ -31,7 +31,7 @@
       />
       <div class="e-trail" v-if="checking"><span class="e-spinner" role="status" :aria-label="$t('msg.modern.checking')"></span></div>
     </div>
-    <button v-if="myNodesReady" type="button" class="e-btn e-nodeaddr-add" :class="{ 'e-btn-ghost': inMyNodes }" :disabled="checking || !canAddMyNode" @click="openAddMyNode">
+    <button v-if="myNodesReady" type="button" class="e-btn e-nodeaddr-add" :class="{ 'e-btn-ghost': inMyNodes }" :disabled="checking" :aria-disabled="inMyNodes ? 'true' : null" @click="openAddMyNode">
       <EIcon :name="inMyNodes ? 'check' : 'plus'" size="sm" />{{ inMyNodes ? $t('msg.mynodes.in_list') : $t('msg.mynodes.add') }}
     </button>
     </div>

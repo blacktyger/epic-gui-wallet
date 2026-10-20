@@ -1,7 +1,7 @@
 <template>
   <!-- The live check of a typed or saved node address (logic: components/form/NodeCheckStatus.vue): the dot, "at tip" and ms of the public list -->
   <div class="e-nodecheck" :class="{ 'e-is-idle': !view && phase !== 'checking', 'e-short': short }" role="status" aria-live="polite" :aria-label="$t('msg.mynodes.status_label')">
-    <p v-if="phase === 'checking'" class="e-nodecheck-row e-dim"><span class="e-spinner e-nodecheck-spin" aria-hidden="true"></span>{{ $t('msg.mynodes.checking') }}</p>
+    <p v-if="phase === 'checking'" class="e-nodecheck-row e-dim" aria-hidden="true"><span class="e-spinner e-nodecheck-spin" aria-hidden="true"></span>{{ $t('msg.mynodes.checking') }}</p>
     <template v-else-if="view">
       <p class="e-nodecheck-row">
         <span class="e-nodedir-dot" :class="'e-' + view.tone" aria-hidden="true"></span>

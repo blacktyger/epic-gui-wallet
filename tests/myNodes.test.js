@@ -51,6 +51,19 @@ test('add: the address as the field saves it, an optional label, refused when it
   assert.deepEqual(addMyNode(list, { address: 'https://u:p@node.example.com' }, NOW), { ok: false, error: 'invalid' });
 });
 
+test('a one-word host (a home server) can be saved and checked; while typing it waits for the port', () => {
+  assert.equal(addMyNode([], { address: 'http://umbrel:3413' }, NOW).ok, true);
+  assert.equal(nodeAddressKey('HTTP://Umbrel:3413/'), 'http://umbrel:3413');
+  assert.equal(nodeCheckAddress('http://umbrel'), '', 'half typed?');
+  assert.equal(nodeCheckAddress('http://umbrel:3413'), 'http://umbrel:3413');
+  assert.equal(nodeCheckAddress('http://umbrel', { complete: false }), 'http://umbrel');
+});
+
+test('update keeps what a later version added to the entry', () => {
+  const r = updateMyNode([{ address: 'https://a.example.com', label: 'A', addedAt: 'x', pinned: true }], 'https://a.example.com', { address: 'https://a.example.com', label: 'B' });
+  assert.deepEqual(r.entry, { address: 'https://a.example.com', label: 'B', addedAt: 'x', pinned: true });
+});
+
 test('add: an offline or unknown node can be saved (no network here), the list has a limit', () => {
   let list = [];
   for (let i = 0; i < MY_NODES_MAX; i++) list = addMyNode(list, { address: 'https://n' + i + '.example.com' }, NOW).list;
@@ -72,7 +85,7 @@ test('update: in place, keeps addedAt; the same address with a new label is fine
   assert.equal(r.error, 'duplicate');
   assert.equal(r.existing.label, 'B');
   assert.equal(updateMyNode(list, 'https://zzz.example.com', { address: 'https://d.example.com' }).error, 'missing');
-  assert.equal(updateMyNode(list, 'https://a.example.com', { address: 'nope' }).error, 'invalid');
+  assert.equal(updateMyNode(list, 'https://a.example.com', { address: 'http://' }).error, 'invalid');
 });
 
 test('remove and find: by any spelling of the address', () => {
@@ -89,7 +102,7 @@ test('labels: trimmed, controls and direction overrides dropped, at most NODE_LA
   assert.equal(cleanNodeLabel(42), '');
 });
 
-test('a stored list read back: broken entries, repeats and other networks\' junk dropped', () => {
+test('a stored list read back: broken entries and repeats dropped, what a later version adds kept', () => {
   const raw = {
     mainnet: [
       { address: 'https://a.example.com', label: 'A', addedAt: 'x' },
@@ -97,7 +110,7 @@ test('a stored list read back: broken entries, repeats and other networks\' junk
       { address: 'javascript:alert(1)', label: 'bad' },
       'not an object',
       { label: 'no address' },
-      { address: 'https://b.example.com:3413', label: { no: 1 } },
+      { address: 'https://b.example.com:3413', label: { no: 1 }, pinned: true },
     ],
     floonet: 'not a list',
     marsnet: [{ address: 'https://m.example.com' }],
@@ -105,8 +118,9 @@ test('a stored list read back: broken entries, repeats and other networks\' junk
   assert.deepEqual(normalizeMyNodes(raw, ['mainnet', 'floonet', 'usernet']), {
     mainnet: [
       { address: 'https://a.example.com', label: 'A', addedAt: 'x' },
-      { address: 'https://b.example.com:3413', label: '', addedAt: '' },
+      { address: 'https://b.example.com:3413', label: '', addedAt: '', pinned: true },
     ],
+    marsnet: [{ address: 'https://m.example.com' }],
   });
   assert.deepEqual(normalizeMyNodes(null, ['mainnet']), {});
   assert.deepEqual(normalizeMyNodes([1, 2], ['mainnet']), {});

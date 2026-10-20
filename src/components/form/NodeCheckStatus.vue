@@ -3,7 +3,7 @@
        the Add to my nodes dialog. Never blocks typing or saving; nothing at all while idle. -->
   <div class="node-check" :class="{ 'is-idle': !view && phase !== 'checking' }" role="status" aria-live="polite" :aria-label="$t('msg.mynodes.status_label')">
     <template v-if="phase === 'checking'">
-      <p class="help node-check-line"><span class="loader node-check-spin" aria-hidden="true"></span>{{ $t('msg.mynodes.checking') }}</p>
+      <p class="help node-check-line" aria-hidden="true"><span class="loader node-check-spin"></span>{{ $t('msg.mynodes.checking') }}</p>
     </template>
     <template v-else-if="view">
       <div class="tags node-check-tags">
@@ -81,6 +81,6 @@
   .node-check-tags { margin-bottom: 0.25rem; align-items: center; }
   .node-check-tags .tag { margin-bottom: 0.25rem; }
   .node-check-line { margin-top: 0.125rem; overflow-wrap: anywhere; display: flex; flex-wrap: wrap; align-items: center; gap: 0 0.25rem; }
-  .node-check-spin { display: inline-block; width: 0.875rem; height: 0.875rem; margin-right: 0.375rem; }
+  .node-check-spin { display: inline-block; width: 0.875rem; height: 0.875rem; margin-inline-end: 0.375rem; }
   .node-check-again { background: none; border: 0; padding: 0 0 0.25rem; font: inherit; font-size: 0.75rem; color: inherit; text-decoration: underline; cursor: pointer; }
 </style>

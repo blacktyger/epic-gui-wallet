@@ -69,6 +69,8 @@ export const myNodesField = {
       this.feedCheck();
     },
     select(v) {
+      //external again: wait for the public list again (the field may be prefilled with one of its nodes)
+      if (v == 'external' && this.checker) this.waitForDirectory();
       this.feedCheck();
       if (v == 'external') this.refreshMyNodes();
     },
@@ -86,7 +88,7 @@ export const myNodesField = {
           }
         },
       });
-      this.dirTimer = setTimeout(() => this.directoryLoaded(this.dir === undefined ? null : this.dir), DIRECTORY_WAIT_MS);
+      this.waitForDirectory();
     }
     this.loadMyNodes();
     if (this.select == 'external') this.refreshMyNodes();
@@ -97,6 +99,7 @@ export const myNodesField = {
   beforeUnmount() {
     if (this.checker) this.checker.stop();
     if (this.listCheck) this.listCheck.abort();
+    for (const c of this.oneChecks || []) c.abort();
     clearTimeout(this.dirTimer);
     clearInterval(this.listTimer);
   },
@@ -118,6 +121,16 @@ export const myNodesField = {
     recheck() {
       if (this.checker) this.checker.recheck();
     },
+    /* the check waits until NodeDirectory says which nodes are public, DIRECTORY_WAIT_MS at most */
+    waitForDirectory() {
+      clearTimeout(this.dirTimer);
+      if (this.directoryFailed) {
+        this.dir = null;
+        return;
+      }
+      this.dir = undefined;
+      this.dirTimer = setTimeout(() => this.directoryLoaded(this.dir === undefined ? null : this.dir), DIRECTORY_WAIT_MS);
+    },
     directoryLoaded(dir) {
       clearTimeout(this.dirTimer);
       this.dir = dir || null;
@@ -133,6 +146,7 @@ export const myNodesField = {
       if (this.listCheck && !only) this.listCheck.abort();
       const ctrl = new AbortController();
       if (!only) this.listCheck = ctrl;
+      else (this.oneChecks || (this.oneChecks = new Set())).add(ctrl);
       const addresses = only ? [only] : this.myNodes.map(n => n.address);
       this.myNodesChecking = [...new Set([...this.myNodesChecking, ...addresses.filter(a => !this.myNodeViews[a])])];
       checkMany(addresses, this.probe, {
@@ -143,11 +157,14 @@ export const myNodesField = {
           this.myNodesChecking = this.myNodesChecking.filter(a => a !== address);
         },
       }).then(() => {
+        if (this.oneChecks) this.oneChecks.delete(ctrl);
         if (ctrl.signal.aborted) this.myNodesChecking = this.myNodesChecking.filter(a => !addresses.includes(a));
       });
     },
 
     openAddMyNode() {
+      //"In my nodes": nothing to add (the button stays focusable, so it isn't disabled)
+      if (!this.canAddMyNode) return;
       this.myNodeDialog = { mode: 'add', address: String(this.input || '').trim(), label: '', was: '', error: '' };
     },
     openEditMyNode(n) {

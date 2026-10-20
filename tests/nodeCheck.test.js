@@ -85,7 +85,7 @@ test('probe: the tip is asked lazily (a function) and used for "behind"', async 
 
 test('probe: nothing is asked for a half-typed or non-http address', async () => {
   const n = healthy();
-  for (const s of ['', 'node', 'https://', 'ftp://n.example.com', 'https://u:p@n.example.com']) {
+  for (const s of ['', 'https://', 'ftp://n.example.com', 'https://u:p@n.example.com', 'https://n.example.com/?q=1']) {
     assert.equal(await probeNode(s, { fetch: n.fetch }), null, s);
   }
   assert.equal(n.calls.length, 0);

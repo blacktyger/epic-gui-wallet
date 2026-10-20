@@ -9,6 +9,7 @@
     :aria-describedby="description ? uid + '-d' : null"
     @cancel="onCancel"
     @close="onClose"
+    @pointerdown="onPointerDown"
     @click="onBackdrop"
   >
     <template v-if="drawer">
@@ -99,9 +100,15 @@
         }
         this.close();
       },
+      onPointerDown(e) {
+        this.downOnBackdrop = e.target === this.$refs.dlg;
+      },
       onBackdrop(e) {
-        //a click on the backdrop lands on the <dialog> element itself
-        if (e.target === this.$refs.dlg && this.dismissible) this.close();
+        //a click on the backdrop lands on the <dialog> element itself; a text selection dragged out of
+        //a field ends there too, so it counts only when the press started on the backdrop as well
+        const down = this.downOnBackdrop !== false;
+        this.downOnBackdrop = null;
+        if (e.target === this.$refs.dlg && down && this.dismissible) this.close();
       },
     },
   };

@@ -72,7 +72,7 @@ async function probeVersion(address, {fetch: fetchFn = defaultNodeFetch(), timeo
   const extra = redirect ? {redirect} : {};
 
   try{
-    const res = await fetchFn(base + '/v1/version', {method: 'GET', signal: controller.signal, ...extra});
+    const res = await fetchFn(base + '/v1/version', {method: 'GET', signal: controller.signal, timeoutMs, ...extra});
     if(res.ok){
       const body = await readJson(res);
       return body && body.node_version
@@ -92,7 +92,7 @@ async function probeVersion(address, {fetch: fetchFn = defaultNodeFetch(), timeo
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: rpc('get_version'),
-      signal: controller.signal,
+      signal: controller.signal, timeoutMs,
       ...extra,
     });
     const body = res2.ok ? await readJson(res2) : null;
@@ -192,7 +192,7 @@ export async function fetchTipHeight(address, {fetch: fetchFn = defaultNodeFetch
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try{
     const res = await fetchFn(baseOf(address) + '/v2/foreign', {method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: rpc('get_tip'), signal: controller.signal, redirect: 'manual'});
+      body: rpc('get_tip'), signal: controller.signal, timeoutMs, redirect: 'manual'});
     const body = res.ok ? await readJson(res) : null;
     const h = body && body.result && body.result.Ok && Number(body.result.Ok.height);
     return Number.isFinite(h) && h > 0 ? h : 0;
@@ -223,7 +223,7 @@ export async function fetchNodeStatus(address, {fetch: fetchFn = defaultNodeFetc
 
   try{
     //redirect 'manual': epic-wallet doesn't follow redirects, so a node behind one is not usable
-    const res = await fetchFn(base + '/v1/status', {method: 'GET', headers, signal: controller.signal, redirect});
+    const res = await fetchFn(base + '/v1/status', {method: 'GET', headers, signal: controller.signal, timeoutMs, redirect});
     if(res.ok){
       const status = await readJson(res);
       return status && status.tip
@@ -234,7 +234,7 @@ export async function fetchNodeStatus(address, {fetch: fetchFn = defaultNodeFetc
       return {ok: false, reason: 'HTTP ' + res.status, locked: false};
     }
 
-    const res2 = await fetchFn(base + '/v2/owner', {method: 'POST', headers, body: rpc('get_status'), signal: controller.signal, redirect});
+    const res2 = await fetchFn(base + '/v2/owner', {method: 'POST', headers, body: rpc('get_status'), signal: controller.signal, timeoutMs, redirect});
     const status = res2.ok ? ownerStatusToV1(await readJson(res2)) : null;
     if(status){
       return {ok: true, status, via: 'owner', locked: true};
@@ -242,7 +242,7 @@ export async function fetchNodeStatus(address, {fetch: fetchFn = defaultNodeFetc
 
     //the foreign API: public, no secret, and what the wallet itself talks to
     const res3 = await fetchFn(base + '/v2/foreign', {method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: rpc('get_tip'), signal: controller.signal, redirect});
+      body: rpc('get_tip'), signal: controller.signal, timeoutMs, redirect});
     const tipReply = res3.ok ? await readJson(res3) : null;
     if(tipReply && tipReply.result && tipReply.result.Ok){
       const reference = typeof referenceHeight === 'function' ? await referenceHeight() : referenceHeight;

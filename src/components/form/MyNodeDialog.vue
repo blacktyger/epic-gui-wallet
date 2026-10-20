@@ -1,7 +1,7 @@
 <template>
   <!-- Add to my nodes / Edit (Classic): a native modal <dialog>, so the page behind is inert and
        focus stays inside; Esc and the backdrop close it. Modern: modern/form/MyNodeDialog.vue -->
-  <dialog ref="dlg" class="my-node-dialog" :aria-labelledby="uid + '-t'" :aria-describedby="uid + '-d'" @cancel.prevent="close" @click="onBackdrop">
+  <dialog ref="dlg" class="my-node-dialog" :aria-labelledby="uid + '-t'" :aria-describedby="uid + '-d'" @cancel.prevent="close" @pointerdown="onPointerDown" @click="onBackdrop">
     <form class="modal-card" novalidate @submit.prevent="save">
       <header class="modal-card-head"><p :id="uid + '-t'" class="modal-card-title">{{ title }}</p></header>
       <section class="modal-card-body">
@@ -81,7 +81,7 @@
         return hit && nodeAddressKey(hit.address) !== nodeAddressKey(this.was) ? hit : null;
       },
       valid() {
-        return !!nodeCheckAddress(this.address);
+        return !!nodeCheckAddress(this.address, { complete: false });
       },
       addressProblem() {
         if (this.duplicate) {
@@ -141,8 +141,14 @@
       close() {
         this.$emit('close');
       },
+      onPointerDown(e) {
+        this.downOnBackdrop = e.target === this.$refs.dlg;
+      },
+      /* a click on the backdrop (the <dialog> itself), but not a text selection dragged out of a field */
       onBackdrop(e) {
-        if (e.target === this.$refs.dlg) this.close();
+        const down = this.downOnBackdrop !== false;
+        this.downOnBackdrop = null;
+        if (e.target === this.$refs.dlg && down) this.close();
       },
     },
   };

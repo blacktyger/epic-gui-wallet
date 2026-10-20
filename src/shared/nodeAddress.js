@@ -76,8 +76,9 @@ export function nodeFieldAddress(text){
 }
 
 /* a host that looks finished, so a half-typed "node.epic" or "192.168.1" is not asked yet:
-   localhost, a full IPv4 address, an IPv6 address, or a name whose last label could be a TLD */
-function hostLooksComplete(host){
+   localhost, a full IPv4 address, an IPv6 address, a name whose last label could be a TLD, or a
+   one-word name (a home server: "umbrel", "nas") once a port follows it */
+function hostLooksComplete(host, hasPort){
   const h = String(host || '').toLowerCase().replace(/\.$/, '');
   if(h == 'localhost' || h.startsWith('[')){
     return true;
@@ -86,15 +87,19 @@ function hostLooksComplete(host){
     return /^\d{1,3}(\.\d{1,3}){3}$/.test(h) && h.split('.').every(n => Number(n) <= 255);
   }
   const labels = h.split('.');
-  return labels.length >= 2 && labels.every(Boolean) && /^([a-z]{2,63}|xn--[a-z0-9-]{1,59})$/.test(labels[labels.length - 1]);
+  if(labels.length == 1){
+    return hasPort && /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(h);
+  }
+  return labels.every(Boolean) && /^([a-z]{2,63}|xn--[a-z0-9-]{1,59})$/.test(labels[labels.length - 1]);
 }
 
 /*
- * The address a live check of the node field may go to (nodeFieldAddress), or '' when the text is
- * not a plain http(s) node address yet: no credentials, query or hash, and a host that looks
- * finished. Nothing is asked for ''.
+ * The address a check of the node field may go to (nodeFieldAddress), or '' when the text is not a
+ * plain http(s) node address: no credentials, query or hash. Nothing is asked for ''.
+ * complete (the default, for the check while typing): also '' while the host looks half typed.
+ * {complete: false}: any host the URL parser takes (a saved node, the dialog's Save, the list).
  */
-export function nodeCheckAddress(text){
+export function nodeCheckAddress(text, {complete = true} = {}){
   const s = nodeFieldAddress(text);
   if(!s || s.length > 300){
     return '';
@@ -105,10 +110,16 @@ export function nodeCheckAddress(text){
   }catch(e){
     return '';
   }
-  //the host as typed: the URL parser would make "192.168.1" into 192.168.0.1
-  const typedHost = s.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').split(/[/?#]/)[0].replace(/^.*@/, '').replace(/:\d*$/, '');
-  if(!['http:', 'https:'].includes(u.protocol) || u.username || u.password || u.search || u.hash || !hostLooksComplete(typedHost)){
+  if(!['http:', 'https:'].includes(u.protocol) || !u.hostname || u.username || u.password || u.search || u.hash){
     return '';
+  }
+  if(complete){
+    //the host as typed: the URL parser would make "192.168.1" into 192.168.0.1
+    const authority = s.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').split(/[/?#]/)[0].replace(/^.*@/, '');
+    const hasPort = /:\d+$/.test(authority);
+    if(!hostLooksComplete(authority.replace(/:\d*$/, ''), hasPort)){
+      return '';
+    }
   }
   return s;
 }
@@ -116,10 +127,11 @@ export function nodeCheckAddress(text){
 /*
  * The same node whatever way it was written: "node.example.com/", "HTTPS://Node.Example.com:443"
  * and "https://node.example.com" give one key (scheme and host lowercased, a default port and
- * trailing slashes dropped). '' for what nodeCheckAddress refuses. For telling duplicates apart.
+ * trailing slashes dropped). '' for what nodeCheckAddress({complete: false}) refuses. For telling
+ * duplicates apart.
  */
 export function nodeAddressKey(text){
-  const s = nodeCheckAddress(text);
+  const s = nodeCheckAddress(text, {complete: false});
   if(!s){
     return '';
   }

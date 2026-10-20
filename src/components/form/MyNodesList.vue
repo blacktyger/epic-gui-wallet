@@ -2,13 +2,13 @@
   <!-- My nodes (shared/myNodes.js): saved node addresses with a label and a light live status.
        Shown only when it has entries. Use fills the address field; Save applies it, as before. -->
   <div v-if="nodes.length" class="field my-nodes">
-    <label class="label" :id="uid + '-h'">{{ $t('msg.mynodes.title') }}</label>
+    <label ref="head" class="label" :id="uid + '-h'" tabindex="-1">{{ $t('msg.mynodes.title') }}</label>
     <ul class="my-nodes-list" :aria-labelledby="uid + '-h'">
       <li v-for="n in nodes" :key="n.address" class="my-nodes-row" :class="{ 'is-current': isCurrent(n) }">
         <template v-if="removing === n.address">
           <p class="my-nodes-ask" :id="uid + '-ask'">{{ $t('msg.mynodes.remove_ask', { name: nameOf(n) }) }}</p>
           <div class="buttons my-nodes-btns">
-            <button ref="keep" type="button" class="button is-small" :disabled="disabled" @click="removing = ''">{{ $t('msg.mynodes.remove_keep') }}</button>
+            <button ref="keep" type="button" class="button is-small" :disabled="disabled" @click="keep(n)">{{ $t('msg.mynodes.remove_keep') }}</button>
             <button type="button" class="button is-small is-danger is-outlined" :disabled="disabled" :aria-describedby="uid + '-ask'" @click="confirmRemove(n)">{{ $t('msg.mynodes.remove_yes') }}</button>
           </div>
         </template>
@@ -31,7 +31,7 @@
             <span v-if="isCurrent(n)" class="tag is-primary is-light my-nodes-sel">{{ $t('msg.mynodes.selected') }}</span>
             <button v-else type="button" class="button is-small is-primary is-outlined" :disabled="disabled" :aria-label="$t('msg.mynodes.use_named', { name: nameOf(n) })" @click="$emit('use', n)">{{ $t('msg.mynodes.use') }}</button>
             <button type="button" class="button is-small" :disabled="disabled" :aria-label="$t('msg.mynodes.edit_named', { name: nameOf(n) })" @click="$emit('edit', n)">{{ $t('msg.mynodes.edit') }}</button>
-            <button type="button" class="button is-small" :disabled="disabled" :aria-label="$t('msg.mynodes.remove_named', { name: nameOf(n) })" @click="askRemove(n)">{{ $t('msg.mynodes.remove') }}</button>
+            <button type="button" class="button is-small" :disabled="disabled" :aria-label="$t('msg.mynodes.remove_named', { name: nameOf(n) })" :data-remove="n.address" @click="askRemove(n)">{{ $t('msg.mynodes.remove') }}</button>
           </div>
         </template>
       </li>
@@ -82,8 +82,12 @@
       nameOf(n) {
         return n.label || n.address.replace(/^https?:\/\//, '');
       },
+      /* the row's tag: the state's tone, but a node that is online and behind the tip is a warning */
+      tagTone(v) {
+        return v.tone === 'ok' && v.behind ? 'warn' : v.tone;
+      },
       toneClass(v) {
-        return { ok: 'is-success', warn: 'is-warning', risk: 'is-danger' }[v.tone] || '';
+        return { ok: 'is-success', warn: 'is-warning', risk: 'is-danger' }[this.tagTone(v)] || '';
       },
       /* one tag per row: the state, or for a node that is online how far it is from the tip */
       shortState(v) {
@@ -107,9 +111,19 @@
         //focus the safe choice, so Enter or Space twice never removes by accident
         this.$nextTick(() => { const k = this.$refs.keep; const el = Array.isArray(k) ? k[0] : k; if (el && el.focus) el.focus(); });
       },
+      /* Keep: back to the row, focus on its Remove button again */
+      keep(n) {
+        this.removing = '';
+        this.$nextTick(() => {
+          const b = this.$el && this.$el.querySelector && [...this.$el.querySelectorAll('[data-remove]')].find(x => x.dataset.remove === n.address);
+          if (b) b.focus();
+        });
+      },
+      /* Remove: the row is gone, focus goes to the list's heading (or nowhere when the list is gone too) */
       confirmRemove(n) {
         this.removing = '';
         this.$emit('remove', n);
+        this.$nextTick(() => { const h = this.$refs.head; if (h && h.focus && document.contains(h)) h.focus(); });
       },
     },
   };
@@ -121,6 +135,7 @@
   .my-nodes-row { display: flex; align-items: center; gap: 0.375rem 0.75rem; padding: 0.5rem 0.75rem; }
   .my-nodes-row + .my-nodes-row { border-top: 1px solid rgba(128, 128, 128, 0.25); }
   .my-nodes-row.is-current { box-shadow: inset 3px 0 0 hsl(171, 100%, 41%); }
+  [dir='rtl'] .my-nodes-row.is-current { box-shadow: inset -3px 0 0 hsl(171, 100%, 41%); }
   .my-nodes-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.125rem; }
   .my-nodes-line { display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.5rem; min-width: 0; }
   .my-nodes-label { overflow-wrap: anywhere; }

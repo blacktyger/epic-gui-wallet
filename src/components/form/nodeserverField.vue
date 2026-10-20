@@ -26,7 +26,7 @@
            />
       </div>
       <div class="control" v-if="myNodesReady">
-        <button type="button" class="button" :disabled="checking || !canAddMyNode" @click="openAddMyNode">
+        <button type="button" class="button" :class="{ 'is-static': inMyNodes }" :disabled="checking" :aria-disabled="inMyNodes ? 'true' : null" @click="openAddMyNode">
           <mdicon :name="inMyNodes ? 'check' : 'plus'" size="16" aria-hidden="true" />&nbsp;{{ inMyNodes ? $t('msg.mynodes.in_list') : $t('msg.mynodes.add') }}
         </button>
       </div>
