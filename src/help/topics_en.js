@@ -46,9 +46,7 @@ const messages = {
     },
   },
 
-  //6.1.5 labels. feat/add-wallet-flow renames some: on merge, restore → "Restore from recovery phrase (on the first
-  //screen, Unlock › Add a wallet, or Settings › All wallets › Add a wallet)" and wallet_files → "Settings › This
-  //wallet › Wallet folder", in every language (its msg.wallets.* and modern.settings.nav_wallet strings).
+  //labels as in the app (6.1.6: Add a wallet and This wallet / All wallets, from the add-wallet flow)
   terms: {
     receive: 'Receive',
     send: 'Send',
@@ -60,8 +58,8 @@ const messages = {
     outputs: 'Activity › Outputs',
     phrase: 'Settings › Recovery phrase',
     rescan: 'Settings › Rescan',
-    restore: 'Restore from recovery phrase (on the first screen, or Settings › Wallet › Add another wallet)',
-    wallet_files: 'Settings › Wallet › Wallet files',
+    restore: 'Restore from recovery phrase (on the first screen, Unlock › Add a wallet, or Settings › All wallets › Add a wallet)',
+    wallet_files: 'Settings › This wallet › Wallet folder',
     node_settings: 'Settings › Node and receiving',
     epicbox_setting: 'Settings › Node and receiving › Receiving',
     report: 'Settings › Help › Report a problem',
