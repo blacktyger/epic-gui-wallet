@@ -1,5 +1,14 @@
 # Release notes
 
+## Unreleased (feat/help-rework)
+
+- One name for Epicbox: the setting and the setup review row say "Epicbox server" (they said "Epicbox Domain", "Epicbox Web Address" and "Relay"), and no screen calls it a relay any more, in every language (feedback #10). "Receiving" stays the name of the feature.
+- Settings › Help is new (BT Labs Theme): short topics for people new to Epic Cash ("Receive your first EPIC", "Send with a file", "Why does a transaction need both sides?", "Confirmations", "Your recovery phrase", "Fees", "Troubleshooting", …), each a one-line answer with the detail behind "Read more".
+  - Search as you type, in your language, with the words marked; "/" or Ctrl+F jumps to it, Esc clears it.
+  - A step-by-step picture of how a transaction travels between the two wallets, over Epicbox or with a file (no animation with reduced motion).
+  - Every fact checked against this version: 3 confirmations, the default node is a public one, a send is never cancelled by itself.
+  - In all seven languages. The Classic interface keeps its help as it was.
+
 ## 6.1.5
 
 - Removing a wallet: "Remove everything, including the recovery phrase" is now "Remove everything, including the wallet seed". The app never stores your recovery phrase; this option deletes the wallet's seed file, and the wallet can then be restored only with the recovery phrase you wrote down. The confirmation says the same (feedback #29).
