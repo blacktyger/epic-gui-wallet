@@ -148,6 +148,23 @@ describe.each([
     expect(button(wrapper, t('msg.support.save'))).toBeTruthy();
   });
 
+  test('a description that looks like a recovery phrase: refused, nothing can be sent or saved', async () => {
+    fakeSupport({ preview: vi.fn(async () => ({ ...PREVIEW, phrase: true })) });
+    const { wrapper } = await open(Component);
+    expect(wrapper.text()).toContain(t('msg.support.never_secrets'));
+    await write(wrapper, { description: 'abandon ability able about above absent absorb abstract' });
+    await button(wrapper, t('msg.support.review')).trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain(t('msg.support.phrase_refused'));
+    expect(wrapper.text()).not.toContain('app/renderer.log');
+    const save = wrapper.findAll('button').find((b) => b.text().includes(t('msg.support.save')));
+    expect(save.attributes('disabled')).toBeDefined();
+    await save.trigger('click');
+    await flushPromises();
+    expect(window.support.save).not.toHaveBeenCalled();
+    expect(window.support.send).not.toHaveBeenCalled();
+  });
+
   test('an expired preview is made again, and the user checks it before sending', async () => {
     fakeSupport({ send: vi.fn(async () => ({ ok: false, error: 'expired' })) });
     const { wrapper } = await open(Component);

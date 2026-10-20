@@ -2,6 +2,7 @@
   <!-- Get help / Report a problem: the logic is SupportReportModalBox.vue's (both interfaces do the
        same); write → review exactly what is sent → send, or save an encrypted file. -->
   <EDialog
+    class="e-sup-dialog"
     :open="isOpen"
     icon="help"
     :title="heading"
@@ -19,7 +20,7 @@
           <textarea id="e-sup-desc" ref="desc" class="e-textarea" rows="5" :maxlength="maxDescription" v-model="description"
             aria-describedby="e-sup-desc-h e-sup-desc-n" :aria-invalid="descriptionMissing ? 'true' : null"></textarea>
           <div class="e-sup-row">
-            <p id="e-sup-desc-h" class="e-help">{{ $t('msg.support.description_hint') }}</p>
+            <p id="e-sup-desc-h" class="e-help">{{ $t('msg.support.description_hint') }} <b>{{ $t('msg.support.never_secrets') }}</b></p>
             <p id="e-sup-desc-n" class="e-help e-mono e-sup-count" aria-live="polite">{{ $t('msg.support.description_counter', { n: description.length, max: maxDescription }) }}</p>
           </div>
           <p v-if="descriptionMissing" class="e-error-msg" role="alert">{{ $t('msg.support.description_required') }}</p>
@@ -42,9 +43,10 @@
       <div v-else-if="step === 'review'">
         <p v-if="loading" class="e-sup-wait" role="status"><span class="e-spinner" aria-hidden="true"></span>{{ $t('msg.support.preparing') }}</p>
         <div v-else-if="previewFailed" class="e-notice e-risk" role="alert"><p>{{ $t('msg.support.preview_failed') }}</p></div>
+        <div v-else-if="phrase" class="e-notice e-risk" role="alert"><p>{{ $t('msg.support.phrase_refused') }}</p></div>
         <template v-else-if="preview">
           <section class="e-sup-part" aria-labelledby="e-sup-pub">
-            <h4 id="e-sup-pub"><EIcon name="contacts" size="sm" />{{ $t('msg.support.public_label') }}</h4>
+            <h4 id="e-sup-pub"><EIcon name="lockopen" size="sm" />{{ $t('msg.support.public_label') }}</h4>
             <p class="e-help">{{ $t('msg.support.public_note') }}</p>
             <blockquote class="e-sup-quote">{{ shownDescription }}</blockquote>
           </section>
@@ -106,11 +108,18 @@
 </script>
 
 <style>
+  /* wider than a confirm dialog: it shows log text; three buttons wrap instead of overflowing */
+  .e-sup-dialog { width: min(640px, calc(100vw - 48px)); }
+  .e-sup-dialog .e-dialog-foot { flex-wrap: wrap; }
   .e-sup { display: grid; gap: 14px; min-width: 0; }
-  .e-sup-lead { margin: 0 0 6px; }
+  .e-sup > div, .e-sup > form { display: grid; gap: 14px; min-width: 0; }
+  .e-sup-switch { align-items: flex-start; }
+  .e-sup-switch .e-track { margin-top: 2px; }
+  .e-sup-switch b { display: block; font-weight: 600; }
+  .e-sup-lead { margin: 0; }
+  .e-sup .e-field { margin: 0; }
   .e-sup-row { display: flex; gap: 12px; justify-content: space-between; align-items: baseline; }
   .e-sup-count { flex: none; }
-  .e-sup-switch { margin: 4px 0; }
   .e-sup-privacy { display: flex; gap: 10px; align-items: flex-start; }
   .e-sup-privacy p { margin: 0; }
   .e-sup-wait { display: flex; gap: 10px; align-items: center; }

@@ -40,6 +40,16 @@ function startIntake() {
 
 const read = (f) => { try { return fs.readFileSync(f, 'utf8'); } catch (e) { return ''; } };
 
+/* E2E_SHOTS=1: screenshots of the flow for review, unblurred (no secret is on these screens: the
+   description and logs are test data), into <case>/support-shots */
+async function shot(w, name) {
+  if (!process.env.E2E_SHOTS) return;
+  const dir = path.join(CASE_DIR, 'support-shots');
+  fs.mkdirSync(dir, { recursive: true });
+  await w.waitForTimeout(300);
+  await w.screenshot({ path: path.join(dir, process.env.E2E_UI + '-' + name + '.png') }).catch(() => {});
+}
+
 H.runCase('support', async (t) => {
   const ui = t.ui;
   const password = H.newPassword();
@@ -65,6 +75,7 @@ H.runCase('support', async (t) => {
   await t.step('Settings: the stub node', async () => { await U.typeNodeAddress(w, ui); return U.saveNode(w, ui); }, { fatal: true, timeout: 90000 });
   await t.step('lock and unlock (the wallet processes log)', async () => {
     await U.lock(w, ui);
+    await shot(w, '0-unlock-link');
     await U.unlock(w, ui, password);
     return t.waitLog(/\[login\] http listener started/, { timeout: 60000 });
   }, { fatal: true, timeout: 150000 });
@@ -97,6 +108,7 @@ H.runCase('support', async (t) => {
   /* ---- the report ---- */
   await t.step('Help page: the Report a problem entry', async () => {
     await U.nav(w, ui, U.PAGES[ui].find((p) => p[1] === '/help'));
+    await shot(w, '1-help-page');
     await w.getByRole('button', { name: 'Report a problem' }).first().click();
     await w.getByText('Tell us what happened.').first().waitFor({ state: 'visible', timeout: 5000 });
     //Esc closes it in both interfaces
@@ -116,12 +128,19 @@ H.runCase('support', async (t) => {
     return items.join(', ');
   });
   const DESC = 'e2e: the wallet does not connect. Path ' + ROOT + ' and IP 85.214.12.7';
-const CLEAN_DESC = 'e2e: the wallet does not connect. Path ~/.epic-gui and IP <ip>';
+const CLEAN_DESC = 'e2e: the wallet does not connect. Path ~/.epic-gui and IP <ip-1>';
   await t.step('write and review: the cleaned logs, no home path, what goes where', async () => {
     await w.locator('textarea:visible').fill(DESC);
     await w.locator('input[type=text]:visible').last().fill('@e2e_tester');
+    await shot(w, '2-write');
     await w.getByRole('button', { name: 'Review what will be sent' }).click();
     await w.getByText('Encrypted: only the developer can read it').first().waitFor({ state: 'visible', timeout: 15000 });
+    await shot(w, '3-review');
+    if (process.env.E2E_SHOTS) {
+      await w.locator('details summary').first().click();
+      await shot(w, '4-review-log-open');
+      await w.locator('details summary').first().click();
+    }
     const pres = await w.locator('pre').allTextContents();
     const all = pres.join('\n');
     if (pres.length < 2) throw new Error('only ' + pres.length + ' log(s) in the preview');
@@ -135,7 +154,8 @@ const CLEAN_DESC = 'e2e: the wallet does not connect. Path ~/.epic-gui and IP <i
     const target = path.join(HOME, 'report.epicsupport');
     await t.app.evaluate(({ dialog }, file) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath: file }); }, target);
     await w.getByRole('button', { name: 'Save encrypted report to a file' }).click();
-    await w.getByText('Saved to ' + target).first().waitFor({ state: 'visible', timeout: 15000 });
+    await w.getByText('Saved as ' + target).first().waitFor({ state: 'visible', timeout: 15000 });
+    await shot(w, '5-saved');
     const b = fs.readFileSync(target);
     if (b.subarray(0, 8).toString() !== 'EPICSUP1' || b.subarray(8, 16).toString('hex') !== KEY_ID) throw new Error('not a sealed bundle for ' + KEY_ID);
     if (b.includes(Buffer.from('e2e_tester')) || b.includes(Buffer.from('does not connect'))) throw new Error('plaintext in the bundle');
@@ -150,6 +170,7 @@ const CLEAN_DESC = 'e2e: the wallet does not connect. Path ~/.epic-gui and IP <i
     await w.getByRole('button', { name: 'Review what will be sent' }).click();
     await w.getByRole('button', { name: 'Send report' }).click();
     await w.getByText('Report e2etest1 has reached the developer').first().waitFor({ state: 'visible', timeout: 20000 });
+    await shot(w, '6-sent');
     const r = intake.got[intake.got.length - 1];
     if (!r || r.type !== 'application/json' || r.body.v !== 1) throw new Error('intake got ' + JSON.stringify(r && { type: r.type, v: r.body.v }));
     if (Object.keys(r.body).sort().join() !== 'bundle,description,v') throw new Error('extra fields: ' + Object.keys(r.body));

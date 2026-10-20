@@ -1,8 +1,9 @@
 //Get help / Report a problem (msg.support.*): the report dialog both interfaces share
 //(components/layout/SupportReportModalBox.vue, modern/dialogs/SupportDialog.vue), its entry points
 //(Help pages, the unlock screen, the app menu) and the Modern tour step. docs/support/DESIGN.md.
-//For translators: the description is posted readable to the testers' Telegram group; the contact
-//and the logs are encrypted so only the developer can read them. Keep that difference clear.
+//For translators: the description is NOT encrypted (the developer reads it and may post it in the
+//testers' Telegram group); the contact and the logs are encrypted so only the developer can read
+//them. Keep that difference clear.
 export default {
   //the app menu (main process): Help › Get help / Report a problem…
   menu_help: 'Help',
@@ -22,6 +23,10 @@ export default {
   //{n}: characters typed, {max}: the limit (2000)
   description_counter: '{n} / {max}',
   description_required: 'Please describe the problem first.',
+  //under the description field, always shown
+  never_secrets: 'Never write your recovery phrase or password here.',
+  //shown instead of the review when the description holds what looks like a recovery phrase
+  phrase_refused: 'This looks like a recovery phrase. Never send your recovery phrase to anyone, the developer included: remove it, then review again.',
   contact_label: 'Contact (optional)',
   contact_hint: 'A Telegram name or an email address, if you would like a direct reply.',
   //{'@'} is how vue-i18n writes a plain @ (keep it as it is)
@@ -35,11 +40,11 @@ export default {
   review_title: 'What will be sent',
   preparing: 'Collecting and cleaning the logs…',
   preview_failed: 'The logs could not be collected. Go back and send the report without logs, or try again.',
-  public_label: 'Posted to the GUI testers’ Telegram group',
-  public_note: 'Your description, so other testers can help too.',
+  public_label: 'Not encrypted: your description',
+  public_note: 'The developer reads it and may post it in the GUI testers’ Telegram group, so other testers can help too.',
   private_label: 'Encrypted: only the developer can read it',
-  private_note: 'Your contact, the app version and system, and the logs below.',
-  private_note_no_logs: 'Your contact and the app version and system. No logs.',
+  private_note: 'Your contact, the app and system versions, and the logs below.',
+  private_note_no_logs: 'Your contact and the app and system versions. No logs.',
   //{version}: e.g. 6.1.6; {system}: e.g. win32 10.0.26100 x64
   app_line: 'Epic Wallet {version} · {system}',
   no_contact: 'No contact given.',
@@ -54,13 +59,12 @@ export default {
   kind_hosts: 'computer and server names',
   kind_ips: 'IP addresses',
   kind_addresses: 'wallet addresses',
-  kind_secrets: 'secrets',
+  kind_secrets: 'passwords and keys',
   kind_phrases: 'recovery phrases',
   kind_blocks: 'transaction data',
-  kind_hex: 'chain data',
+  kind_hex: 'keys and cryptographic data',
   send: 'Send report',
   save: 'Save encrypted report to a file',
-  save_hint: 'To send it yourself, for example in the Telegram group.',
   no_send: 'Sending from the app is not available in this version: save the report to a file and send it in the GUI testers’ Telegram group.',
   back: 'Back',
   sending: 'Sending…',
@@ -72,7 +76,7 @@ export default {
   sent_text: 'Report {id} has reached the developer. Thank you! Replies come in the Telegram group, or to your contact if you gave one.',
   saved_title: 'Report saved',
   //{path}: where the file was saved
-  saved_text: 'Saved to {path}. Send this file to the developer, for example in the GUI testers’ Telegram group. It is encrypted: only the developer can open it.',
+  saved_text: 'Saved as {path}. Send this file to the developer, for example in the GUI testers’ Telegram group. It is encrypted: only the developer can open it.',
   err_offline: 'The report could not be sent: no connection. Save it to a file and send it later.',
   err_rate: 'Too many reports from this connection just now. Try again later, or save the report to a file.',
   err_too_big: 'The report is too big to send. Save it to a file instead.',

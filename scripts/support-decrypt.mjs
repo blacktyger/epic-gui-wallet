@@ -106,15 +106,22 @@ const summary = [
   'Description:',
   plain(report.description),
   '',
-  'Logs: ' + (report.files.length ? report.files.map((f) => plain(f.name) + ' (' + Number(f.bytes) + ' B' + (f.cut ? ', tail' : '') + ')').join(', ') : 'none attached'),
-  ...(report.dropped && report.dropped.length ? ['Left out (size cap): ' + plain(report.dropped.join(', '))] : []),
+  'Logs: ' + (Array.isArray(report.files) && report.files.length ? report.files.filter((f) => f && typeof f === 'object').map((f) => plain(f.name) + ' (' + Number(f.bytes) + ' B' + (f.cut ? ', tail' : '') + ')').join(', ') : 'none attached'),
+  ...(Array.isArray(report.dropped) && report.dropped.length ? ['Left out (size cap): ' + plain(report.dropped.join(', '))] : []),
   '',
 ].join('\n');
 fs.writeFileSync(path.join(dir, 'report.txt'), summary, { mode: 0o600 });
-for (const f of report.files) {
-  //names come from the report: keep them inside logs/
-  const safe = String(f.name).split(/[\\/]+/).filter((p) => p && p !== '.' && p !== '..').join('__') || 'log';
-  fs.writeFileSync(path.join(dir, 'logs', safe), f.text, { mode: 0o600 });
+//anyone can make a report: in the log files too, no terminal control characters (\n and \t stay)
+const text = (v) => String(v == null ? '' : v).replace(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g, '?');
+const used = new Set();
+for (const [i, f] of (Array.isArray(report.files) ? report.files : []).entries()) {
+  if (!f || typeof f !== 'object') continue;
+  //names come from the report: one plain file name inside logs/, short, unique
+  let safe = String(f.name).split(/[\\/]+/).filter((p) => p && p !== '.' && p !== '..').join('__')
+    .replace(/[^\w.-]/g, '_').slice(0, 100) || 'log';
+  if (used.has(safe)) safe = i + '-' + safe;
+  used.add(safe);
+  fs.writeFileSync(path.join(dir, 'logs', safe), text(f.text), { mode: 0o600 });
 }
 console.error('report written to ' + dir);
 if (print) process.stdout.write(summary);

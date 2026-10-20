@@ -20,7 +20,7 @@
               <textarea id="support-desc" ref="desc" class="textarea" rows="5" :maxlength="maxDescription" v-model="description"
                 aria-describedby="support-desc-h support-desc-n" :aria-invalid="descriptionMissing ? 'true' : null"></textarea>
             </div>
-            <p id="support-desc-h" class="help">{{ $t('msg.support.description_hint') }}</p>
+            <p id="support-desc-h" class="help">{{ $t('msg.support.description_hint') }} <strong>{{ $t('msg.support.never_secrets') }}</strong></p>
             <p id="support-desc-n" class="help has-text-right" aria-live="polite">{{ $t('msg.support.description_counter', { n: description.length, max: maxDescription }) }}</p>
             <p v-if="descriptionMissing" class="help is-danger" role="alert">{{ $t('msg.support.description_required') }}</p>
           </div>
@@ -39,14 +39,15 @@
             </label>
             <p id="support-attach-h" class="help">{{ $t('msg.support.attach_hint') }}</p>
           </div>
-          <p class="notification is-info is-light">{{ $t('msg.support.privacy') }}</p>
+          <article class="message is-dark"><div class="message-body">{{ $t('msg.support.privacy') }}</div></article>
         </form>
 
         <!-- 2: review, exactly what will be sent -->
         <div v-else-if="step === 'review'">
           <p v-if="loading" role="status">{{ $t('msg.support.preparing') }}</p>
           <p v-else-if="previewFailed" class="notification is-danger is-light" role="alert">{{ $t('msg.support.preview_failed') }}</p>
-          <template v-else-if="preview">
+          <p v-else-if="phrase" class="notification is-danger is-light" role="alert">{{ $t('msg.support.phrase_refused') }}</p>
+          <template v-else-if="preview && !phrase">
             <h3 class="title is-6 mb-2">{{ $t('msg.support.public_label') }}</h3>
             <p class="help mb-2">{{ $t('msg.support.public_note') }}</p>
             <blockquote class="support-quote">{{ shownDescription }}</blockquote>
@@ -141,8 +142,12 @@ export default {
     canSend() {
       return !!(this.preview && this.preview.canSend);
     },
+    //the description looks like a recovery phrase: nothing can be sent or saved (checked again in main)
+    phrase() {
+      return !!(this.preview && this.preview.phrase);
+    },
     ready() {
-      return !!this.preview && !this.loading;
+      return !!this.preview && !this.loading && !this.phrase;
     },
     appLine() {
       const a = (this.preview && this.preview.app) || {};
@@ -154,6 +159,7 @@ export default {
       return kinds.length ? this.$t('msg.support.removed', { list: kinds.join(', ') }) : '';
     },
     errorText() {
+      if (this.error === 'phrase') return this.$t('msg.support.phrase_refused');
       const known = ['offline', 'rate', 'too-big', 'server', 'no-endpoint', 'write', 'expired'];
       return this.$t('msg.support.err_' + (known.includes(this.error) ? this.error : 'server').replace('-', '_'));
     },

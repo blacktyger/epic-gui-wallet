@@ -10,6 +10,7 @@
  * Nothing else: no settings, no tomls, no wallet data, no contacts.
  */
 import { buildBundle, tailText, MAX_FILE_TEXT, MAX_DESCRIPTION, MAX_CONTACT } from './supportBundle.js';
+import { looksLikePhrase } from './logSanitize.js';
 
 export const MAX_AGE_DAYS = 14;
 //a preview stays sendable this long; after a send or save, a little longer for "Save to a file" too
@@ -78,7 +79,8 @@ export function logFiles({ fs, path, logsDir, root, wallets = [], now = Date.now
  * The support service: preview → (send | save) with a token, so what is sent is exactly what the
  * user saw. deps:
  *   fs, path, logsDir, root, wallets(): [{id, configDir}], app(): {version, …},
- *   sanitize(text) → {text, counts}, publicKey, post(bytes, description) → {ok, id} | {ok:false, error},
+ *   sanitize(text, {ids, description}) → {text, counts} (ids: the report's pseudonyms; description:
+ *   the user's own text, cleaned without the session-password step), publicKey, post(bytes, description) → {ok, id} | {ok:false, error},
  *   now(), randomToken()
  */
 export function createSupport(deps) {
@@ -91,24 +93,28 @@ export function createSupport(deps) {
 
   //the description is posted readable to the testers' group: cleaned like the logs (a pasted path or
   //IP), and the review shows it as it will go
-  const cleanDescription = (d) => deps.sanitize(String(d == null ? '' : d).trim().slice(0, MAX_DESCRIPTION)).text;
+  const cleanDescription = (d) => deps.sanitize(String(d == null ? '' : d).trim().slice(0, MAX_DESCRIPTION), { ids: new Map(), description: true }).text;
 
   function preview({ attachLogs, description } = {}) {
     sweep();
     const files = [];
     const counts = {};
+    //one report: the same address or IP gets the same pseudonym in every file
+    const ids = new Map();
     if (attachLogs) {
       for (const f of logFiles({ fs: deps.fs, path: deps.path, logsDir: deps.logsDir, root: deps.root,
         wallets: deps.wallets(), now: now() })) {
         const raw = readTail(deps.fs, f.file);
         if (!raw.trim()) continue;
-        const clean = deps.sanitize(raw);
+        const clean = deps.sanitize(raw, { ids });
         for (const [k, v] of Object.entries(clean.counts || {})) counts[k] = (counts[k] || 0) + v;
         files.push({ name: f.name, text: clean.text });
       }
     }
     const token = deps.randomToken();
     const app = deps.app();
+    //only the newest preview can be sent: an older one is dropped (each holds a few MB)
+    tokens.clear();
     tokens.set(token, { files, app, expires: now() + TOKEN_TTL });
     //what the user sees is cut exactly as it will be sealed
     const shown = files.map((f) => {
@@ -116,7 +122,7 @@ export function createSupport(deps) {
       return { name: f.name, bytes: Buffer.byteLength(t.text), text: t.text, cut: t.cut };
     });
     return { token, app, files: shown, counts, totalBytes: shown.reduce((s, f) => s + f.bytes, 0),
-      description: cleanDescription(description) };
+      description: cleanDescription(description), phrase: looksLikePhrase(description) };
   }
 
   function seal(token, description, contact) {
@@ -124,6 +130,8 @@ export function createSupport(deps) {
     const t = tokens.get(String(token));
     if (!t) return { error: 'expired' };
     if (!String(description == null ? '' : description).trim()) return { error: 'empty' };
+    //the description is posted readable: what looks like a recovery phrase is never sent
+    if (looksLikePhrase(description)) return { error: 'phrase' };
     const d = cleanDescription(description);
     const r = buildBundle({ description: d, contact: String(contact == null ? '' : contact).slice(0, MAX_CONTACT),
       app: t.app, files: t.files }, deps.publicKey);

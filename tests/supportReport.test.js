@@ -149,3 +149,34 @@ test('a huge log is attached as its tail only', () => {
     assert.ok(p.files[0].bytes <= MAX_FILE_TEXT + 40);
   } finally { s.done(); }
 });
+
+test('a description that looks like a recovery phrase is never sent or saved; only the newest preview counts', async () => {
+  const s = scratch();
+  try {
+    const { svc, posted } = service(s);
+    const phrase = 'my words: Abandon ability able about above absent absorb abstract absurd abuse access accident';
+    const p = svc.preview({ description: phrase });
+    assert.equal(p.phrase, true);
+    assert.deepEqual(await svc.send({ token: p.token, description: phrase }), { ok: false, error: 'phrase' });
+    let wrote = false;
+    assert.deepEqual(await svc.save({ token: p.token, description: phrase }, async () => { wrote = true; return { ok: true }; }), { ok: false, error: 'phrase' });
+    assert.equal(wrote, false);
+    assert.equal(posted.length, 0);
+    assert.equal(svc.preview({ description: 'The node does not sync since yesterday' }).phrase, false);
+    //a new preview drops the older one
+    const a = svc.preview({});
+    const b = svc.preview({});
+    assert.deepEqual(await svc.send({ token: a.token, description: 'x' }), { ok: false, error: 'expired' });
+    assert.ok((await svc.send({ token: b.token, description: 'x' })).ok);
+  } finally { s.done(); }
+});
+
+test('the intake URL: built in, or a local override; an https override only in a development build', async () => {
+  const { supportUrl, SUPPORT_URL } = await import('../src/shared/supportKey.js');
+  assert.equal(supportUrl({}), SUPPORT_URL);
+  assert.equal(supportUrl({ EPIC_SUPPORT_URL: 'http://127.0.0.1:18447/v1/report' }), 'http://127.0.0.1:18447/v1/report');
+  assert.equal(supportUrl({ EPIC_SUPPORT_URL: 'https://evil.example/v1/report' }), SUPPORT_URL);
+  assert.equal(supportUrl({ EPIC_SUPPORT_URL: 'https://staging.example/v1/report' }, { packaged: false }), 'https://staging.example/v1/report');
+  assert.equal(supportUrl({ EPIC_SUPPORT_URL: 'http://evil.example/' }, { packaged: false }), SUPPORT_URL);
+  assert.equal(supportUrl({ EPIC_SUPPORT_URL: 'not a url' }), SUPPORT_URL);
+});

@@ -32,7 +32,7 @@ Binary file `.epicsupport`:
 `POST <SUPPORT_URL>/v1/report`, `Content-Type: application/json`, body ≤ 3 MiB:
 
 ```json
-{ "v": 1, "description": "plain text, ≤ 2000 chars (posted to the testers' group)", "bundle": "<base64 of the .epicsupport bytes>" }
+{ "v": 1, "description": "plain text, ≤ 2000 chars, cleaned (Patryk's DM; the group only if SUPPORT_GROUP_POST is on)", "bundle": "<base64 of the .epicsupport bytes>" }
 ```
 
 - Server checks: v == 1, description length, base64 decodes, bundle starts with "EPICSUP1", bundle ≤ 2 MiB,

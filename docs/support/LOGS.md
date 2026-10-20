@@ -24,7 +24,7 @@ What its lines contain:
 - the node: `Connecting to the node: <url>`, `Node is synced`, `Failed to check node sync status: …`
   (custom node hosts → cleaned to `<host>`, public ones kept);
 - listeners: `Starting HTTP Foreign listener API server at 127.0.0.1:<port>`, Epicbox connect/subscribe lines
-  with the wallet's Epicbox address (→ `prefix…suffix`);
+  with the wallet's Epicbox address (→ `<address-1>`);
 - transactions: errors with amounts (`Not enough funds. Required: 0.105, Available: 0`), slate ids (UUIDs);
 - never seen in the file: the password, the recovery phrase (init prints it on stdout only; the GUI never
   logs that stdout), the seed. Slates are not logged at Debug in the commands tried; the cleaner drops any

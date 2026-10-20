@@ -10,14 +10,15 @@ export const SUPPORT_KEY_ID = 'd9749febd701c2fe';
    the app then offers "Save encrypted report to a file" only */
 export const SUPPORT_URL = '';
 
-/* the intake URL: EPIC_SUPPORT_URL (tests, a staging instance) when it is https or on this machine,
-   else SUPPORT_URL */
-export function supportUrl(env = {}) {
+/* the intake URL: EPIC_SUPPORT_URL (the e2e gate, a local instance) when it is on this machine, or
+   an https staging instance in a development build only; else SUPPORT_URL */
+export function supportUrl(env = {}, { packaged = true } = {}) {
   const v = typeof env.EPIC_SUPPORT_URL === 'string' ? env.EPIC_SUPPORT_URL.trim() : '';
   if (v) {
     try {
       const u = new URL(v);
-      if (u.protocol === 'https:' || (u.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(u.hostname))) return u.href;
+      const local = u.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(u.hostname);
+      if (local || (u.protocol === 'https:' && !packaged)) return u.href;
     } catch (e) { /* not a URL: ignored */ }
   }
   return SUPPORT_URL;

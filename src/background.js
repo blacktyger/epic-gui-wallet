@@ -678,22 +678,25 @@ const support = createSupport({
     }
   },
   app: () => supportApp,
-  sanitize: (text) => {
+  sanitize: (text, { ids, description } = {}) => {
+    const base = { home: os.homedir(), username: os.userInfo().username, hostname: os.hostname(), keepHosts: KNOWN_PUBLIC_HOSTS, ids };
+    //the user's own description: not checked against the password (the preview would tell the page
+    //whether a guess was the password)
+    if (description) return sanitizeText(text, base);
     //the unlocked wallet's password, should it ever be in a log line: removed as it is
     const pw = sessionSecret.copy();
     try {
-      return sanitizeText(text, { home: os.homedir(), username: os.userInfo().username, hostname: os.hostname(),
-        keepHosts: KNOWN_PUBLIC_HOSTS, secrets: pw && pw.length >= 4 ? [pw.toString('utf8')] : [] });
+      return sanitizeText(text, Object.assign(base, { secrets: pw && pw.length >= 4 ? [pw.toString('utf8')] : [] }));
     } finally {
       if (pw) pw.fill(0);
     }
   },
   publicKey: SUPPORT_PUBLIC_KEY,
   post: async (bytes, description) => {
-    const url = supportUrl(process.env);
+    const url = supportUrl(process.env, { packaged: app.isPackaged });
     if (!url) return { ok: false, error: 'no-endpoint' };
     const res = await net.fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ v: 1, description, bundle: bytes.toString('base64') }), signal: AbortSignal.timeout(60000) });
+      body: JSON.stringify({ v: 1, description, bundle: bytes.toString('base64') }), redirect: 'error', signal: AbortSignal.timeout(60000) });
     return intakeResult(res.status, await res.text().catch(() => ''));
   },
   randomToken: () => require('crypto').randomBytes(16).toString('hex'),
@@ -706,7 +709,7 @@ ipcMain.handle('support-preview', (event, opts) => {
   supportApp = { version: app.getVersion(), electron: process.versions.electron, platform: process.platform,
     release: os.release(), arch: process.arch, locale: app.getLocale(), ui: short(o.ui), lang: short(o.lang) };
   const p = Object.assign(support.preview({ attachLogs: o.attachLogs === true, description: typeof o.description === 'string' ? o.description : '' }),
-    { canSend: !!supportUrl(process.env) });
+    { canSend: !!supportUrl(process.env, { packaged: app.isPackaged }) });
   log.info('support: preview, ' + p.files.length + ' log(s), ' + Math.round(p.totalBytes / 1024) + ' KiB');
   return p;
 });
