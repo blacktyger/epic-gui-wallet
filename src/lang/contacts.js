@@ -31,7 +31,7 @@ export default {
 
   //the form
   optional: 'optional',
-  hint_epicbox: 'Starts with “es”, then @ and the Epicbox server, e.g. @epicbox.epiccash.com.',
+  hint_epicbox: "Starts with “es”, then {'@'} and the Epicbox server, e.g. {'@'}epicbox.epiccash.com.",
   hint_http: 'For a wallet that receives over HTTP, e.g. http://203.0.113.5:3415.',
   err_name: 'Give the contact a name.',
   err_address: 'Add an Epicbox or an HTTP address to send to.',

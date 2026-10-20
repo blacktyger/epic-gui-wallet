@@ -59,3 +59,98 @@ test('a contact needs a name and an address to send to; an Epicbox address must 
   assert.equal(contactProblem({ name: 'Alice', externalTwo: 'http://1.2.3.4:3415' }), null);
   assert.equal(contactProblem({ name: 'Alice', onion: 'a'.repeat(56) }), 'address');
 });
+
+/* ---- 6.1.6: the redesigned Contacts and the Send picker ---- */
+import {
+  contactProblems, contactAddresses, shortAddress, contactActivity, contactTransactions, sortContacts,
+  pickableContacts, sendQuery,
+} from '../src/shared/contacts.js';
+
+const BOX = 'esWY5xrwwGme5Ca6Aje8joEvtqNLtUcKfkycNFDQSYQbHi14LyEM@epicbox.epiccash.com';
+
+/* a row as 6.0/6.1.x stored it in the Addressbook table (IndexedDB "Epicwallet" v5): gender and keybase
+   columns, a Tor address, payment proof fields, a missing city */
+const legacy = { id: 4, user_id: 7, name: 'Old Friend', gender: 'male', keybase: '', country: 'PL', onion: 'abcdefghijklmnopqrstuvwxyz234567abcdefghijklmnopqrstuvwx.onion',
+  alwaysproof: true, proofaddr: 'b4e2a7c6d1f0e9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4', externalOne: BOX, externalTwo: '', notice: 'from 6.0' };
+
+test('migration: a contact stored by an older version reads and saves back with every field it had', () => {
+  const saved = contactFields(legacy);
+  for (const k of ['name', 'country', 'onion', 'proofaddr', 'externalOne', 'externalTwo', 'notice']) assert.equal(saved[k], legacy[k], k);
+  assert.equal(saved.city, '');
+  assert.equal(saved.alwaysproof, true);
+  //nothing new is written into the row: the schema (and an older GUI reading it) stays as it was
+  assert.deepEqual(Object.keys(saved).sort(), [...CONTACT_TEXT_FIELDS, 'alwaysproof'].sort());
+  //its hidden Tor address is no problem for the form (it is not one of the fields shown)
+  assert.deepEqual(contactProblems(legacy), {});
+  assert.deepEqual(contactAddresses(legacy).map((a) => a.field), ['externalOne']);
+});
+
+test('the form checks each field as you type: name, Epicbox, HTTP, Tor', () => {
+  assert.deepEqual(contactProblems({}), { name: true, address: true });
+  assert.deepEqual(contactProblems({ name: 'A', externalOne: 'esShort@epicbox.epiccash.com' }), { epicbox: true });
+  assert.deepEqual(contactProblems({ name: 'A', externalTwo: 'http://203.0.113.5:3415' }), {});
+  assert.deepEqual(contactProblems({ name: 'A', externalTwo: 'https://shop.example/v2/foreign' }), {});
+  assert.deepEqual(contactProblems({ name: 'A', externalTwo: '203.0.113.5:3415' }), {});
+  assert.deepEqual(contactProblems({ name: 'A', externalTwo: 'hello world' }), { http: true });
+  assert.deepEqual(contactProblems({ name: 'A', externalTwo: BOX }), { http: true });
+  assert.deepEqual(contactProblems({ name: 'A', externalTwo: 'http://' + 'a'.repeat(56) + '.onion' }), { http: true, onion: true });
+  assert.deepEqual(contactProblems({ name: 'A', externalOne: 'abc.onion' }), { epicbox: true, onion: true });
+  assert.equal(contactProblem({ name: 'A', externalOne: BOX, externalTwo: 'nope' }), 'http');
+});
+
+test('a contact\'s addresses: Epicbox first, blank ones left out, trimmed', () => {
+  assert.deepEqual(contactAddresses({ externalOne: ' ' + BOX + ' ', externalTwo: 'http://1.2.3.4:3415' }), [
+    { field: 'externalOne', kind: 'epicbox', address: BOX },
+    { field: 'externalTwo', kind: 'http', address: 'http://1.2.3.4:3415' },
+  ]);
+  assert.deepEqual(contactAddresses({ externalOne: '  ', externalTwo: null }), []);
+  assert.deepEqual(contactAddresses(null), []);
+});
+
+test('short addresses keep the start and end of the key, and the server', () => {
+  assert.equal(shortAddress(BOX), 'esWY5x…LyEM@epicbox.epiccash.com');
+  assert.equal(shortAddress(BOX.split('@')[0]), 'esWY5x…LyEM');
+  assert.equal(shortAddress('http://203.0.113.5:3415'), 'http://203.0.113.5:3415');
+  assert.equal(shortAddress('https://a-very-long-hostname.example.com:3415/v2/foreign'), 'https://a-very-long-host…v2/foreign');
+  assert.equal(shortAddress(''), '');
+});
+
+/* store txs as processTxs leaves them: tx.address is the AddressTransactions row (address = contact id) */
+const tx = (id, contact, ts) => ({ id, creation_ts: ts, address: contact ? { slateid: 's' + id, type: 'http', address: contact } : undefined });
+const txs = [tx(1, 4, '2026-10-01T10:00:00Z'), tx(2, 4, '2026-10-18T09:00:00Z'), tx(3, 9, '2026-09-01T00:00:00Z'), tx(4, null, '2026-10-19T00:00:00Z')];
+
+test('the last transaction and the count per contact come from the linked transactions', () => {
+  const a = contactActivity(txs);
+  assert.deepEqual(a.get(4), { last: Date.parse('2026-10-18T09:00:00Z'), count: 2 });
+  assert.equal(a.get(9).count, 1);
+  assert.equal(a.size, 2);
+  assert.equal(contactActivity(null).size, 0);
+  assert.deepEqual(contactTransactions(txs, 4).map((t) => t.id), [2, 1]);
+  assert.deepEqual(contactTransactions(txs, 0), []);
+});
+
+test('sorting: by name in the user\'s language, or the most recent transaction first', () => {
+  const list = [{ id: 1, name: 'zoë' }, { id: 4, name: 'Bob' }, { id: 9, name: 'Ála' }, { id: 2, name: 'carl' }];
+  assert.deepEqual(sortContacts(list, 'name', new Map(), 'en').map((c) => c.id), [9, 4, 2, 1]);
+  //4: 18 Oct, 9: 1 Sep, then the ones without a transaction by name
+  assert.deepEqual(sortContacts(list, 'recent', contactActivity(txs), 'en').map((c) => c.id), [4, 9, 2, 1]);
+  //the list itself is not reordered
+  assert.equal(list[0].id, 1);
+});
+
+test('the Send picker lists only contacts with an address, matching the search', () => {
+  const list = [legacy, { id: 5, name: 'Tor only', onion: 'x.onion', externalOne: '', externalTwo: '' }, { id: 6, name: 'Shop', externalTwo: 'http://shop.example:3415' }];
+  assert.deepEqual(pickableContacts(list, '').map((c) => c.id), [4, 6]);
+  assert.deepEqual(pickableContacts(list, 'shop').map((c) => c.id), [6]);
+  assert.deepEqual(pickableContacts(list, 'tor').map((c) => c.id), []);
+});
+
+test('Contacts › Send passes only a contact id and a field name', () => {
+  assert.deepEqual(sendQuery({ contact: '4', use: 'externalTwo' }), { id: 4, field: 'externalTwo' });
+  assert.deepEqual(sendQuery({ contact: '4' }), { id: 4, field: null });
+  assert.deepEqual(sendQuery({ contact: '4', use: 'onion' }), { id: 4, field: null });
+  assert.equal(sendQuery({ contact: 'x' }), null);
+  assert.equal(sendQuery({ contact: '-1' }), null);
+  assert.equal(sendQuery({}), null);
+  assert.equal(sendQuery(undefined), null);
+});
