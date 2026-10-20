@@ -162,6 +162,11 @@
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden) this.onWindowShown();
       });
+      //the main process says so too (minimize, hide): document.hidden does not change on every desktop
+      if (window.api.onWindowHidden) window.api.onWindowHidden((hidden) => {
+        this.windowHiddenByMain = hidden;
+        if (!hidden) this.onWindowShown();
+      });
 
       window.nodeChildProcess.on('firstscan-stdout', (payload) => {
 
@@ -845,7 +850,7 @@
       },
       /* the window is hidden or minimized (the polls back off, nodePoll.js / walletSync.js) */
       windowHidden(){
-        return typeof document !== 'undefined' && !!document.hidden;
+        return !!this.windowHiddenByMain || (typeof document !== 'undefined' && !!document.hidden);
       },
       /* the node is on this computer: the built-in one or a local address (polled as before) */
       nodeIsLocal(){

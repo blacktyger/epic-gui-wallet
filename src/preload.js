@@ -814,6 +814,11 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.removeAllListeners('menu-lock');
       ipcRenderer.on('menu-lock', () => func());
     },
+    //the window was minimized or hidden (true), or shown again (false): one listener (App.vue)
+    onWindowHidden: (func) => {
+      ipcRenderer.removeAllListeners('window-hidden');
+      ipcRenderer.on('window-hidden', (_e, hidden) => func(hidden === true));
+    },
 
 
 });
