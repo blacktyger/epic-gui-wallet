@@ -41,6 +41,16 @@ const messages = {
     confirm_action: 'تأیید عملیات',
     save: 'ذخیره',
     delete: 'پاک کردن',
+    delete_permanently: 'این کار {0} را برای همیشه حذف می‌کند',
+    cannot_undo: 'این کار قابل بازگشت نیست.',
+    details: 'جزئیات',
+    //Classic About (the thanks and the community text are msg.modern.settings.thanks and community_hint)
+    about: {
+      title: 'کیف پول دسکتاپ Epic Cash — {0}',
+      source: 'کد منبع در GitHub:',
+      thanks: 'سپاسگزاری:',
+      community: 'جامعهٔ Epic Cash:',
+    },
     edit: 'ویرایش',
     welcome: 'به کیف پول Epic خوش آمدید',
     back: 'برگشتن',
@@ -54,6 +64,7 @@ const messages = {
     node_server_external: 'سرور نود خارجی',
     node_server_address: 'آدرس سرور نود',
     copy_to_clipboard: 'در کلیپ بورد کپی شد',
+    copy_title: 'کپی در کلیپ‌بورد',
     placeholder_search: 'جستجو...',
     refresh: 'تازه کردن',
     page_of: 'صفحهٔ {0} از {1}',
@@ -321,6 +332,7 @@ const messages = {
       listener_starting: 'در حال راه‌اندازی شنوندهٔ کیف پول…',
       loading_wallet_data: 'در حال بارگذاری…',
       background_process: 'ما برخی از پردازش های کیف پول و نودِ در حال اجرا را در پس زمینه پیدا کردیم. لطفاً قبل از اجرای این برنامه ابتدا آنها را ببندید',
+      process_line: 'شناسه: {0} / نام فرایند: {1}',
       walletonline: 'کیف پول شما آنلاین است',
       walletoffline: 'کیف پول شما آفلاین است.',
     },
@@ -357,6 +369,8 @@ const messages = {
       NotEnough: 'موجودی کافی نیست',
       saveMsg: 'ذخیره فایلِ تراکنشِ ایجاد شده',
       CreateFailed: 'عدم موفقیت در ایجاد فایلِ تراکنش جدید',
+      saved: 'فایل تراکنش ذخیره شد',
+      cancelled: 'تراکنش لغو شد.',
     },
     httpSend: {
       sendAmount: 'مبلغ برای ارسال',
@@ -371,6 +385,7 @@ const messages = {
       TxCreateFailed: 'ایجاد تراکنش ناموفق بود',
       salteVersion: 'نسخهٔ فایل slate',
       salteVersionHelp: 'اگر ارسال EPIC ناموفق بود، نسخهٔ فایل slate را تغییر دهید و دوباره ارسال کنید',
+      message_placeholder: 'پیام (حداکثر ۲۵۶ نویسه)',
     },
     receive: {
       dropMsg: 'فایل تراکنش را برای دریافت اینجا رها کنید یا برای آپلود کلیک کنید',
@@ -421,6 +436,8 @@ const messages = {
       epicbox_checking_old: 'در حال بررسی سرور قدیمی {0} برای پرداخت‌هایی که به آدرس قدیمی شما فرستاده شده…',
       epicbox_listener_off: 'شنوندهٔ Epicbox خاموش است',
       check_port_open_done: 'بررسی مجدد انجام شد!',
+      port_open: 'این پورت از اینترنت در دسترس است',
+      port_closed: 'این پورت از اینترنت در دسترس نیست',
       listener_stopped: 'شنوندهٔ کیف پول متوقف شد',
     },
     check: {

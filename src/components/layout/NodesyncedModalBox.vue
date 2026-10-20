@@ -6,7 +6,7 @@
     <div class="modal-card">
       <header class="modal-card-head">
         <p class="modal-card-title">
-          Confirm action
+          {{ $t('msg.confirm_action') }}
         </p>
         <button
           type="button"
@@ -15,15 +15,14 @@
         />
       </header>
       <section class="modal-card-body">
-        Your internal node is now synced and can be used by the app.<br/>
-        Restart App now?
+        {{ $t('msg.modern.settings.synced_text') }}
       </section>
       <footer class="modal-card-foot">
         <button class="button is-danger" @click="cancel">
-          Cancel
+          {{ $t('msg.cancel') }}
         </button>
         <button class="button is-success" @click="confirm">
-          Ok
+          {{ $t('msg.ok') }}
         </button>
       </footer>
     </div>

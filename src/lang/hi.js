@@ -41,6 +41,16 @@ const messages = {
     confirm_action: 'कार्रवाई की पुष्टि करें',
     save: 'सहेजें',
     delete: 'डिलीट',
+    delete_permanently: 'यह {0} को स्थायी रूप से हटा देगा',
+    cannot_undo: 'इसे पूर्ववत नहीं किया जा सकता।',
+    details: 'विवरण',
+    //Classic About (the thanks and the community text are msg.modern.settings.thanks and community_hint)
+    about: {
+      title: 'Epic Cash डेस्कटॉप वॉलेट — {0}',
+      source: 'GitHub पर सोर्स कोड:',
+      thanks: 'धन्यवाद:',
+      community: 'Epic Cash समुदाय:',
+    },
     edit: 'संपादन करना',
     welcome: 'Epic वॉलेट में आपका स्वागत है',
     back: 'पीछे करें',
@@ -54,6 +64,7 @@ const messages = {
     node_server_external: 'बाहरी नोड सर्वर',
     node_server_address: 'नोड सर्वर एड्रेस',
     copy_to_clipboard: 'क्लिपबोर्ड पर कॉपी हो गया!',
+    copy_title: 'क्लिपबोर्ड पर कॉपी करें',
     placeholder_search: 'खोज...',
     refresh: 'ताज़ा करें',
     page_of: '{1} का पृष्ठ {0}',
@@ -321,6 +332,7 @@ const messages = {
       listener_starting: 'वॉलेट लिसनर शुरू हो रहा है…',
       loading_wallet_data: 'लोड हो रहा है…',
       background_process: 'आगे बढ़ने से पहले कृपया सभी प्रक्रियाएं बंद करें।',
+      process_line: 'ID: {0} / प्रक्रिया का नाम: {1}',
       walletonline: 'आपका वॉलेट ऑनलाइन है',
       walletoffline: 'आपका वॉलेट ऑफ़लाइन है।',
     },
@@ -357,6 +369,8 @@ const messages = {
       NotEnough: 'पर्याप्त बैलेंस नहीं',
       saveMsg: 'बनाई गई लेन-देन फ़ाइल सहेजें',
       CreateFailed: 'नई लेन-देन फ़ाइल बनाने में विफल',
+      saved: 'लेन-देन फ़ाइल सहेजी गई',
+      cancelled: 'लेन-देन रद्द किया गया।',
     },
     httpSend: {
       sendAmount: 'भेजी जाने वाली राशि',
@@ -371,6 +385,7 @@ const messages = {
       TxCreateFailed: 'लेन-देन बनाना विफल रहा',
       salteVersion: 'स्लेट फ़ाइल संस्करण',
       salteVersionHelp: 'यदि आप epic भेजने में विफल रहे, तो स्लेट फ़ाइल संस्करण को बदलने का प्रयास करें और फिर से भेजें',
+      message_placeholder: 'संदेश (अधिकतम 256 अक्षर)',
     },
     receive: {
       dropMsg: 'प्राप्त करने के लिए लेन-देन फ़ाइल छोड़ें या अपलोड करने के लिए क्लिक करें',
@@ -421,6 +436,8 @@ const messages = {
       epicbox_checking_old: 'आपके पुराने एड्रेस पर भेजे गए भुगतानों के लिए पुराना सर्वर {0} जांचा जा रहा है…',
       epicbox_listener_off: 'Epicbox लिसनर बंद है',
       check_port_open_done: 'दोबारा जांच पूरी हुई!',
+      port_open: 'पोर्ट इंटरनेट से पहुँच योग्य है',
+      port_closed: 'पोर्ट इंटरनेट से पहुँच योग्य नहीं है',
       listener_stopped: 'वॉलेट लिसनर रुक गया',
     },
     check: {

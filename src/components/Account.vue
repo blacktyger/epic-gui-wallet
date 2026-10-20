@@ -78,7 +78,7 @@
 <script>
 
 import { useStore } from '@/store';
-import { walletList, walletName, networkBadge, shortFolder, appLocale, walletFolder, walletOpen } from '@/components/wallets';
+import { walletList, walletName, labelShown, networkBadge, shortFolder, appLocale, walletFolder, walletOpen } from '@/components/wallets';
 import RemoveWalletDialog from '@/components/layout/RemoveWalletDialog.vue';
 
   /*
@@ -136,7 +136,7 @@ import RemoveWalletDialog from '@/components/layout/RemoveWalletDialog.vue';
 
     mounted(){
       this.refresh();
-      this.label = this.wallet ? this.wallet.label || '' : '';
+      this.label = this.wallet ? labelShown(this.wallet.label) : '';
     },
 
     methods: {
@@ -192,7 +192,7 @@ import RemoveWalletDialog from '@/components/layout/RemoveWalletDialog.vue';
             nodeInternal: !!cfg.nodeInternal,
             epicbox_domain: cfg.epicbox_domain || '',
           });
-          this.label = label;
+          this.label = labelShown(label);
           this.refresh();
           this.$toast.success(this.$t("msg.account.settings_saved"));
         }catch(e){

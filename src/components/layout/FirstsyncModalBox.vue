@@ -6,7 +6,7 @@
     <div class="modal-card">
       <header class="modal-card-head">
         <p class="modal-card-title">
-          Wallet first scan
+          {{ $t('msg.modern.settings.firstscan_title') }}
         </p>
         <button
           type="button"
@@ -19,7 +19,7 @@
       </section>
       <footer class="modal-card-foot">
         <button class="button is-success" @click="cancel">
-          Ok
+          {{ $t('msg.ok') }}
         </button>
 
       </footer>

@@ -4,8 +4,9 @@
  * opening a wallet folder, removing a wallet from the list. Used by the Classic components;
  * their Modern reskins inherit it.
  */
-import { i18n } from '@/i18n';
+import { i18n, messages } from '@/i18n';
 import { pendingUser } from '@/shared/unlockResult';
+import { displayLabel } from '@/shared/walletLabel';
 import WalletFolderPick from '@/components/form/WalletFolderPick.vue';
 
 const t = (...a) => i18n.global.t(...a);
@@ -19,10 +20,19 @@ export function walletList(configService) {
   }
 }
 
+//every language's default name ('Wallet {0}', 'Portfel {0}', …)
+const defaultNames = Object.values(messages).map(m => m.msg && m.msg.wallets && m.msg.wallets.wallet_n).filter(Boolean);
+
+/* a stored label as shown: one that is a default name ("Wallet 2", saved while the app was in English)
+   in the current language ("Portfel 2"), a typed one as it is (shared/walletLabel.js) */
+export function labelShown(label) {
+  return displayLabel(label, defaultNames, n => t('msg.wallets.wallet_n', [n]));
+}
+
 /* what a wallet is called: its label, else "Wallet 1", "Wallet 2"… by its place in the list */
 export function walletName(wallet, list) {
   if (!wallet) return '';
-  if (wallet.label && String(wallet.label).trim()) return String(wallet.label).trim();
+  if (wallet.label && String(wallet.label).trim()) return labelShown(wallet.label);
   const i = (list || []).findIndex(w => w.id === wallet.id);
   return t('msg.wallets.wallet_n', [i >= 0 ? i + 1 : 1]);
 }

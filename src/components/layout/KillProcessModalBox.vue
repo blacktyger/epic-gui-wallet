@@ -15,7 +15,7 @@
       <section class="modal-card-body">
 
         <div v-for="process in processList" :key="process.id"  >
-            ID: {{process.pid}} / Process name: {{process.name}}
+            {{ $t('msg.app.process_line', [process.pid, process.name]) }}
         </div>
         <p v-if="processList.length">&nbsp;</p>
         {{ $t("msg.app.background_process") }}

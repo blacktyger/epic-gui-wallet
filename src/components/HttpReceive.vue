@@ -29,7 +29,7 @@
               <p>
                 {{ $t("msg.httpReceive.local_address") }}:<br/>
                 <code>{{ localAddress }}</code>
-                &nbsp;<mdicon v-if="portIsForwarded" name="flag-checkered" style="color:hsl(141, 53%, 53%);" title="port is open" /><mdicon v-else name="flag-checkered" style="color:hsl(348, 100%, 61%);" title="port is closed" />
+                &nbsp;<mdicon v-if="portIsForwarded" name="flag-checkered" style="color:hsl(141, 53%, 53%);" :title="$t('msg.httpReceive.port_open')" /><mdicon v-else name="flag-checkered" style="color:hsl(348, 100%, 61%);" :title="$t('msg.httpReceive.port_closed')" />
                 &nbsp;<mdicon class="is-clickable" @click="checkPortOpen()" name="refresh" size=16 />
                 &nbsp;<mdicon class="is-clickable" @click="copy(localAddress)" name="content-copy" size=16 />
                 &nbsp;<mdicon class="is-clickable" @click="qrcode(localAddress, 'local')" name="qrcode-scan" size=16 />

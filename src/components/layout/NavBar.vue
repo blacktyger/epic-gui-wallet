@@ -103,7 +103,7 @@
         </nav-bar-menu>
 
       </div>
-      <a title="Updates" class="navbar-item has-divider is-desktop-icon-only "
+      <a :title="$t('msg.menu.updates')" class="navbar-item has-divider is-desktop-icon-only "
         @click.prevent="updatesToggle"
         :class="{'is-active':isAsideRightActive}"
       >
@@ -120,7 +120,7 @@ import { computed, ref } from 'vue';
 import { useStore } from '@/store';
 import { useRouter } from '@/router';
 import NavBarMenu from '@/components/layout/NavBarMenu.vue';
-import { walletName, walletList } from '@/components/wallets';
+import { walletName, walletList, labelShown } from '@/components/wallets';
 
 export default {
   name: 'NavBar',
@@ -216,7 +216,7 @@ export default {
     //the open wallet: its label (the User row's name, so a new label shows at once), else "Wallet 2"
     accountName() {
       const name = this.store.state.user && this.store.state.user.name;
-      if (name) return name;
+      if (name) return labelShown(name);
       return walletName(this.configService.wallet, walletList(this.configService));
     },
     //Switch wallet: only with more than one wallet in the list

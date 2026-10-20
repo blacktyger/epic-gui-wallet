@@ -105,14 +105,14 @@
 
                   <div class="buttons is-right">
                     <router-link v-if="tx.address && tx.address.type == 'file' && tx.status=='unconfirmed'" class="button is-small is-primary" to="/finalizeTransaction">
-                      <span title="Finalize" class="is-icon"><mdicon name="basket" size="12" /></span>
+                      <span :title="$t('msg.finalize.finalize')" class="is-icon"><mdicon name="basket" size="12" /></span>
                     </router-link>
                     <button v-if="tx.cancelable" class="button is-small is-primary" :class="{ 'button__loader': isLoading }" @click="cancel(`${tx.tx_slate_id}`)">
-                      <span title="Cancel" class="is-icon"><span class="button__text"><mdicon name="cancel" size="12" /></span></span>
+                      <span :title="$t('msg.cancel')" class="is-icon"><span class="button__text"><mdicon name="cancel" size="12" /></span></span>
                     </button>
 
                     <button class="button is-small is-primary" @click="detail(tx)">
-                      <span title="Details" class="is-icon">
+                      <span :title="$t('msg.details')" class="is-icon">
                         <mdicon v-if="tx.id !== txDetail" name="eye" size="12" />
                         <mdicon v-else name="eye-off" size="12" />
                       </span>

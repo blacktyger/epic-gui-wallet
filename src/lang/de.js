@@ -41,6 +41,16 @@ const messages = {
     confirm_action: 'Aktion erforderlich',
     save: 'Speichern',
     delete: 'Löschen',
+    delete_permanently: 'Dadurch wird {0} dauerhaft gelöscht',
+    cannot_undo: 'Dies kann nicht rückgängig gemacht werden.',
+    details: 'Details',
+    //Classic About (the thanks and the community text are msg.modern.settings.thanks and community_hint)
+    about: {
+      title: 'Epic Cash Desktop-Wallet — {0}',
+      source: 'Quellcode auf GitHub:',
+      thanks: 'Danke:',
+      community: 'Epic Cash Community:',
+    },
     edit: 'Bearbeiten',
     welcome: 'Willkommen bei EPIC Wallet',
     back: 'Zurück',
@@ -54,6 +64,7 @@ const messages = {
     node_server_external: 'Externer Netzwerkknoten',
     node_server_address: 'Netzwerkknoten-Adresse',
     copy_to_clipboard: 'In Zwischenablage kopiert!',
+    copy_title: 'In die Zwischenablage kopieren',
     placeholder_search: 'Suche...',
     refresh: 'Aktualisieren',
     page_of: 'Seite {0} von {1}',
@@ -321,6 +332,7 @@ const messages = {
       listener_starting: 'Wallet-Empfänger wird gestartet …',
       loading_wallet_data: 'Wird geladen …',
       background_process: 'Bitte schließen Sie alle Prozesse, bevor Sie fortfahren.',
+      process_line: 'ID: {0} / Prozessname: {1}',
       walletonline: 'Ihre Wallet ist online',
       walletoffline: 'Ihre Wallet ist offline.',
     },
@@ -357,6 +369,8 @@ const messages = {
       NotEnough: 'Nicht genug Guthaben',
       saveMsg: 'Erstellte Transaktionsdatei speichern',
       CreateFailed: 'Neue Transaktionsdatei konnte nicht erstellt werden',
+      saved: 'Transaktionsdatei gespeichert',
+      cancelled: 'Transaktion abgebrochen.',
     },
     httpSend: {
       sendAmount: 'Zu sendender Betrag',
@@ -371,6 +385,7 @@ const messages = {
       TxCreateFailed: 'Transaktion erstellen fehlgeschlagen',
       salteVersion: 'Slate-Datei Version',
       salteVersionHelp: 'Wenn Sie EPIC nicht senden konnten, versuchen Sie, die Version der Slate-Datei zu ändern und senden Sie sie erneut.',
+      message_placeholder: 'Nachricht (max. 256 Zeichen)',
     },
     receive: {
       dropMsg: 'Transaktionsdatei zum Empfangen hier ablegen oder zum Hochladen hier anklicken',
@@ -421,6 +436,8 @@ const messages = {
       epicbox_checking_old: 'Der alte Server {0} wird auf Zahlungen an Ihre alte Adresse geprüft …',
       epicbox_listener_off: 'Epicbox-Empfänger aus',
       check_port_open_done: 'Erneute Prüfung abgeschlossen!',
+      port_open: 'Der Port ist aus dem Internet erreichbar',
+      port_closed: 'Der Port ist aus dem Internet nicht erreichbar',
       listener_stopped: 'Wallet-Empfänger angehalten',
     },
     check: {

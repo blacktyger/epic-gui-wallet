@@ -334,7 +334,9 @@
           const recovered = await this.$walletService.recover(this.seeds.join(' '), password, this.network, {label: this.adding ? this.label.trim() : ''});
           console.log('[restore] ' + (recovered && recovered.success ? 'wallet restored' : 'failed') + ' +' + Math.round(performance.now() - started) + ' ms');
           if(!recovered || !recovered.success || !recovered.wallet){
-            this.$toast.error(recovered && recovered.msg ? String(recovered.msg.message || recovered.msg) : this.$t('msg.wallets.restore_failed'), {duration:false});
+            const detail = recovered && recovered.msg ? String(recovered.msg.message || recovered.msg) : '';
+            //epic-wallet's own words (preload execRecover) in the app's language; other errors after "could not be restored"
+            this.$toast.error(/Recovery word phrase is invalid/i.test(detail) ? this.$t('msg.wallets.phrase_invalid') : this.$t('msg.wallets.restore_failed') + (detail ? ' ' + detail : ''), {duration:false});
             return;
           }
           await clearStaleUser(this.$userService, recovered.wallet.id);

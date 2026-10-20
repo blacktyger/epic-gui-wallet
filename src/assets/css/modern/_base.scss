@@ -154,10 +154,12 @@ button.e-svc:hover { background: var(--hover); }
 .e-svc.e-is-risk .e-icon { color: var(--risk); }
 .e-svc.e-is-busy .e-icon { color: var(--accent-text); animation: e-spin 1.2s linear infinite; }
 
+/* the name gets what the avatar and the two buttons leave: "Portfel 2" fits at the 224px sidebar */
 .e-account {
-  display: flex; align-items: center; gap: var(--sp-3);
-  padding: var(--sp-2); border-radius: var(--r-sm);
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-1); border-radius: var(--r-sm);
 }
+.e-account .e-icon-btn.e-sm { width: 32px; height: 32px; flex: none; }
 .e-avatar {
   display: grid; place-items: center; flex: none;
   width: 32px; height: 32px; border-radius: var(--r-sm);

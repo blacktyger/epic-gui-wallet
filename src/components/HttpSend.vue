@@ -40,7 +40,7 @@
 
             <div class="field">
               <div class="control">
-                <textarea maxlength="256" class="textarea" v-model="message" placeholder="Message (max. 256 chars)" ></textarea>
+                <textarea maxlength="256" class="textarea" v-model="message" :placeholder="$t('msg.httpSend.message_placeholder')" ></textarea>
               </div>
             </div>
 
@@ -278,7 +278,7 @@ export default {
 
               });
 
-              this.$toast.success('Transaction file saved');
+              this.$toast.success(this.$t('msg.fileSend.saved'));
               this.emitter.emit('app.update');
 
 
@@ -290,7 +290,7 @@ export default {
             }
 
           }else{
-            this.$toast.error('Transaction cancelled.');
+            this.$toast.error(this.$t('msg.fileSend.cancelled'));
           }
         }else if(res && res.result.error){
           this.$toast.error(res.result.error.message);

@@ -113,6 +113,7 @@ export default {
     create_lead: 'Hasło odblokowuje ten portfel na tym komputerze. Nie pozwala odzyskać monet; robi to fraza odzyskiwania z następnego kroku.',
     create_failed: 'Nie udało się utworzyć portfela.',
     restore_failed: 'Nie udało się przywrócić portfela.',
+    phrase_invalid: 'Fraza odzyskiwania jest nieprawidłowa. Sprawdź słowa i ich kolejność.',
     restore_password: 'Ustaw hasło, które odblokowuje ten portfel na tym komputerze.',
     stage_restore: 'Przywracanie portfela',
     open_my_wallet: 'Otwórz mój portfel',

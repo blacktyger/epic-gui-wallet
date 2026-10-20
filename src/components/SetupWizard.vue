@@ -182,6 +182,7 @@
   import { useRouter } from '@/router';
   import { useRoute } from 'vue-router';
   import { useStore } from '@/store';
+  import { labelShown } from '@/components/wallets';
   //import "vue3-video-play/dist/style.css";
   //import { videoPlay } from "vue3-video-play";
 
@@ -268,7 +269,7 @@
       if(!nodeInternal){
         this.nodeserverField.input = config['check_node_api_http_addr'] ? config['check_node_api_http_addr'] : '';
       }
-      this.textField.input = wallet.label || '';
+      this.textField.input = labelShown(wallet.label);
 
     },
     methods: {

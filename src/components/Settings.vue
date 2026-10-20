@@ -443,9 +443,10 @@ import { formatBytes, formatDate } from "@/components/wallets";
           /*todo simple node restart user update wallet restart here*/
           if(updated){
             this.store.commit('nodeType', nodeType);
+            //the language first: the toasts below and the node's "online" one come in the language just chosen
+            this.emitter.emit('app.selectLocale', form.locale);
             this.$toast.success(this.$t("msg.settings.settings_saved"));
             this.emitter.emit('app.nodeStart');
-            this.emitter.emit('app.selectLocale', form.locale);
             //a new Epicbox server: our listener moves to it (App.vue, walletService.applyEpicboxChange)
             if(this.$walletService.token){
               this.emitter.emit('app.applyEpicbox', {saved: savedEpicbox});
