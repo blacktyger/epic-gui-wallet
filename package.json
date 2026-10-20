@@ -11,6 +11,8 @@
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
     "test": "node --test --no-warnings=MODULE_TYPELESS_PACKAGE_JSON \"tests/**/*.test.js\"",
+    "test:gate": "bash scripts/test-gate.sh",
+    "test:gate:quick": "bash scripts/test-gate.sh --quick",
     "electron:build": "vue-cli-service electron:build",
     "electron:publish": "vue-cli-service electron:build --publish=always",
     "electron:serve": "vue-cli-service electron:serve",

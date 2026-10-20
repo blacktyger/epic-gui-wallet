@@ -27,7 +27,9 @@ for the user that builds.
 
 1. Clones the repo (`--no-checkout`) into `~/epic-gui-releases/.work/…` and checks out the
    commit. The version comes from that commit's `package.json`.
-2. `npm ci`, `vue-cli-service lint --no-fix`, `npm test`. Any failure stops the run.
+2. `npm ci`, then the pre-build gate `scripts/test-gate.sh` (= `npm run test:gate`: lint, unit tests, the
+   IPC/preload contract, i18n, component tests, the e2e smoke in a network-less sandbox; see docs/TESTING.md).
+   Any failure stops the run before anything is built.
 3. Linux: `vue-cli-service electron:build --linux AppImage --publish never`. The `afterPack` hook
    (`scripts/afterPack.js`) strips the helper binaries in `resources/bin/linux`.
 4. Windows: writes `build.cmd` to `C:\EpicRig\release-<version>-<short sha>\`, then runs it over
