@@ -517,10 +517,12 @@
       async logoutApp(opts = {}){
         //done is called once, also when closing failed part way (the add flows wait for it)
         let doneCalled = false;
+        //the caller's own callback: opts is replaced below, and opts.done is then this done
+        const callerDone = opts.done;
         const done = () => {
           if (doneCalled) return;
           doneCalled = true;
-          if (typeof opts.done === 'function') opts.done();
+          if (typeof callerDone === 'function') callerDone();
         };
         opts = { ...opts, done };
         //Menu › Lock wallet waits for this one instead of starting a second (Ctrl+L can reach both)
