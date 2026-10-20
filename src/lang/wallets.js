@@ -76,6 +76,7 @@ export default {
 
   //opening a wallet folder
   folder_noseed: 'No wallet in {0}: it has no wallet_data/wallet.seed.',
+  folder_inuse: 'Another Epic program is using this folder. Close it and try again.',
   folder_listed: 'This wallet is already in the list.',
   folder_network: 'Which network is this wallet on?',
   settings_readonly: 'The settings file can’t be read, so no wallet can be added.',

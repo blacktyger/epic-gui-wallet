@@ -220,7 +220,8 @@
           if (this.result.failed.length) {
             this.failed = this.result.failed.map(f => {
               const i = this.wallets.findIndex(w => w.key === f.key);
-              return { key: f.key, reason: f.reason || '?', name: i >= 0 ? this.rowName(this.wallets[i], i) : f.key };
+              const reason = f.reason === 'inuse' ? this.$t('msg.wallets.folder_inuse') : f.reason || '?';
+              return { key: f.key, reason, name: i >= 0 ? this.rowName(this.wallets[i], i) : f.key };
             });
             return;
           }

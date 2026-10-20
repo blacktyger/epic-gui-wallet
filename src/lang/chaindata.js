@@ -24,6 +24,8 @@ export default {
   offer_others: 'Other copies were found too ({0}). This one was updated most recently.',
   offer_question: 'Use it? That saves downloading and syncing the whole blockchain.',
   offer_older_app: 'An older Epic Wallet that uses this folder may need to sync again after this. Your coins are not affected.',
+  //another node is running on the folder offered: Use this data is off
+  offer_in_use: 'Another Epic program is using this folder. Close it, then press Save again to use this data.',
   offer_use: 'Use this data',
   offer_fresh: 'Download fresh',
   offer_not_saved: 'Your choice could not be saved. The built-in node will download the blockchain.',

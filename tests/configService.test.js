@@ -42,13 +42,15 @@ function setup({ P = path.posix, root = '/home/jane/.epic-gui', resourcePath = '
   const events = [];
   const emitter = { emit: (name, data) => events.push([name, data]) };
   const killed = [];
+  const folderLock = { state: 'free', calls: [] };
   const nodeChildProcess = {
     owned: [],
     ownedProcesses: async (roles, opts) => { nodeChildProcess.lastScan = { roles, opts }; return nodeChildProcess.owned; },
     stopPids: async (pids) => { killed.push(...pids); return pids.map(() => true); },
   };
-  const cs = new ConfigService(emitter, { fs, pathMod: P, paths, resourcePath, platform, arch: 'x64', nodeChildProcess, isPortReachable: async () => false });
-  return { cs, fs, P, root, events, nodeChildProcess, killed };
+  const cs = new ConfigService(emitter, { fs, pathMod: P, paths, resourcePath, platform, arch: 'x64', nodeChildProcess, isPortReachable: async () => false,
+    folderLock: async (kind, dir) => { folderLock.calls.push([kind, dir]); return { state: folderLock.state }; } });
+  return { cs, fs, P, root, events, nodeChildProcess, killed, folderLock };
 }
 
 /* key = "value" of a rendered toml */
@@ -208,25 +210,25 @@ test('an imported wallet (the importer calls newWalletDirs + registerWallet): no
   assert.throws(() => cs.registerWallet({ ...d, dataDir: old, network: 'mainnet' }), /exists/);
 });
 
-test('openExistingWallet: seed needed, network from the arg, folder name or its toml, no duplicates', () => {
+test('openExistingWallet: seed needed, network from the arg, folder name or its toml, no duplicates', async () => {
   const { cs, fs } = setup();
-  assert.deepEqual(cs.openExistingWallet('/nowhere'), { ok: false, reason: 'noseed' });
-  assert.deepEqual(cs.openExistingWallet('relative/dir'), { ok: false, reason: 'noseed' });
+  assert.deepEqual(await cs.openExistingWallet('/nowhere'), { ok: false, reason: 'noseed' });
+  assert.deepEqual(await cs.openExistingWallet('relative/dir'), { ok: false, reason: 'noseed' });
   fs.put('/media/usb/backup/floo/wallet_data/wallet.seed');
-  const r = cs.openExistingWallet('/media/usb/backup/floo');
+  const r = await cs.openExistingWallet('/media/usb/backup/floo');
   assert.equal(r.ok, true);
   assert.equal(r.wallet.network, 'floonet');
   assert.equal(r.wallet.origin, 'opened');
   assert.equal(r.wallet.dataDir, '/media/usb/backup/floo');
-  assert.deepEqual(cs.openExistingWallet('/media/usb/backup/floo/'), { ok: false, reason: 'listed' });
+  assert.deepEqual(await cs.openExistingWallet('/media/usb/backup/floo/'), { ok: false, reason: 'listed' });
   fs.put('/media/usb/mine/wallet_data/wallet.seed');
-  assert.deepEqual(cs.openExistingWallet('/media/usb/mine'), { ok: false, reason: 'network' });
+  assert.deepEqual(await cs.openExistingWallet('/media/usb/mine'), { ok: false, reason: 'network' });
   //no folder made for a wallet that wasn't listed
   assert.equal(fs.existsSync(cs.layout.walletDir('w2')), false);
   fs.put('/media/usb/mine/epic-wallet.toml', '[wallet]\nchain_type = "UserTesting"\n');
-  assert.equal(cs.openExistingWallet('/media/usb/mine').wallet.network, 'usernet');
+  assert.equal((await cs.openExistingWallet('/media/usb/mine')).wallet.network, 'usernet');
   fs.put('/media/usb/third/wallet_data/wallet.seed');
-  assert.equal(cs.openExistingWallet('/media/usb/third', 'mainnet').wallet.network, 'mainnet');
+  assert.equal((await cs.openExistingWallet('/media/usb/third', 'mainnet')).wallet.network, 'mainnet');
   assert.deepEqual(cs.settings.wallets().map(w => w.id), ['w1', 'w2', 'w3']);
 });
 
@@ -305,7 +307,22 @@ test('S1: Windows: an older app\'s folder in any case', () => {
   assert.deepEqual(cs.setRoot('D:\\Epic'), { ok: true });
 });
 
-test('a broken settings file: nothing is registered or written', () => {
+test('openExistingWallet: another Epic program using the folder is refused, nothing registered; unknown opens', async () => {
+  const { cs, fs, folderLock } = setup();
+  fs.mkdirSync('/media/usb/main/wallet_data', { recursive: true });
+  fs.writeFileSync('/media/usb/main/wallet_data/wallet.seed', 'x');
+  folderLock.state = 'locked';
+  assert.deepEqual(await cs.openExistingWallet('/media/usb/main', 'mainnet'), { ok: false, reason: 'inuse' });
+  assert.deepEqual(folderLock.calls, [['wallet', '/media/usb/main']]);
+  assert.equal(cs.settings.wallets().length, 0);
+  assert.ok(!fs.existsSync(cs.layout.walletDir('w1')), 'no config folder made');
+  folderLock.state = 'unknown';
+  const r = await cs.openExistingWallet('/media/usb/main', 'mainnet');
+  assert.equal(r.ok, true);
+  assert.equal(r.wallet.dataDir, '/media/usb/main');
+});
+
+test('a broken settings file: nothing is registered or written', async () => {
   const P = path.posix;
   const fs0 = fakeFs(P);
   const { cs, fs } = (() => {
@@ -317,7 +334,7 @@ test('a broken settings file: nothing is registered or written', () => {
   assert.equal(cs.settings.readOnly, true);
   assert.throws(() => cs.newWalletDirs('mainnet'), /not readable/);
   assert.throws(() => cs.registerWallet({ id: 'w1', network: 'mainnet', configDir: '/a', dataDir: '/a' }), /not readable/);
-  assert.deepEqual(cs.openExistingWallet('/x'), { ok: false, reason: 'readonly' });
+  assert.deepEqual(await cs.openExistingWallet('/x'), { ok: false, reason: 'readonly' });
   assert.deepEqual(cs.setRoot('/media/x'), { ok: false, reason: 'notallowed' });
   assert.equal(fs.readFileSync(cs.paths.settingsFile), '{ broken');
   assert.ok(fs0);
@@ -494,14 +511,14 @@ test('nits: <root>/wallets and each wallet folder are made for this user only (0
   assert.deepEqual(modes, [[root + '/wallets', 0o700], [d.configDir, 0o700]]);
 });
 
-test('nits: Windows: a folder already listed in another case is "listed"', () => {
+test('nits: Windows: a folder already listed in another case is "listed"', async () => {
   const W = path.win32;
   const { cs, fs } = setup({ P: W, root: 'C:\\Users\\Jane\\AppData\\Local\\EpicCash\\Wallet', resourcePath: 'C:\\Epic\\resources', platform: 'win' });
   fs.put('D:\\Backup\\Main\\wallet_data\\wallet.seed');
-  assert.equal(cs.openExistingWallet('D:\\Backup\\Main', 'mainnet').ok, true);
+  assert.equal((await cs.openExistingWallet('D:\\Backup\\Main', 'mainnet')).ok, true);
   //the fake fs is case-sensitive, Windows' is not: the same seed under the other spelling
   fs.put('d:\\backup\\MAIN\\wallet_data\\wallet.seed');
-  assert.deepEqual(cs.openExistingWallet('d:\\backup\\MAIN', 'mainnet'), { ok: false, reason: 'listed' });
+  assert.deepEqual(await cs.openExistingWallet('d:\\backup\\MAIN', 'mainnet'), { ok: false, reason: 'listed' });
 });
 
 test('S1: ~/.epic-gui is not "inside ~/.epic": whole path segments are compared (POSIX and Windows)', () => {

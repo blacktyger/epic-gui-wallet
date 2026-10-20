@@ -342,6 +342,7 @@ export const walletFolder = {
       switch (reason) {
         case 'noseed': return this.$t('msg.wallets.folder_noseed', [dir]);
         case 'listed': return this.$t('msg.wallets.folder_listed');
+        case 'inuse': return this.$t('msg.wallets.folder_inuse');
         case 'network': return this.$t('msg.wallets.folder_network');
         case 'readonly': return this.$t('msg.wallets.settings_readonly');
         default: return this.$t('msg.wallets.folder_failed', [reason || '?']);

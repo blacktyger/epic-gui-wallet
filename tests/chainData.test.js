@@ -116,8 +116,8 @@ test('pickOffer: the most recently written usable chain of the network, larger a
     c('/a', 'mainnet', 100, 5 * big), c('/b', 'mainnet', 300, 2 * big), c('/c', 'mainnet', 300, 3 * big),
     c('/f', 'floonet', 900, 10, 10), c('/tiny', 'mainnet', 999, 10, 10),
   ];
-  assert.deepEqual(pickOffer(chains, 'mainnet'), { chain: chains[2], others: 2 });
-  assert.deepEqual(pickOffer(chains, 'floonet'), { chain: chains[3], others: 0 });
+  assert.deepEqual(pickOffer(chains, 'mainnet'), { chain: chains[2], others: 2, inUse: false });
+  assert.deepEqual(pickOffer(chains, 'floonet'), { chain: chains[3], others: 0, inUse: false });
   assert.equal(pickOffer(chains, 'usernet'), null);
   assert.equal(pickOffer([], 'mainnet'), null);
   assert.equal(pickOffer(undefined, 'mainnet'), null);
@@ -234,4 +234,14 @@ test('forgetChainDir: back to the own folder, declined so not offered again; a f
   assert.equal(again.forgetChainDir('floonet'), true);
   assert.equal(again.nodeChainDir('floonet'), '');
   assert.equal(again.chainOffer('floonet').dir, '/old/floo/chain_data');
+});
+
+test('pickOffer: a chain another node is running on (inUse locked) is passed over; only such ones: shown, inUse', () => {
+  const big = MIN_MAINNET_HEADERS;
+  const c = (dir, modified, inUse) => ({ dir, network: 'mainnet', headerBytes: big, bytes: 1, modified, inUse });
+  const newest = c('/a', 300, 'locked'), older = c('/b', 200, 'unknown'), oldest = c('/c', 100, 'free');
+  assert.deepEqual(pickOffer([oldest, newest, older], 'mainnet'), { chain: older, others: 1, inUse: false });
+  assert.deepEqual(pickOffer([newest, c('/d', 50, 'locked')], 'mainnet'), { chain: newest, others: 1, inUse: true });
+  //not checked (no inUse): offered as before
+  assert.equal(pickOffer([c('/e', 1)], 'mainnet').inUse, false);
 });

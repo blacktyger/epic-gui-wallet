@@ -70,11 +70,15 @@ export function entryKind(st) {
  *   openId          the wallet open in this window ('' when none)
  *   running         our epic processes that use this wallet (ownedProcesses), [] when none
  *   folderMissing   its data folder is gone (Unlock): 'everything' is not offered
+ *   lock            shared/folderLock.js check('wallet', dataDir): {state: 'free' | 'locked' | 'unknown'};
+ *                   another program (an older GUI, the CLI) holds its database or chain. Only
+ *                   'free' allows deleting files; 'unknown' (the check couldn't run) refuses too.
+ *                   Omitted (null): not checked, for the 'list' plan, which deletes nothing
  * → { canList, canAppFiles, canEverything, reasons: {list, appFiles, everything}: {key, path} | null,
  *     appFiles: [exact paths], dir, dirReal, seedFile }
- * reason keys: open, running, notours, shared, legacy, imported, separate, chain, missing
+ * reason keys: open, running, inuse, lockunknown, notours, shared, legacy, imported, separate, chain, missing
  */
-export function planRemoval({ wallet, wallets = [], invalidWallets = [], paths = {}, chainDirs = [], openId = '', running = [], folderMissing = false, fs, pathMod }) {
+export function planRemoval({ wallet, wallets = [], invalidWallets = [], paths = {}, chainDirs = [], openId = '', running = [], lock = null, folderMissing = false, fs, pathMod }) {
   const { real, within, overlaps, norm } = comparer(fs, pathMod);
   const plan = {
     canList: !!wallet && wallet.id !== openId,
@@ -109,6 +113,9 @@ export function planRemoval({ wallet, wallets = [], invalidWallets = [], paths =
     //an imported or opened wallet's data stays where it is: its folder must not overlap ours
     if (dataDir && real(dataDir) !== dir && overlaps(real(dataDir), dir)) return fail('separate', dataDir);
     if (dataDir && real(dataDir) === dir && !['created', 'restored'].includes(wallet.origin)) return fail('separate', dataDir);
+    //last: the reason the user can do something about once the others are fine
+    if (lock && lock.state === 'locked') return fail('inuse', dataDir);
+    if (lock && lock.state !== 'free') return fail('lockunknown', dataDir);
     return null;
   })();
 

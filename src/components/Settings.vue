@@ -116,12 +116,15 @@
             <template v-if="chainOfferDate"><dt>{{ $t('msg.chaindata.offer_modified') }}</dt><dd>{{ chainOfferDate }}</dd></template>
           </dl>
           <p v-if="chainOffer.others">{{ $t('msg.chaindata.offer_others', [chainOffer.others]) }}</p>
-          <p><strong>{{ $t('msg.chaindata.offer_question') }}</strong></p>
+          <!-- another node is running on it (shared/folderLock.js): not usable now, asked again later -->
+          <p v-if="chainOffer.inUse" class="notification is-warning is-light" role="status"><strong>{{ $t('msg.chaindata.offer_in_use') }}</strong></p>
+          <p v-else><strong>{{ $t('msg.chaindata.offer_question') }}</strong></p>
           <p class="is-size-7 has-text-grey">{{ $t('msg.chaindata.offer_older_app') }}</p>
         </section>
         <footer class="modal-card-foot chain-offer-foot">
           <button type="button" class="button" @click="answerChainOffer('declined')">{{ $t('msg.chaindata.offer_fresh') }}</button>
-          <button ref="chainOfferUse" type="button" class="button is-primary" @click="answerChainOffer('used')">{{ $t('msg.chaindata.offer_use') }}</button>
+          <button v-if="chainOffer.inUse" ref="chainOfferClose" type="button" class="button" @click="answerChainOffer('cancel')">{{ $t('msg.close') }}</button>
+          <button ref="chainOfferUse" type="button" class="button is-primary" :disabled="chainOffer.inUse" @click="answerChainOffer('used')">{{ $t('msg.chaindata.offer_use') }}</button>
         </footer>
       </div>
     </dialog>
@@ -308,10 +311,14 @@ import { formatBytes, formatDate } from "@/components/wallets";
           cs.settings.setChainOffer(network, offerRecord('none'));
           return true;
         }
+        //the folder offered is in use by another node: 'used' can't be the answer (the button is off)
         const answer = await new Promise((resolve) => {
           this.chainOfferResolve = resolve;
           this.chainOffer = offer;
-          this.$nextTick(() => { if (this.$refs.chainOfferUse) this.$refs.chainOfferUse.focus(); });
+          this.$nextTick(() => {
+            const b = offer.inUse ? this.$refs.chainOfferClose : this.$refs.chainOfferUse;
+            if (b) b.focus();
+          });
         });
         this.chainOfferResolve = null;
         if (this.leaving) return false;
@@ -329,6 +336,7 @@ import { formatBytes, formatDate } from "@/components/wallets";
         return true;
       },
       answerChainOffer(answer){
+        if (answer === 'used' && this.chainOffer && this.chainOffer.inUse) return;
         if (this.chainOfferResolve) this.chainOfferResolve(answer);
       },
       onChainOfferBackdrop(e){
