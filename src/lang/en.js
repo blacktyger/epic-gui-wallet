@@ -5,6 +5,7 @@ import wallets from './wallets.js';
 import removal from './removal.js';
 import chaindata from './chaindata.js';
 import mynodes from './mynodes.js';
+import contacts from './contacts.js';
 
 const messages = {
   msg: {
@@ -20,6 +21,8 @@ const messages = {
     chaindata,
     //the node address field's live check and My nodes, see lang/mynodes.js
     mynodes,
+    //the redesigned Contacts and the Send screen's contact picker (6.1.6), see lang/contacts.js
+    contacts,
 
     title: '',
     password: 'Password',

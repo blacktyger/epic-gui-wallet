@@ -55,7 +55,7 @@ H.runCase('checks', async (t) => {
   await t.step('Contacts: open', () => U.nav(w, ui, U.PAGES[ui].find((p) => p[1] === '/addressBook')), { fatal: true });
   await t.step('Contacts: an empty contact is refused', async () => {
     const seen = await U.addContact(w, ui, {});
-    if (!seen.some((x) => /Give the contact a name/.test(x))) throw new Error('toasts: [' + seen.join(' | ') + ']');
+    if (!seen.some((x) => /Give the contact a name/.test(x))) throw new Error('messages: [' + seen.join(' | ') + ']');
     const n = await U.contactNames(w, ui);
     if (n.length) throw new Error('listed anyway: ' + n.join(', '));
     await U.cancelContact(w, ui);
@@ -63,7 +63,7 @@ H.runCase('checks', async (t) => {
   });
   await t.step('Contacts: a bad Epicbox address is refused', async () => {
     const seen = await U.addContact(w, ui, { name: 'Bad Bob', epicbox: 'not an address!!' });
-    if (!seen.some((x) => /not a valid Epicbox address/.test(x))) throw new Error('toasts: [' + seen.join(' | ') + ']');
+    if (!seen.some((x) => /not a (valid|complete) Epicbox address/.test(x))) throw new Error('messages: [' + seen.join(' | ') + ']');
     if ((await U.contactNames(w, ui)).includes('Bad Bob')) throw new Error('"Bad Bob" was saved');
     await U.cancelContact(w, ui);
     return seen.join(' | ');

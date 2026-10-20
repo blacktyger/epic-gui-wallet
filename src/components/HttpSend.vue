@@ -12,12 +12,12 @@
                 <AddressField @keyup="keyEvent" ref="addressField" />
               </div>
               <div class="control">
-                  <router-link class="button has-icon" to="/addressBook">
-                    <span class="icon"><mdicon name="plus" /></span>
-                  </router-link>
-
+                  <button ref="pickerBtn" type="button" class="button has-icon" :title="$t('msg.contacts.picker_open')" :aria-label="$t('msg.contacts.picker_open')" aria-haspopup="dialog" @click="openPicker">
+                    <span class="icon"><mdicon name="account-box-multiple-outline" /></span>
+                  </button>
               </div>
             </div>
+            <ContactPickerModal :open="pickerOpen" :contacts="pickerContacts" :avatars="pickerAvatars" :loading="pickerLoading" @pick="pickContact" @close="closePicker" />
 
             <div v-if="foundAddress.length" class="control is-expanded addresssearch" style="margin-top:-1.2rem">
               <div class="dropdown" v-bind:class="{'is-active': foundAddress.length}">
@@ -91,12 +91,51 @@ import AmountField from "@/components/form/amountField";
 import AddressField from "@/components/form/addressField";
 import useFormValidation from "@/modules/useFormValidation";
 import { clearSendForm, inputAfterSend, sendMethod, isOnionAddress } from "@/shared/sendForm";
+import { sendableAddresses, sendQuery } from "@/shared/contacts.js";
+import { contactAvatars } from "@/shared/contactAvatars.js";
+import ContactPickerModal from "@/components/ContactPickerModal.vue";
 
 export default {
   name: "http-send",
   components: {
     AmountField,
     AddressField,
+    ContactPickerModal,
+  },
+
+  data(){
+    return {
+      //the contact picker (the person button by the recipient field): open, and what it lists
+      pickerOpen: false,
+      pickerContacts: [],
+      pickerAvatars: {},
+      pickerLoading: false,
+    };
+  },
+
+  /* Contacts › Send opens this screen with ?contact=<id>&use=<field>: that contact's address is filled in */
+  async mounted(){
+    const q = sendQuery(this.$route && this.$route.query);
+    if(!q) return;
+    let row = null;
+    try{
+      const rows = await this.$addressBookService.getAddressById(q.id);
+      row = rows && rows[0];
+    }catch(e){
+      console.error('contact not read', e);
+    }
+    //only a contact of this wallet
+    if(!row || row.user_id != this.store.state.user.id){
+      this.$toast.error(this.$t('msg.contacts.send_missing'));
+      return;
+    }
+    //something typed or picked meanwhile wins
+    if(this.addressField && String(this.addressField.input || '').trim()) return;
+    if(!this.pickContact(row, q.field)){
+      this.$toast.error(this.$t('msg.contacts.err_address'));
+      return;
+    }
+    this.loadAvatars();
   },
 
 
@@ -182,6 +221,54 @@ export default {
   },
   methods: {
 
+    /* the picker (or Contacts › Send) chose a contact: its address (field, or the first it has: Epicbox
+       before HTTP) goes into the recipient field, with the contact's send method. false: nothing to use */
+    pickContact(contact, field){
+      const ok = sendableAddresses(contact);
+      const use = (ok.find(a => a.field == field) || ok[0] || {}).field;
+      if(!use || !this.addressField) return false;
+      this.addressSelected = false;
+      this.fillAddressField(contact, use);
+      this.pickerOpen = false;
+      if(this.addressField.errors && this.addressField.errors.address && !isOnionAddress(this.addressField.input)){
+        this.addressField.errors.address = null;
+      }
+      //next: the amount
+      this.$nextTick(() => {
+        const amount = typeof document != 'undefined' && document.querySelector('input[inputmode=decimal]');
+        if (amount && amount.focus) amount.focus();
+      });
+      return true;
+    },
+    async openPicker(){
+      this.pickerOpen = true;
+      this.pickerLoading = true;
+      try{
+        this.pickerContacts = await this.$addressBookService.getAddress(this.store.state.user.id) || [];
+      }catch(e){
+        console.error('contacts not read', e);
+        this.pickerContacts = [];
+      }
+      this.pickerLoading = false;
+      await this.loadAvatars();
+    },
+    /* the wallet's contact pictures (the picker's rows, the chosen contact under the field) */
+    async loadAvatars(){
+      try{
+        const map = await (this.$contactAvatars || contactAvatars()).forUser(this.store.state.user.id);
+        const out = {};
+        for(const [k, v] of map) out[k] = v;
+        this.pickerAvatars = out;
+      }catch(e){
+        console.error('contact pictures not read', e);
+      }
+    },
+    /* the picker closed without a choice: back to the recipient field */
+    closePicker(){
+      this.pickerOpen = false;
+      this.$nextTick(() => { if (this.$refs.pickerBtn && this.$refs.pickerBtn.focus) this.$refs.pickerBtn.focus(); });
+    },
+
     fillAddressField(address, type){
       this.address = address;
       if(!this.addressSelected){
@@ -204,6 +291,8 @@ export default {
         if(value != ''){
 
           let found = await this.$addressBookService.findAddress(this.store.state.user.id, value);
+          //a contact picked while the search was on its way: no list over it
+          if(this.addressSelected) return;
           //only entries with an address that can be sent to (Epicbox or HTTP)
           this.foundAddress = found.filter(a => a.externalOne || a.externalTwo);
         }else{

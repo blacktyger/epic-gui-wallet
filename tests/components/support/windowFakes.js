@@ -18,6 +18,8 @@ export function installWindowFakes() {
   window.api = {
     showSaveDialog: vi.fn(async () => ({ canceled: true })),
     nodeDirectory: vi.fn(async () => null),
+    //the system's locale (Transaction.vue's dates)
+    locale: vi.fn(async () => 'en-GB'),
   };
   window.nodeChildProcess = {
     clearSessionPassword: vi.fn(async () => {}),

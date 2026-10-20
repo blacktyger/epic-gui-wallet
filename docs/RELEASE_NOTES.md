@@ -6,6 +6,19 @@
 - My nodes: "Add to my nodes" next to the address field saves the address with a label of your own (optional). The dialog checks the address too, but you can save a node that is offline right now. The same node can't be added twice, however it's written (a trailing "/", capital letters, the default port). Saved nodes are listed under the field with their live status (state, at tip, ms), checked when you open the page and every few minutes while it stays open. Each one has Use (puts the address in the field; Save applies it), Edit and Remove (asks first, in the row).
   - The list is kept in the app's settings (settings.json, "myNodes"), one list per network, for all your wallets: a node serves every wallet on its network. Older 6.1 versions keep the list untouched if you go back.
   - Privacy: only addresses you typed or saved are asked, through the same path as the app's other node checks, with a timeout, over http(s) only. The node's API secret is never sent by these checks.
+## Next version (branch feat/contacts)
+
+- Contacts, redesigned (feedback #38; the BT Labs Theme interface — Classic keeps its contacts as in 6.1.5, with the Send picker):
+  - Click a contact (or press Enter on it) and Send opens with their address filled in: the Epicbox address, or the HTTP one when that is all they have.
+  - Send: a Contacts button next to the recipient field opens a searchable list of your contacts. Choosing a name fills in their address and takes you to the amount. A contact with both kinds of address has a small "HTTP" button for the other one. The address is still checked as if you had typed it, so a Tor address is refused.
+  - The list looks like a messaging app's: a picture or initials, the name, a short address (start…end of the key and the server), the kind of address, and when you last sent to or received from them. Search as you type; sort by name or by most recent.
+  - Each contact has a small "…" menu with Details, Send via HTTP (when it also has an HTTP address), Copy Epicbox address / Copy HTTP address, Edit and Delete (it asks first, quietly). It works with the keyboard (Enter or ↓ opens it, ↑/↓ move, Esc closes it) and with screen readers.
+  - Details: each address with a Copy button (it says "Copied"), the note, Edit, Delete, and the transactions with this contact (sends you made to them from Send).
+  - Country and city are gone from contacts: not shown, searched or asked for. What older versions stored there stays in the contact, untouched.
+  - The form checks each address as you leave the field and says what is wrong under it (an incomplete Epicbox address, a non-HTTP address, a Tor address), instead of a message that disappears.
+  - Pictures: the initials sit on a colour taken from the name, the same every time, readable in both themes. You can also pick a photo (PNG, JPEG, WebP or GIF, up to 10 MB): the app makes a small 128-pixel copy, which drops the photo's hidden details (location, camera, date), and keeps only that copy, separately from your contacts. SVG files and pictures from the internet are not accepted.
+  - On a narrow window or with large text, the list and the contact take turns, with an "All contacts" button to go back.
+  - Nothing changes in how contacts are stored: older versions still open them, and the hidden fields of very old contacts (a Tor address, payment proof settings, country and city) are kept.
 
 ## 6.1.5
 
