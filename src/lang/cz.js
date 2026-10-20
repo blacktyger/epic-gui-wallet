@@ -41,6 +41,16 @@ const messages = {
     confirm_action: 'Potvrdit akci',
     save: 'Uložit',
     delete: 'Smazat',
+    delete_permanently: 'Tímto trvale smažete: {0}',
+    cannot_undo: 'Tuto akci nelze vrátit zpět.',
+    details: 'Podrobnosti',
+    //Classic About (the thanks and the community text are msg.modern.settings.thanks and community_hint)
+    about: {
+      title: 'Desktopová peněženka Epic Cash — {0}',
+      source: 'Zdrojový kód na GitHubu:',
+      thanks: 'Poděkování:',
+      community: 'Komunita Epic Cash:',
+    },
     edit: 'Upravit',
     welcome: 'Vítejte v peněžence EPIC',
     back: 'Zpět',
@@ -54,6 +64,7 @@ const messages = {
     node_server_external: 'Externí server uzlu',
     node_server_address: 'Adresa serveru uzlu',
     copy_to_clipboard: 'Zkopírováno do schránky',
+    copy_title: 'Kopírovat do schránky',
     placeholder_search: 'Vyhledat...',
     refresh: 'Obnovit',
     page_of: 'Strana {0} z {1}',
@@ -321,6 +332,7 @@ const messages = {
       listener_starting: 'Spouštění naslouchání peněženky…',
       loading_wallet_data: 'Načítání…',
       background_process: 'Našli jsme nějaké běžící procesy peněženky a uzlů na pozadí. Před spuštěním této aplikace je nejprve zavřete.',
+      process_line: 'ID: {0} / Název procesu: {1}',
       walletonline: 'Vaše peněženka je online',
       walletoffline: 'Vaše peněženka je offline.',
     },
@@ -357,6 +369,8 @@ const messages = {
       NotEnough: 'Nedostatečný zůstatek',
       saveMsg: 'Uložení vytvořeného souboru transakce',
       CreateFailed: 'Vytvoření nového transakčního souboru se nezdařilo',
+      saved: 'Soubor transakce uložen',
+      cancelled: 'Transakce zrušena.',
     },
     httpSend: {
       sendAmount: 'Množství k poslání',
@@ -371,6 +385,7 @@ const messages = {
       TxCreateFailed: 'Vytvoření transakce se nezdařilo',
       salteVersion: 'Verze souboru Slate',
       salteVersionHelp: 'Pokud se vám nepodařilo odeslat EPIC, zkuste změnit verzi souboru Slate a odeslat znovu',
+      message_placeholder: 'Zpráva (max. 256 znaků)',
     },
     receive: {
       dropMsg: 'Přetáhněte sem soubor transakce k přijetí nebo ho kliknutím nahrajte',
@@ -420,6 +435,8 @@ const messages = {
       epicbox_checking_old: 'Kontrola starého serveru {0}, zda tam nečekají platby na vaši starou adresu…',
       epicbox_listener_off: 'Naslouchání Epicboxu je vypnuto',
       check_port_open_done: 'Kontrola dokončena!',
+      port_open: 'Port je dostupný z internetu',
+      port_closed: 'Port není dostupný z internetu',
       listener_stopped: 'Naslouchání peněženky bylo zastaveno',
     },
     check: {

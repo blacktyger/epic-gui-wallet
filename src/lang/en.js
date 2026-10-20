@@ -55,6 +55,16 @@ const messages = {
     confirm_action: 'Confirm action',
     save: 'Save',
     delete: 'Delete',
+    delete_permanently: 'This will permanently delete {0}',
+    cannot_undo: 'This cannot be undone.',
+    details: 'Details',
+    //Classic About (the thanks and the community text are msg.modern.settings.thanks and community_hint)
+    about: {
+      title: 'Epic Cash desktop wallet — {0}',
+      source: 'GitHub source:',
+      thanks: 'Thank you:',
+      community: 'Epic Cash Community:',
+    },
     edit: 'Edit',
     welcome: 'Welcome to EPIC wallet',
     back: 'Back',
@@ -68,6 +78,7 @@ const messages = {
     node_server_external: 'External node server',
     node_server_address: 'Node Server Address',
     copy_to_clipboard: 'Copied to clipboard!',
+    copy_title: 'Copy to clipboard',
     placeholder_search: 'Search...',
     refresh: 'Refresh',
     page_of: 'Page {0} of {1}',
@@ -336,6 +347,7 @@ const messages = {
       listener_starting: 'Starting wallet listener…',
       loading_wallet_data: 'Loading…',
       background_process: 'Please close all processes before continuing.',
+      process_line: 'ID: {0} / Process name: {1}',
       walletonline: 'Your wallet is online',
       walletoffline: 'Your wallet is offline.',
     },
@@ -372,6 +384,8 @@ const messages = {
       NotEnough: 'Not enough balance',
       saveMsg: 'Save transaction file created',
       CreateFailed: 'Failed to create new transaction file',
+      saved: 'Transaction file saved',
+      cancelled: 'Transaction cancelled.',
     },
     httpSend:{
       sendAmount: 'Amount to send',
@@ -385,7 +399,8 @@ const messages = {
       TxResponseFailed: 'Failed to get right respose from receiver',
       TxCreateFailed: 'Create transaction failed',
       salteVersion: 'Slate file version',
-      salteVersionHelp: 'If you failed to send EPIC, try changing the Slate file version then resend'
+      salteVersionHelp: 'If you failed to send EPIC, try changing the Slate file version then resend',
+      message_placeholder: 'Message (max. 256 characters)',
     },
     receive: {
       dropMsg: 'Drop transaction file to receive or click to upload',
@@ -438,6 +453,8 @@ const messages = {
       epicbox_checking_old: 'Checking the old server {0} for payments sent to your old address…',
       epicbox_listener_off: 'Epicbox listener off',
       check_port_open_done: 'Recheck done!',
+      port_open: 'The port is reachable from the internet',
+      port_closed: 'The port is not reachable from the internet',
       listener_stopped: 'Wallet listener stopped',
     },
     check: {

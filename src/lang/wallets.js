@@ -87,6 +87,7 @@ export default {
   create_lead: 'The password unlocks this wallet on this computer. It can’t recover your coins; the recovery phrase on the next step does that.',
   create_failed: 'The wallet could not be created.',
   restore_failed: 'The wallet could not be restored.',
+  phrase_invalid: 'The recovery phrase is not valid. Check the words and their order.',
   restore_password: 'Set the password that unlocks this wallet on this computer.',
   stage_restore: 'Restoring the wallet',
   open_my_wallet: 'Open my wallet',

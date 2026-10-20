@@ -113,6 +113,7 @@ export default {
     create_lead: 'Heslo odemyká tuto peněženku na tomto počítači. Mince s ním obnovit nelze; to umožní obnovovací fráze v dalším kroku.',
     create_failed: 'Peněženku se nepodařilo vytvořit.',
     restore_failed: 'Peněženku se nepodařilo obnovit.',
+    phrase_invalid: 'Obnovovací fráze není platná. Zkontrolujte slova a jejich pořadí.',
     restore_password: 'Nastavte heslo, které bude odemykat tuto peněženku na tomto počítači.',
     stage_restore: 'Obnovování peněženky',
     open_my_wallet: 'Otevřít moji peněženku',

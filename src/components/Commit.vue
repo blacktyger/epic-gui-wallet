@@ -58,7 +58,7 @@
               <tr v-for="(ct, index) in current_commits" :key="ct.commit" @mouseover="(event)=>mouseover(index)" @mouseleave="mouseLeave" style="width:46px;" >
                       <td >
 
-                          <span title="copy to clipboard" v-if="showCopy===index" @click="copy(index)">
+                          <span :title="$t('msg.copy_title')" v-if="showCopy===index" @click="copy(index)">
                               <mdicon name="content-copy" size="18" />
                           </span>
                           <span v-if="copied===index">

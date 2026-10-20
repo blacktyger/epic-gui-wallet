@@ -85,7 +85,7 @@
     <div class="menu is-menu-bottom">
       <ul class="menu-list">
         <li>
-          <a :class="{ 'button__loader': isLoading }" @click="logout" title="Log out" class="has-icon is-state-info is-hoverable">
+          <a :class="{ 'button__loader': isLoading }" @click="logout" :title="$t('msg.menu.logout')" class="has-icon is-state-info is-hoverable">
             <span class="button__text">
               <span class="icon"><mdicon name="logout" /></span>
               <span class="menu-item-label">{{ $t("msg.menu.logout") }}</span>

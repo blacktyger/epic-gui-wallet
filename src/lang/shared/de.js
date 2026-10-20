@@ -113,6 +113,7 @@ export default {
     create_lead: 'Das Passwort entsperrt diese Wallet auf diesem Computer. Es kann Ihre Coins nicht wiederherstellen; das erledigt die Wiederherstellungsphrase im nächsten Schritt.',
     create_failed: 'Die Wallet konnte nicht erstellt werden.',
     restore_failed: 'Die Wallet konnte nicht wiederhergestellt werden.',
+    phrase_invalid: 'Die Wiederherstellungsphrase ist ungültig. Prüfen Sie die Wörter und ihre Reihenfolge.',
     restore_password: 'Legen Sie das Passwort fest, das diese Wallet auf diesem Computer entsperrt.',
     stage_restore: 'Wallet wird wiederhergestellt',
     open_my_wallet: 'Meine Wallet öffnen',
