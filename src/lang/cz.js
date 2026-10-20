@@ -234,7 +234,7 @@ const messages = {
     login: {
       listener_started: 'Naslouchání peněženky bylo spuštěno',
       error_listener_started: 'Chyba při spouštění naslouchání peněženky',
-      port_in_use: 'Port {0} používá jiný program, například jiná peněženka Epic nebo epic-wallet běžící v tomto počítači. Zavřete ho a zkuste to znovu.',
+      port_in_use: 'Port {0} používá jiný program, například jiná peněženka Epic. Zavřete ho a zkuste to znovu.',
       epicbox_started: 'Epicbox byl spuštěn',
       error_epicbox_started: 'Chyba při spouštění Epicboxu',
       stage_check: 'Kontrola souborů peněženky',
