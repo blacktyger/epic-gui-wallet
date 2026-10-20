@@ -35,6 +35,7 @@ done
 log() { printf '\n== %s  %s\n' "$(date '+%H:%M:%S')" "$*"; }
 die() { echo "release: $*" >&2; exit 1; }
 for t in git node npm sha256sum timeout ssh scp; do command -v "$t" >/dev/null || die "$t not found"; done
+for t in bwrap xvfb-run; do command -v "$t" >/dev/null || die "$t not found: the pre-build gate's e2e smoke runs the app in a bwrap sandbox under Xvfb"; done
 [ "$DO_LINUX" = 0 ] || command -v strip >/dev/null || die "strip not found (binutils): the Linux helpers are stripped at build time"
 SEVENZ="$(command -v 7zz || ls "$HOME"/.cache/electron-builder/7zip*/7zip-linux-x64*/bin/7zz 2>/dev/null | head -1 || true)"
 [ "$DO_WIN" = 0 ] || [ -x "$SEVENZ" ] || die "7zz not found (PATH or ~/.cache/electron-builder/7zip*): needed to unpack the installer for the package check"
@@ -58,14 +59,15 @@ log "version $VERSION, commit $SHA, output $OUT"
 WAIVE_ARGS=(); for w in "${WAIVE[@]}"; do WAIVE_ARGS+=(--waive "$w"); done
 [ ${#WAIVE[@]} -eq 0 ] || echo "WAIVED package-check rules: ${WAIVE[*]} (not a release build)"
 
-# ---- 2. reproducible install, lint, tests
+# ---- 2. reproducible install, the pre-build gate
 cd "$SRC"
 log "npm ci"
 timeout 1800 npm ci --no-audit --no-fund
-log "lint (no fixes)"
-timeout 600 npx vue-cli-service lint --no-fix
-log "tests"
-timeout 600 npm test
+# the pre-build gate (scripts/test-gate.sh, docs/TESTING.md): lint, unit, IPC/preload contract, i18n,
+# component tests and the e2e smoke in a network-less sandbox. No binaries are built unless it passes
+[ -f scripts/test-gate.sh ] || die "$SHA has no scripts/test-gate.sh: release a commit that has the pre-build gate"
+log "pre-build gate"
+timeout 1800 bash scripts/test-gate.sh || die "the pre-build gate failed (logs: $SRC/tests/out/gate/): nothing built"
 
 ARTIFACTS=()   # "platform|file|extracted dir"
 
