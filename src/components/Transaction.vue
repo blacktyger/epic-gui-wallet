@@ -89,11 +89,11 @@
                 <td>
 
                   <div class="tx-status">
-                    <confirmation-ring v-if="['waiting','confirming','confirmed'].includes(txState(tx).state)" :state="txState(tx).state" :confirmations="txState(tx).confirmations" :spendable="tx.tx_type!='TxSent'" :waiting-label="waitingText(tx)" />
+                    <confirmation-ring v-if="['waiting','confirming','confirmed'].includes(txState(tx).state)" :state="txState(tx).state" :confirmations="txState(tx).confirmations" :spendable="!['TxSent','TxSentMempool'].includes(tx.tx_type)" :waiting-label="waitingText(tx)" />
 
                     <span v-if="txState(tx).state=='confirming'" class="tag is-warning is-normal">{{ $t("msg.confirmations.confirming") }}</span>
                     <span v-else-if="txState(tx).state=='immature'" class="tag is-warning is-normal">{{ $t("msg.info.immature") }}</span>
-                    <span v-else-if="txState(tx).state=='confirmed' && tx.tx_type=='TxSent'" class="tag is-danger is-normal">{{ $t("msg.sent_confirmed") }}</span>
+                    <span v-else-if="txState(tx).state=='confirmed' && ['TxSent','TxSentMempool'].includes(tx.tx_type)" class="tag is-danger is-normal">{{ $t("msg.sent_confirmed") }}</span>
                     <span v-else-if="txState(tx).state=='confirmed'" class="tag is-success is-normal">{{ $t("msg.received_confirmed") }}</span>
                     <span v-else-if="txState(tx).state=='waiting'" class="tag is-warning is-normal is-size-7 is-wrapping">{{ waitingText(tx) }}</span>
                     <span v-else class="tag is-warning is-normal">{{ $t("msg.txs.canceled") }}</span>
@@ -361,7 +361,7 @@
         return this.$t("msg.sent_unconfirmed");
       },
       txState(tx){
-        return txConfirmationState(tx, this.heights, this.store.getters.tipHeight);
+        return txConfirmationState(tx, this.heights, this.store.getters.tipHeight, this.store.state.kernelHeights);
       },
 
       /* the full refresh in App.vue: summary (the tip), txs and outputs together, so all views agree */

@@ -54,6 +54,9 @@ export const store = createStore({
     /* which service are running */
     walletListenerService: false,
     walletEpicboxService: false,
+    /* send-alls epic-wallet never marks confirmed (QA T03): {tx id: the height the node has its kernel at},
+       display only (shared/sendAllKernel.js) */
+    kernelHeights: {},
     /* the HTTP listener on its own (shared/httpListener.js, QA W01): {state: 'off'|'on'|'failed', port, reason} */
     httpListener: {state: 'off', port: 0, reason: ''},
     /* our Epicbox listener, from its own output (App.onEpicboxEvent) and walletService:
@@ -121,6 +124,10 @@ export const store = createStore({
     },
     walletListenerService(state, payload){
       state.walletListenerService = payload;
+    },
+    /* {id, height}; null resets them (logout) */
+    kernelHeight(state, payload){
+      state.kernelHeights = payload ? Object.assign({}, state.kernelHeights, {[payload.id]: payload.height}) : {};
     },
     /* null resets it (logout, stopped) */
     httpListener(state, payload){

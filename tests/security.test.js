@@ -112,6 +112,19 @@ test('nodeRequest: node API paths, GET/POST, Authorization to this machine only'
   }
 });
 
+test('nodeRequest: get_kernel takes a kernel excess and a min height only (send-all status, QA T03)', () => {
+  const kernel = (params) => JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'get_kernel', params });
+  const excess = '09' + 'ab'.repeat(32);
+  assert.equal(nodeRequest({ url: 'https://n:3413/v2/foreign', method: 'POST', body: kernel([excess, 3760000, null]) }).body, kernel([excess, 3760000, null]));
+  assert.equal(nodeRequest({ url: 'https://n:3413/v2/foreign', method: 'POST', body: kernel([excess, null, null]) }).body, kernel([excess, null, null]));
+  for (const params of [[excess], [excess, 1, 2], ['zz' + excess.slice(2), 1, null], [excess.toUpperCase(), 1, null], [excess + 'ab', 1, null],
+    [excess, -1, null], [excess, 1.5, null], [excess, '1', null], [{ seed: 'twelve words' }, null, null], []]) {
+    assert.ok(nodeRequest({ url: 'https://n:3413/v2/foreign', method: 'POST', body: kernel(params) }).error, JSON.stringify(params));
+  }
+  //the owner API never gets it
+  assert.ok(nodeRequest({ url: 'https://n:3413/v2/owner', method: 'POST', body: kernel([excess, 1, null]) }).error);
+});
+
 test('CSP: the app only, the wallet API on this machine, no eval outside development', () => {
   const p = contentSecurityPolicy();
   assert.match(p, /script-src 'self'(;|$)/);

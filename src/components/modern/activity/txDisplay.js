@@ -99,7 +99,8 @@ export default {
             ring: { state: 'confirmed', confirmations: s.confirmations },
             icon: '',
             tone: '',
-            text: tx.tx_type == 'TxSent' ? t('st_sent') : t('st_received'),
+            //a send-all the node found in a block stays TxSentMempool in the wallet (shared/sendAllKernel.js)
+            text: this.isSent(tx) ? t('st_sent') : t('st_received'),
           };
         default:
           return { state: 'cancelled', ring: null, icon: 'cancel', tone: '', text: t('st_cancelled') };

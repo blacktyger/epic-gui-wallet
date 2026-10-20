@@ -67,13 +67,20 @@ export function outputConfirmationState(o, tip){
 /*
  * Where a wallet tx stands for its ring: 'waiting' (not in a block yet), 'confirming'
  * (in a block, fewer than MIN_CONFIRMATIONS), 'immature', 'confirmed' or 'cancelled', with its count.
+ * kernels: {tx id: height} the node found the kernel of a send-all at, which epic-wallet never marks
+ * confirmed (shared/sendAllKernel.js, store.state.kernelHeights); display only.
  */
-export function txConfirmationState(tx, heights, tip){
+export function txConfirmationState(tx, heights, tip, kernels){
   if(tx.status === 'cancelled'){
     return { state: 'cancelled', confirmations: null };
   }
   if(!tx.confirmed){
-    return { state: 'waiting', confirmations: null };
+    const k = kernels ? Number(kernels[tx.id]) : 0;
+    if(!(k > 0)){
+      return { state: 'waiting', confirmations: null };
+    }
+    const n = confirmationsAt(k, tip);
+    return { state: n !== null && n < MIN_CONFIRMATIONS ? 'confirming' : 'confirmed', confirmations: n };
   }
   const e = heights[tx.id];
   //the tx log can be a refresh ahead of the outputs list: just mined, so 1 until the outputs follow

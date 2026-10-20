@@ -145,15 +145,26 @@ export function createScopedFs({ fs, pathMod, dirs, copyFrom = [] }) {
  * remote node). Returns {url, method, headers, body, redirect, timeoutMs} or {error}.
  */
 export const NODE_API_PATHS = ['/v1/version', '/v1/status', '/v2/owner', '/v2/foreign'];
-const NODE_RPC = { '/v2/owner': ['get_status'], '/v2/foreign': ['get_version', 'get_tip'] };
+const NODE_RPC = { '/v2/owner': ['get_status'], '/v2/foreign': ['get_version', 'get_tip', 'get_kernel'] };
+/* a call's params, rebuilt, or null when they are not what the call takes: none, except get_kernel
+   [excess (a commitment, 33 bytes hex), min_height (a height or null), null] (shared/sendAllKernel.js) */
+function nodeRpcParams(method, params) {
+  if (!Array.isArray(params)) return null;
+  if (method !== 'get_kernel') return params.length === 0 ? [] : null;
+  const [excess, min, max] = params;
+  const okMin = min === null || (Number.isSafeInteger(min) && min >= 0);
+  return params.length === 3 && typeof excess === 'string' && /^[0-9a-f]{66}$/.test(excess) && okMin && max === null
+    ? [excess, min, null] : null;
+}
 //the body as the main process sends it (rebuilt, not passed on), '' when it is not such a call
 function nodeRpcBody(path, body) {
   let b;
   try { b = JSON.parse(body); } catch (e) { return ''; }
   const keys = b && typeof b === 'object' ? Object.keys(b).sort().join(',') : '';
   const ok = keys === 'id,jsonrpc,method,params' && b.jsonrpc === '2.0' && Number.isInteger(b.id)
-    && (NODE_RPC[path] || []).includes(b.method) && Array.isArray(b.params) && b.params.length === 0;
-  return ok ? JSON.stringify({ jsonrpc: '2.0', id: b.id, method: b.method, params: [] }) : '';
+    && (NODE_RPC[path] || []).includes(b.method);
+  const params = ok ? nodeRpcParams(b.method, b.params) : null;
+  return params ? JSON.stringify({ jsonrpc: '2.0', id: b.id, method: b.method, params }) : '';
 }
 export function nodeRequest(req) {
   const r = req && typeof req === 'object' ? req : {};

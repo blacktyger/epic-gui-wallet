@@ -53,6 +53,7 @@
   import { wantsRefresh } from '@/shared/epicboxListener';
   import { serverLabel } from '@/shared/epicboxConfig';
   import { httpListenerState } from '@/shared/httpListener';
+  import { kernelsDue, minHeightFor, fetchKernelHeight } from '@/shared/sendAllKernel';
   import { useI18n } from 'vue-i18n';
   import { withoutUserinfo } from '@/shared/nodeVersion';
   import { ref, watch, onUnmounted } from 'vue';
@@ -477,6 +478,8 @@
         this.store.commit('user', {});
         this.store.commit('txs', []);
         this.store.commit('commits', []);
+        this.store.commit('kernelHeight', null);
+        this.kernelChecked = {};
         this.store.commit('walletTip', 0);
         this.store.commit('walletSync', '');
         this.store.commit('listenerStarting', false);
@@ -836,6 +839,8 @@
               //update), so txs and outputs read that state instead of asking the node twice more
               await this.getTxs(false, gen);
               await this.getCommits(false, gen);
+              //a send-all epic-wallet leaves waiting: ask the node, in the background (QA T03)
+              this.checkSendAllKernels();
             }
             window.debug ? console.log('[refresh] ' + (refreshfromNode ? 'from node' : 'local') + ' +' + Math.round(performance.now() - started) + ' ms') : null;
 
@@ -948,6 +953,38 @@
 
           }
           return false;
+      },
+
+      /* a send of everything stays "Waiting for confirmations" in epic-wallet (no change output to see
+         on chain, QA T03): for that case only, the node's public get_kernel says the block it is in.
+         At most once a minute per tx, until found; shown, never written to the wallet */
+      async checkSendAllKernels() {
+        if(this.kernelChecking){
+          return;
+        }
+        this.kernelChecked = this.kernelChecked || {};
+        const due = kernelsDue(this.store.state.txs, this.store.state.commits, {found: this.store.state.kernelHeights, checked: this.kernelChecked});
+        if(!due.length){
+          return;
+        }
+        const session = this.loginSession;
+        const node = this.configService.config['check_node_api_http_addr'] ? this.configService.config['check_node_api_http_addr'] : this.configService.defaultEpicNode;
+        this.kernelChecking = true;
+        try{
+          for(const tx of due){
+            this.kernelChecked[tx.id] = Date.now();
+            const h = await fetchKernelHeight(node, tx.kernel_excess, minHeightFor(tx, this.store.getters.tipHeight));
+            if(session !== this.loginSession){
+              return;
+            }
+            console.log('[send-all] tx ' + tx.id + ': kernel ' + (h > 0 ? 'in block ' + h : (h === 0 ? 'not in a block yet' : 'no answer from the node')));
+            if(h > 0){
+              this.store.commit('kernelHeight', {id: tx.id, height: h});
+            }
+          }
+        }finally{
+          this.kernelChecking = false;
+        }
       },
 
       async getTxs(refreshfromNode, gen) {

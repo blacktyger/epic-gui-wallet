@@ -7,6 +7,7 @@
 - Fixes:
   - Settings › Node: an address like `http://192.168.0.1:3413` showed as `http: /192…` on Windows: one slash went missing. The address font's "//" ligature drew the first slash in the empty space before it, and Windows dropped that slash. The bundled font has no ligatures now, so addresses, paths and amounts show every character as typed. The saved address was always right.
   - Receive: your Epic address stays visible (dimmed) while receiving is off, and Copy and its QR code keep working. Payments sent to it wait on Epicbox until you start receiving again. It used to say "Epicbox not available. Wait for the Node to be synced…" (QA T09).
+  - "Send all" no longer stays "Waiting for confirmations" forever. The wallet confirms a send when it sees the send's change on chain, and a send of everything has no change. For that case only (a posted send, no change, nothing left in the wallet), the app asks the node once a minute where the transaction is (its kernel, a public lookup), then shows it as sent with its confirmations. It is shown only, never written to the wallet; if the node doesn't answer, it keeps waiting. Sends with change are unchanged (QA T03).
   - Receiving over HTTP when another program uses port 3415: the app said "Receiving · HTTP" though HTTP wasn't running. Now HTTP shows as failed, with the reason ("Port 3415 is used by another program") and a Try again button. Epicbox keeps working (QA W01).
 
 ## 6.1.3
