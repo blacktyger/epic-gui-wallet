@@ -7,7 +7,7 @@
 #   lint        vue-cli-service lint --no-fix
 #   unit        node --test: the pure logic in src/shared (tests/*.test.js minus the two below)
 #   contract    the preload/IPC allowlists, sender checks, window flags, CSP (preloadContract, ipcChannels, security)
-#   i18n        every English key in all languages, placeholders, plurals (i18n.test.js)
+#   i18n        every English key in all languages, placeholders, plurals; every key the code names exists (i18n, i18nKeys)
 #   components  vitest + Vue Test Utils: the riskiest screens in both interfaces (tests/components)
 #   e2e         Playwright _electron smoke, both interfaces, in a network-less sandbox with a stub node (tests/e2e)
 #
@@ -28,9 +28,9 @@ done
 OUTDIR=tests/out/gate
 mkdir -p "$OUTDIR"
 CONTRACT=(tests/preloadContract.test.js tests/ipcChannels.test.js tests/security.test.js)
-I18N=(tests/i18n.test.js)
+I18N=(tests/i18n.test.js tests/i18nKeys.test.js)
 mapfile -t UNIT < <(find tests -name '*.test.js' -not -path '*/node_modules/*' -not -path 'tests/out/*' | sort |
-  grep -vxF -e "${CONTRACT[0]}" -e "${CONTRACT[1]}" -e "${CONTRACT[2]}" -e "${I18N[0]}")
+  grep -vxF -e "${CONTRACT[0]}" -e "${CONTRACT[1]}" -e "${CONTRACT[2]}" -e "${I18N[0]}" -e "${I18N[1]}")
 NODETEST=(node --test --no-warnings=MODULE_TYPELESS_PACKAGE_JSON)
 
 RESULTS=(); FAILED=0; T0=$SECONDS
