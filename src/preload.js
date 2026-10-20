@@ -12,6 +12,9 @@ import { parseListenerLine } from './shared/epicboxListener';
 import { createScopedFs, isInside } from './shared/security';
 import { checkSpawnArgs } from './shared/walletArgs';
 import { pickedReadDirs } from './shared/walletFolder';
+import { DEFAULT_LABELS as MENU_LABELS } from './shared/appMenu';
+
+const MENU_LABEL_KEYS = Object.keys(MENU_LABELS);
 
 const moment = require('moment');
 const crypto = require('crypto-browserify');
@@ -797,7 +800,9 @@ contextBridge.exposeInMainWorld('api', {
     relaunch: () => ipcRenderer.invoke('app-relaunch'),
     //the app menu (shared/appMenu.js): whether a wallet is unlocked, and its labels in the app's language
     menuState: (unlocked, labels) => {
-      ipcRenderer.send('menu-state', { unlocked: unlocked === true, labels: { lock: String((labels && labels.lock) || ''), quit: String((labels && labels.quit) || '') } });
+      const l = {};
+      for (const k of MENU_LABEL_KEYS) l[k] = String((labels && labels[k]) || '');
+      ipcRenderer.send('menu-state', { unlocked: unlocked === true, labels: l });
     },
     //Menu › Lock wallet was chosen: one listener (App.vue)
     onMenuLock: (func) => {

@@ -20,6 +20,17 @@ export default {
   copy_path: 'Copy path',
   copied: 'Copied',
   quit: 'Quit',
+  //the app menu (shared/appMenu.js; Lock wallet and Quit are lock and quit)
+  menu_menu: 'Menu',
+  menu_source: 'Source on GitHub',
+  menu_application: 'Application',
+  menu_edit: 'Edit',
+  menu_undo: 'Undo',
+  menu_redo: 'Redo',
+  menu_cut: 'Cut',
+  menu_copy: 'Copy',
+  menu_paste: 'Paste',
+  menu_select_all: 'Select All',
   try_again: 'Try again',
   continue: 'Continue',
 

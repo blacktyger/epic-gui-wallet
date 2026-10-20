@@ -8,9 +8,12 @@
  * with 'menu-state'), so a disabled item's Ctrl+L does nothing on the Welcome or Unlock screen.
  * Ctrl+L in the page and in the menu may both arrive; logging out twice is harmless (App.logoutApp).
  *
- * labels: {lock, quit} in the app's language (the renderer sends them, English until then)
+ * labels: {lock, quit, menu, source, application, edit, undo, …} (DEFAULT_LABELS) in the app's language (the
+ * renderer sends them, English until then)
  */
-export const DEFAULT_LABELS = { lock: 'Lock wallet', quit: 'Quit' };
+export const DEFAULT_LABELS = { lock: 'Lock wallet', quit: 'Quit', menu: 'Menu', source: 'Source on GitHub',
+  application: 'Application', edit: 'Edit', undo: 'Undo', redo: 'Redo', cut: 'Cut', copy: 'Copy', paste: 'Paste',
+  selectAll: 'Select All' };
 export const LOCK_ACCELERATOR = 'CmdOrCtrl+L';
 
 const label = (labels, key) => {
@@ -22,28 +25,28 @@ export function menuTemplate({ platform = process.platform, labels = {}, unlocke
   const mac = platform === 'darwin';
   return [
     {
-      label: 'Menu',
+      label: label(labels, 'menu'),
       submenu: [
         ...(mac ? [{ label: 'About Application', selector: 'orderFrontStandardAboutPanel:' }] : []),
-        { label: 'Source on GitHub', click: () => onSource() },
+        { label: label(labels, 'source'), click: () => onSource() },
         { type: 'separator' },
         { id: 'lock', label: label(labels, 'lock'), accelerator: LOCK_ACCELERATOR, enabled: !!unlocked, click: () => onLock() },
         { id: 'quit', label: label(labels, 'quit'), accelerator: 'CmdOrCtrl+Q', click: () => onQuit() },
       ],
     },
     {
-      label: 'Application',
+      label: label(labels, 'application'),
       submenu: [
         {
-          label: 'Edit',
+          label: label(labels, 'edit'),
           submenu: [
-            { label: 'Undo', accelerator: 'CmdOrCtrl+Z', selector: 'undo:' },
-            { label: 'Redo', accelerator: 'Shift+CmdOrCtrl+Z', selector: 'redo:' },
+            { label: label(labels, 'undo'), accelerator: 'CmdOrCtrl+Z', selector: 'undo:' },
+            { label: label(labels, 'redo'), accelerator: 'Shift+CmdOrCtrl+Z', selector: 'redo:' },
             { type: 'separator' },
-            { label: 'Cut', accelerator: 'CmdOrCtrl+X', selector: 'cut:' },
-            { label: 'Copy', accelerator: 'CmdOrCtrl+C', selector: 'copy:' },
-            { label: 'Paste', accelerator: 'CmdOrCtrl+V', selector: 'paste:' },
-            { label: 'Select All', accelerator: 'CmdOrCtrl+A', selector: 'selectAll:' },
+            { label: label(labels, 'cut'), accelerator: 'CmdOrCtrl+X', selector: 'cut:' },
+            { label: label(labels, 'copy'), accelerator: 'CmdOrCtrl+C', selector: 'copy:' },
+            { label: label(labels, 'paste'), accelerator: 'CmdOrCtrl+V', selector: 'paste:' },
+            { label: label(labels, 'selectAll'), accelerator: 'CmdOrCtrl+A', selector: 'selectAll:' },
           ],
         },
       ],
@@ -51,7 +54,7 @@ export function menuTemplate({ platform = process.platform, labels = {}, unlocke
   ];
 }
 
-/* what the renderer may report: {unlocked, labels: {lock, quit}}; anything else is dropped */
+/* what the renderer may report: {unlocked, labels: {the keys of DEFAULT_LABELS}}; anything else is dropped */
 export function menuState(data) {
   const d = data && typeof data === 'object' ? data : {};
   const labels = {};

@@ -100,7 +100,10 @@
       watch(locale, (l) => applyLocale(document, l), { immediate: true });
       const loggedIn = ref(false);
       //Menu › Lock wallet (shared/appMenu.js): enabled while a wallet is unlocked, in the app's language
-      watch([loggedIn, locale], ([on]) => window.api.menuState(on, { lock: t('msg.modern.lock'), quit: t('msg.wallets.quit') }), { immediate: true });
+      watch([loggedIn, locale], ([on]) => window.api.menuState(on, { lock: t('msg.modern.lock'), quit: t('msg.wallets.quit'),
+        menu: t('msg.wallets.menu_menu'), source: t('msg.wallets.menu_source'), application: t('msg.wallets.menu_application'),
+        edit: t('msg.wallets.menu_edit'), undo: t('msg.wallets.menu_undo'), redo: t('msg.wallets.menu_redo'), cut: t('msg.wallets.menu_cut'),
+        copy: t('msg.wallets.menu_copy'), paste: t('msg.wallets.menu_paste'), selectAll: t('msg.wallets.menu_select_all') }), { immediate: true });
       const store = useStore();
       const router = useRouter();
       const isNodeModalActive = ref(false);
