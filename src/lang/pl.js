@@ -234,7 +234,7 @@ const messages = {
     login: {
       listener_started: 'Nasłuch portfela uruchomiony',
       error_listener_started: 'Błąd uruchamiania nasłuchu portfela',
-      port_in_use: 'Port {0} jest zajęty przez inny program (np. Twój własny epic-wallet). Zatrzymaj go i spróbuj ponownie.',
+      port_in_use: 'Port {0} jest zajęty przez inny program, na przykład inny portfel Epic lub epic-wallet działający na tym komputerze. Zamknij go i spróbuj ponownie.',
       epicbox_started: 'Epicbox uruchomiony',
       error_epicbox_started: 'Błąd uruchamiania Epicbox',
       stage_check: 'Sprawdzanie plików portfela',
@@ -300,7 +300,7 @@ const messages = {
       node_started: 'Węzeł uruchomiony',
       node_restarting: 'Węzeł uruchamia się ponownie',
       node_not_started: 'Węzeł nie został uruchomiony',
-      node_port_in_use: 'Węzeł nie został uruchomiony: port {0} jest zajęty przez inny program (np. Twój własny węzeł Epic). Zatrzymaj go albo użyj go w Ustawieniach jako węzła zewnętrznego.',
+      node_port_in_use: 'Węzeł nie został uruchomiony: port {0} jest zajęty przez inny program, na przykład inny węzeł Epic działający na tym komputerze. Zamknij go albo użyj go w Ustawieniach jako węzła zewnętrznego.',
       node_offline: 'Węzeł jest offline',
       external_node_online: 'Węzeł zewnętrzny jest online',
       external_node_offline: 'Węzeł zewnętrzny jest offline',

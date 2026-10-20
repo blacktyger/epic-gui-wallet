@@ -234,7 +234,7 @@ const messages = {
     login: {
       listener_started: 'Naslouchání peněženky bylo spuštěno',
       error_listener_started: 'Chyba při spouštění naslouchání peněženky',
-      port_in_use: 'Port {0} používá jiný program (např. váš vlastní epic-wallet). Ukončete ho a zkuste to znovu.',
+      port_in_use: 'Port {0} používá jiný program, například jiná peněženka Epic nebo epic-wallet běžící v tomto počítači. Zavřete ho a zkuste to znovu.',
       epicbox_started: 'Epicbox byl spuštěn',
       error_epicbox_started: 'Chyba při spouštění Epicboxu',
       stage_check: 'Kontrola souborů peněženky',
@@ -300,7 +300,7 @@ const messages = {
       node_started: 'Uzel spuštěn',
       node_restarting: 'Uzel se restartuje',
       node_not_started: 'Uzel nebyl spuštěn',
-      node_port_in_use: 'Uzel nebyl spuštěn: port {0} používá jiný program (např. váš vlastní epic node). Ukončete ho, nebo ho v Nastavení použijte jako externí uzel.',
+      node_port_in_use: 'Uzel nebyl spuštěn: port {0} používá jiný program, například jiný uzel Epic běžící v tomto počítači. Zavřete ho, nebo ho v Nastavení použijte jako externí uzel.',
       node_offline: 'Uzel je offline',
       external_node_online: 'Externí uzel je online',
       external_node_offline: 'Externí uzel je offline',

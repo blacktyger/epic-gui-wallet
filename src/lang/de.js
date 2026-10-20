@@ -234,7 +234,7 @@ const messages = {
     login: {
       listener_started: 'Wallet-Empfänger gestartet',
       error_listener_started: 'Fehler beim Starten des Wallet-Empfängers',
-      port_in_use: 'Port {0} wird von einem anderen Programm verwendet (z. B. Ihrem eigenen epic-wallet). Beenden Sie es und versuchen Sie es dann erneut.',
+      port_in_use: 'Port {0} wird von einem anderen Programm verwendet, zum Beispiel von einer anderen Epic-Wallet oder von epic-wallet, die auf diesem Computer läuft. Schließen Sie es und versuchen Sie es dann erneut.',
       epicbox_started: 'Epicbox gestartet',
       error_epicbox_started: 'Fehler beim Starten von Epicbox',
       stage_check: 'Wallet-Dateien werden geprüft',
@@ -300,7 +300,7 @@ const messages = {
       node_started: 'Netzwerkknoten gestartet',
       node_restarting: 'Netzwerkknoten wird neu gestartet',
       node_not_started: 'Netzwerkknoten nicht gestartet',
-      node_port_in_use: 'Netzwerkknoten nicht gestartet: Port {0} wird von einem anderen Programm verwendet (z. B. Ihrem eigenen Epic-Netzwerkknoten). Beenden Sie es oder verwenden Sie es in den Einstellungen als externen Netzwerkknoten.',
+      node_port_in_use: 'Netzwerkknoten nicht gestartet: Port {0} wird von einem anderen Programm verwendet, zum Beispiel von einem anderen Epic-Netzwerkknoten auf diesem Computer. Schließen Sie es oder verwenden Sie es in den Einstellungen als externen Netzwerkknoten.',
       node_offline: 'Netzwerkknoten ist offline',
       external_node_online: 'Externer Netzwerkknoten ist online',
       external_node_offline: 'Externer Netzwerkknoten ist offline',
