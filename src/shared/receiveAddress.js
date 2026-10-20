@@ -5,10 +5,13 @@
  * dimmed while nothing receives on it, and Copy and QR keep working. Plain ESM (tests/receiveAddress.test.js).
  *
  * state: 'receiving' | 'off' (listener stopped) | 'paused' (listener on, Epicbox not running)
- *      | 'unknown' (the address could not be read) | 'unconfigured' (no address, and the Epicbox domain is set to '')
+ *      | 'unknown' (the address could not be read) | 'unconfigured' (Epicbox is turned off in Settings)
+ * domain: the wallet's epicbox_domain setting; '' or unset turns Epicbox off (App.vue starts it only when
+ * set), and nothing would collect payments sent to the address, so none is offered.
  */
 export function epicAddressView({ address, domain, listening, epicbox }) {
-  if (!address) return { state: domain === '' ? 'unconfigured' : 'unknown', show: false, dim: false };
+  if (!domain) return { state: 'unconfigured', show: false, dim: false };
+  if (!address) return { state: 'unknown', show: false, dim: false };
   if (!listening) return { state: 'off', show: true, dim: true };
   if (!epicbox) return { state: 'paused', show: true, dim: true };
   return { state: 'receiving', show: true, dim: false };

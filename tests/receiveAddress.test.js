@@ -17,13 +17,13 @@ test('listener on but Epicbox not running: still shown, dimmed', () => {
   assert.deepEqual(epicAddressView({ ...known, listening: true, epicbox: false }), { state: 'paused', show: true, dim: true });
 });
 
-test('no address read yet, or no Epicbox domain: nothing to show or copy', () => {
+test('no address read yet: nothing to show or copy', () => {
   assert.equal(epicAddressView({ ...known, address: '', listening: true, epicbox: true }).state, 'unknown');
-  assert.equal(epicAddressView({ address: '', domain: undefined, listening: false }).state, 'unknown');
   assert.equal(epicAddressView({ ...known, address: '', listening: false }).show, false);
-  assert.equal(epicAddressView({ address: '', domain: '', listening: true, epicbox: true }).state, 'unconfigured');
 });
 
-test('a known address is shown even when the wallet has no Epicbox domain of its own (the default one is used)', () => {
-  assert.equal(epicAddressView({ address: 'esAbc@epicbox.epiccash.com', domain: '', listening: false }).show, true);
+test('Epicbox turned off in Settings: no address is offered, nobody would collect payments sent to it', () => {
+  //the wallet still knows its key, and the address would get the default relay
+  assert.deepEqual(epicAddressView({ address: 'esAbc@epicbox.epiccash.com', domain: '', listening: false }), { state: 'unconfigured', show: false, dim: false });
+  assert.equal(epicAddressView({ address: 'esAbc@epicbox.epiccash.com', domain: undefined, listening: true, epicbox: false }).state, 'unconfigured');
 });

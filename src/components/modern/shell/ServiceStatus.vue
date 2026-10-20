@@ -54,7 +54,7 @@
       const receiving = computed(() => {
         const base = { key: 'rcv', icon: 'antenna', name: t('msg.modern.svc_receiving'), to: '/httpReceive' };
         //HTTP only while its listener runs, "failed" when it couldn't start (shared/httpListener.js, QA W01)
-        const httpState = httpShown(store.state.walletListenerService, store.state.httpListener);
+        const httpState = httpShown(store.state.httpListener);
         const http = httpState == 'on';
         const epicbox = store.state.walletEpicboxService;
         //the server the Epicbox listener is really on (its own output), not the saved setting

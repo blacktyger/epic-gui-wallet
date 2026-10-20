@@ -172,7 +172,8 @@ export default {
     epicView(){
       return epicAddressView({
         address: this.epicboxAddress,
-        domain: this.store.state.user.epicbox_domain,
+        //'' or unset: Epicbox is turned off, the listener never starts it
+        domain: this.configService.config ? this.configService.config['epicbox_domain'] : undefined,
         listening: !!this.store.state.walletListenerService,
         epicbox: !!this.store.state.walletEpicboxService,
       });
@@ -282,6 +283,7 @@ export default {
           this.$toast.error(isListen && isListen.portInUse ? this.$t("msg.login.port_in_use", [isListen.portInUse]) : this.$t("msg.login.error_listener_started"));
           this.store.commit('walletListenerService', !!(isEpicbox && (isEpicbox.success || isEpicbox.pending)));
         }
+        this.redrawQr();
 
         if(isEpicbox && isEpicbox.success){
           this.epicboxAddress = await this.getEpicboxAddress();
@@ -302,6 +304,20 @@ export default {
 
 
     },
+    /* after Start/Stop: Classic shows the QR code in another panel (canvas) now. The Epic address's
+       code is drawn again there; the HTTP address's only while something listens on it */
+    redrawQr(){
+      this.$nextTick(() => {
+        const type = this.addressTypeHeader;
+        if(type == 'local' && this.store.state.walletListenerService && this.localAddress){
+          this.qrcode(this.localAddress, 'local');
+        }else if(type && this.epicView.show){
+          this.qrcode(this.epicboxAddress, 'epicbox');
+        }else{
+          this.addressTypeHeader = '';
+        }
+      });
+    },
     /* the HTTP listener alone, after its port was busy (QA W01): Epicbox keeps running */
     async retryHttp(){
       this.httpRetrying = true;
@@ -310,6 +326,13 @@ export default {
         res = await this.$walletService.startListen('http');
       }finally{
         this.httpRetrying = false;
+      }
+      //the page closed meanwhile (lock, switch): stop the listener this started, keep the state
+      if(this.$.isUnmounted){
+        if(res && res.pid){
+          await window.nodeChildProcess.kill(res.pid);
+        }
+        return;
       }
       this.store.commit('httpListener', httpListenerState(res, this.configService.walletListenerPort));
       if(res && res.success){
@@ -326,7 +349,9 @@ export default {
       this.isLoading = false;
       if(killed){
         this.store.commit('walletListenerService', false);
+        this.store.commit('walletEpicboxService', false);
         this.store.commit('httpListener', null);
+        this.redrawQr();
         this.$toast.success(this.$t("msg.httpReceive.listener_stopped"));
       }
     },

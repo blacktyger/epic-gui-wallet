@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { baseCompile } from '@intlify/message-compiler';
+import { createI18n } from 'vue-i18n';
 import en from '../src/lang/en.js';
 import bg from '../src/lang/bg.js';
 import cz from '../src/lang/cz.js';
@@ -85,6 +86,21 @@ test('Polish plurals: one | few | many, with the zero form first when there is o
   const r = pluralRules.pl;
   assert.deepEqual([1, 2, 4, 5, 11, 12, 14, 21, 22, 25, 112, 122].map(n => r(n, 3)), [0, 1, 1, 2, 2, 2, 2, 2, 1, 2, 2, 1]);
   assert.deepEqual([0, 1, 3, 7].map(n => r(n, 4)), [0, 1, 2, 3]);
+});
+
+test('the app\'s Polish and Czech plurals render through vue-i18n with these rules', () => {
+  const i18n = createI18n({ legacy: false, locale: 'pl', fallbackLocale: 'en', pluralRules, messages: { en, pl, cz } });
+  const t = (l, k, n) => { i18n.global.locale.value = l; return i18n.global.t(k, n); };
+  //found_title: "{n} wallet | {n} wallets" in English, one | few | many here
+  for (const [l, msgs] of [['pl', flat(pl)], ['cz', flat(cz)]]) {
+    const form = (i, n) => msgs['msg.wallets.found_title'].split('|')[i].trim().replace('{n}', n);
+    assert.equal(t(l, 'msg.wallets.found_title', 1), form(0, 1));
+    assert.equal(t(l, 'msg.wallets.found_title', 3), form(1, 3));
+    assert.equal(t(l, 'msg.wallets.found_title', 5), form(2, 5));
+  }
+  assert.equal(t('pl', 'msg.wallets.found_title', 22), flat(pl)['msg.wallets.found_title'].split('|')[1].trim().replace('{n}', 22));
+  //English keeps its own rule
+  assert.equal(t('en', 'msg.wallets.found_title', 2), 'We found 2 wallets from an older Epic Wallet');
 });
 
 test('Czech plurals: few is exactly 2-4', () => {

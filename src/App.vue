@@ -276,6 +276,9 @@
         if(session === this.loginSession){
           //its own state: the status says HTTP only while it runs, and why it doesn't (QA W01)
           this.store.commit('httpListener', httpListenerState(isListen, this.configService.walletListenerPort));
+          if(isListen && isListen.success){
+            this.store.commit('walletListenerService', true);
+          }
           if(isListen && isListen.portInUse){
             this.$toast.error(this.t("msg.login.port_in_use", [isListen.portInUse]));
           }
@@ -493,6 +496,7 @@
         //switching: the built-in node stays, it serves every wallet of its network
         await this.$walletService.stopAll(opts.switching ? true : cfg.node_background != false);
         this.store.commit('walletEpicboxService', false);
+        this.store.commit('walletListenerService', false);
         this.store.commit('epicbox', null);
         this.store.commit('httpListener', null);
         clearTimeout(this.epicboxRefreshId);
@@ -556,6 +560,8 @@
           this.store.commit('epicbox', {state: 'listening', server: ev.url, address: ev.address, pid: ev.pid, checking: ''});
           if(this.loggedIn){
             this.store.commit('walletEpicboxService', true);
+            //receiving is on (Epicbox came up after a pending start): the status and Receive say so
+            this.store.commit('walletListenerService', true);
           }
         }else if(ev.type == 'subscribed' && cur.state != 'listening'){
           this.store.commit('epicbox', {state: 'listening', pid: ev.pid});

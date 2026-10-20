@@ -31,14 +31,9 @@ test('any other failure (no session, it exited, no answer): failed, generic', ()
 });
 
 test('the status mentions HTTP only while it runs, says "failed" when it couldn\'t start', () => {
-  const on = { state: 'on', port: 3415, reason: '' };
-  const failed = { state: 'failed', port: 3415, reason: 'port_in_use' };
-  assert.equal(httpShown(true, on), 'on');
-  assert.equal(httpShown(true, failed), 'failed');
-  //Epicbox alone turned receiving on: no HTTP in the status (it said "Receiving … · HTTP" before)
-  assert.equal(httpShown(true, HTTP_OFF), 'off');
-  assert.equal(httpShown(true, undefined), 'off');
-  //receiving is off: nothing about HTTP
-  assert.equal(httpShown(false, on), 'off');
-  assert.equal(httpShown(false, failed), 'off');
+  assert.equal(httpShown({ state: 'on', port: 3415, reason: '' }), 'on');
+  assert.equal(httpShown({ state: 'failed', port: 3415, reason: 'port_in_use' }), 'failed');
+  //Epicbox alone turned receiving on, or Stop/lock reset it: no HTTP in the status (it said "Receiving … · HTTP")
+  assert.equal(httpShown(HTTP_OFF), 'off');
+  assert.equal(httpShown(undefined), 'off');
 });

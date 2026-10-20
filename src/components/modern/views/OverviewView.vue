@@ -353,7 +353,7 @@
         if ((box.kind == 'starting' || box.kind == 'connecting') && box.server) return { busy: true, tone: 'warn', text: ts('rcv_connecting', box.server) };
         if (st.listenerStarting) return { busy: true, tone: 'warn', text: t('rcv_starting') };
         //HTTP only while its listener runs, and why it doesn't (shared/httpListener.js, QA W01)
-        const http = httpShown(st.walletListenerService, st.httpListener);
+        const http = httpShown(st.httpListener);
         const failed = http == 'failed' ? (st.httpListener.reason == 'port_in_use' ? this.$t('msg.modern.send.rcv_http_failed_port_short', { port: st.httpListener.port }) : this.$t('msg.modern.send.rcv_http_failed_error_short')) : '';
         if (st.walletEpicboxService && box.server) {
           if (failed) return { busy: false, tone: 'warn', text: this.$t('msg.modern.overview.rcv_epicbox_on_http_failed', { s: box.server, reason: failed }) };

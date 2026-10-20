@@ -5,7 +5,8 @@
  * mention HTTP only while it runs. Plain ESM (tests/httpListener.test.js).
  */
 
-//epic-wallet's own words when it can't bind its port: Linux (os error 98), macOS (48), Windows (10048)
+//epic-wallet's own words when it can't bind its port: Linux (os error 98), macOS (48), Windows (10048).
+//preload.js errorLines keeps these lines of the listener's output: change both together.
 const ADDR_IN_USE = /address already in use|addrinuse|only one usage of each socket address|os error (98|48|10048)\b/i;
 
 export function isAddrInUse(text) {
@@ -22,9 +23,9 @@ export function httpListenerState(res, port) {
 }
 
 /* What the receiving status says about HTTP: 'on' (mention it), 'failed' (say it failed and why) or
-   'off' (leave it out). listening: store.state.walletListenerService (receiving is on at all);
-   Epicbox alone turns it on, so it no longer means HTTP runs. */
-export function httpShown(listening, http) {
+   'off' (leave it out). From the HTTP listener's own state only (reset on Stop and lock), not from
+   walletListenerService: Epicbox alone turns that on, and a late Epicbox start used to leave it off. */
+export function httpShown(http) {
   const s = http && http.state;
-  return listening && (s === 'on' || s === 'failed') ? s : 'off';
+  return s === 'on' || s === 'failed' ? s : 'off';
 }
