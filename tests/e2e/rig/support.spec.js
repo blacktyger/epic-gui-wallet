@@ -139,4 +139,4 @@ function support(ui) {
 }
 
 support('modern');
-support('classic');
+

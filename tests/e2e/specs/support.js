@@ -1,3 +1,4 @@
+// e2e-ui: modern
 /*
  * Support: logs on by default, and Get help / Report a problem end to end (docs/support/DESIGN.md).
  * Empty HOME -> create a wallet -> the stub node -> lock / unlock -> the log files exist (app at

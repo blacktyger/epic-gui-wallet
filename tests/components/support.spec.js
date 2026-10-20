@@ -6,7 +6,6 @@
  */
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
-import ClassicDialog from '@/components/layout/SupportReportModalBox.vue';
 import ModernDialog from '@/components/modern/dialogs/SupportDialog.vue';
 import { mountView, t } from './support/mountView.js';
 import { button } from './support/dom.js';
@@ -45,8 +44,8 @@ async function write(wrapper, { description = 'Wallet does not connect to the no
 
 const click = async (wrapper, key) => { await button(wrapper, t(key)).trigger('click'); await flushPromises(); };
 
+//Modern only: Classic is frozen (user decision, 2026-10-20); its dialog shares this logic
 describe.each([
-  { name: 'Classic', Component: ClassicDialog },
   { name: 'Modern', Component: ModernDialog },
 ])('Report a problem ($name)', ({ Component }) => {
   beforeEach(() => fakeSupport());
