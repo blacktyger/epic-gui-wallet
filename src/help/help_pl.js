@@ -81,7 +81,7 @@ const messages = [
   {
     title: 'Fraza odzyskiwania',
     text: `Fraza odzyskiwania to lista słów, których potrzebujesz, aby przywrócić portfel. Zapisz je
-    na papierze, w kolejności, w jakiej są wyświetlane, i trzymaj kartkę w bezpiecznym miejscu, offline.
+    na papierze, w kolejności, w jakiej są wyświetlane, i trzymaj kartkę w bezpiecznym miejscu offline.
     Nigdy nie przechowuj ich jako zdjęcia, zrzutu ekranu ani pliku.<br/>
     <br/>
     Jeśli stracisz ten komputer albo pliki portfela, przywrócisz portfel<br/>

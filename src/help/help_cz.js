@@ -1,6 +1,6 @@
 const messages = [
   {
-    title: 'Poslat mince',
+    title: 'Odeslání mincí',
     text: `Odeslání je první krok při vytváření interaktivní transakce.<br/>
     <br/>
     Transakci lze odeslat okamžitě na adresu Epicbox nebo http(s), nebo ji provést ručně výměnou souborů.<br/>
@@ -12,7 +12,7 @@ const messages = [
     Adresou příjemce může být adresa Epicbox nebo libovolná externí adresa http(s).<br/>`,
   },
   {
-    title: 'Obdržet mince',
+    title: 'Příjem mincí',
     text: `Aby peněženka mohla přijímat mince, musí běžet naslouchání peněženky.<br/><br/>
     Ve výchozím nastavení je naslouchání zapnuto.<br/><br/>
     Toto lze změnit v Nastavení.<br/>
@@ -44,9 +44,9 @@ const messages = [
     text: `ID transakce je jedinečný identifikátor každé transakce, společný pro příjemce a odesílatele.<br/>`
   },
   {
-    title: 'Coin ID',
-    text: `Coin ID je jedinečný identifikátor vašich mincí na blockchainu.<br/>
-    Hodnotu Coin ID vidíte jen vy.<br/>`
+    title: 'ID mince',
+    text: `ID mince je jedinečný identifikátor vašich mincí na blockchainu.<br/>
+    Hodnotu ID mince vidíte jen vy.<br/>`
   },
   {
     title: 'Naslouchání peněženky',

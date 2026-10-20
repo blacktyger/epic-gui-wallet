@@ -1,9 +1,9 @@
 const messages = [
   {
     title: 'Coins versenden',
-    text: `Der Sendebefehl ist der erste Schritt beim Aufbau einer interaktiven Transaktion.<br/>
+    text: `Das Senden ist der erste Schritt einer interaktiven Transaktion.<br/>
     <br/>
-    Eine Transaktion kann entweder sofort an eine Epicbox- oder http(s)-Adresse gesendet oder manuell durch den Austausch von Dateien erfolgen.<br/>
+    Eine Transaktion kann sofort an eine Epicbox- oder http(s)-Adresse gesendet oder manuell über den Austausch von Dateien abgewickelt werden.<br/>
     <br/>
     Um eine neue Transaktion zu starten, stellen Sie sicher, dass Ihr Netzwerkknoten vollständig mit dem Epic Cash-Netzwerk synchronisiert ist.<br/></br>
     Der Status Ihres Netzwerkknotens sollte „synchronisiert“ lauten.<br/>
@@ -13,12 +13,12 @@ const messages = [
   {
     title: 'Coins empfangen',
     text: `Um Coins zu erhalten, muss Ihre Wallet empfangsbereit sein.<br/><br/>
-    Die Standardeinstellungen der Wallet aktivieren standardmäßig den Empfangsmodus.<br/><br/>
+    In den Standardeinstellungen ist die Wallet empfangsbereit.<br/><br/>
     Diese Funktion kann in den Einstellungen geändert werden.<br/>
     <br/>
-    Auf der Seite Empfangen wird eine Liste von Adressen angezeigt, die für den Empfang von Coins verwendet werden können.<br/>
+    Auf der Seite „Empfangen“ wird eine Liste von Adressen angezeigt, die für den Empfang von Coins verwendet werden können.<br/>
     <br/>
-    Wenn etwas schief läuft und Ihre Wallet keine Coins empfängt, starten Sie den Wallet-Empfänger auf der Empfangsseite neu.<br/>`
+    Wenn etwas schiefläuft und Ihre Wallet keine Coins empfängt, starten Sie den Wallet-Empfänger auf der Seite „Empfangen“ neu.<br/>`
   },
   {
     title: 'Offline-Transaktion abschließen',
@@ -51,7 +51,7 @@ const messages = [
     title: 'Wallet-Empfänger',
     text: `Der Wallet-Empfänger muss in Betrieb sein, um Coins von anderen Wallets zu empfangen.<br/>
     <br/>
-    Der Wallet-Empfänger kann auf der Empfangsseite gestartet oder gestoppt werden.<br/>`
+    Der Wallet-Empfänger kann auf der Seite „Empfangen“ gestartet oder gestoppt werden.<br/>`
   },
   {
     title: 'Konto',
@@ -65,7 +65,7 @@ const messages = [
   },
   {
     title: 'Netzwerkknoten',
-    text: `Dies ist der Ort, an dem sich Ihr Netzwerkknoten befindet.<br/>
+    text: `Dies ist die Adresse Ihres Netzwerkknotens.<br/>
     <br/>
     Ein Netzwerkknoten ist erforderlich, damit die Wallet Coins senden und empfangen kann.<br/>
     <br/>
@@ -92,7 +92,7 @@ const messages = [
            Ihre Wallet hat einen integrierten Netzwerkknoten, den Sie verwenden können, oder Sie wählen einen externen Netzwerkknoten auf einem anderen
            Computer oder einen externen öffentlichen Netzwerkknoten.
            <br/><br/>
-           Wenn Sie den integrierten Netzwerkknoten zum ersten Mal starten, dauert es ca. 2 Stunden, um die Blockchain-Daten zu synchronisieren.`
+           Wenn Sie den integrierten Netzwerkknoten zum ersten Mal starten, dauert die Synchronisierung der Blockchain-Daten ca. 2 Stunden.`
   },
   {
     title: 'Peers',
