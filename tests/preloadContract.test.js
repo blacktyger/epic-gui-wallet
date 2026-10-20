@@ -18,13 +18,13 @@ const EXPOSED = ['api', 'clipboard', 'config', 'debug', 'explorer', 'log', 'node
   'nodePath', 'nodeQr', 'nodeSecp256k1', 'nodeWebUtils', 'openepichidden', 'openlink'];
 
 //ipcRenderer.invoke channels (each one has an ipcMain.handle: tests/ipcChannels.test.js)
-const INVOKED = ['app-relaunch', 'clipboard-copy-secret', 'clipboard-wipe-secret', 'clipboard-write-text', 'legacy-scan',
+const INVOKED = ['app-relaunch', 'clipboard-copy-secret', 'clipboard-wipe-secret', 'clipboard-write-text', 'folder-lock', 'legacy-scan',
   'locale', 'lookup', 'node-directory', 'node-fetch', 'open-external', 'open-folder', 'pick-wallet-folder', 'pty-start',
   'quit', 'release-url', 'reload-ui', 'resize', 'session-password-clear', 'session-password-has', 'session-password-set',
   'show-open-dialog', 'show-save-dialog', 'version'];
 
 //ipcRenderer.on with a fixed channel (besides the validChannels listener)
-const LISTENED = ['pty-data', 'pty-exit'];
+const LISTENED = ['menu-lock', 'pty-data', 'pty-exit'];
 
 //handlers that do not check the sender, and why that is fine
 const UNCHECKED = {
@@ -44,7 +44,7 @@ test('the preload exposes exactly the reviewed bridge APIs', () => {
 
 test('the preload invokes exactly the reviewed channels; sends and listens on fixed ones only', () => {
   assert.deepEqual(names(preload, /ipcRenderer\.invoke\(\s*['"]([^'"]+)['"]/g), [...INVOKED].sort());
-  assert.deepEqual(names(preload, /ipcRenderer\.send\(\s*['"]([^'"]+)['"]/g), ['firstscan-stdout', 'nodeBackground']);
+  assert.deepEqual(names(preload, /ipcRenderer\.send\(\s*['"]([^'"]+)['"]/g), ['firstscan-stdout', 'menu-state', 'nodeBackground']);
   assert.deepEqual(names(preload, /ipcRenderer\.sendSync\(\s*['"]([^'"]+)['"]/g), ['app-paths']);
   //what the main process may push to the page (webContents.send)
   assert.deepEqual(names(preload, /ipcRenderer\.on\(\s*['"]([^'"]+)['"]/g), LISTENED);
@@ -80,7 +80,7 @@ test('every IPC handler checks the sender is the app window, except the reviewed
 test('every main-process channel is used by the preload (no forgotten handler)', () => {
   const handled = names(main, /ipcMain\.handle\(\s*['"]([^'"]+)['"]/g);
   const listened = names(main, /ipcMain\.on\(\s*['"]([^'"]+)['"]/g);
-  const used = new Set([...INVOKED, 'firstscan-stdout', 'nodeBackground', 'app-paths']);
+  const used = new Set([...INVOKED, 'firstscan-stdout', 'menu-state', 'nodeBackground', 'app-paths']);
   const validChannels = (preload.match(/const validChannels = \[([^\]]*)\]/) || [])[1] || '';
   for (const c of validChannels.matchAll(/'([^']+)'/g)) used.add(c[1]);
   assert.deepEqual([...handled, ...listened].filter(c => !used.has(c)), []);
