@@ -23,6 +23,9 @@ const INVOKED = ['app-relaunch', 'clipboard-copy-secret', 'clipboard-wipe-secret
   'quit', 'release-url', 'reload-ui', 'resize', 'session-password-clear', 'session-password-has', 'session-password-set',
   'show-open-dialog', 'show-save-dialog', 'version'];
 
+//ipcRenderer.on with a fixed channel (besides the validChannels listener)
+const LISTENED = ['pty-data', 'pty-exit'];
+
 //handlers that do not check the sender, and why that is fine
 const UNCHECKED = {
   'app-paths': 'sendSync from the preload before the page loads; returns folder names only',
@@ -43,6 +46,8 @@ test('the preload invokes exactly the reviewed channels; sends and listens on fi
   assert.deepEqual(names(preload, /ipcRenderer\.invoke\(\s*['"]([^'"]+)['"]/g), [...INVOKED].sort());
   assert.deepEqual(names(preload, /ipcRenderer\.send\(\s*['"]([^'"]+)['"]/g), ['firstscan-stdout', 'nodeBackground']);
   assert.deepEqual(names(preload, /ipcRenderer\.sendSync\(\s*['"]([^'"]+)['"]/g), ['app-paths']);
+  //what the main process may push to the page (webContents.send)
+  assert.deepEqual(names(preload, /ipcRenderer\.on\(\s*['"]([^'"]+)['"]/g), LISTENED);
   //every ipcRenderer call names its channel, except the one listener behind validChannels
   const dynamic = [...preload.matchAll(/ipcRenderer\.(invoke|send|sendSync|on|once)\(\s*([^'"\s][^,)]*)/g)].map(m => m[1] + ' ' + m[2]);
   assert.deepEqual(dynamic, ['on channel'], 'a channel from a variable: ' + dynamic.join(', '));
