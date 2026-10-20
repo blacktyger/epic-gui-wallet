@@ -122,6 +122,46 @@ Not worth doing now:
 - Chasing coverage numbers; the untested `*Service.js` wrappers are thin.
 - Exodus/Stack Wallet/Sparrow-style structures: nothing there that Ledger Live and Trezor do not already show.
 
+Status (2026-10-20): items 1–4 are in the pre-build gate below (the sender checks already existed in
+`background.js`; the contract test pins them, and `sandbox: false` as a documented decision). The pseudo-locale
+pass is not done yet. On item 5, the gate goes further than "one retry": nothing is retried, and flaky tests are quarantined.
+
+Next steps, in order: (1) a component test for the Create/Restore wizard and Contacts; (2) an e2e restore
+flow from a known phrase against the stub node's outputs (balances without funds); (3) the settings-error
+screen in e2e; (4) a pseudo-locale run of the smoke spec; (5) visual baselines for 3–4 screens once the
+smoke has been stable for a few releases.
+
 ## The pre-build gate
 
-TODO (lead): describe `npm run test:gate`, what it runs, how long it takes, and how `scripts/release.sh` calls it.
+`npm run test:gate` (`scripts/test-gate.sh`) is what a release must pass. `scripts/release.sh` runs it in
+its fresh clone right after `npm ci`. If it fails, the release stops before anything is built, and a commit
+without the gate is refused. Every stage runs, so one report shows every failure. Logs go to
+`tests/out/gate/<stage>.log`.
+
+| Stage | What | Files | Time |
+|---|---|---|---|
+| lint | `vue-cli-service lint --no-fix` (src and tests) | | ~10 s |
+| unit | node:test: the pure logic in `src/shared`, and that the window title and Classic About show the package.json version | `tests/*.test.js` | ~2 s |
+| contract | The preload/IPC contract: exactly the reviewed bridge APIs and channels. Every handler checks the sender (`fromAppWindow`) or is on a reviewed read-only list, and no handler is forgotten. Window flags: contextIsolation on, nodeIntegration off, webSecurity on, `sandbox: false` pinned as a decision. Navigation, webview and new-window guards, CSP, URL and fs allowlists. | `preloadContract`, `ipcChannels`, `security` | <1 s |
+| i18n | Every English key in all languages, with placeholders and plurals; every key the code names literally exists in English | `i18n`, `i18nKeys` | ~1 s |
+| components | vitest + Vue Test Utils + happy-dom, each screen in Classic and Modern: Send validation, Receive states (listener stopped, busy port), Unlock, the Settings node field (typed key by key), the removal dialog, recovery phrase reveal/copy (secret clipboard only) | `tests/components/*.spec.js` | ~3 s |
+| e2e | Playwright `_electron` on the packaged Linux app with the real `epic-wallet`, in `bwrap --unshare-net --unshare-pid` (loopback only, scratch HOME, its own Xvfb) with a Node stub node. Create a wallet; type the node address key by key; visit every page of both interfaces; Send validation (nothing sent); Receive with the listener stopped; wrong password; lock/unlock; busy port 3415; Contacts; Persian RTL; Menu › Quit with no process left. Any console error fails its step, and no output file may contain a secret. | `tests/e2e/` (README there) | ~60 s with the app build (~35 s), ~26 s with a reused build |
+
+Measured on 2026-10-20: the whole gate takes 75–85 s on this machine, on 6.1.4 and on 6.1.5.
+
+```sh
+npm run test:gate            # the gate (exit 0 = PASS)
+npm run test:gate:quick      # everything but e2e, ~15 s, while working (not a gate pass)
+npm run test:e2e -- --spec smoke --ui classic    # one e2e case; E2E_APPDIR=<linux-unpacked> to test a build
+npm run test:gate:windows    # optional: the smoke on the Windows rig through epicrig (scripts/test-gate-windows.sh)
+```
+
+Policy:
+- **Known bugs** (a `known-bug` id on an e2e step) are reported in every run but don't fail the gate. Each
+  has a repro in the e2e README. Today there is one: E2E-1, Receive's pending Start calls `this.$t` after
+  the page has been left.
+- **Flaky** tests are never retried until they pass. They move to `tests/e2e/quarantine/`, which doesn't
+  run, with the reason and the date. None so far: three runs in a row of each layer gave the same results.
+- A component test that exposes a product bug stays in, as `test.fails('BUG: ...')`.
+- A new bridge API, IPC channel or unchecked handler fails `contract` until it is added to the reviewed lists
+  in `tests/preloadContract.test.js`. That is how 6.1.5's `folder-lock`, `menu-state` and `menu-lock` were caught.
