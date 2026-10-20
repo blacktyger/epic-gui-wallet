@@ -1,7 +1,8 @@
 # Accounts: one password, several balances
 
 Status: proposal (2026-10-20). Branch `plan/accounts` off `test/gate-615`. No product code.
-Mockup: `docs/plans/accounts-mockup/` (static HTML, light and dark).
+Mockup: `docs/plans/accounts-mockup/` (static HTML, light and dark), published at
+https://bt-asus.tailce5f59.ts.net:8447/p/sh_d8560c305c8a93457d0c2a1c6950754e/
 
 ## Why
 

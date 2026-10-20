@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en" data-ui="modern" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accounts mockup</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="mk-bar">
+  <h1>Epic Wallet · Accounts</h1>
+  <div class="mk-tabs" role="tablist" aria-label="Screens">
+    <button class="mk-tab" role="tab" aria-selected="true" data-s="a">A · Switcher</button>
+    <button class="mk-tab" role="tab" aria-selected="false" data-s="b">B · Add account</button>
+    <button class="mk-tab" role="tab" aria-selected="false" data-s="c">C · Switching</button>
+    <button class="mk-tab" role="tab" aria-selected="false" data-s="d">D · Settings › Accounts</button>
+    <button class="mk-tab" role="tab" aria-selected="false" data-s="e">E · Unlock list</button>
+  </div>
+  <button class="mk-theme" id="theme" aria-pressed="false">Light</button>
+</header>
+<p class="mk-note">Static mockup for docs/plans/accounts.md. <b>Account</b> = an epic-wallet account in the same wallet (same recovery phrase and password, fast switch). <b>Linked wallet</b> = a wallet from another recovery phrase, opened with this wallet's password (phase 2, slower switch, always badged).</p>
+
+<main class="mk-stage">
+
+<!-- A: switcher -->
+<section class="screen" id="s-a" role="tabpanel" aria-label="Account switcher">
+  <div class="frame">
+    <nav class="side" data-side="Main" data-sub="mainnet · 3 accounts" data-open="1"></nav>
+    <div class="main" data-dash="Main"></div>
+  </div>
+</section>
+
+<!-- B: add account -->
+<section class="screen" id="s-b" role="tabpanel" aria-label="Add account" hidden>
+  <div class="frame">
+    <nav class="side" data-side="Main" data-sub="mainnet · 3 accounts"></nav>
+    <div class="main" data-dash="Main"></div>
+    <div class="scrim">
+      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="add-h">
+        <h2 id="add-h">Add an account to Main</h2>
+        <p class="dim" style="margin:0">Accounts are separate balances you reach from inside this wallet.</p>
+        <div class="choices" role="radiogroup">
+          <label class="choice">
+            <input type="radio" name="kind" checked>
+            <div class="grow">
+              <b>New account <span class="badge gold">Recommended</span></b>
+              <p>Uses this wallet's recovery phrase and password. Nothing new to back up.</p>
+              <div class="field"><label for="nm">Name</label><input id="nm" value="Savings"></div>
+            </div>
+          </label>
+          <label class="choice">
+            <input type="radio" name="kind">
+            <div class="grow">
+              <b>Link a wallet from another recovery phrase <span class="badge">Own recovery phrase</span></b>
+              <p>Restores a different phrase and opens it with this wallet's password. Back up that phrase separately — Main's phrase does not cover it.</p>
+            </div>
+          </label>
+        </div>
+        <div class="note"><span aria-hidden="true">🔒</span><span>Uses this wallet's password — you won't be asked again.</span></div>
+        <div class="dlg-foot">
+          <a href="#">Want a separate wallet with its own password? Add a wallet</a>
+          <button class="btn ghost">Cancel</button>
+          <button class="btn primary">Add account</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- C: switching -->
+<section class="screen" id="s-c" role="tabpanel" aria-label="Switching" hidden>
+  <p class="cap">C1 · Account switch, about 2 seconds: the app stays, balance and Epicbox catch up</p>
+  <div class="frame">
+    <nav class="side" data-side="Savings" data-sub="Main · account"></nav>
+    <div class="main" data-dash="Savings" data-switching="1"></div>
+  </div>
+  <p class="cap">C2 · Linked-wallet switch, 5–10 seconds: the wallet service restarts, no password asked</p>
+  <div class="frame">
+    <nav class="side" data-side="Main" data-sub="mainnet · 3 accounts"></nav>
+    <div class="main" data-dash="Main"></div>
+    <div class="scrim">
+      <div class="dialog" role="alertdialog" aria-labelledby="sw-h" aria-describedby="sw-d" style="width:440px">
+        <h2 id="sw-h">Opening Cold stash</h2>
+        <p class="dim" id="sw-d" style="margin:0">A linked wallet with its own recovery phrase. About 10 seconds.</p>
+        <ol class="steps">
+          <li><span class="st done" aria-hidden="true">✓</span>Closing Main</li>
+          <li><span class="st now" aria-hidden="true"></span><b>Opening Cold stash</b></li>
+          <li class="faint"><span class="st" aria-hidden="true"></span>Reconnecting Epicbox</li>
+        </ol>
+        <div class="bar" role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100" aria-label="Switching"><i></i></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- D: settings -->
+<section class="screen" id="s-d" role="tabpanel" aria-label="Settings accounts" hidden>
+  <div class="frame">
+    <nav class="side" data-side="Main" data-sub="mainnet · 3 accounts" data-settings="1"></nav>
+    <nav class="set-nav" aria-label="Settings">
+      <small>Wallet</small>
+      <a href="#" aria-current="page">This wallet</a>
+      <a href="#">All wallets</a>
+      <small>App</small>
+      <a href="#">Node</a><a href="#">Epicbox</a><a href="#">Appearance</a><a href="#">About</a>
+    </nav>
+    <div class="main" style="overflow:auto">
+      <div class="page-h"><h2>This wallet › Accounts</h2>
+        <div class="chips"><button class="btn sm primary">+ Add account</button></div></div>
+      <div class="panel">
+        <table class="tbl">
+          <thead><tr><th>Name</th><th>Path</th><th>Epicbox address</th><th class="num">Balance</th><th class="sr">Actions</th></tr></thead>
+          <tbody>
+            <tr><td><b>Main</b> <span class="badge ok">Open</span> <button class="pen" aria-label="Rename Main">✎</button></td><td class="mono dim">m/0/0</td>
+              <td class="mono dim">esWb2…9kQ3@epicbox.epiccash.com</td><td class="num mono">1,204.55</td><td class="act"><span class="faint" style="font-size:var(--fs-xs)">Always shown</span></td></tr>
+            <tr><td><b>Savings</b> <button class="pen" aria-label="Rename Savings">✎</button></td><td class="mono dim">m/1/0</td>
+              <td class="mono dim">esZt7…Lm2a@epicbox.epiccash.com</td><td class="num mono">3,000.00</td><td class="act"><button class="btn sm ghost">Hide</button></td></tr>
+            <tr><td><b>Mining</b> <button class="pen" aria-label="Rename Mining">✎</button></td><td class="mono dim">m/2/0</td>
+              <td class="mono dim">esQp4…v81X@epicbox.epiccash.com</td><td class="num mono">18.20</td><td class="act"><button class="btn sm ghost">Hide</button></td></tr>
+            <tr class="hidden-row"><td>account_3 <span class="badge">Hidden</span></td><td class="mono">m/3/0</td>
+              <td class="mono">esKd9…02Hs@epicbox.epiccash.com</td><td class="num mono">0.00</td><td class="act"><button class="btn sm ghost">Show</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="info">All accounts share this wallet's recovery phrase. Account names are stored on this computer only; restoring the phrase brings the accounts and their coins back as account_1, account_2… Each account has its own Epicbox address.</p>
+
+      <div class="sec">
+        <h3 class="list-h">Linked wallets</h3>
+        <div class="panel">
+          <table class="tbl">
+            <tbody>
+              <tr><td><b>Cold stash</b> <span class="badge">Own recovery phrase</span><br><small class="faint">w4 · mainnet · restored 2026-10-18</small></td>
+                <td class="num mono">9,870.00<br><small class="faint">as of today 09:12</small></td>
+                <td class="act"><button class="btn sm">Show recovery phrase</button> <button class="btn sm ghost">Unlink</button> <button class="btn sm ghost risk">Remove</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="info">A linked wallet has its own recovery phrase and opens with Main's password. Unlink makes it a separate wallet in the unlock list.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- E: unlock -->
+<section class="screen" id="s-e" role="tabpanel" aria-label="Unlock" hidden>
+  <div class="frame">
+    <div class="onbo">
+      <div class="unlock">
+        <h2>Welcome back</h2>
+        <p class="dim" style="margin:0">Choose a wallet and enter its password.</p>
+        <div class="picker">
+          <button class="picker-btn" aria-haspopup="listbox" aria-expanded="true">
+            <span class="avatar">MA</span><span class="grow"><b>Main</b><small>mainnet · 3 accounts · 1 linked wallet</small></span><span class="chev" style="transform:rotate(45deg)"></span>
+          </button>
+          <ul class="picker-list" role="listbox" aria-label="Wallets">
+            <li role="option" aria-selected="true"><span class="avatar">MA</span><span class="grow"><b>Main</b><small>mainnet · 3 accounts · 1 linked wallet</small></span><span class="check">✓</span></li>
+            <li role="option" aria-selected="false"><span class="avatar">BU</span><span class="grow"><b>Business</b><small>mainnet</small></span></li>
+            <li role="option" aria-selected="false"><span class="avatar">TE</span><span class="grow"><b>Test</b><small>floonet</small></span></li>
+          </ul>
+          <div class="ann">Only standalone wallets are listed. <b>Cold stash</b> (linked to Main) is not here: unlock Main and switch to it. If Main is removed or its folder is missing, Cold stash shows here again.</div>
+        </div>
+        <div class="field" style="margin-top:var(--sp-5)"><label for="pw">Password</label><input id="pw" type="password" value="••••••••••"></div>
+        <button class="btn primary" style="width:100%;margin-top:var(--sp-4)">Unlock</button>
+        <p class="faint" style="font-size:var(--fs-xs);margin:var(--sp-3) 0 0">Opens the account you used last: Savings.</p>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<script>
+const ini = (n) => n.slice(0, 2).toUpperCase();
+function side(el) {
+  const name = el.dataset.side, open = !!el.dataset.open, set = !!el.dataset.settings;
+  const nav = ['Overview', 'Send', 'Receive', 'Activity', 'Contacts'];
+  const acc = [['Main', '1,204.55', 'm/0/0'], ['Savings', '3,000.00', 'm/1/0'], ['Mining', '18.20', 'm/2/0']];
+  el.setAttribute('aria-label', 'Main');
+  el.innerHTML = `
+    <div class="brand"><i aria-hidden="true"></i>EPIC WALLET</div>
+    <div class="nav">${nav.map((n, i) => `<a href="#" ${!set && i === 0 ? 'aria-current="page"' : ''}><span class="ico" aria-hidden="true"></span>${n}</a>`).join('')}
+      <div class="nav-sep" role="separator"></div>
+      <a href="#" ${set ? 'aria-current="page"' : ''}><span class="ico" aria-hidden="true"></span>Settings</a></div>
+    <div class="side-foot">
+      ${open ? `<div class="pop" id="acct-pop" role="menu" aria-label="Switch account">
+        <h3>Wallet: Main</h3>
+        <ul>${acc.map(([n, b, p]) => `<li><button class="row-btn" role="menuitemradio" aria-checked="${n === name}" aria-current="${n === name}">
+          <span class="check" aria-hidden="true">${n === name ? '✓' : ''}</span><span class="avatar">${ini(n)}</span>
+          <span class="grow"><b>${n}</b><br><small class="faint mono">${p}</small></span><span class="amt">${b}</span></button></li>`).join('')}</ul>
+        <h3>Linked wallets</h3>
+        <ul><li><button class="row-btn" role="menuitemradio" aria-checked="false"><span class="check"></span><span class="avatar">CS</span>
+          <span class="grow"><b>Cold stash</b><br><span class="badge">Own recovery phrase</span></span><span class="amt">9,870.00</span></button></li></ul>
+        <div class="pop-foot"><button class="btn sm">+ Add account</button><button class="btn sm ghost">Manage accounts</button></div>
+      </div>` : ''}
+      <div style="display:flex;gap:var(--sp-2);align-items:center">
+        <button class="acct-btn" aria-haspopup="menu" aria-expanded="${open}" ${open ? 'aria-controls="acct-pop"' : ''}>
+          <span class="avatar">${ini(name)}</span><span class="grow"><b>${name}</b><small>${el.dataset.sub}</small></span><span class="chev" aria-hidden="true"></span>
+        </button>
+        <button class="lock" aria-label="Lock">🔒︎</button>
+      </div>
+    </div>`;
+}
+function dash(el) {
+  const sw = !!el.dataset.switching, name = el.dataset.dash;
+  const big = sw ? '<span class="skel" style="width:260px;height:44px"></span>' : (name === 'Main' ? '1,204.55' : '3,000.00') + '<span>EPIC</span>';
+  el.innerHTML = `
+    <div class="page-h"><h2>Overview</h2>
+      <div class="chips">
+        ${sw ? '<span class="chip" role="status"><span class="dot warn"></span>Switching to Savings…</span>' : ''}
+        <span class="chip"><span class="dot"></span>Node synced</span>
+        <span class="chip"><span class="dot ${sw ? 'warn' : ''}"></span>Epicbox ${sw ? 'reconnecting' : 'connected'}</span>
+      </div></div>
+    <div class="panel bal"><small>${name} · spendable</small><div class="big">${big}</div>
+      <div class="faint">${sw ? '<span class="skel" style="width:180px"></span>' : 'Locked 0.00 · awaiting 0.00'}</div>
+      <div class="actions"><button class="btn primary" ${sw ? 'disabled' : ''}>Send</button><button class="btn" ${sw ? 'disabled' : ''}>Receive</button></div></div>
+    <h3 class="list-h">Recent activity</h3>
+    <div class="panel">${sw ? [1, 2, 3].map(() => '<div class="tx"><span class="skel" style="width:40%"></span><span class="grow"></span><span class="skel" style="width:90px"></span></div>').join('')
+      : [['Received', 'from Alice', '+120.00', 1], ['Sent', 'to Exchange', '−45.10', 0], ['Received', 'Mining payout', '+18.20', 1]].map(([k, w, a, i]) =>
+        `<div class="tx"><b>${k}</b><span class="dim">${w}</span><span class="grow"></span><span class="amt ${i ? 'in' : ''}">${a}</span></div>`).join('')}</div>`;
+}
+document.querySelectorAll('[data-side]').forEach(side);
+document.querySelectorAll('[data-dash]').forEach(dash);
+const tabs = document.querySelectorAll('.mk-tab');
+function show(s) {
+  tabs.forEach(t => t.setAttribute('aria-selected', String(t.dataset.s === s)));
+  document.querySelectorAll('.screen').forEach(x => { x.hidden = x.id !== 's-' + s; });
+  try { history.replaceState(null, '', '#' + s); } catch (e) {}
+}
+tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.s)));
+const th = document.getElementById('theme');
+function theme(t) { document.documentElement.dataset.theme = t; th.textContent = t === 'dark' ? 'Light' : 'Dark'; th.setAttribute('aria-pressed', String(t === 'light')); }
+th.addEventListener('click', () => theme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
+const q = new URLSearchParams(location.search);
+if (q.get('theme')) theme(q.get('theme'));
+function fromHash() { const h = location.hash.slice(1); if (/^[a-e]$/.test(h)) show(h); }
+fromHash(); window.addEventListener('hashchange', fromHash);
+</script>
+</body>
+</html>
