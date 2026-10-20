@@ -8,11 +8,11 @@
  */
 import { mergeProfiles } from '../legacyProfile.js';
 import { WALLET_DEFAULTS } from './settingsStore.js';
+import { localNodeUrl } from './walletToml.js';
 
 export const LOCALES = ['bg', 'cz', 'de', 'en', 'fa', 'hi'];
 //the Epicbox domain older GUIs shipped with; the server moved
 const EPICBOX_RENAMED = { 'epicbox.epic.tech': 'epicbox.epiccash.com' };
-const LOCAL_NODE = { mainnet: 'http://127.0.0.1:3413', floonet: 'http://127.0.0.1:13413', usernet: 'http://127.0.0.1:23413' };
 
 const str = (v) => typeof v === 'string' ? v : '';
 const dedupeKey = (c) => JSON.stringify([str(c.name), str(c.onion)]);
@@ -21,7 +21,7 @@ const dedupeKey = (c) => JSON.stringify([str(c.name), str(c.onion)]);
    host:port (http only for this machine, where the built-in node has no TLS), empty → default.
    A testnet gets the local node, never the mainnet public node. */
 export function fallbackNodeAddress(url, { network = 'mainnet' } = {}) {
-  const def = network === 'mainnet' ? WALLET_DEFAULTS.check_node_api_http_addr : LOCAL_NODE[network] || LOCAL_NODE.mainnet;
+  const def = network === 'mainnet' ? WALLET_DEFAULTS.check_node_api_http_addr : localNodeUrl(['floonet', 'usernet'].includes(network) ? network : 'mainnet');
   let u = str(url).trim();
   if (!u) return def;
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(u)) {

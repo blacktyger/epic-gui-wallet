@@ -16,6 +16,7 @@
 import { layout, netFromShort } from './appPaths.js';
 import { createSettingsStore, normalizeWallet, NETWORKS, WALLET_DEFAULTS, setServerDefaults, walletDefaults } from './settingsStore.js';
 import { planRemoval, removeFiles } from './walletRemoval.js';
+import { ownerApiPort } from './testPorts.js';
 import { renderWalletToml, renderNodeToml, networkPorts, walletMarkerText, WALLET_MARKER, tomlNetwork, localNodeUrl, isLocalNodeUrl } from './walletToml.js';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -642,7 +643,7 @@ class ConfigService {
             const has = (role) => killPids.some(p => p.role == role);
             this.killedPorts = [
               ...this.killedPorts,
-              ...(has('owner_api') ? [3420] : []),
+              ...(has('owner_api') ? [ownerApiPort()] : []),
               //another wallet's http listener holds the same port
               ...(has('listen') && !this.killedPorts.includes(this.walletListenerPort) ? [this.walletListenerPort] : []),
             ];

@@ -14,6 +14,7 @@ import { checkSpawnArgs } from './shared/walletArgs';
 import { pickedReadDirs } from './shared/walletFolder';
 import { DEFAULT_LABELS as MENU_LABELS } from './shared/appMenu';
 import { serverDefaultsFromEnv } from './shared/settingsStore';
+import { portOffset } from './shared/testPorts';
 
 const MENU_LABEL_KEYS = Object.keys(MENU_LABELS);
 
@@ -713,6 +714,10 @@ contextBridge.exposeInMainWorld('config', {
   },
   getArch(){
     return os.arch();
+  },
+  /* a test run's port offset (EPIC_GUI_TEST, shared/testPorts.js), 0 in normal use */
+  testPortOffset(){
+    return portOffset();
   },
   /* the node and Epicbox server new wallets start with, when the test gate sets them (shared/settingsStore.js) */
   serverDefaults(){

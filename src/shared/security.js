@@ -3,6 +3,7 @@
  * open a folder, touch a file, send a request to a node; and the page's Content-Security-Policy.
  * Plain ESM without app imports, so it runs under `node --test` (tests/security.test.js).
  */
+import { ownerApiPort, OWNER_API_PORT } from './testPorts.js';
 
 /* an http(s) URL with a host and no user:password@, else '' (the string as it is to be opened) */
 export function httpUrl(url) {
@@ -23,12 +24,15 @@ export function isLoopbackUrl(url) {
 }
 
 /* the wallet's owner and foreign API (epic-wallet owner_api, walletService.js): the one place the
-   owner API secret may be sent */
+   owner API secret may be sent. Port 3420; a test run's own port only with EPIC_GUI_TEST (shared/testPorts.js) */
 export const WALLET_API_ORIGIN = 'http://127.0.0.1:3420';
+export function walletApiOrigin() {
+  return ownerApiPort() === OWNER_API_PORT ? WALLET_API_ORIGIN : 'http://127.0.0.1:' + ownerApiPort();
+}
 export function isWalletApiUrl(url) {
   try {
     const u = new URL(url);
-    return u.origin === WALLET_API_ORIGIN && ['/v3/owner', '/v2/foreign'].includes(u.pathname);
+    return u.origin === walletApiOrigin() && ['/v3/owner', '/v2/foreign'].includes(u.pathname);
   } catch (e) {
     return false;
   }
@@ -211,7 +215,7 @@ export function contentSecurityPolicy({ dev = false, devServer = '' } = {}) {
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
     "media-src 'self' data: blob:",
-    "connect-src 'self' " + WALLET_API_ORIGIN + (dev && devServer ? ' ' + devServer + ' ' + ws : ''),
+    "connect-src 'self' " + walletApiOrigin() + (dev && devServer ? ' ' + devServer + ' ' + ws : ''),
     //the jsstore IndexedDB worker (a file of the app)
     "worker-src 'self' blob:",
     "object-src 'none'",

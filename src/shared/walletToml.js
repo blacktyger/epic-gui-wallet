@@ -10,6 +10,8 @@
  * end of its section, so an edited template can't silently leave an old path in place.
  */
 
+import { portOffset, ownerApiPort, OWNER_API_PORT } from './testPorts.js';
+
 /* per network: what epic and epic-wallet 4.1.0 generate themselves (`epic --floonet server config`,
    `epic-wallet --usernet init`): chain_type and the default ports */
 export const NETWORK_TOML = Object.freeze({
@@ -24,9 +26,10 @@ function net(network) {
   return n;
 }
 
-/* the ports of a network: node api, node p2p, wallet listener, stratum */
+/* the ports of a network: node api, node p2p, wallet listener, stratum (moved only in a test run:
+   shared/testPorts.js) */
 export function networkPorts(network) {
-  const b = net(network).base;
+  const b = net(network).base + portOffset();
   return { nodeApi: b, nodeP2p: b + 1, walletListener: b + 2, stratum: b + 3 };
 }
 
@@ -144,6 +147,8 @@ export function renderWalletToml({ template, network, configDir, dataDir, nodeUr
     owner_api_include_foreign: true,
     data_file_dir: joinPath(dataDir, 'wallet_data'),
   });
+  //a test run's own owner API port (shared/testPorts.js); else the template's 3420 as it is
+  if (ownerApiPort() !== OWNER_API_PORT) t = setTomlKeys(t, 'wallet', { owner_api_listen_port: ownerApiPort() });
   //only the built-in node has a secret. With the key absent epic-wallet reads node_api_secret_path
   //as None and sends no Authorization header (a path is sent as Basic auth on every node call)
   if (nodeApiSecretPath) t = setTomlKeys(t, 'wallet', { node_api_secret_path: nodeApiSecretPath });
