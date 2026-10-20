@@ -157,15 +157,15 @@ const messages = {
       language: 'Language',
       db_fatal: 'DB Fatal: can not insert DB',
       errors_save: 'Error saving user settings: {0}',
-      epicbox_domain: 'Epicbox Web Address',
+      epicbox_domain: 'Epicbox server',
       epicbox_off: 'turned off',
       epicbox_domain_hint: `Leave field blank if you don't want to use this service.`,
       noninteractive_transactions: `Intro to EPIC Addresses<br/>
       <br/>
       EPIC addresses provide an easy way to send EPIC when the receiving wallet is offline.<br/>
       <br/>
-      This is accomplished securely and privately by using an external relay server called "Epicbox"<br/>
-      Relay servers such as epicbox.epiccash.com and others to come later are provided by our community.<br/>
+      This is accomplished securely and privately through an Epicbox server.<br/>
+      Epicbox servers such as epicbox.epiccash.com and others to come later are provided by our community.<br/>
       <br/>
       How it works:<br/>
       Transactions are sent to the Epicbox server and delivered to the recipient as soon as the receiver's wallet is online.<br/>
@@ -429,7 +429,7 @@ const messages = {
       http_failed_port: 'HTTP is not receiving: port {0} is used by another program. Close it, then try again.',
       http_failed: 'HTTP is not receiving: the listener could not start.',
       http_retry: 'Try again',
-      epicbox_off: 'Your epicbox is not configured. Update your settings and define a epicbox domain',
+      epicbox_off: 'Epicbox is not set up. Choose an Epicbox server in Settings.',
       epicbox_listening_on: 'Listening on {0}',
       epicbox_listening: 'Epicbox listening',
       epicbox_connecting_to: 'Connecting to {0}…',
@@ -465,8 +465,8 @@ const messages = {
       auto_start: 'automatically start wallet listener and Epicbox after login',
       settings_saved: 'Settings saved',
       error_save: 'Error saving settings',
-      epicbox_domain: 'Epicbox Domain',
-      epicbox_domain_hint: `The domain of the relay server, where your epicbox is connected to. Leave field blank if you don't want to use this service. Default: epicbox.epiccash.com`,
+      epicbox_domain: 'Epicbox server',
+      epicbox_domain_hint: `The Epicbox server your wallet connects to. Leave the field blank if you don't want to use Epicbox. Default: epicbox.epiccash.com`,
 
       node_background: 'sync in background',
       node_background_hint: 'the built-in node server continues to sync in the background even when the app is closed. The next time you run the wallet, you do not have to wait for the synchronization with the blockchain.',

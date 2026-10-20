@@ -47,11 +47,11 @@ export default {
   rcv_on: 'Receiving is on',
   rcv_off: 'Receiving is off',
   rcv_start_title: 'Start the listener to receive online',
-  rcv_start_text: 'Epicbox and HTTP payments need the listener running. Payments already sent to your Epic address wait on the relay and arrive once it starts. Files work either way.',
+  rcv_start_text: 'Epicbox and HTTP payments need the listener running. Payments already sent to your Epic address wait on the Epicbox server and arrive once it starts. Files work either way.',
   rcv_start: 'Start listener',
   rcv_stop: 'Stop receiving',
   rcv_addr_title: 'Your Epic address',
-  rcv_addr_text: 'Share it to get paid. It works while this wallet is closed: the Epicbox relay holds payments until you are back.',
+  rcv_addr_text: 'Share it to get paid. It works while this wallet is closed: the Epicbox server holds payments until you are back.',
   rcv_addr_check: 'When you read it out, check the first five and last four characters.',
   rcv_copy_addr: 'Copy address',
   rcv_listening_via: 'Listening via {domain}',
@@ -87,7 +87,7 @@ export default {
   rcv_finalize_text: 'You sent a transaction file and got a response back. Finalize it to post the payment.',
   rcv_open: 'Open',
   rcv_listener: 'Listener',
-  rcv_listener_on_text: 'Epicbox and HTTP are listening. If you stop it, Epicbox payments wait at the relay for a while, HTTP payments to you fail, and transaction files still work.',
+  rcv_listener_on_text: 'Epicbox and HTTP are listening. If you stop it, Epicbox payments wait on the Epicbox server for a while, HTTP payments to you fail, and transaction files still work.',
 
   //Sign / finalize a transaction file
   file_choose: 'Choose file…',

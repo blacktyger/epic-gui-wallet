@@ -142,15 +142,15 @@ const messages = {
       language: 'Jazyk',
       db_fatal: 'DB Fatal: nelze vložit DB',
       errors_save: 'Při ukládání uživatelských nastavení došlo k chybě: {0}',
-      epicbox_domain: 'Webová adresa Epicboxu',
+      epicbox_domain: 'Server Epicbox',
       epicbox_off: 'vypnuto',
       epicbox_domain_hint: 'Pokud tuto službu nechcete používat, nechte pole prázdné.',
       noninteractive_transactions: `Úvod do adres EPIC<br/>
       <br/>
       Adresy EPIC umožňují snadno poslat EPIC, i když je peněženka příjemce offline.<br/>
       <br/>
-      Děje se tak bezpečně a soukromě pomocí externího předávacího serveru zvaného „Epicbox“.<br/>
-      Předávací servery, jako je epicbox.epiccash.com a další, které přibudou později, poskytuje naše komunita.<br/>
+      Děje se tak bezpečně a soukromě prostřednictvím serveru Epicbox.<br/>
+      Servery Epicbox, jako je epicbox.epiccash.com a další, které přibudou později, poskytuje naše komunita.<br/>
       <br/>
       Jak to funguje:<br/>
       Transakce se odešlou na server Epicbox a doručí se příjemci, jakmile je jeho peněženka online.<br/>
@@ -411,7 +411,7 @@ const messages = {
       http_failed_port: 'HTTP nepřijímá: port {0} používá jiný program. Zavřete ho a zkuste to znovu.',
       http_failed: 'HTTP nepřijímá: naslouchání se nepodařilo spustit.',
       http_retry: 'Zkusit znovu',
-      epicbox_off: 'Váš Epicbox není nastaven. Upravte nastavení a zadejte doménu Epicboxu',
+      epicbox_off: 'Epicbox není nastaven. V Nastavení vyberte server Epicbox.',
       epicbox_listening_on: 'Naslouchá na {0}',
       epicbox_listening: 'Epicbox naslouchá',
       epicbox_connecting_to: 'Připojování k {0}…',
@@ -447,8 +447,8 @@ const messages = {
       auto_start: 'po přihlášení automaticky spustit naslouchání peněženky a Epicbox',
       settings_saved: 'Nastavení uloženo',
       error_save: 'Při ukládání nastavení došlo k chybě',
-      epicbox_domain: 'Doména Epicboxu',
-      epicbox_domain_hint: 'Doména předávacího serveru, ke kterému je váš Epicbox připojen. Pokud tuto službu nechcete používat, nechte pole prázdné. Výchozí: epicbox.epiccash.com',
+      epicbox_domain: 'Server Epicbox',
+      epicbox_domain_hint: 'Server Epicbox, ke kterému se vaše peněženka připojuje. Pokud Epicbox nechcete používat, nechte pole prázdné. Výchozí: epicbox.epiccash.com',
       node_background: 'synchronizace na pozadí',
       node_background_hint: 'vestavěný server uzlu se synchronizuje na pozadí, i když je aplikace zavřená. Až peněženku příště spustíte, nemusíte čekat na synchronizaci s blockchainem.',
       node_load_warning: 'Prohledávání, dokud neskončí, využívá hodně procesoru a paměti.',
