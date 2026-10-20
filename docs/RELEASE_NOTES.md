@@ -20,6 +20,8 @@
 - Receive: when HTTP can't start because the node didn't answer (the listener asks the node first), it now says so ("the node did not answer… Try again once the node is reachable") instead of only "the listener could not start". Try again works as soon as the node answers. This was the cause of a "Try again" that seemed to do nothing on Windows while the public node had a short outage.
 - Classic: Ctrl+L locks the wallet from the page too, as in Modern; before, only the menu shortcut did, which needs the window to have the keyboard focus.
 - Polish: the remaining English texts are translated (Classic About page, the app menu, confirmation and first-scan dialogs, some toasts and hover titles, the Restore error for a wrong phrase), a wallet's default name ("Wallet 2") shows in the app's language, and the Modern sidebar shows the full wallet name ("Portfel 2" was cut off). The app menu is translated in every language.
+- Modern: the arrow of a sent transaction is gold (Overview › Recent activity and Activity, light and dark); received stays green, amounts are unchanged (feedback #20).
+- Modern: the first and last characters of an address are emphasised the same way everywhere (Receive, Review Send): gold text in medium weight, no background, so it never looks like a selection (feedback #47).
 - A proposal for an optional blockchain download ("head start") from the Epic project's server is in docs/plans/bootstrap.md, for testers to comment on. Nothing of it is in this version (feedback #30).
 
 ## 6.1.4
