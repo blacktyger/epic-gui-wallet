@@ -3,7 +3,7 @@
     <div class="e-onb-hero">
       <BrandTile />
       <h1>{{ hasWallets ? $t('msg.wallets.add_title') : $t('msg.modern.unlock.welcome_title') }}</h1>
-      <p class="e-lead">{{ hasWallets ? $t('msg.wallets.add_lead') : $t('msg.modern.unlock.welcome_lead') }}</p>
+      <p v-if="!hasWallets" class="e-lead">{{ $t('msg.modern.unlock.welcome_lead') }}</p>
       <div class="e-onb-hero-actions">
         <AddWalletOptions modern from="new" :network="network" :label="$t('msg.wallets.add_title')" />
       </div>
@@ -29,26 +29,20 @@
 
           <div class="e-adv-row" role="group" aria-labelledby="welcome-root-h">
             <p id="welcome-root-h" class="e-label">{{ $t('msg.wallets.root_title') }}</p>
-            <p class="e-help">{{ $t('msg.wallets.root_hint') }}</p>
-            <p class="e-adv-path"><span class="e-mono" translate="no">{{ appFolder }}</span></p>
+            <p class="e-help e-adv-hint">{{ $t('msg.wallets.root_hint_m') }}
+              <button type="button" class="e-icon-btn e-sm" :aria-label="$t('msg.wallets.root_more')" :aria-expanded="chainTip ? 'true' : 'false'" aria-controls="welcome-root-chain" @click="chainTip = !chainTip" @keydown.esc="chainTip = false"><EIcon name="info" size="sm" /></button>
+            </p>
+            <p id="welcome-root-chain" class="e-help" role="status" :hidden="!chainTip">{{ chainTip ? $t('msg.wallets.root_hint_chain') : '' }}</p>
+            <p v-if="rootMoved" class="e-help e-ok" role="status"><EIcon name="okc" />{{ $t('msg.wallets.root_using', [appFolder]) }}</p>
+            <p v-else class="e-adv-path"><span class="e-mono" translate="no">{{ appFolder }}</span></p>
             <details class="e-adv-more">
               <summary>{{ $t('msg.wallets.root_more') }}</summary>
-              <p class="e-help">{{ $t('msg.wallets.root_more_text') }}</p>
+              <p class="e-help">{{ $t('msg.wallets.root_more_m') }}</p>
             </details>
             <template v-if="canMoveRoot">
               <div class="e-adv-inline">
                 <button type="button" class="e-btn e-btn-sm" data-root="choose" @click="pickRoot"><EIcon name="folder" />{{ $t('msg.wallets.root_choose') }}</button>
                 <button v-if="rootSource === 'location'" type="button" class="e-link-btn e-small" data-root="default" @click="useDefaultRoot">{{ $t('msg.wallets.root_default') }}</button>
-              </div>
-              <div v-if="rootPicked" class="e-notice e-warn" role="group" aria-labelledby="welcome-root-l">
-                <EIcon name="restart" />
-                <div>
-                  <p id="welcome-root-l">{{ $t('msg.wallets.root_confirm', [rootPicked]) }}</p>
-                  <div class="e-row">
-                    <button type="button" class="e-btn e-btn-sm e-btn-ghost" @click="rootPicked = ''">{{ $t('msg.cancel') }}</button>
-                    <button type="button" class="e-btn e-btn-sm e-btn-primary" data-root="restart" @click="confirmRoot"><EIcon name="restart" />{{ $t('msg.wallets.restart_now') }}</button>
-                  </div>
-                </div>
               </div>
               <p v-if="rootError" class="e-error-msg" role="alert"><EIcon name="alertc" /><span>{{ rootError }}</span></p>
             </template>
@@ -57,7 +51,6 @@
         </div>
       </details>
 
-      <p class="e-onb-hero-note"><EIcon name="notebook" /><span>{{ $t('msg.modern.unlock.welcome_note') }}</span></p>
     </div>
     <AuthFoot />
   </div>
@@ -74,6 +67,22 @@
 
   export default reskin(New, {
     components: { EIcon, BrandTile, AuthFoot, AddWalletOptions },
+    data() {
+      //back from the restart after a new app folder: Advanced open, the folder in use said once
+      const moved = typeof this.configService.takeRootMoved === 'function' && this.configService.takeRootMoved();
+      return { chainTip: false, rootMoved: moved, advancedOpen: moved };
+    },
+    methods: {
+      //userData is read at start, so the new folder needs a restart: it follows the pick at once
+      async pickRoot() {
+        this.rootError = '';
+        const picked = await window.api.showOpenDialog();
+        if (picked && !picked.canceled && picked.filePaths && picked.filePaths[0]) {
+          this.rootPicked = picked.filePaths[0];
+          this.confirmRoot();
+        }
+      },
+    },
     computed: {
       networkName() { return networkBadge(this.network); },
     },

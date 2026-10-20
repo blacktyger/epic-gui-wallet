@@ -4,7 +4,6 @@
       <h2 id="stg-ws-h">{{ $t('msg.wallets.all_wallets') }}</h2>
       <div class="e-set-list">
         <div class="e-set-row e-stacked">
-          <p class="e-stg-sub">{{ $t('msg.wallets.other_wallets_hint') }}</p>
           <ul class="e-wlist">
             <li v-for="w in wallets" :key="w.id" :data-wallet="w.id">
               <div class="e-glyph-sq" aria-hidden="true"><EIcon name="wallet" /></div>
@@ -26,7 +25,6 @@
       <h2 id="stg-add-h">{{ $t('msg.wallets.add_title') }}</h2>
       <div class="e-set-list">
         <div class="e-set-row e-stacked">
-          <p class="e-stg-sub">{{ $t('msg.wallets.add_lead_open') }}</p>
           <AddWalletOptions modern from="settings" :network="network" :label="$t('msg.wallets.add_title')" />
         </div>
       </div>

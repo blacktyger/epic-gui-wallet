@@ -548,10 +548,27 @@ class ConfigService {
       this.fs.mkdirSync(root, { recursive: true });
       this.fs.mkdirSync(this.paths.defaultRoot, { recursive: true });
       this.writeFile(this.locationFile(), JSON.stringify({ root }, null, 2));
+      this.markRootMoved();
       return { ok: true };
     } catch (e) {
       console.log('configService.setRoot', e && e.message);
       return { ok: false, reason: 'failed' };
+    }
+  }
+
+  /* the restart after a new app folder: Welcome opens Advanced once and says which folder is in use */
+  markRootMoved() {
+    try { this.writeFile(this.path.join(this.paths.defaultRoot, 'root-moved'), '1'); } catch (e) { /* only a hint */ }
+  }
+
+  takeRootMoved() {
+    const f = this.paths.defaultRoot ? this.path.join(this.paths.defaultRoot, 'root-moved') : '';
+    try {
+      if (!f || !this.fs.existsSync(f)) return false;
+      this.fs.unlinkSync(f);
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -560,6 +577,7 @@ class ConfigService {
     if (!this.canMoveRoot()) return false;
     try {
       if (this.fs.existsSync(this.locationFile())) this.fs.unlinkSync(this.locationFile());
+      this.markRootMoved();
       return true;
     } catch (e) {
       return false;

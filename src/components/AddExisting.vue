@@ -25,13 +25,6 @@
                     <h2 class="title is-6" style="margin-bottom: 0.25rem;">{{ $t('msg.wallets.existing_folder') }}</h2>
                     <p id="existingFolderHelp" class="help" style="margin-bottom: 0.5rem;">{{ $t('msg.wallets.existing_folder_hint') }}</p>
                     <button ref="folderButton" type="button" class="button is-small is-primary is-outlined" :class="{ 'is-loading': folderBusy }" aria-describedby="existingFolderHelp" @click="pickWalletFolder">{{ $t('msg.wallets.existing_folder_go') }}</button>
-                    <div v-if="folderAsk" class="field is-grouped" style="margin-top: 0.5rem;">
-                      <p class="control">{{ $t('msg.wallets.folder_network') }}</p>
-                      <div class="control"><div class="select is-small"><select v-model="folderNetwork" :aria-label="$t('msg.wallets.network')">
-                        <option value="mainnet">Mainnet</option><option value="floonet">Floonet</option><option value="usernet">Usernet</option>
-                      </select></div></div>
-                      <div class="control"><button type="button" class="button is-small is-primary" @click="folderWithNetwork">{{ $t('msg.wallets.continue') }}</button></div>
-                    </div>
                     <p v-if="folderError" class="help is-danger" role="alert">{{ folderError }}</p>
                     <WalletFolderPick v-if="folderPick" :pick="folderPick" :busy="folderBusy" @open="folderPicked" @again="pickWalletFolder" @cancel="folderPickCancel" />
                   </div>

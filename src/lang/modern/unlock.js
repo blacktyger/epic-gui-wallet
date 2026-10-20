@@ -49,7 +49,6 @@ export default {
   welcome_lead: 'Your keys and your coins stay on this computer, locked with your password.',
   welcome_create: 'Create a new wallet',
   welcome_restore: 'Restore from a recovery phrase',
-  welcome_note: 'Creating a wallet takes about five minutes. Have a pen and paper ready for your recovery phrase.',
 
   //create
   create_title: 'Create your wallet',

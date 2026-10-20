@@ -353,6 +353,17 @@ describe.each(BOTH(AddExisting, AddExistingView))('Add an existing wallet ($name
     expectUnlockWith(s, 'w2');
   });
 
+  test('a folder whose network can\'t be told opens at once on the Welcome network (Mainnet by default), no question', async () => {
+    for (const [query, net] of [[{ from: 'settings' }, 'mainnet'], [{ from: 'new', network: 'floonet' }, 'floonet']]) {
+      const s = setup(C, { loggedIn: query.from === 'settings', route: { query } });
+      window.api.pickWalletFolder = vi.fn(async () => ({ canceled: false, picked: '/media/usb/w', wallets: [{ dir: '/media/usb/w', network: '' }] }));
+      await s.wrapper.find('button[aria-describedby]').trigger('click');
+      await flushPromises();
+      expect(s.configService.openExistingWallet).toHaveBeenCalledWith('/media/usb/w', net);
+      expect(s.wrapper.find('select').exists()).toBe(false);
+    }
+  });
+
   test('from Welcome on a test network: the network goes along to the found screen and back to Welcome', () => {
     const s = setup(C, { loggedIn: false, route: { query: { from: 'new', network: 'floonet' } } });
     const links = s.wrapper.findAllComponents({ name: 'RouterLinkStub' }).map(l => l.props('to'));
@@ -395,7 +406,7 @@ describe.each(BOTH(Found, FoundView))('Older Epic Wallet import ($name)', ({ C }
 
 /* ------------------------------------------------------------------ 3. Unlock */
 
-describe.each(BOTH(Login, UnlockView))('Unlock after adding ($name)', ({ C }) => {
+describe.each(BOTH(Login, UnlockView))('Unlock after adding ($name)', ({ name, C }) => {
   test('the new wallet is chosen (not the old default) and said to be added, after the page shows', async () => {
     vi.useFakeTimers();
     const configService = fakeConfig({ wallets: [W1, W2], open: '' });
@@ -407,7 +418,7 @@ describe.each(BOTH(Login, UnlockView))('Unlock after adding ($name)', ({ C }) =>
     expect(s.wrapper.find('[data-added]').exists()).toBe(false);
     vi.advanceTimersByTime(200);
     await flushPromises();
-    expect(s.wrapper.find('[data-added]').text()).toBe(t('msg.wallets.added_unlock', ['Wallet 2']));
+    expect(s.wrapper.find('[data-added]').text()).toBe(t('msg.wallets.added_unlock' + (name === 'Modern' ? '_m' : ''), ['Wallet 2']));
   });
 
   test('without the query the default wallet is chosen and nothing is said', () => {
@@ -479,14 +490,14 @@ describe.each(BOTH(Wallets, SettingsWallets))('Settings › All wallets ($name)'
   });
 });
 
-describe.each(BOTH(New, WelcomeView))('Welcome ($name)', ({ C }) => {
+describe.each(BOTH(New, WelcomeView))('Welcome ($name)', ({ name, C }) => {
   test('first start: the three ways, back to Welcome', () => {
     const s = setup(C, { loggedIn: false, configService: fakeConfig({ wallets: [], open: '' }) });
     expect(addLinks(s.wrapper)).toEqual(['create', 'existing', 'restore']);
     const to = s.wrapper.findAllComponents({ name: 'RouterLinkStub' }).map(l => l.props('to'));
     expect(to).toContainEqual({ name: 'create', params: { from: 'new' }, query: {} });
     expect(to).toContainEqual({ name: 'addExisting', query: { from: 'new' } });
-    expect(s.wrapper.text()).toContain(t('msg.wallets.add_create_hint'));
+    expect(s.wrapper.text()).toContain(t(name === 'Modern' ? 'msg.wallets.add_existing_hint_m' : 'msg.wallets.add_create_hint'));
   });
 
   test('from Unlock (wallets listed): titled Add a wallet, with Back to unlock', () => {

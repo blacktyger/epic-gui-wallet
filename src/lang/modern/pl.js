@@ -135,7 +135,6 @@ export default {
     welcome_lead: 'Twoje klucze i monety zostają na tym komputerze, chronione Twoim hasłem.',
     welcome_create: 'Utwórz nowy portfel',
     welcome_restore: 'Przywróć z frazy odzyskiwania',
-    welcome_note: 'Utworzenie portfela zajmuje około pięciu minut. Przygotuj długopis i kartkę na frazę odzyskiwania.',
     create_title: 'Utwórz swój portfel',
     create_lead: 'Hasło odblokowuje ten portfel na tym komputerze. Nie pozwala odzyskać monet; robi to fraza odzyskiwania z następnego kroku.',
     password: 'Hasło',

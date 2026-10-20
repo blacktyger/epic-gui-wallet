@@ -6,12 +6,12 @@
     <li v-for="o in options" :key="o.key">
       <!-- named by its title, the one-line explanation as its description -->
       <router-link :to="o.to" :class="modern ? ['e-add-opt', { 'e-primary': o.primary }] : ['add-opt', { 'is-primary': o.primary }]" :data-add="o.key"
-        :aria-labelledby="uid + '-' + o.key + '-t'" :aria-describedby="uid + '-' + o.key">
+        :aria-labelledby="uid + '-' + o.key + '-t'" :aria-describedby="o.hint ? uid + '-' + o.key : null">
         <EIcon v-if="modern" :name="o.icon" />
         <mdicon v-else :name="o.mdi" size="22" aria-hidden="true" />
         <span :class="modern ? 'e-add-opt-text' : 'add-opt-text'">
           <b :id="uid + '-' + o.key + '-t'">{{ o.title }}</b>
-          <span :id="uid + '-' + o.key">{{ o.hint }}</span>
+          <span v-if="o.hint" :id="uid + '-' + o.key">{{ o.hint }}</span>
         </span>
         <EIcon v-if="modern" name="chevr" class="e-add-opt-go" />
       </router-link>
@@ -46,11 +46,11 @@
           : { name, params: { from: 'new' }, query: net };
         return [
           { key: 'create', to: flow('create'), icon: 'plus', mdi: 'plus-circle-outline', primary: true,
-            title: this.$t('msg.wallets.add_create'), hint: this.$t('msg.wallets.add_create_hint') },
+            title: this.$t('msg.wallets.add_create'), hint: this.modern ? '' : this.$t('msg.wallets.add_create_hint') },
           { key: 'existing', to: { name: 'addExisting', query: { from: this.from, ...net } }, icon: 'folderopen', mdi: 'folder-open-outline',
-            title: this.$t('msg.wallets.add_existing'), hint: this.$t('msg.wallets.add_existing_hint') },
+            title: this.$t('msg.wallets.add_existing'), hint: this.$t(this.modern ? 'msg.wallets.add_existing_hint_m' : 'msg.wallets.add_existing_hint') },
           { key: 'restore', to: flow('restore'), icon: 'backup', mdi: 'backup-restore',
-            title: this.$t('msg.wallets.add_restore'), hint: this.$t('msg.wallets.add_restore_hint') },
+            title: this.$t('msg.wallets.add_restore'), hint: this.modern ? '' : this.$t('msg.wallets.add_restore_hint') },
         ];
       },
     },

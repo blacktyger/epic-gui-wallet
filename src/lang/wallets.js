@@ -86,6 +86,11 @@ export default {
   existing_folder_hint: 'Choose the folder with wallet_data inside, for example .epic/main in your home folder. A folder above it works too: the app finds the wallets in it.',
   existing_folder_go: 'Choose a folder…',
   folder_dialog_title: 'Choose the wallet folder to add',
+  add_existing_hint_m: 'From a folder or older app',
+  added_unlock_m: '{0} added.',
+  existing_older_hint_m: 'Finds wallets from older versions.',
+  existing_folder_hint_m: 'Pick the wallet’s folder.',
+  existing_folder_tip: 'The folder with wallet_data inside, for example .epic/main in your home folder. A folder above it works too.',
   //Unlock, right after a wallet was added
   added_unlock: '{0} was added. Enter its password to unlock it.',
   network: 'Network',
@@ -95,8 +100,12 @@ export default {
   //Welcome › Advanced: where the app keeps its data (only while no wallet is listed)
   root_title: 'App data folder',
   root_hint: 'Where the app keeps wallets, settings and the blockchain.',
+  root_hint_m: 'Where the app keeps wallets and settings.',
+  root_hint_chain: 'With the built-in node, the blockchain is kept here too.',
   root_more: 'More about this',
   root_more_text: 'Choose a new, empty folder. The app restarts, makes its folders there and keeps using it. “Use the default folder” goes back to the usual place.',
+  root_more_m: 'Choose a new, empty folder. The app makes its folders there and keeps using it. “Use the default folder” goes back to the usual place.',
+  root_using: 'Using {0}',
   root_locked: 'It can be changed only before the first wallet is added.',
   root_choose: 'Keep app data in another folder',
   root_default: 'Use the default folder',
@@ -111,7 +120,6 @@ export default {
   folder_noseed: 'No wallet in {0}: it has no wallet_data/wallet.seed.',
   folder_inuse: 'Another Epic program is using this folder. Close it and try again.',
   folder_listed: 'This wallet is already in the list.',
-  folder_network: 'Which network is this wallet on?',
   settings_readonly: 'The settings file can’t be read, so no wallet can be added.',
   folder_failed: 'This folder could not be opened ({0}).',
 

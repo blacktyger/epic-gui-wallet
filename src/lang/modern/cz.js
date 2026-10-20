@@ -135,7 +135,6 @@ export default {
     welcome_lead: 'Vaše klíče i mince zůstávají na tomto počítači, zamčené vaším heslem.',
     welcome_create: 'Vytvořit novou peněženku',
     welcome_restore: 'Obnovit z obnovovací fráze',
-    welcome_note: 'Vytvoření peněženky trvá asi pět minut. Připravte si tužku a papír na obnovovací frázi.',
     create_title: 'Vytvořte svou peněženku',
     create_lead: 'Heslo odemyká tuto peněženku na tomto počítači. Mince s ním obnovit nelze; to umožní obnovovací fráze v dalším kroku.',
     password: 'Heslo',

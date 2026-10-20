@@ -295,7 +295,8 @@ export const walletOpen = {
  * Add an existing wallet › From a wallet folder (AddExisting.vue): pick a folder, which the
  * main process works out to the wallet folder(s) it means (shared/walletFolder.js); one wallet opens
  * at once (configService.openExistingWallet), several or none show WalletFolderPick (a choice, or
- * what a wallet folder is). When a wallet's network can't be told, ask for it and try again.
+ * what a wallet folder is). A wallet's network comes from its folder or toml; when neither tells it, the
+ * network chosen on Welcome › Advanced (else Mainnet) is used, without asking.
  * folderOpened(wallet) is called on success (each screen decides where to go).
  */
 export const walletFolder = {
@@ -303,8 +304,7 @@ export const walletFolder = {
   data() {
     return {
       folderError: '',
-      //the folder whose network has to be chosen: {dir}
-      folderAsk: null,
+      //the network for a wallet folder that doesn't tell its own (screens set it from Welcome)
       folderNetwork: 'mainnet',
       folderBusy: false,
       //what was picked when it isn't exactly one wallet: {picked, wallets: [{dir, network}], chainOnly}
@@ -315,7 +315,6 @@ export const walletFolder = {
     async pickWalletFolder() {
       if (this.folderBusy) return;
       this.folderError = '';
-      this.folderAsk = null;
       //Choose another folder: the picker closes, so focus goes back to the screen's button
       const hadPick = !!this.folderPick;
       this.folderPick = null;
@@ -359,18 +358,13 @@ export const walletFolder = {
       this.folderBusy = true;
       this.folderError = '';
       try {
-        const r = await this.configService.openExistingWallet(dir, network);
+        const r = await this.configService.openExistingWallet(dir, network || this.folderNetwork);
         if (r && r.ok && r.wallet) {
-          this.folderAsk = null;
           await clearStaleUser(this.$userService, r.wallet.id);
           await this.folderOpened(r.wallet);
           return;
         }
         const reason = r && r.reason || '';
-        if (reason === 'network' && !network) {
-          this.folderAsk = { dir };
-          return;
-        }
         this.folderError = this.folderReason(reason, dir);
       } catch (e) {
         this.folderError = e && e.message ? e.message : String(e);
@@ -378,15 +372,11 @@ export const walletFolder = {
         this.folderBusy = false;
       }
     },
-    folderWithNetwork() {
-      if (this.folderAsk) this.openWalletFolder(this.folderAsk.dir, this.folderNetwork);
-    },
     folderReason(reason, dir) {
       switch (reason) {
         case 'noseed': return this.$t('msg.wallets.folder_noseed', [dir]);
         case 'listed': return this.$t('msg.wallets.folder_listed');
         case 'inuse': return this.$t('msg.wallets.folder_inuse');
-        case 'network': return this.$t('msg.wallets.folder_network');
         case 'readonly': return this.$t('msg.wallets.settings_readonly');
         default: return this.$t('msg.wallets.folder_failed', [reason || '?']);
       }
