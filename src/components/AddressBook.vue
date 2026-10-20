@@ -269,6 +269,10 @@ export default {
     },
     callAddress(addressItem){
 
+      //a contact picked from the list is shown, not loaded into an open New/Edit form (a refused
+      //save left "New contact" open, and saving it again made a copy of the picked contact)
+      this.isNewAddress = false;
+      this.isEditAddress = false;
       this.selectedAddress = addressItem;
       this.id = addressItem.id;
       this.name = addressItem.name;

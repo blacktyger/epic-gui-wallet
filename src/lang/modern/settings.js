@@ -88,7 +88,7 @@ export default {
   pick_contact: 'Choose a contact to see their details, or add a new one.',
   edit_contact: 'Edit contact',
   new_contact: 'New contact',
-  edit_contact_hint: 'Fill in the ways to reach this contact. All fields are optional.',
+  edit_contact_hint: 'A name and an address to reach this contact are needed; the rest is optional.',
   copy_field: 'Copy {what}',
   save_contact: 'Save contact',
   delete_title: 'Delete {name}?',
