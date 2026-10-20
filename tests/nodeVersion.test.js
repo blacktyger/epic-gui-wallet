@@ -19,28 +19,29 @@ function node(routes) {
   return { fetch, calls };
 }
 
-test('4.1.x: /v1/version is public', async () => {
+test('the version from the foreign get_version first: /v1/version is not asked', async () => {
+  const n = node({
+    'GET /v1/version': reply(200, { node_version: '4.1.0', block_header_version: 6 }),
+    'POST /v2/foreign': reply(200, { id: 1, jsonrpc: '2.0', result: { Ok: { node_version: '4.1.1', block_header_version: 6 } } }),
+  });
+  assert.deepEqual(await fetchNodeVersion('https://node.example.org:3413/', n), { ok: true, version: '4.1.1' });
+  assert.deepEqual(n.calls.map(c => c.key), ['POST /v2/foreign']);
+  assert.equal(n.calls[0].body.method, 'get_version');
+});
+
+test('failover: no foreign get_version, then the public /v1/version', async () => {
   const n = node({ 'GET /v1/version': reply(200, { node_version: '4.1.0', block_header_version: 6 }) });
   assert.deepEqual(await fetchNodeVersion('https://node.example.org:3413/', n), { ok: true, version: '4.1.0' });
-  assert.deepEqual(n.calls.map(c => c.key), ['GET /v1/version']);
+  assert.deepEqual(n.calls.map(c => c.key), ['POST /v2/foreign', 'GET /v1/version']);
 });
 
-test('4.0.x or 3.x with an api secret: 401, then the version from /v2/foreign get_version', async () => {
-  const n = node({
-    'GET /v1/version': reply(401, null),
-    'POST /v2/foreign': reply(200, { id: 1, jsonrpc: '2.0', result: { Ok: { node_version: '4.0.3', block_header_version: 6 } } }),
-  });
-  assert.deepEqual(await fetchNodeVersion('http://127.0.0.1:3413', n), { ok: true, version: '4.0.3' });
-  assert.equal(n.calls[1].body.method, 'get_version');
-});
-
-test('a remote node that answers 401: the version from the public /v2/foreign, never with a secret', async () => {
+test('4.0.x or 3.x with an api secret: /v1/version 401 does not matter, the foreign get_version answers', async () => {
   const n = node({
     'GET /v1/version': reply(401, null),
     'POST /v2/foreign': reply(200, { result: { Ok: { node_version: '4.0.3' } } }),
   });
   assert.deepEqual(await fetchNodeVersion('https://node.example.org:3413', n), { ok: true, version: '4.0.3' });
-  assert.deepEqual(n.calls.map(c => c.key), ['GET /v1/version', 'POST /v2/foreign']);
+  assert.deepEqual(n.calls.map(c => c.key), ['POST /v2/foreign']);
 });
 
 test('401 everywhere is reported as HTTP 401', async () => {
@@ -149,9 +150,11 @@ for (const [name, address, kind, version, statusReadable] of classifications) {
       //peers are not known any more
       assert.equal(c.status.connections, null);
     }
-    //no secret, no /v1/status and no /v2/owner for any node
+    //no secret; /v1/status and /v2/owner only as the failover of a node that doesn't answer ready_for_txs
     assert.ok(n.calls.every(call => !call.auth), 'a secret was sent to ' + address);
-    assert.ok(n.calls.every(call => !/v1\/status|v2\/owner/.test(call.key)), n.calls.map(c => c.key).join());
+    if (replies[name]['POST /v2/foreign ready_for_txs']) {
+      assert.ok(n.calls.every(call => !/v1\/status|v2\/owner/.test(call.key)), n.calls.map(c => c.key).join());
+    }
   });
 }
 
@@ -163,19 +166,29 @@ test('the http:// 301 of node.btlabs.uk is not an Epic node when redirects are n
   assert.ok(rec.calls.length && rec.calls.every(call => call.redirect == 'manual'));
 });
 
-test('fetchNodeStatus asks the foreign API only: get_tip and ready_for_txs, nothing else', async () => {
-  const ok = recorded('https://node.epiccash.com:3413');
-  const r1 = await fetchNodeStatus('https://node.epiccash.com:3413', { fetch: ok.fetch });
-  assert.equal(r1.ok, true);
-  assert.deepEqual(ok.calls.map(c => c.key).sort(), ['POST /v2/foreign get_tip', 'POST /v2/foreign ready_for_txs']);
+test('fetchNodeStatus: get_tip and ready_for_txs; /v1/status, then owner get_status only when ready_for_txs has no answer', async () => {
+  const has = rpcNode({ 'POST /v2/foreign get_tip': reply(200, tipReply(3762557)), 'POST /v2/foreign ready_for_txs': ready(true),
+    'GET /v1/status': reply(200, { tip: { height: 1 }, sync_status: 'header_sync', connections: 8 }) });
+  const r0 = await fetchNodeStatus('https://n.example.net:443', { fetch: has.fetch });
+  assert.equal(r0.status.sync_status, 'no_sync');
+  assert.deepEqual(has.calls.map(c => c.key).sort(), ['POST /v2/foreign get_tip', 'POST /v2/foreign ready_for_txs']);
 
-  //4.1.0 with /v1/status and owner closed: the same two calls
-  const locked = recorded('https://epic.stackwallet.com:3413');
-  const r2 = await fetchNodeStatus('https://epic.stackwallet.com:3413/', { fetch: locked.fetch, apiSecret: SECRET });
-  assert.equal(r2.ok, true);
+  //before 4.1.0 (no ready_for_txs): the sync state from /v1/status, the height still from get_tip, no peers
+  const old = rpcNode({ 'POST /v2/foreign get_tip': reply(200, tipReply(3762000)),
+    'GET /v1/status': reply(200, { tip: { height: 3762000 }, sync_status: 'body_sync', connections: 8 }) });
+  const r1 = await fetchNodeStatus('https://n.example.net:443', { fetch: old.fetch, referenceHeight: 3762557 });
+  assert.equal(r1.ok, true);
+  assert.notEqual(r1.status.sync_status, 'no_sync');
+  assert.equal(r1.status.connections, null);
+  assert.deepEqual(old.calls.map(c => c.key), ['POST /v2/foreign get_tip', 'POST /v2/foreign ready_for_txs', 'GET /v1/status']);
+
+  //and /v1/status closed: owner get_status (the secret to a local node only)
+  const own = rpcNode({ 'POST /v2/foreign get_tip': reply(200, tipReply(3762557)), 'GET /v1/status': reply(401, null),
+    'POST /v2/owner get_status': reply(200, { result: { Ok: { tip: { height: 3762557 }, sync_status: 'no_sync', connections: 8 } } }) });
+  const r2 = await fetchNodeStatus('https://n.example.net:443', { fetch: own.fetch, apiSecret: SECRET });
   assert.equal(r2.status.sync_status, 'no_sync');
-  assert.deepEqual(locked.calls.map(c => c.key).sort(), ['POST /v2/foreign get_tip', 'POST /v2/foreign ready_for_txs']);
-  assert.ok(locked.calls.every(c => !c.auth && c.redirect == 'manual'));
+  assert.deepEqual(own.calls.map(c => c.key), ['POST /v2/foreign get_tip', 'POST /v2/foreign ready_for_txs', 'GET /v1/status', 'POST /v2/owner get_status']);
+  assert.ok(own.calls.every(c => !c.auth), 'a secret to a remote node');
 
   const dead = recorded('https://fastepic.eu:3413');
   assert.deepEqual(await fetchNodeStatus('https://fastepic.eu:3413', { fetch: dead.fetch }), { ok: false, reason: 'not reachable' });
@@ -226,7 +239,7 @@ test('a node that closes /v1/status and /v2/owner (401, 403) is a normal node: o
   assert.equal(c.status.tip.height, 3762557);
   assert.equal(c.status.sync_status, 'no_sync');
   assert.equal(c.status.connections, null);
-  assert.deepEqual(n.calls.map(x => x.key).sort(), ['GET /v1/version', 'POST /v2/foreign get_tip', 'POST /v2/foreign ready_for_txs']);
+  assert.deepEqual(n.calls.map(x => x.key).sort(), ['GET /v1/version', 'POST /v2/foreign get_tip', 'POST /v2/foreign get_version', 'POST /v2/foreign ready_for_txs']);
 });
 
 test('a status poll asks get_tip + ready_for_txs, never /v1/status or /v2/owner', async () => {

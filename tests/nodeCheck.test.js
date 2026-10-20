@@ -79,8 +79,8 @@ test('probe: a healthy node, its response time, and never an api secret, not eve
   assert.equal(v.state, 'online');
   assert.equal(v.ms, 40, 'the time to the first reply');
   assert.equal(v.address, 'http://127.0.0.1:3413');
-  assert.deepEqual(n.calls.map(c => c.key).sort(), ['GET /v1/version', 'POST /v2/foreign get_tip', 'POST /v2/foreign ready_for_txs'],
-    'the version and the public foreign API: no /v1/status, no /v2/owner');
+  assert.deepEqual(n.calls.map(c => c.key).sort(), ['GET /v1/version', 'POST /v2/foreign get_tip', 'POST /v2/foreign get_version', 'POST /v2/foreign ready_for_txs'],
+    'the version (foreign get_version, then /v1/version) and the public foreign API: no /v1/status, no /v2/owner');
   for (const c of n.calls) assert.equal('Authorization' in c.headers, false);
 });
 

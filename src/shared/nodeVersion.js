@@ -73,33 +73,39 @@ async function probeVersion(address, {fetch: fetchFn = defaultNodeFetch(), timeo
   const unfollow = follow(signal, controller);
   const extra = redirect ? {redirect} : {};
 
+  const redirected = (res) => res.type == 'opaqueredirect' || (res.status >= 300 && res.status < 400);
   try{
-    const res = await fetchFn(base + '/v1/version', {method: 'GET', signal: controller.signal, timeoutMs, ...extra});
-    if(res.ok){
-      const body = await readJson(res);
-      return body && body.node_version
-        ? {ok: true, version: body.node_version}
-        : {ok: false, reason: 'no node version in the reply', code: 'no_version'};
-    }
-    if(res.type == 'opaqueredirect' || (res.status >= 300 && res.status < 400)){
-      return {ok: false, reason: 'redirects elsewhere', code: 'http'};
-    }
-    if(res.status != 401){
-      return {ok: false, reason: 'HTTP ' + res.status, code: 'http'};
-    }
-
-    //an older node with an api secret: ask the public foreign API, which epic-wallet uses too.
-    //No secret is sent with it, to any host
-    const res2 = await fetchFn(base + '/v2/foreign', {
+    //the public foreign API first (what epic-wallet uses; no secret is sent with it, to any host)
+    const res = await fetchFn(base + '/v2/foreign', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: rpc('get_version'),
       signal: controller.signal, timeoutMs,
       ...extra,
     });
-    const body = res2.ok ? await readJson(res2) : null;
+    if(redirected(res)){
+      return {ok: false, reason: 'redirects elsewhere', code: 'http'};
+    }
+    const body = res.ok ? await readJson(res) : null;
     const version = body && body.result && body.result.Ok && body.result.Ok.node_version;
-    return version ? {ok: true, version} : {ok: false, reason: 'HTTP 401', code: 'auth'};
+    if(version){
+      return {ok: true, version};
+    }
+
+    //failover: GET /v1/version (nodes are expected to close it one day; never depended on)
+    const res2 = await fetchFn(base + '/v1/version', {method: 'GET', signal: controller.signal, timeoutMs, ...extra});
+    if(res2.ok){
+      const body2 = await readJson(res2);
+      return body2 && body2.node_version
+        ? {ok: true, version: body2.node_version}
+        : {ok: false, reason: 'no node version in the reply', code: 'no_version'};
+    }
+    if(redirected(res2)){
+      return {ok: false, reason: 'redirects elsewhere', code: 'http'};
+    }
+    return res2.status == 401
+      ? {ok: false, reason: 'HTTP 401', code: 'auth'}
+      : {ok: false, reason: 'HTTP ' + res2.status, code: 'http'};
 
   }catch(e){
     if(signal && signal.aborted){
@@ -176,6 +182,33 @@ async function readyForTxs(fetchFn, base, init){
   }
 }
 
+/*
+ * Synced or not when ready_for_txs gives no answer (nodes before 4.1.0 don't have it): GET /v1/status,
+ * then POST /v2/owner get_status (the api secret to a local node only). Only the sync state is taken
+ * from them (true at no_sync, false while syncing, null for awaiting_peers or no answer, which then
+ * leaves it to the height against the network tip): nothing the UI shows comes from these calls, and
+ * nodes are expected to close them one day.
+ */
+async function readyFromStatus(fetchFn, base, {apiSecret = '', ...init}){
+  const headers = {'Content-Type': 'application/json', ...authHeaders(base, apiSecret)};
+  const syncOf = (st) => {
+    if(!st || typeof st.sync_status !== 'string') return undefined;
+    if(st.sync_status === 'no_sync') return true;
+    return st.sync_status === 'awaiting_peers' ? null : false;
+  };
+  try{
+    const res = await fetchFn(base + '/v1/status', {...init, method: 'GET', headers});
+    const got = syncOf(res.ok ? await readJson(res) : null);
+    if(got !== undefined) return got;
+    const res2 = await fetchFn(base + '/v2/owner', {...init, method: 'POST', headers, body: rpc('get_status')});
+    const reply = res2.ok ? await readJson(res2) : null;
+    const owner = syncOf(reply && reply.result && reply.result.Ok);
+    return owner === undefined ? null : owner;
+  }catch(e){
+    return null;
+  }
+}
+
 /* a node's tip height from POST /v2/foreign get_tip (public on every node), 0 if none */
 export async function fetchTipHeight(address, {fetch: fetchFn = defaultNodeFetch(), timeoutMs = 5000} = {}){
   const controller = new AbortController();
@@ -194,16 +227,17 @@ export async function fetchTipHeight(address, {fetch: fetchFn = defaultNodeFetch
 }
 
 /*
- * The node's status, from the public foreign API only: POST /v2/foreign get_tip (the height) and
+ * The node's status, from the public foreign API: POST /v2/foreign get_tip (the height) and
  * ready_for_txs (synced or not) at the same time, in the shape of GET /v1/status (see foreignTipToV1).
- * No api secret is sent, to any host; /v1/status and /v2/owner are never asked, so a node that keeps
- * them closed (401, 403) is a normal node.
+ * Only when ready_for_txs gives no answer (before 4.1.0) the sync state falls back to /v1/status, then
+ * owner get_status (readyFromStatus; the api secret to a local node only). A node that keeps those
+ * closed (401, 403) is a normal node; nothing shown depends on them.
  * referenceHeight: a number, or an async function giving one, for the sync state without ready_for_txs
  *
  * returns {ok: true, status} or {ok: false, reason}
  */
 export async function fetchNodeStatus(address, opts = {}){
-  const {fetch: fetchFn = defaultNodeFetch(), timeoutMs = 10000, redirect = 'manual', referenceHeight = 0, version = '', signal} = opts;
+  const {fetch: fetchFn = defaultNodeFetch(), timeoutMs = 10000, redirect = 'manual', referenceHeight = 0, version = '', apiSecret = '', signal} = opts;
 
   const base = baseOf(address);
   const controller = new AbortController();
@@ -219,8 +253,9 @@ export async function fetchNodeStatus(address, opts = {}){
     ]);
     const tipReply = res.ok ? await readJson(res) : null;
     if(tipReply && tipReply.result && tipReply.result.Ok){
+      const sync = ready === null ? await readyFromStatus(fetchFn, base, {apiSecret, signal: controller.signal, timeoutMs, redirect}) : ready;
       const reference = typeof referenceHeight === 'function' ? await referenceHeight() : referenceHeight;
-      const status = foreignTipToV1(tipReply, {referenceHeight: reference, version, ready});
+      const status = foreignTipToV1(tipReply, {referenceHeight: reference, version, ready: sync});
       if(status){
         return {ok: true, status};
       }
@@ -274,7 +309,7 @@ export async function fetchLocalStatus(address, {fetch: fetchFn = defaultNodeFet
  *   statusReadable: the GUI can read the status; then the node panel, sending and the Epicbox
  *   autostart work. status: that status, or null
  */
-export async function classifyNode(address, {fetch: fetchFn, timeoutMs = 5000, referenceHeight = 0, signal} = {}){
+export async function classifyNode(address, {fetch: fetchFn, apiSecret = '', timeoutMs = 5000, referenceHeight = 0, signal} = {}){
 
   const base = baseOf(address);
   const local = isLocal(base);
@@ -295,7 +330,7 @@ export async function classifyNode(address, {fetch: fetchFn, timeoutMs = 5000, r
     return result('not_epic', {reason: v.reason, code: v.code});
   }
 
-  const st = await fetchNodeStatus(base, {...opts, timeoutMs, referenceHeight, version: v.version, signal});
+  const st = await fetchNodeStatus(base, {...opts, apiSecret, timeoutMs, referenceHeight, version: v.version, signal});
   const status = {
     version: v.version,
     statusReadable: st.ok,

@@ -124,7 +124,7 @@ class NodeService {
 
   /* ok | too_old | unreachable | not_epic for the saved node (shared/nodeVersion.js) */
   async classifyNode(address){
-    const check = await classifyNode(address, {referenceHeight: () => this.referenceHeight()});
+    const check = await classifyNode(address, {apiSecret: this.configService.apisecret, referenceHeight: () => this.referenceHeight()});
     //for the status polls: a status read via get_tip has no user agent, the panel shows this version
     this.nodeVersion = check.version || '';
     if(check.status){
@@ -199,13 +199,13 @@ class NodeService {
 
     let baseURL = this.configService.config['check_node_api_http_addr'] ? this.configService.config['check_node_api_http_addr'] : this.configService.defaultEpicNode;
 
-    //every node is read the same way, from the public foreign API: get_tip + ready_for_txs (no secret).
-    //Reads at the same time (the poll, the Epicbox wait) share one request
+    //every node is read the same way, from the public foreign API: get_tip + ready_for_txs (no secret);
+    //only without ready_for_txs (before 4.1.0) /v1/status, then owner get_status, for the sync state. Reads at the same time share one request
     const key = baseURL;
     if(!this.statusRead || this.statusRead.key !== key){
       //checked_at / response_ms: for Settings › Node (last checked, response time)
       const started = Date.now();
-      const read = fetchNodeStatus(baseURL, {timeoutMs: 10000, referenceHeight: () => this.referenceHeight(), version: this.nodeVersion || ''})
+      const read = fetchNodeStatus(baseURL, {apiSecret: this.configService.apisecret, timeoutMs: 10000, referenceHeight: () => this.referenceHeight(), version: this.nodeVersion || ''})
         .then((r) => r.ok ? {...r, status: {...r.status, checked_at: Date.now(), response_ms: Date.now() - started}} : r);
       this.statusRead = {key, read};
       read.finally(() => { if(this.statusRead && this.statusRead.read === read) this.statusRead = null; });
