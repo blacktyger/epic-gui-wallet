@@ -17,6 +17,11 @@ const ownerApiPort = 3420;
 const jsonRPCUrl = WALLET_API_ORIGIN + '/v3/owner'
 const jsonRPCForeignUrl = WALLET_API_ORIGIN + '/v2/foreign'
 
+/* processes as "pid role" for a log line */
+function procList(list){
+  return (Array.isArray(list) ? list : []).map(p => p && typeof p === 'object' ? p.pid + ' ' + (p.role || p.name || '') : String(p)).join(', ') || 'none';
+}
+
 /* a slate's id (a uuid), from a slate object or its JSON; '' when there is none */
 function slateId(slate){
   try{
@@ -854,7 +859,7 @@ class WalletService {
 
       const roles = ['listen', 'epicbox'];
       const res = await window.nodeChildProcess.stopOwned(roles, this.ownedOpts());
-      console.log('[wallet] listener stopped: ' + JSON.stringify(res.stopped));
+      console.log('[wallet] listener stopped: ' + procList(res.stopped));
       return true;
     }
 
@@ -872,7 +877,7 @@ class WalletService {
       }
       const roles = ['owner_api', 'listen', 'epicbox', ...(node_background ? [] : ['node'])];
       const res = await window.nodeChildProcess.stopOwned(roles, this.ownedOpts());
-      console.log('[wallet] all wallet processes stopped: ' + JSON.stringify(res.stopped));
+      console.log('[wallet] all wallet processes stopped: ' + procList(res.stopped));
       return true;
     }
 
@@ -880,7 +885,7 @@ class WalletService {
     async stopWallet(){
 
       const res = await window.nodeChildProcess.stopOwned(['owner_api'], {dir: this.configService.walletConfigDir});
-      console.log('[wallet] wallet stopped: ' + JSON.stringify(res.stopped));
+      console.log('[wallet] wallet stopped: ' + procList(res.stopped));
       return true;
     }
 
@@ -969,7 +974,7 @@ class WalletService {
 
         this.checkStopped = true;
         const res = await window.nodeChildProcess.stopOwned(['scan'], {dir: this.configService.walletConfigDir});
-        console.log('[epicbox] old server check stopped: ' + JSON.stringify(res.stopped));
+        console.log('[epicbox] old server check stopped: ' + procList(res.stopped));
 
     }
 

@@ -1,5 +1,14 @@
 # Release notes
 
+## Next (feat/support-logs)
+
+- Get help / Report a problem: in Settings › Help (Classic: Help), the Help menu, and as a link on the unlock screen, so it works before a wallet is open too. You describe the problem, can add a contact (a Telegram name or an email) and tick "Attach logs (recommended)". Before anything is sent, the app shows exactly what will go: your description is posted to the GUI testers' Telegram group; your contact, the app version and system, and the logs are encrypted on your computer so only the developer can read them. Send it from the app, or save the encrypted report to a file and send it yourself. Nothing is ever sent without your click (tester feedback: "if a Noob has wallet connection issues the support team would need to look at the log file").
+  - The logs are cleaned before they are encrypted: your user name, home folder, computer name, IP addresses, private node addresses and wallet addresses are removed or shortened, and anything that looks like a password, secret, slate or recovery phrase is dropped. Amounts and transaction ids stay, because a payment problem can't be looked into without them.
+  - Encryption: X25519 + AES-256-GCM to the developer's public key (built into the app); not even the app can read a report once it is sealed.
+- Logs are on by default, at debug level, and bounded: the app's own logs (`logs/main.log`, `logs/renderer.log`, 2 MiB each plus one older file), each wallet's `epic-wallet.log` (5 MiB × 4 files) and the built-in node's `epic-server.log` (Info level, 5 MiB × 3 files). Existing wallets get it the next time they are opened. The app's page log used to be a new file every day that started empty on every start.
+- The logs say more of what support needs and less noise: versions and system at start, every process the app starts (passwords redacted), node state changes (not every 10 seconds), send and receive steps with their transaction ids, wallet errors once instead of on every refresh. They never contain passwords, recovery phrases, seeds, API secrets, slates or the clipboard.
+- The first-unlock tour (BT Labs Theme) has one more step: where help is, and that logs are encrypted so only the developer reads them.
+
 ## 6.1.5
 
 - Removing a wallet: "Remove everything, including the recovery phrase" is now "Remove everything, including the wallet seed". The app never stores your recovery phrase; this option deletes the wallet's seed file, and the wallet can then be restored only with the recovery phrase you wrote down. The confirmation says the same (feedback #29).

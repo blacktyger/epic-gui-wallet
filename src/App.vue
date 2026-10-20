@@ -20,6 +20,8 @@
 
     <modal-kill-box/>
 
+    <modal-support/>
+
     <modal-firstsync-box
       :is-active="isFirstscanModalActive"
       @confirm="firstscanConfirm"
@@ -66,6 +68,7 @@
   import ModalNodeBox from '@/components/layout/NodesyncedModalBox.vue'
   import ModalFirstsyncBox from '@/components/layout/FirstsyncModalBox.vue'
   import ModalKillBox from '@/components/layout/KillProcessModalBox.vue'
+  import ModalSupport from '@/components/layout/SupportReportModalBox.vue'
   import ModernApp from '@/components/modern/ModernApp.vue'
   import RestartOverlay from '@/components/RestartOverlay.vue'
 
@@ -80,6 +83,7 @@
       ModalNodeBox,
       ModalFirstsyncBox,
       ModalKillBox,
+      ModalSupport,
       ModernApp,
       RestartOverlay,
     },
@@ -100,7 +104,8 @@
       watch(locale, (l) => applyLocale(document, l), { immediate: true });
       const loggedIn = ref(false);
       //Menu › Lock wallet (shared/appMenu.js): enabled while a wallet is unlocked, in the app's language
-      watch([loggedIn, locale], ([on]) => window.api.menuState(on, { lock: t('msg.modern.lock'), quit: t('msg.wallets.quit') }), { immediate: true });
+      watch([loggedIn, locale], ([on]) => window.api.menuState(on, { lock: t('msg.modern.lock'), quit: t('msg.wallets.quit'),
+        help: t('msg.support.menu_help'), support: t('msg.support.menu_item') }), { immediate: true });
       const store = useStore();
       const router = useRouter();
       const isNodeModalActive = ref(false);
@@ -143,6 +148,8 @@
       window.api.onMenuLock(() => {
         if (this.loggedIn && !this.loggingOut) this.emitter.emit('app.logout');
       });
+      //Help › Get help / Report a problem…: the report dialog, wherever the user is (locked or not)
+      window.support.onOpen(() => this.emitter.emit('open-support'));
 
       window.nodeChildProcess.on('firstscan-stdout', (payload) => {
 

@@ -705,7 +705,8 @@ ipcMain.handle('support-preview', (event, opts) => {
   const o = opts && typeof opts === 'object' ? opts : {};
   supportApp = { version: app.getVersion(), electron: process.versions.electron, platform: process.platform,
     release: os.release(), arch: process.arch, locale: app.getLocale(), ui: short(o.ui), lang: short(o.lang) };
-  const p = support.preview({ attachLogs: o.attachLogs === true });
+  const p = Object.assign(support.preview({ attachLogs: o.attachLogs === true, description: typeof o.description === 'string' ? o.description : '' }),
+    { canSend: !!supportUrl(process.env) });
   log.info('support: preview, ' + p.files.length + ' log(s), ' + Math.round(p.totalBytes / 1024) + ' KiB');
   return p;
 });

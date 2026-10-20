@@ -16,6 +16,7 @@
       @cancel="$emit('nodesynced-cancel')"
     />
     <KillProcessDialog />
+    <SupportDialog />
     <FirstscanDialog
       :is-active="isFirstscanModalActive"
       :output-data="scanoutput"
@@ -32,11 +33,12 @@
   import NodeSyncedDialog from '@/components/modern/dialogs/NodeSyncedDialog.vue';
   import KillProcessDialog from '@/components/modern/dialogs/KillProcessDialog.vue';
   import FirstscanDialog from '@/components/modern/dialogs/FirstscanDialog.vue';
+  import SupportDialog from '@/components/modern/dialogs/SupportDialog.vue';
   import { MODERN_VIEWS } from '@/components/modern/views';
 
   export default {
     name: 'ModernApp',
-    components: { IconSprite, AppShell, NodeSyncedDialog, KillProcessDialog, FirstscanDialog },
+    components: { IconSprite, AppShell, NodeSyncedDialog, KillProcessDialog, FirstscanDialog, SupportDialog },
     props: {
       isNodeModalActive: { type: Boolean, default: false },
       isFirstscanModalActive: { type: Boolean, default: false },

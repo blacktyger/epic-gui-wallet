@@ -90,6 +90,12 @@ test('preview → send: the sealed report holds exactly the previewed, cleaned l
     assert.deepEqual(report.app, { version: '6.1.6', platform: 'linux' });
     assert.deepEqual(report.files.map((f) => [f.name, f.text]), p.files.map((f) => [f.name, f.text]));
     assert.ok(!posted[0].bytes.includes(Buffer.from('/home/jan')));
+    //the description is posted readable: cleaned like the logs, and the preview shows it so
+    const q = svc.preview({ description: ' logs in /home/jan/.epic-gui ' });
+    assert.equal(q.description, 'logs in ~/.epic-gui');
+    await svc.send({ token: q.token, description: ' logs in /home/jan/.epic-gui ' });
+    assert.equal(posted[1].description, 'logs in ~/.epic-gui');
+    assert.equal(openBundle(posted[1].bytes, dev.privatePem).description, 'logs in ~/.epic-gui');
   } finally { s.done(); }
 });
 

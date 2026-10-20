@@ -53,7 +53,7 @@ class NodeService {
   async stopNode(){
 
       const res = await window.nodeChildProcess.stopOwned(['node']);
-      console.log('[node] built-in node stopped: ' + JSON.stringify(res.stopped));
+      console.log('[node] built-in node stopped: ' + ((res && res.stopped) || []).map(p => p && typeof p === 'object' ? p.pid : p).join(', '));
   }
 
 

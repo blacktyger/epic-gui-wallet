@@ -1,5 +1,12 @@
 <template>
   <section class="section is-main-section">
+    <article class="message is-dark">
+      <div class="message-body">
+        <p class="has-text-weight-bold">{{ $t('msg.support.entry_title') }}</p>
+        <p class="mb-3">{{ $t('msg.support.entry_text') }}</p>
+        <button type="button" class="button is-primary" @click="openSupport">{{ $t('msg.support.open') }}</button>
+      </div>
+    </article>
     <form v-on:submit.prevent="search" >
       <div class="field has-addons">
         <div class="control is-expanded">
@@ -90,6 +97,11 @@ export default {
     },
 
     methods: {
+
+      //Get help / Report a problem (layout/SupportReportModalBox.vue)
+      openSupport(){
+        this.emitter.emit('open-support');
+      },
 
       search(){
 

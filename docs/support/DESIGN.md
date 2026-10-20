@@ -37,13 +37,18 @@ Binary file `.epicsupport`:
 
 - Server checks: v == 1, description length, base64 decodes, bundle starts with "EPICSUP1", bundle ≤ 2 MiB,
   keyId known. It cannot read the bundle (no private key on the server).
-- Answers: `200 {"ok":true,"id":"<short report id>"}`; `400 {"ok":false,"error":"bad-request"}`;
-  `413 {"ok":false,"error":"too-big"}`; `429 {"ok":false,"error":"rate"}` (+ Retry-After); `5xx` → "server".
+- Answers: `200 {"ok":true,"id":"<report id, [a-z2-7]{8}>"}`; `400 {"ok":false,"error":"bad-request"}`;
+  `413 {"ok":false,"error":"too-big"}`; `429 {"ok":false,"error":"rate"}` (+ Retry-After); 404, 405, 503 (store
+  full) and other 5xx → "server". The client decides by the status code, not the body (supportReport.intakeResult).
+- The description is cleaned by the same log cleaner before it is posted or sealed, and the review shows the
+  cleaned text.
+- Fetching a stored bundle (Patryk only): `/report <id>` to the bot (sent to his private chat), or the fleet API
+  over the tailnet, `GET <GFB_URL>/support/<id>` with the gfb token (`scripts/support-decrypt.mjs <id>` does this).
 - The contact handle is NOT sent in clear: it is inside the encrypted bundle only.
 
 ## Renderer API (preload: `window.support`) [lead; UI helper consumes]
 
-- `support.preview({ attachLogs })` → `{ token, files: [{ name, bytes, text }], totalBytes, truncated, app }`
+- `support.preview({ attachLogs, ui, lang, description })` → `{ token, files: [{ name, bytes, text, cut }], counts, totalBytes, app, description, canSend }`
   `text` is the sanitized text exactly as it will be sealed (the UI may show it in a scrollable <pre>).
 - `support.send({ token, description, contact })` → `{ ok: true, id }` |
   `{ ok: false, error: 'offline' | 'rate' | 'too-big' | 'server' | 'no-endpoint' | 'expired' }`

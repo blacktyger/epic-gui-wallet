@@ -89,7 +89,11 @@ export function createSupport(deps) {
     for (const [k, v] of tokens) if (now() > v.expires) tokens.delete(k);
   };
 
-  function preview({ attachLogs } = {}) {
+  //the description is posted readable to the testers' group: cleaned like the logs (a pasted path or
+  //IP), and the review shows it as it will go
+  const cleanDescription = (d) => deps.sanitize(String(d == null ? '' : d).trim().slice(0, MAX_DESCRIPTION)).text;
+
+  function preview({ attachLogs, description } = {}) {
     sweep();
     const files = [];
     const counts = {};
@@ -111,19 +115,20 @@ export function createSupport(deps) {
       const t = tailText(f.text);
       return { name: f.name, bytes: Buffer.byteLength(t.text), text: t.text, cut: t.cut };
     });
-    return { token, app, files: shown, counts, totalBytes: shown.reduce((s, f) => s + f.bytes, 0) };
+    return { token, app, files: shown, counts, totalBytes: shown.reduce((s, f) => s + f.bytes, 0),
+      description: cleanDescription(description) };
   }
 
   function seal(token, description, contact) {
     sweep();
     const t = tokens.get(String(token));
     if (!t) return { error: 'expired' };
-    const d = String(description == null ? '' : description).trim();
-    if (!d) return { error: 'empty' };
-    const r = buildBundle({ description: d.slice(0, MAX_DESCRIPTION), contact: String(contact == null ? '' : contact).slice(0, MAX_CONTACT),
+    if (!String(description == null ? '' : description).trim()) return { error: 'empty' };
+    const d = cleanDescription(description);
+    const r = buildBundle({ description: d, contact: String(contact == null ? '' : contact).slice(0, MAX_CONTACT),
       app: t.app, files: t.files }, deps.publicKey);
     t.expires = Math.min(t.expires, now() + TOKEN_AFTER_USE);
-    return { bundle: r.bundle, dropped: r.dropped, description: d.slice(0, MAX_DESCRIPTION) };
+    return { bundle: r.bundle, dropped: r.dropped, description: d };
   }
 
   async function send({ token, description, contact } = {}) {

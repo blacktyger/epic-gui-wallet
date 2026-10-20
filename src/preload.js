@@ -804,9 +804,11 @@ contextBridge.exposeInMainWorld('api', {
 /* support reports (docs/support/DESIGN.md): the main process collects, cleans and seals the logs;
    the page gets the cleaned text to show, and sends or saves only on the user's click */
 contextBridge.exposeInMainWorld('support', {
-  //{attachLogs, ui, lang} → {token, app, files: [{name, bytes, text, cut}], counts, totalBytes}
+  //{attachLogs, ui, lang, description} → {token, app, files: [{name, bytes, text, cut}], counts, totalBytes,
+  //description (cleaned, as it will be posted), canSend}
   preview: (opts) => ipcRenderer.invoke('support-preview', {
-    attachLogs: !!(opts && opts.attachLogs), ui: String((opts && opts.ui) || ''), lang: String((opts && opts.lang) || '') }),
+    attachLogs: !!(opts && opts.attachLogs), ui: String((opts && opts.ui) || ''), lang: String((opts && opts.lang) || ''),
+    description: String((opts && opts.description) || '') }),
   send: (req) => ipcRenderer.invoke('support-send', supportReq(req)),
   save: (req) => ipcRenderer.invoke('support-save', supportReq(req)),
   openLogsFolder: () => ipcRenderer.invoke('open-folder', appPaths.logsDir),
