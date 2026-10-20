@@ -473,6 +473,8 @@ export default {
     rcv_http_failed_error: ' Nie udało się uruchomić nasłuchu HTTP. Spróbuj ponownie albo wyłącz i włącz odbieranie.',
     rcv_http_failed_port_short: 'port {port} jest zajęty przez inny program',
     rcv_http_failed_error_short: 'nie udało się uruchomić nasłuchu',
+    rcv_http_failed_node: ' Węzeł nie odpowiedział, więc nie udało się uruchomić nasłuchu HTTP. Spróbuj ponownie, gdy węzeł będzie dostępny.',
+    rcv_http_failed_node_short: 'węzeł nie odpowiedział',
     rcv_check_again: 'Sprawdź ponownie',
     rcv_copy_http: 'Kopiuj adres HTTP',
     rcv_copy_http_off: 'Kopiuj adres HTTP (brak nasłuchu)',

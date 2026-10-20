@@ -267,7 +267,8 @@ export default {
         const created = await this.$walletService.new(this.passwordField.defaultValue, this.network, {label: this.adding ? this.label.trim() : ''});
         console.log('[create] ' + (created && created.success ? 'wallet created' : 'failed') + ' +' + Math.round(performance.now() - started) + ' ms');
         if(!created || !created.success || !created.wallet){
-          this.$toast.error(created && created.msg ? String(created.msg.message || created.msg) : this.$t('msg.wallets.create_failed'), {duration:false});
+          //epic-wallet's own words (English) after "could not be created" in the app's language
+          this.$toast.error(this.$t('msg.wallets.create_failed') + (created && created.msg ? ' ' + String(created.msg.message || created.msg) : ''), {duration:false});
         }else{
           this.createStage = 'save';
           await clearStaleUser(this.$userService, created.wallet.id);

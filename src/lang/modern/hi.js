@@ -473,6 +473,8 @@ export default {
     rcv_http_failed_error: ' HTTP लिसनर शुरू नहीं हो सका। दोबारा कोशिश करें, या प्राप्त करना रोककर फिर से शुरू करें।',
     rcv_http_failed_port_short: 'पोर्ट {port} किसी दूसरे प्रोग्राम द्वारा इस्तेमाल हो रहा है',
     rcv_http_failed_error_short: 'लिसनर शुरू नहीं हो सका',
+    rcv_http_failed_node: ' नोड ने जवाब नहीं दिया, इसलिए HTTP लिसनर शुरू नहीं हो सका। नोड उपलब्ध होने पर दोबारा कोशिश करें।',
+    rcv_http_failed_node_short: 'नोड ने जवाब नहीं दिया',
     rcv_check_again: 'फिर से जांचें',
     rcv_copy_http: 'HTTP एड्रेस कॉपी करें',
     rcv_copy_http_off: 'HTTP एड्रेस कॉपी करें (सुन नहीं रहा)',

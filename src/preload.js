@@ -6,11 +6,15 @@ import path from 'path';
 import * as secp256k1 from "@noble/secp256k1";
 import isPortReachable from 'is-port-reachable';
 import { createProcessRegistry, createPidCheck, describeSpawn, redactArgs } from './shared/processOwnership';
+import { createWinFindProcess } from './shared/winProcessList';
 import { spawnCommand, plainBin, epicCwd } from './shared/spawnCommand';
 import { parseListenerLine } from './shared/epicboxListener';
 import { createScopedFs, isInside } from './shared/security';
 import { checkSpawnArgs } from './shared/walletArgs';
 import { pickedReadDirs } from './shared/walletFolder';
+import { DEFAULT_LABELS as MENU_LABELS } from './shared/appMenu';
+
+const MENU_LABEL_KEYS = Object.keys(MENU_LABELS);
 
 const moment = require('moment');
 const crypto = require('crypto-browserify');
@@ -82,11 +86,19 @@ function killPid(pid){
   });
 }
 
+//execFile as a promise of {stdout}
+function execFileOut(file, args, opts){
+  return new Promise((resolve, reject) => {
+    execFile(file, args, Object.assign({}, opts, {windowsHide: true}), (err, stdout) => err ? reject(err) : resolve({stdout}));
+  });
+}
+
 //the processes this app started (see shared/processOwnership.js): only these are ever stopped or reused
 const ownProcesses = createProcessRegistry({
   fs,
   file: appPaths.processesFile,
-  findProcess: require('find-process'),
+  //Windows: our own list (JSON); find-process's text parse broke long command lines (shared/winProcessList.js)
+  findProcess: process.platform === 'win32' ? createWinFindProcess({run: execFileOut, env: process.env}) : require('find-process'),
   kill: killPid,
   win: process.platform === 'win32',
   //a record missing from a scan is forgotten only once this says its pid is gone
@@ -788,7 +800,9 @@ contextBridge.exposeInMainWorld('api', {
     relaunch: () => ipcRenderer.invoke('app-relaunch'),
     //the app menu (shared/appMenu.js): whether a wallet is unlocked, and its labels in the app's language
     menuState: (unlocked, labels) => {
-      ipcRenderer.send('menu-state', { unlocked: unlocked === true, labels: { lock: String((labels && labels.lock) || ''), quit: String((labels && labels.quit) || '') } });
+      const l = {};
+      for (const k of MENU_LABEL_KEYS) l[k] = String((labels && labels[k]) || '');
+      ipcRenderer.send('menu-state', { unlocked: unlocked === true, labels: l });
     },
     //Menu › Lock wallet was chosen: one listener (App.vue)
     onMenuLock: (func) => {

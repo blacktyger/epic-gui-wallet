@@ -192,6 +192,13 @@ H.runCase('confirm615', async (t) => {
     return `${how} -> ${await U.route(w)}`;
   });
   await check('f', 'unlock again', async () => { const r = await U.unlock(w, ui, pwA); await skipTourIfAny(); await size(); return r; }, { fatal: true, timeout: 120000 });
+  await check('f', 'Ctrl+L in the page (a key event to the page only, as the Windows rig can send) locks', async () => {
+    await w.locator('h1').first().click({ position: { x: 2, y: 2 } }).catch(() => {});
+    await w.keyboard.press('Control+L');
+    await w.waitForURL(/login/, { timeout: 15000 });
+    return U.route(w);
+  });
+  await check('f', 'unlock after the page Ctrl+L', async () => { const r = await U.unlock(w, ui, pwA); await skipTourIfAny(); await size(); return r; }, { fatal: true, timeout: 120000 });
   save();
 
   /* ---------- b: Receive with the listener stopped ---------- */

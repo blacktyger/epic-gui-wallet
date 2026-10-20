@@ -13,12 +13,18 @@ export function isAddrInUse(text) {
   return ADDR_IN_USE.test(String(text || ''));
 }
 
+//the listener asks the node whether it is ready (ready_for_txs) before it listens, and stops when the
+//node doesn't answer; preload.js execListen answers 'node not synced' for that line
+const NODE_FAILED = /^node not synced$|failed to check node sync status/i;
+
 export const HTTP_OFF = Object.freeze({ state: 'off', port: 0, reason: '' });
 
-/* startListen's answer -> store.state.httpListener: {state: 'on'|'failed'|'off', port, reason: ''|'port_in_use'|'error'} */
+/* startListen's answer -> store.state.httpListener: {state: 'on'|'failed'|'off', port, reason: ''|'port_in_use'|'node'|'error'}
+   ('node': the node did not answer the listener at its start; Try again works once it does) */
 export function httpListenerState(res, port) {
   if (res && res.success) return { state: 'on', port, reason: '' };
   if (res && (res.portInUse || isAddrInUse(res.msg))) return { state: 'failed', port: res.portInUse || port, reason: 'port_in_use' };
+  if (res && NODE_FAILED.test(String(res.msg || ''))) return { state: 'failed', port, reason: 'node' };
   return { state: 'failed', port, reason: 'error' };
 }
 

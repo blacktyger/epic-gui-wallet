@@ -82,6 +82,8 @@ import { computed, ref } from 'vue';
 import { useStore } from '@/store';
 import { useRoute } from 'vue-router';
 import WalletSyncStatus from '@/components/layout/WalletSyncStatus.vue';
+import { labelShown } from '@/components/wallets';
+import { avatarLetters } from '@/shared/walletLabel';
 import { nodeStateText } from '@/shared/nodeState';
 
 export default {
@@ -106,8 +108,10 @@ export default {
 
     const store = useStore();
     const route = useRoute();
-    const userName = computed(() => store.state.user.name)
-    const newAvatar = computed(() => store.state.userAvatar)
+    //a default label saved in another language ("Wallet 2") in the current one (components/wallets.js)
+    const userName = computed(() => labelShown(store.state.user.name))
+    //from the name as shown, so it follows the language too
+    const newAvatar = computed(() => avatarLetters(userName.value) || store.state.userAvatar)
     const currentHeight = computed(
       () => {
         let size = 0;

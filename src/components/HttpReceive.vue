@@ -29,14 +29,14 @@
               <p>
                 {{ $t("msg.httpReceive.local_address") }}:<br/>
                 <code>{{ localAddress }}</code>
-                &nbsp;<mdicon v-if="portIsForwarded" name="flag-checkered" style="color:hsl(141, 53%, 53%);" title="port is open" /><mdicon v-else name="flag-checkered" style="color:hsl(348, 100%, 61%);" title="port is closed" />
+                &nbsp;<mdicon v-if="portIsForwarded" name="flag-checkered" style="color:hsl(141, 53%, 53%);" :title="$t('msg.httpReceive.port_open')" /><mdicon v-else name="flag-checkered" style="color:hsl(348, 100%, 61%);" :title="$t('msg.httpReceive.port_closed')" />
                 &nbsp;<mdicon class="is-clickable" @click="checkPortOpen()" name="refresh" size=16 />
                 &nbsp;<mdicon class="is-clickable" @click="copy(localAddress)" name="content-copy" size=16 />
                 &nbsp;<mdicon class="is-clickable" @click="qrcode(localAddress, 'local')" name="qrcode-scan" size=16 />
               </p>
               <!-- the HTTP listener isn't running: say why; Epicbox goes on (QA W01) -->
               <p v-if="httpFailed" class="help is-danger" role="status">
-                {{ httpFailed.reason == 'port_in_use' ? $t("msg.httpReceive.http_failed_port", [httpFailed.port]) : $t("msg.httpReceive.http_failed") }}
+                {{ httpFailed.reason == 'port_in_use' ? $t("msg.httpReceive.http_failed_port", [httpFailed.port]) : (httpFailed.reason == 'node' ? $t("msg.httpReceive.http_failed_node") : $t("msg.httpReceive.http_failed")) }}
                 &nbsp;<a href="#" @click.prevent="httpRetrying || retryHttp()">{{ $t("msg.httpReceive.http_retry") }}</a>
               </p>
 

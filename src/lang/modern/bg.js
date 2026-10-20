@@ -473,6 +473,8 @@ export default {
     rcv_http_failed_error: ' HTTP слушателят не можа да стартира. Опитайте отново или спрете и пуснете получаването наново.',
     rcv_http_failed_port_short: 'порт {port} се използва от друга програма',
     rcv_http_failed_error_short: 'слушателят не можа да стартира',
+    rcv_http_failed_node: ' Възелът не отговори, затова HTTP слушателят не можа да стартира. Опитайте отново, когато възелът е достъпен.',
+    rcv_http_failed_node_short: 'възелът не отговори',
     rcv_check_again: 'Провери отново',
     rcv_copy_http: 'Копирай HTTP адреса',
     rcv_copy_http_off: 'Копирай HTTP адреса (не слуша)',

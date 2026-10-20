@@ -2,6 +2,7 @@ import { createStore } from 'vuex';
 import axios from 'axios';
 import { getUi, getScheme } from '@/shared/theme';
 import { waitingForReply } from '@/shared/txWaiting';
+import { avatarLetters } from '@/shared/walletLabel';
 
 export const store = createStore({
   state: {
@@ -258,8 +259,7 @@ rproofs_total: 64579
       }
 
       if (payload.name) {
-        let filteredName = payload.name.replace(/^\s*([a-zA-Z]).*\s+([a-zA-Z])\S+$/g, '$1$2');
-        state.userAvatar = filteredName.slice(0, (payload.name.split(' ').length > 1 ? 2 : 1)).toUpperCase();
+        state.userAvatar = avatarLetters(payload.name);
       }
 
     },

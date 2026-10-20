@@ -473,6 +473,8 @@ export default {
     rcv_http_failed_error: ' Der Wallet-Empfänger konnte nicht starten. Versuchen Sie es erneut oder halten Sie den Empfang an und starten Sie ihn neu.',
     rcv_http_failed_port_short: 'Port {port} wird von einem anderen Programm verwendet',
     rcv_http_failed_error_short: 'der Wallet-Empfänger konnte nicht starten',
+    rcv_http_failed_node: ' Der Netzwerkknoten hat nicht geantwortet, daher konnte der Wallet-Empfänger nicht starten. Versuchen Sie es erneut, sobald der Knoten erreichbar ist.',
+    rcv_http_failed_node_short: 'der Netzwerkknoten hat nicht geantwortet',
     rcv_check_again: 'Erneut prüfen',
     rcv_copy_http: 'HTTP-Adresse kopieren',
     rcv_copy_http_off: 'HTTP-Adresse kopieren (nicht empfangsbereit)',

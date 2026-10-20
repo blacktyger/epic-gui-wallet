@@ -6,7 +6,7 @@
     <div class="modal-card">
       <header class="modal-card-head">
         <p class="modal-card-title">
-          Confirm action
+          {{ $t('msg.confirm_action') }}
         </p>
         <button
           type="button"
@@ -15,15 +15,15 @@
         />
       </header>
       <section class="modal-card-body">
-        <p>This will permanently delete <b>{{ trashObjectName }}</b></p>
-        <p>Action can not be undone.</p>
+        <i18n-t keypath="msg.delete_permanently" tag="p"><b>{{ trashObjectName }}</b></i18n-t>
+        <p>{{ $t('msg.cannot_undo') }}</p>
       </section>
       <footer class="modal-card-foot">
         <button class="button is-danger" @click="cancel">
-          Cancel
+          {{ $t('msg.cancel') }}
         </button>
         <button class="button is-danger" @click="confirm">
-          Delete
+          {{ $t('msg.delete') }}
         </button>
       </footer>
     </div>

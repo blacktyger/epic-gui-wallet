@@ -75,6 +75,8 @@ export default {
   //the reason in the Overview line (after "HTTP failed: ")
   rcv_http_failed_port_short: 'port {port} is used by another program',
   rcv_http_failed_error_short: 'the listener could not start',
+  rcv_http_failed_node: ' The node did not answer, so the HTTP listener could not start. Try again once the node is reachable.',
+  rcv_http_failed_node_short: 'the node did not answer',
   rcv_check_again: 'Check again',
   rcv_copy_http: 'Copy HTTP address',
   rcv_copy_http_off: 'Copy HTTP address (not listening)',

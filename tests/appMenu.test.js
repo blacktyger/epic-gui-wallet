@@ -61,3 +61,20 @@ test('the main process builds its menu from the template and takes the state onl
   assert.match(app, /if \(this\.loggedIn && !this\.loggingOut\) this\.emitter\.emit\('app\.logout'\)/);
   assert.match(app, /this\.loggingOut = true;\n\s*try \{\n\s*await this\.closeSession\(opts\);\n\s*\} finally \{\n\s*this\.loggingOut = false;/);
 });
+
+test('6.1.5 Polish: every menu label comes from the app (Menu, Source on GitHub, Application, Edit and its items)', async () => {
+  const pl = { lock: 'Zablokuj portfel', quit: 'Zakończ', menu: 'Menu', source: 'Kod źródłowy na GitHubie', application: 'Aplikacja',
+    edit: 'Edycja', undo: 'Cofnij', redo: 'Ponów', cut: 'Wytnij', copy: 'Kopiuj', paste: 'Wklej', selectAll: 'Zaznacz wszystko' };
+  const { labels } = menuState({ unlocked: true, labels: pl });
+  assert.deepEqual(labels, pl);
+  const t = menuTemplate({ platform: 'win32', labels });
+  const all = [];
+  const walk = (items) => { for (const i of items) { if (i.label) all.push(i.label); if (i.submenu) walk(i.submenu); } };
+  walk(t);
+  assert.deepEqual(all.sort(), Object.values(pl).sort());
+  //the app sends every label (App.vue) and the bridge passes every key (preload.js)
+  const preload = fs.readFileSync(path.join(import.meta.dirname, '../src/preload.js'), 'utf8');
+  assert.match(preload, /for \(const k of MENU_LABEL_KEYS\)/);
+  const app = fs.readFileSync(path.join(import.meta.dirname, '../src/App.vue'), 'utf8');
+  for (const k of Object.keys(DEFAULT_LABELS)) assert.match(app, new RegExp('\\b' + k + ': t\\('), k);
+});

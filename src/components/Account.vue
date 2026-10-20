@@ -50,7 +50,7 @@
 <script>
 
 import { useStore } from '@/store';
-import { walletList, walletName, appLocale, walletFolderOf } from '@/components/wallets';
+import { walletList, walletName, labelShown, appLocale, walletFolderOf } from '@/components/wallets';
 
   /*
    * Settings › Wallet, about the open wallet only: its label, its folder (Open wallet folder opens
@@ -102,7 +102,7 @@ import { walletList, walletName, appLocale, walletFolderOf } from '@/components/
 
     mounted(){
       this.refresh();
-      this.label = this.wallet ? this.wallet.label || '' : '';
+      this.label = this.wallet ? labelShown(this.wallet.label) : '';
     },
 
     methods: {
@@ -147,7 +147,7 @@ import { walletList, walletName, appLocale, walletFolderOf } from '@/components/
             nodeInternal: !!cfg.nodeInternal,
             epicbox_domain: cfg.epicbox_domain || '',
           });
-          this.label = label;
+          this.label = labelShown(label);
           this.refresh();
           this.$toast.success(this.$t("msg.account.settings_saved"));
         }catch(e){
