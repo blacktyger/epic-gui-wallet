@@ -134,3 +134,6 @@ pnpm-debug.log*
 !/build/icon.icns
 /resources/app.json
 electron-builder.yml
+
+# e2e gate output (tests/e2e/run.js): app build, run logs, screenshots
+/tests/e2e/out/

@@ -1,0 +1,2 @@
+# e2e gate output: the unpacked app build, run logs and screenshots (tests/e2e/run.js)
+tests/e2e/out/
