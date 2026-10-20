@@ -14,19 +14,22 @@
         </template>
         <template v-else>
           <span class="my-nodes-main">
-            <b v-if="n.label" class="my-nodes-label">{{ n.label }}</b>
-            <code class="my-nodes-addr" translate="no">{{ n.address }}</code>
+            <span class="my-nodes-line">
+              <b v-if="n.label" class="my-nodes-label">{{ n.label }}</b>
+              <code v-else class="my-nodes-addr" translate="no">{{ n.address }}</code>
+              <span class="tags my-nodes-tags" :aria-label="statusLabel(n)" :role="statusLabel(n) ? 'group' : null">
+                <template v-if="viewOf(n)">
+                  <span class="tag is-small" :class="toneClass(viewOf(n))">{{ shortState(viewOf(n)) }}</span>
+                  <span v-if="viewOf(n).ms !== null" class="tag is-small is-light">{{ $t('msg.nodedir.latency_ms', { n: viewOf(n).ms }) }}</span>
+                </template>
+                <span v-else-if="checking.includes(n.address)" class="tag is-small is-light">{{ $t('msg.mynodes.checking') }}</span>
+              </span>
+            </span>
+            <code v-if="n.label" class="my-nodes-addr" translate="no">{{ n.address }}</code>
           </span>
-          <span class="tags my-nodes-tags" :aria-label="statusLabel(n)">
-            <template v-if="viewOf(n)">
-              <span class="tag is-normal" :class="toneClass(viewOf(n))">{{ $t('msg.mynodes.state_' + viewOf(n).state) }}</span>
-              <span v-if="viewOf(n).behind !== null" class="tag is-normal" :class="viewOf(n).behind === 0 ? 'is-success' : 'is-warning'">{{ lagText(viewOf(n)) }}</span>
-              <span v-if="viewOf(n).ms !== null" class="tag is-normal is-light">{{ $t('msg.nodedir.latency_ms', { n: viewOf(n).ms }) }}</span>
-            </template>
-            <span v-else-if="checking.includes(n.address)" class="tag is-normal is-light">{{ $t('msg.mynodes.checking') }}</span>
-          </span>
-          <div class="buttons my-nodes-btns">
-            <button type="button" class="button is-small is-primary is-outlined" :disabled="disabled || isCurrent(n)" :aria-label="$t('msg.mynodes.use_named', { name: nameOf(n) })" @click="$emit('use', n)">{{ isCurrent(n) ? $t('msg.mynodes.selected') : $t('msg.mynodes.use') }}</button>
+          <div class="buttons are-small my-nodes-btns">
+            <span v-if="isCurrent(n)" class="tag is-primary is-light my-nodes-sel">{{ $t('msg.mynodes.selected') }}</span>
+            <button v-else type="button" class="button is-small is-primary is-outlined" :disabled="disabled" :aria-label="$t('msg.mynodes.use_named', { name: nameOf(n) })" @click="$emit('use', n)">{{ $t('msg.mynodes.use') }}</button>
             <button type="button" class="button is-small" :disabled="disabled" :aria-label="$t('msg.mynodes.edit_named', { name: nameOf(n) })" @click="$emit('edit', n)">{{ $t('msg.mynodes.edit') }}</button>
             <button type="button" class="button is-small" :disabled="disabled" :aria-label="$t('msg.mynodes.remove_named', { name: nameOf(n) })" @click="askRemove(n)">{{ $t('msg.mynodes.remove') }}</button>
           </div>
@@ -82,6 +85,11 @@
       toneClass(v) {
         return { ok: 'is-success', warn: 'is-warning', risk: 'is-danger' }[v.tone] || '';
       },
+      /* one tag per row: the state, or for a node that is online how far it is from the tip */
+      shortState(v) {
+        if (v.tone === 'ok' && v.behind !== null) return this.lagText(v);
+        return this.$t('msg.mynodes.state_' + v.state);
+      },
       lagText(v) {
         return v.behind === 0 ? this.$t('msg.nodedir.at_tip') : this.$t('msg.nodedir.behind', { n: number(v.behind, this.locale) });
       },
@@ -108,19 +116,25 @@
 </script>
 
 <style scoped>
+  .my-nodes { container-type: inline-size; }
   .my-nodes-list { border: 1px solid rgba(128, 128, 128, 0.3); border-radius: 4px; }
-  .my-nodes-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; padding: 0.5rem 0.75rem; }
+  .my-nodes-row { display: flex; align-items: center; gap: 0.375rem 0.75rem; padding: 0.5rem 0.75rem; }
   .my-nodes-row + .my-nodes-row { border-top: 1px solid rgba(128, 128, 128, 0.25); }
   .my-nodes-row.is-current { box-shadow: inset 3px 0 0 hsl(171, 100%, 41%); }
-  .my-nodes-main { flex: 1 1 14rem; min-width: 0; display: flex; flex-direction: column; }
+  .my-nodes-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.125rem; }
+  .my-nodes-line { display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.5rem; min-width: 0; }
   .my-nodes-label { overflow-wrap: anywhere; }
-  .my-nodes-addr { background: none; padding: 0; font-size: 0.8125rem; color: inherit; opacity: 0.85; overflow-wrap: anywhere; }
-  .my-nodes-tags { margin: 0; flex-wrap: wrap; }
-  .my-nodes-tags .tag { margin-bottom: 0; }
-  .my-nodes-btns { margin: 0 0 0 auto; flex-wrap: nowrap; }
-  .my-nodes-btns .button { margin-bottom: 0; }
-  .my-nodes-ask { flex: 1 1 14rem; overflow-wrap: anywhere; }
-  @media (max-width: 560px) {
-    .my-nodes-btns { margin-left: 0; flex-wrap: wrap; }
+  .my-nodes-addr { background: none; padding: 0; font-size: 0.75rem; color: inherit; opacity: 0.8; overflow-wrap: anywhere; }
+  .my-nodes-line .my-nodes-addr { font-size: 0.8125rem; opacity: 1; }
+  .my-nodes-tags { margin: 0; flex-wrap: nowrap; gap: 0.25rem; }
+  .my-nodes-tags .tag { margin: 0; }
+  .my-nodes-btns { flex: none; margin: 0; flex-wrap: nowrap; gap: 0.25rem; }
+  .my-nodes-btns .button, .my-nodes-btns .tag { margin: 0; }
+  .my-nodes-sel { height: 1.875rem; }
+  .my-nodes-ask { flex: 1 1 auto; overflow-wrap: anywhere; }
+  /* a narrow column: the buttons go under the name */
+  @container (max-width: 420px) {
+    .my-nodes-row { flex-wrap: wrap; }
+    .my-nodes-main { flex-basis: 100%; }
   }
 </style>

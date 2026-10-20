@@ -16,22 +16,22 @@
         <template v-else>
           <span class="e-nodedir-dot" :class="viewOf(n) ? 'e-' + viewOf(n).tone : (checking.includes(n.address) ? 'e-wait' : '')" aria-hidden="true"></span>
           <span class="e-mynodes-name">
-            <b v-if="n.label">{{ n.label }}</b>
-            <small class="e-mono" translate="no">{{ n.address }}</small>
-          </span>
-          <span class="e-nodedir-meta e-mynodes-meta" :aria-label="statusLabel(n)" :role="statusLabel(n) ? 'group' : null">
-            <template v-if="viewOf(n)">
-              <span v-if="viewOf(n).tone !== 'ok'" class="e-tag" :class="viewOf(n).tone === 'warn' ? 'e-warn' : 'e-risk'">{{ $t('msg.mynodes.state_' + viewOf(n).state) }}</span>
-              <span v-else-if="viewOf(n).behind !== null" class="e-tag" :class="viewOf(n).behind === 0 ? 'e-ok' : 'e-warn'">{{ lagText(viewOf(n)) }}</span>
-              <span v-else class="e-tag e-ok">{{ $t('msg.mynodes.state_online') }}</span>
-              <span v-if="viewOf(n).ms !== null" class="e-num e-nodedir-lat">{{ $t('msg.nodedir.latency_ms', { n: viewOf(n).ms }) }}</span>
-            </template>
-            <span v-else-if="checking.includes(n.address)" class="e-small e-faint">{{ $t('msg.mynodes.checking') }}</span>
+            <span class="e-mynodes-line">
+              <b v-if="n.label">{{ n.label }}</b>
+              <b v-else class="e-mono e-mynodes-bare" translate="no">{{ n.address }}</b>
+              <span class="e-mynodes-meta" :aria-label="statusLabel(n)" :role="statusLabel(n) ? 'group' : null">
+                <template v-if="viewOf(n)">
+                  <span class="e-tag" :class="'e-' + (viewOf(n).tone === 'ok' && viewOf(n).behind ? 'warn' : viewOf(n).tone)">{{ shortState(viewOf(n)) }}</span>
+                  <span v-if="viewOf(n).ms !== null" class="e-nodedir-lat">{{ $t('msg.nodedir.latency_ms', { n: viewOf(n).ms }) }}</span>
+                </template>
+                <span v-else-if="checking.includes(n.address)" class="e-faint">{{ $t('msg.mynodes.checking') }}</span>
+              </span>
+            </span>
+            <small v-if="n.label" class="e-mono" translate="no">{{ n.address }}</small>
           </span>
           <span class="e-mynodes-acts">
-            <button type="button" class="e-btn e-sm" :class="isCurrent(n) ? 'e-btn-ghost' : ''" :disabled="disabled || isCurrent(n)" :aria-label="$t('msg.mynodes.use_named', { name: nameOf(n) })" @click="$emit('use', n)">
-              <EIcon v-if="isCurrent(n)" name="check" size="sm" />{{ isCurrent(n) ? $t('msg.mynodes.selected') : $t('msg.mynodes.use') }}
-            </button>
+            <span v-if="isCurrent(n)" class="e-mynodes-sel"><EIcon name="check" size="sm" />{{ $t('msg.mynodes.selected') }}</span>
+            <button v-else type="button" class="e-btn e-sm" :disabled="disabled" :aria-label="$t('msg.mynodes.use_named', { name: nameOf(n) })" @click="$emit('use', n)">{{ $t('msg.mynodes.use') }}</button>
             <button type="button" class="e-icon-btn e-sm" :disabled="disabled" :aria-label="$t('msg.mynodes.edit_named', { name: nameOf(n) })" :title="$t('msg.mynodes.edit')" @click="$emit('edit', n)"><EIcon name="pencil" size="sm" /></button>
             <button type="button" class="e-icon-btn e-sm" :disabled="disabled" :aria-label="$t('msg.mynodes.remove_named', { name: nameOf(n) })" :title="$t('msg.mynodes.remove')" @click="askRemove(n)"><EIcon name="trash" size="sm" /></button>
           </span>

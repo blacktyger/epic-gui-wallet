@@ -7,10 +7,10 @@
         <span class="e-nodedir-dot" :class="'e-' + view.tone" aria-hidden="true"></span>
         <b class="e-nodecheck-state">{{ stateText }}</b>
         <span v-if="view.behind !== null" class="e-tag" :class="view.behind === 0 ? 'e-ok' : 'e-warn'">{{ lagText }}</span>
-        <span v-if="facts.length" class="e-nodecheck-facts e-num">
-          <span v-for="(f, i) in facts" :key="i">{{ f }}</span>
-        </span>
         <button v-if="!short" type="button" class="e-link-btn e-nodecheck-again" @click="$emit('recheck')"><EIcon name="refresh" size="sm" />{{ $t('msg.mynodes.recheck') }}</button>
+      </p>
+      <p v-if="facts.length" class="e-nodecheck-facts">
+        <span v-for="(f, i) in facts" :key="i">{{ f }}</span>
       </p>
       <p v-if="(problemText || hintText) && !short" class="e-nodecheck-note">
         <span v-if="problemText">{{ problemText }}</span>
