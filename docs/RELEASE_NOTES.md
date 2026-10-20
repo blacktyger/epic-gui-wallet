@@ -1,5 +1,14 @@
 # Release notes
 
+## 6.1.4
+
+- Languages: the Modern interface is translated into every language of the app (Bulgarian, Czech, German, Persian, Hindi), and Polish is new in both interfaces, help texts included. Until now Modern was English-only. Each language was translated and then reviewed separately against the English; the Classic strings got the same terms (e.g. "recovery phrase" instead of the older "mnemonic words").
+  - Persian shows right-to-left, and the page's language is set for screen readers (QA T10, T26).
+- Fixes:
+  - Settings › Node: an address like `http://192.168.0.1:3413` showed as `http: /192…` on Windows: one slash went missing. The address font's "//" ligature drew the first slash in the empty space before it, and Windows dropped that slash. The bundled font has no ligatures now, so addresses, paths and amounts show every character as typed. The saved address was always right.
+  - Receive: your Epic address stays visible (dimmed) while receiving is off, and Copy and its QR code keep working. Payments sent to it wait on Epicbox until you start receiving again. It used to say "Epicbox not available. Wait for the Node to be synced…" (QA T09).
+  - Receiving over HTTP when another program uses port 3415: the app said "Receiving · HTTP" though HTTP wasn't running. Now HTTP shows as failed, with the reason ("Port 3415 is used by another program") and a Try again button. Epicbox keeps working (QA W01).
+
 ## 6.1.3
 
 - Tor removed. Receiving and sending over Tor didn't work in the current form. It needs a rework and is postponed, with no ETA.
