@@ -165,3 +165,15 @@ Policy:
 - A component test that exposes a product bug stays in, as `test.fails('BUG: ...')`.
 - A new bridge API, IPC channel or unchecked handler fails `contract` until it is added to the reviewed lists
   in `tests/preloadContract.test.js`. That is how 6.1.5's `folder-lock`, `menu-state` and `menu-lock` were caught.
+
+### On Windows: `npm run test:gate:windows`
+
+`scripts/test-gate-windows.sh [<commit>|--appdir <win-unpacked on the host>|--installer <.exe>]` runs the gate's e2e smoke flow on Windows, through the Windows test rig (`C:\Users\BT\code\wintest-rig` on `win-desktop`; its README explains the rig). Not part of `release.sh`.
+
+- Default target: HEAD, which must be pushed to the fork. It is built over plain ssh (session 0, nothing on the desktop) in `C:\EpicRig\gate-<sha>`: fresh clone pinned to the commit, `npm ci`, `vue-cli-service electron:build --win dir`. A commit already built there is reused (about 2 min to build).
+- Before anything runs it checks the host: nothing listens on 3413/3415/3420/13413 and no epic process runs from outside `C:\EpicRig` (the user's own wallet). If so it stops with exit 4 and touches nothing.
+- It queues one rig job (`scripts\queue-run.ps1`, specs `gate,core`). The rig runs it as the separate `epicrig` user in its own session, in a throwaway profile. Spec `gate` is this repo's `tests/e2e/specs/smoke.js` ported to the rig (Modern and Classic, a stub node on 127.0.0.1:13413); `core` is the rig's longer suite (public node, Epicbox, contacts, scale, theme, restore).
+- It waits (default 40 min, `--wait-min`), copies `report.md`, `flows-*.json`, `real-locations.txt`, the Playwright log and the screenshot gallery to `tests/out/gate-windows/<run>/` (`latest` links the newest), and prints a summary.
+- Exit 0 only if every flow passed, the rig's real-location diff is clean (rig exit 3 = the real wallet folders changed: stop and investigate), and no text file in the job's profile names `C:\Users\BT`.
+
+Measured 2026-10-20: gate + core on the rig take 6–7 min per run, plus ~2 min for a new build.
