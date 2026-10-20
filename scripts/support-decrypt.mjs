@@ -4,8 +4,9 @@
  *
  *   node scripts/support-decrypt.mjs <report.epicsupport | report id> [-k <key.pem>] [-o <dir>] [--print]
  *
- * A report id (e.g. 51) is fetched from the feedback bot over the tailnet first
- * (SUPPORT_FETCH_URL, default below; docs/support/INTAKE.md). The key is found by the report's key id
+ * A report id (e.g. r7k2m9q4) is fetched from the feedback bot's fleet API over the tailnet first:
+ * GET <GFB_URL>/support/<id> with the gfb token (env GFB_URL / GFB_TOKEN, else ~/.config/gfb, as the
+ * gfb CLI reads them; docs/support/INTAKE.md). The key is found by the report's key id
  * in ~/.config/epic-gui-support/support-<keyId>.pem unless -k names one. The report is written to
  * <dir> (default ~/epic-support-reports/<name>/, mode 700): report.txt (description, contact, app)
  * and one file per log under logs/. --print also prints report.txt.
@@ -16,7 +17,18 @@ import path from 'node:path';
 import { openBundle, readHeader } from '../src/shared/supportBundle.js';
 
 const KEY_DIR = path.join(os.homedir(), '.config', 'epic-gui-support');
-const FETCH = process.env.SUPPORT_FETCH_URL || 'http://aws-ec2-central-eu:8787/support/{id}';
+
+/* GFB_URL and GFB_TOKEN: env first, then ~/.config/gfb (KEY=VALUE lines) */
+function gfbConfig() {
+  const c = {};
+  try {
+    for (const line of fs.readFileSync(path.join(os.homedir(), '.config', 'gfb'), 'utf8').split(/\r?\n/)) {
+      const m = /^\s*(GFB_[A-Z]+)\s*=\s*(.*?)\s*$/.exec(line);
+      if (m) c[m[1]] = m[2];
+    }
+  } catch (e) { /* no config file */ }
+  return { url: process.env.GFB_URL || c.GFB_URL || '', token: process.env.GFB_TOKEN || c.GFB_TOKEN || '' };
+}
 
 function usage(code) {
   console.error('usage: support-decrypt <report.epicsupport | report id> [-k key.pem] [-o dir] [--print]');
@@ -40,10 +52,15 @@ let bytes, name;
 if (fs.existsSync(src)) {
   bytes = fs.readFileSync(src);
   name = path.basename(src).replace(/\.epicsupport$/, '');
-} else if (/^#?\w{1,40}$/.test(src)) {
+} else if (/^#?[a-z0-9]{4,40}$/i.test(src)) {
   const id = src.replace(/^#/, '');
-  const url = FETCH.replace('{id}', encodeURIComponent(id));
-  const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
+  const gfb = gfbConfig();
+  if (!gfb.url || !gfb.token) {
+    console.error('no GFB_URL / GFB_TOKEN (env or ~/.config/gfb): cannot fetch report ' + id);
+    process.exit(1);
+  }
+  const url = gfb.url.replace(/\/+$/, '') + '/support/' + encodeURIComponent(id);
+  const res = await fetch(url, { headers: { Authorization: 'Bearer ' + gfb.token }, signal: AbortSignal.timeout(30000) });
   if (!res.ok) {
     console.error('fetch ' + url + ': HTTP ' + res.status);
     process.exit(1);

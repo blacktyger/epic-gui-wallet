@@ -23,7 +23,9 @@
     "postinstall": "node scripts/install-app-deps.js",
     "postuninstall": "node scripts/install-app-deps.js",
     "package-check": "node scripts/package-check.js",
-    "release": "bash scripts/release.sh"
+    "release": "bash scripts/release.sh",
+    "support:decrypt": "node --no-warnings scripts/support-decrypt.mjs",
+    "clean-logs": "node --no-warnings scripts/clean-logs.mjs"
   },
   "main": "index.js",
   "dependencies": {
