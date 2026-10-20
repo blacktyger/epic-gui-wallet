@@ -711,6 +711,7 @@ export default {
   .cbook-row-text { flex: 1; min-width: 0; }
   .cbook-row-text b, .cbook-row-text small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cbook-row-text small { font-family: monospace; font-size: 0.75rem; opacity: 0.75; }
+  [dir='rtl'] .cbook-row-text small { direction: ltr; unicode-bidi: isolate; text-align: right; }
   .cbook-row-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; flex: none; }
   .cbook-row-meta small { font-size: 0.7rem; opacity: 0.7; white-space: nowrap; }
   .cbook-empty, .cbook-pick { padding: 1.5rem 1rem; text-align: center; opacity: 0.85; }

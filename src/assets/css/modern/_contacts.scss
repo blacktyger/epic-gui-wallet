@@ -84,7 +84,7 @@
 .e-con-empty p.e-small { margin-top: calc(var(--sp-1) * -1); }
 .e-con-empty-art { display: flex; justify-content: center; margin-bottom: var(--sp-4); }
 .e-con-empty-art .cav { box-shadow: 0 0 0 3px var(--s1); }
-.e-con-empty-art .cav + .cav { margin-inline-start: -12px; }
+.e-con-empty-art .cav + .cav { margin-inline-start: -6px; }
 
 /* narrow: the list, or the contact (with a way back) */
 @container (max-width: 46rem) {
@@ -97,3 +97,6 @@
   .e-con-grid2 { grid-template-columns: minmax(0, 1fr); }
   .e-con-head { gap: var(--sp-4); }
 }
+
+/* Persian: a short address stays left-to-right, so it is cut at its end (not its start), and sits on the right */
+[dir='rtl'] :is(.e-con-row-addr, .e-cpick-text small) { direction: ltr; unicode-bidi: isolate; text-align: right; }

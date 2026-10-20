@@ -214,6 +214,28 @@ H.runCase('contacts', async (t) => {
     return 'recipient ' + v.slice(0, 12) + '…';
   });
 
+  if (SHOTS && m) {
+    await t.step('Persian (right to left): Contacts and the picker', async () => {
+      //Settings › Language (its save needs a reachable node: the stub first)
+      await U.typeNodeAddress(w, ui);
+      await U.saveNode(w, ui);
+      await U.setLanguage(w, ui, 'fa');
+      //the sidebar by its links (the labels are Persian now)
+      await w.locator('a[href="/addressBook"]').first().click();
+      await w.waitForTimeout(800);
+      await openRow('Mara O. Okafor');
+      await shot('rtl-detail');
+      await w.locator('a[href="/httpSend"]').first().click();
+      await w.waitForTimeout(800);
+      await w.locator('.e-send-pick').click();
+      await w.locator('dialog.e-cpick[open]').waitFor({ timeout: 5000 });
+      await shot('rtl-picker');
+      await w.keyboard.press('Escape');
+      await U.setLanguage(w, ui, 'en');
+      return 'shots taken';
+    });
+  }
+
   await t.step('delete: a quiet confirmation, then gone', async () => {
     await U.nav(w, ui, U.PAGES[ui].find((x) => x[1] === '/addressBook'));
     await openRow('Café Lumen');
