@@ -9,6 +9,7 @@
 - Settings › Wallets: the button that adds an existing wallet is now called "Add a wallet from a folder…" (it was "Open a wallet folder", which sounded like it would open the wallet's own folder). Each wallet in the list has a new "Show in folder" button that opens that wallet's own folder in your file manager (feedback #34).
 - WALLET.txt (in each wallet's folder) is easier to read: what the file is, then a "YOUR WALLET DETAILS" block with label, created date, network, wallet id and data folder; the data folder is listed once. It is updated when you rename the wallet. It never holds secrets (feedback #35).
 - Menu › Lock wallet (Ctrl+L), above Quit: locks the open wallet, like the Lock button (feedback #36).
+- Modern sidebar: the wallet's icon and name are now a link to Settings › Wallet, like Node and Receiving; the Lock button next to it still only locks. Node opens Settings at the Node section, and Receiving opens the Epicbox settings: the section scrolls into view, is highlighted briefly (no animation with reduced motion) and the Epicbox server field is focused, also when Settings is already open. The links have labels for screen readers ("Open node settings", "Open Epicbox settings", "Open wallet settings") in all seven languages (feedback #37).
 - Help and translations:
   - The help no longer suggests taking a screenshot of your recovery words: write them down on paper.
   - "Import offline transaction": the file comes from the sender (the help said the receiver).

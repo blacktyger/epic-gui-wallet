@@ -32,8 +32,12 @@
       <div class="e-side-foot">
         <ServiceStatus />
         <div class="e-account">
-          <div class="e-avatar" aria-hidden="true">{{ initials }}</div>
-          <div class="e-grow"><b class="e-truncate">{{ accountName }}</b><small>{{ network }}</small></div>
+          <router-link to="/account" custom v-slot="{ href, navigate }">
+            <a class="e-account-link e-grow" :href="href" :aria-label="$t('msg.modern.svc_open_wallet') + ': ' + accountName" :title="$t('msg.modern.svc_open_wallet')" @click="navigate">
+              <div class="e-avatar" aria-hidden="true">{{ initials }}</div>
+              <div class="e-grow"><b class="e-truncate">{{ accountName }}</b><small>{{ network }}</small></div>
+            </a>
+          </router-link>
           <button
             v-if="canSwitch"
             type="button"

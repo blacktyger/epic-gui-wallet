@@ -1,0 +1,95 @@
+/*
+ * Sidebar links (Modern): Node and Receiving open Settings › General at #node / #epicbox, the
+ * wallet row opens Settings › Wallet, and the section jump scrolls, flashes and focuses.
+ */
+import { readFileSync } from 'node:fs';
+import { describe, test, expect, vi } from 'vitest';
+import { flushPromises, mount } from '@vue/test-utils';
+import { createRouter, createMemoryHistory } from 'vue-router';
+import ServiceStatus from '@/components/modern/shell/ServiceStatus.vue';
+import { jumpTo, openSettingsSection, JUMP_EVENT } from '@/components/modern/settings/jump';
+import { i18n } from '@/i18n';
+import { makeStore } from './support/fakeStore.js';
+import { t } from './support/mountView.js';
+
+const Blank = { template: '<div />' };
+function makeRouter() {
+  return createRouter({
+    history: createMemoryHistory(),
+    routes: ['/', '/settings', '/account'].map(path => ({ path, component: Blank })),
+  });
+}
+
+async function mountStatus() {
+  const router = makeRouter();
+  await router.push('/');
+  const wrapper = mount(ServiceStatus, { attachTo: document.body, global: { plugins: [i18n, makeStore(), router], stubs: { mdicon: true } } });
+  return { wrapper, router };
+}
+
+describe('sidebar service lines', () => {
+  test('Node opens Settings at #node, Receiving at #epicbox, each with an "Open ... settings" label', async () => {
+    const { wrapper, router } = await mountStatus();
+    const [node, rcv] = wrapper.findAll('button.e-svc');
+    expect(node.attributes('aria-label')).toContain(t('msg.modern.svc_open_node'));
+    expect(rcv.attributes('aria-label')).toContain(t('msg.modern.svc_open_epicbox'));
+    await rcv.trigger('click');
+    await flushPromises();
+    expect(router.currentRoute.value.fullPath).toBe('/settings#epicbox');
+    await router.push('/');
+    await node.trigger('click');
+    await flushPromises();
+    expect(router.currentRoute.value.fullPath).toBe('/settings#node');
+  });
+
+  test('with Settings already open the same link fires the jump event again', async () => {
+    const { wrapper, router } = await mountStatus();
+    await router.push('/settings#epicbox');
+    const seen = vi.fn();
+    window.addEventListener(JUMP_EVENT, seen);
+    await wrapper.findAll('button.e-svc')[1].trigger('click');
+    await flushPromises();
+    window.removeEventListener(JUMP_EVENT, seen);
+    expect(seen).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('jumpTo', () => {
+  function page() {
+    document.body.innerHTML = '<section id="stg-sec-epicbox"><input id="stg-relay"></section><section id="stg-sec-node"><h2 id="stg-node-h" tabindex="-1"></h2></section>';
+    const sec = document.getElementById('stg-sec-epicbox');
+    sec.scrollIntoView = vi.fn();
+    document.getElementById('stg-sec-node').scrollIntoView = vi.fn();
+    return sec;
+  }
+
+  test('#epicbox scrolls the section, flashes it and focuses the server field', () => {
+    const sec = page();
+    expect(jumpTo('#epicbox')).toBe(true);
+    expect(sec.scrollIntoView).toHaveBeenCalled();
+    expect(sec.classList.contains('e-jump-flash')).toBe(true);
+    expect(document.activeElement.id).toBe('stg-relay');
+  });
+
+  test('#node focuses the Node heading; an unknown hash does nothing', () => {
+    page();
+    expect(jumpTo('#node')).toBe(true);
+    expect(document.activeElement.id).toBe('stg-node-h');
+    expect(jumpTo('#nope')).toBe(false);
+  });
+});
+
+describe('wallet row', () => {
+  //AppShell extends NavBar (styles the component harness can't load), so the markup is pinned from source
+  const src = readFileSync('src/components/modern/shell/AppShell.vue', 'utf8');
+
+  test('avatar and name are one link to /account, labelled, and the lock button stays a separate button', () => {
+    const link = src.match(/<router-link to="\/account"[\s\S]*?<\/router-link>/)[0];
+    expect(link).toContain('e-account-link');
+    expect(link).toContain('svc_open_wallet');
+    expect(link).toContain('e-avatar');
+    expect(link).not.toContain('<button');
+    expect(src).toMatch(/@click="logout"/);
+    expect(src.indexOf('@click="logout"')).toBeGreaterThan(src.indexOf('</router-link>'));
+  });
+});
