@@ -56,4 +56,8 @@ test('the main process builds its menu from the template and takes the state onl
   const app = fs.readFileSync(path.join(import.meta.dirname, '..', 'src', 'App.vue'), 'utf8');
   assert.match(app, /window\.api\.onMenuLock\(/);
   assert.match(app, /window\.api\.menuState\(/);
+  //a lock under way is not started twice, and the guard always clears (review: a 15 s time window
+  //swallowed a real Lock wallet after Switch wallet)
+  assert.match(app, /if \(this\.loggedIn && !this\.loggingOut\) this\.emitter\.emit\('app\.logout'\)/);
+  assert.match(app, /this\.loggingOut = true;\n\s*try \{\n\s*await this\.closeSession\(opts\);\n\s*\} finally \{\n\s*this\.loggingOut = false;/);
 });

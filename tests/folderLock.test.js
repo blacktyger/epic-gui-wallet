@@ -38,7 +38,9 @@ test('lockFiles: the files and ranges per kind', () => {
     { file: '/w/wallet_data/db/sqlite/epic.db-shm', how: 'fcntl', range: [128, 1] },
     { file: '/w/wallet_data/db/lmdb/lock.mdb', how: 'fcntl', range: [0, 1] },
   ]);
-  assert.deepEqual(w.slice(3).map(t => t.file), ['/w/chain_data/epic.lock', '/w/chain_data/lmdb/lock.mdb', '/w/chain_data/peer/lock.mdb']);
+  //a chain_data in the wallet folder is not asked about: the app's own node may run on it (review)
+  assert.equal(w.length, 3);
+  assert.ok(!w.some(t => t.file.includes('chain_data')));
   assert.equal(lockFiles('chain', 'C:\\x\\chain_data', path.win32)[0].file, 'C:\\x\\chain_data\\epic.lock');
   assert.throws(() => lockFiles('home', '/h', P));
 });
@@ -91,6 +93,14 @@ test('/proc/locks: parsed by device and inode; waiters skipped; device 0:x match
 
 const run = (file, args, opts) => new Promise((resolve, reject) => {
   execFile(file, args, opts, (err, stdout) => err ? reject(err) : resolve({ stdout }));
+});
+
+test('check: a lock file that can\'t be read (EACCES) is unknown, not missing (review)', async () => {
+  const db = '/w/wallet_data/db/sqlite/epic.db';
+  const fs = { existsSync: () => false,
+    statSync: (p) => { throw Object.assign(new Error(p === db ? 'EACCES' : 'ENOENT'), { code: p === db ? 'EACCES' : 'ENOENT' }); } };
+  const fl = createFolderLock({ fs, pathMod: path.posix, platform: 'linux', run: async () => ({ stdout: '' }) });
+  assert.deepEqual(await fl.check('wallet', '/w'), { state: 'unknown', files: [{ file: db, state: 'unknown' }], via: 'none' });
 });
 
 test('check: nothing to ask about → free without running anything; bad input → unknown', async () => {
@@ -156,8 +166,9 @@ test('check on Windows: PowerShell by its full path, the files and ranges as JSO
   assert.equal(r.via, 'powershell');
   const c = calls[0];
   assert.equal(c.file, 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe');
-  assert.deepEqual(c.args.slice(0, 5), ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand']);
-  assert.equal(Buffer.from(c.args[5], 'base64').toString('utf16le'), PS_PROBE, 'the script is fixed: no path in it');
+  assert.deepEqual(c.args.slice(0, 3), ['-NoProfile', '-NonInteractive', '-EncodedCommand']);
+  assert.ok(!c.args.includes('Bypass'), 'no execution policy bypass (it is for script files only)');
+  assert.equal(Buffer.from(c.args[3], 'base64').toString('utf16le'), PS_PROBE, 'the script is fixed: no path in it');
   assert.deepEqual(JSON.parse(c.opts.env.EPIC_FOLDER_LOCK), { items: [{ f: db, s: 0x40000002, n: 510 }, { f: db + '-shm', s: 128, n: 1 }] });
   assert.ok(c.opts.timeout >= 10000, 'PowerShell can be slow to start');
 });

@@ -51,7 +51,8 @@
  * caller does with 'unknown' is its own choice (see the callers): removing files refuses.
  *
  * → check(kind, dir): { state: 'free' | 'locked' | 'unknown', files: [{file, state}], via }
- *   kind 'chain': dir is a chain_data folder; 'wallet': dir holds wallet_data (and maybe chain_data).
+ *   kind 'chain': dir is a chain_data folder; 'wallet': dir holds wallet_data (a chain_data beside it
+ *   is not asked about).
  */
 
 /* global BigInt */
@@ -75,9 +76,9 @@ export function lockFiles(kind, dir, pathMod) {
     { file: pathMod.join(db, 'sqlite', 'epic.db'), how: 'fcntl', range: [SQLITE_SHARED_FIRST, SQLITE_SHARED_SIZE] },
     { file: pathMod.join(db, 'sqlite', 'epic.db-shm'), how: 'fcntl', range: [SQLITE_SHM_DMS, 1] },
     { file: pathMod.join(db, 'lmdb', 'lock.mdb'), how: 'fcntl', range: [0, 1] },
-    //a node of an older app may keep its chain inside the wallet's folder
-    ...chain(pathMod.join(dir, 'chain_data')),
   ];
+  //not the chain_data a wallet folder may hold (~/.epic/main): nothing done to a wallet touches it,
+  //and the app's own built-in node may run on it (Use this data), which would read as "in use"
 }
 
 /* one answer for a folder: in use when any file is; unknown when any couldn't be checked */
@@ -125,6 +126,7 @@ for my $i (0 .. $#ARGV) {
  * ERROR_SHARING_VIOLATION on open: another program opened the file for itself alone, also in use.
  */
 export const PS_PROBE = `$ErrorActionPreference = 'Stop'
+"mode $($ExecutionContext.SessionState.LanguageMode)"
 $cfg = ConvertFrom-Json $env:EPIC_FOLDER_LOCK
 $i = 0
 foreach ($it in $cfg.items) {
@@ -205,9 +207,14 @@ export function createFolderLock({ fs, pathMod, platform, run, env = {}, log = (
     const ps = pathMod.join(root, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
     const encoded = Buffer.from(PS_PROBE, 'utf16le').toString('base64');
     const items = targets.map(t => ({ f: t.file, s: t.range[0], n: t.range[1] }));
-    const { stdout } = await run(ps, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', encoded],
+    //no -ExecutionPolicy: it applies to script files only, not to a command
+    const { stdout } = await run(ps, ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
       { timeout: PROBE_TIMEOUT_MS.win32, env: { ...env, EPIC_FOLDER_LOCK: JSON.stringify({ items }) } });
-    return parseProbe(stdout, targets.length);
+    const states = parseProbe(stdout, targets.length);
+    //Constrained Language Mode (AppLocker, WDAC) refuses the .NET calls: every file 'unknown'
+    const mode = (/^mode (\S+)/m.exec(String(stdout || '')) || [])[1] || '?';
+    if (states.includes('unknown')) log('folderLock: powershell answered unknown, language mode ' + mode);
+    return states;
   }
 
   function viaProcLocks(targets) {
@@ -227,8 +234,11 @@ export function createFolderLock({ fs, pathMod, platform, run, env = {}, log = (
     const all = lockFiles(kind, pathMod.resolve(dir), pathMod);
     const targets = [], files = [];
     for (const t of all) {
-      const st = tryDo(() => fs.statSync(t.file), null);
-      if (!st && !tryDo(() => fs.existsSync(t.file), true)) continue;
+      let st = null, err = null;
+      try { st = fs.statSync(t.file); } catch (e) { err = e; }
+      //only "not there" is free; a file that can't be read (EACCES) can't tell
+      const gone = err && (err.code ? ['ENOENT', 'ENOTDIR'].includes(err.code) : !tryDo(() => fs.existsSync(t.file), true));
+      if (!st && gone) continue;
       //there but not a plain file, or not readable: can't tell
       if (!st || !st.isFile()) { files.push({ file: t.file, state: 'unknown' }); continue; }
       targets.push(t);

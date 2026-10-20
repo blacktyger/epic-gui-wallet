@@ -141,7 +141,7 @@
       //Menu › Lock wallet: the same as the Lock button and Ctrl+L, only while a wallet is unlocked
       //(skipped while a lock is under way: Ctrl+L can reach both the page and the menu)
       window.api.onMenuLock(() => {
-        if (this.loggedIn && !(Date.now() - (this.logoutStartedAt || 0) < 15000)) this.emitter.emit('app.logout');
+        if (this.loggedIn && !this.loggingOut) this.emitter.emit('app.logout');
       });
 
       window.nodeChildProcess.on('firstscan-stdout', (payload) => {
@@ -474,7 +474,15 @@
       /* opts.stay: the caller (Add another wallet) goes on from its own page; opts.done: called once closed;
          opts.switching: Switch wallet, so the built-in node keeps running */
       async logoutApp(opts = {}){
-        this.logoutStartedAt = Date.now();
+        //Menu › Lock wallet waits for this one instead of starting a second (Ctrl+L can reach both)
+        this.loggingOut = true;
+        try {
+          await this.closeSession(opts);
+        } finally {
+          this.loggingOut = false;
+        }
+      },
+      async closeSession(opts){
         //first: the main process forgets the password, whatever happens below
         window.nodeChildProcess.clearSessionPassword().catch(() => {});
         //a copied recovery phrase leaves the clipboard on lock
