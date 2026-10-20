@@ -6,6 +6,7 @@ import path from 'path';
 import * as secp256k1 from "@noble/secp256k1";
 import isPortReachable from 'is-port-reachable';
 import { createProcessRegistry, createPidCheck, describeSpawn, redactArgs } from './shared/processOwnership';
+import { createWinFindProcess } from './shared/winProcessList';
 import { spawnCommand, plainBin, epicCwd } from './shared/spawnCommand';
 import { parseListenerLine } from './shared/epicboxListener';
 import { createScopedFs, isInside } from './shared/security';
@@ -82,11 +83,19 @@ function killPid(pid){
   });
 }
 
+//execFile as a promise of {stdout}
+function execFileOut(file, args, opts){
+  return new Promise((resolve, reject) => {
+    execFile(file, args, Object.assign({}, opts, {windowsHide: true}), (err, stdout) => err ? reject(err) : resolve({stdout}));
+  });
+}
+
 //the processes this app started (see shared/processOwnership.js): only these are ever stopped or reused
 const ownProcesses = createProcessRegistry({
   fs,
   file: appPaths.processesFile,
-  findProcess: require('find-process'),
+  //Windows: our own list (JSON); find-process's text parse broke long command lines (shared/winProcessList.js)
+  findProcess: process.platform === 'win32' ? createWinFindProcess({run: execFileOut, env: process.env}) : require('find-process'),
   kill: killPid,
   win: process.platform === 'win32',
   //a record missing from a scan is forgotten only once this says its pid is gone
