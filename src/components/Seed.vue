@@ -126,11 +126,12 @@ export default {
         }else{
           //the wallet can't open its seed file with this password ("Lifecycle: Error opening wallet seed
           //file"): say so under the password field, not as the raw error (QA T25)
+          //no answer at all (the wallet API down or timed out) is not a wrong password
           const message = res && res.error && res.error.message ? String(res.error.message) : '';
-          if(!message || /seed file|decrypt/i.test(message)){
+          if(/seed file|decrypt/i.test(message)){
             this.errors.password = this.$t('msg.modern.unlock.wrong_password');
           }else{
-            this.$toast.error(message);
+            this.$toast.error(message || this.$t('msg.app.wallet_api_unreachable'));
           }
         }
       }
