@@ -79,6 +79,37 @@ describe('jumpTo', () => {
   });
 });
 
+describe('jumpTo: content that loads above the section later', () => {
+  function pushedDown() {
+    document.body.innerHTML = '<main><section id="stg-sec-epicbox"><input id="stg-relay"></section></main>';
+    const sec = document.getElementById('stg-sec-epicbox');
+    sec.scrollIntoView = vi.fn();
+    //the node list and details above it arrived: the section is 700 px down again
+    sec.getBoundingClientRect = () => ({ top: 700, bottom: 1500 });
+    return sec;
+  }
+
+  test('puts the section back at the top once the page settles', () => {
+    vi.useFakeTimers();
+    const sec = pushedDown();
+    jumpTo('#epicbox');
+    vi.advanceTimersByTime(3000);
+    expect(sec.scrollIntoView.mock.calls.length).toBeGreaterThan(1);
+    expect(sec.scrollIntoView).toHaveBeenLastCalledWith({ behavior: 'auto', block: 'start' });
+    vi.useRealTimers();
+  });
+
+  test('leaves it alone once the user scrolls', () => {
+    vi.useFakeTimers();
+    const sec = pushedDown();
+    jumpTo('#epicbox');
+    document.dispatchEvent(new Event('wheel'));
+    vi.advanceTimersByTime(3000);
+    expect(sec.scrollIntoView).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+});
+
 describe('wallet row', () => {
   //AppShell extends NavBar (styles the component harness can't load), so the markup is pinned from source
   const src = readFileSync('src/components/modern/shell/AppShell.vue', 'utf8');
