@@ -249,7 +249,7 @@ const messages = {
     login: {
       listener_started: 'Wallet listener started',
       error_listener_started: 'Error starting wallet listener',
-      port_in_use: 'Port {0} is used by another program, for example another Epic wallet or epic-wallet running on this computer. Close it, then try again.',
+      port_in_use: 'Port {0} is used by another program, for example another Epic wallet. Close it, then try again.',
       epicbox_started: 'Epicbox started',
       error_epicbox_started: 'Error starting Epicbox',
       stage_check: 'Checking wallet files',

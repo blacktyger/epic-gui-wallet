@@ -234,7 +234,7 @@ const messages = {
     login: {
       listener_started: 'Nasłuch portfela uruchomiony',
       error_listener_started: 'Błąd uruchamiania nasłuchu portfela',
-      port_in_use: 'Port {0} jest zajęty przez inny program, na przykład inny portfel Epic lub epic-wallet działający na tym komputerze. Zamknij go i spróbuj ponownie.',
+      port_in_use: 'Port {0} jest zajęty przez inny program, na przykład inny portfel Epic. Zamknij go i spróbuj ponownie.',
       epicbox_started: 'Epicbox uruchomiony',
       error_epicbox_started: 'Błąd uruchamiania Epicbox',
       stage_check: 'Sprawdzanie plików portfela',
