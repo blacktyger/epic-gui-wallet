@@ -143,6 +143,15 @@
       window.api.onMenuLock(() => {
         if (this.loggedIn && !this.loggingOut) this.emitter.emit('app.logout');
       });
+      //Classic: Ctrl+L in the page too, as Modern's AppShell has it; the menu accelerator alone needs
+      //the window to have the keyboard focus of the desktop
+      window.addEventListener('keydown', (e) => {
+        if (this.isClassic && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && String(e.key).toLowerCase() == 'l'
+          && this.loggedIn && !this.loggingOut) {
+          e.preventDefault();
+          this.emitter.emit('app.logout');
+        }
+      });
 
       window.nodeChildProcess.on('firstscan-stdout', (payload) => {
 

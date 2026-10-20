@@ -425,6 +425,7 @@ const messages = {
       epicbox_address_unknown: 'Ihre Epic-Adresse konnte nicht gelesen werden. Öffnen Sie „Empfangen“ gleich noch einmal.',
       http_failed_port: 'HTTP ist nicht empfangsbereit: Port {0} wird von einem anderen Programm verwendet. Schließen Sie es und versuchen Sie es erneut.',
       http_failed: 'HTTP ist nicht empfangsbereit: Der Wallet-Empfänger konnte nicht starten.',
+      http_failed_node: 'HTTP ist nicht empfangsbereit: Der Netzwerkknoten hat nicht geantwortet, daher konnte der Wallet-Empfänger nicht starten. Versuchen Sie es erneut, sobald der Knoten erreichbar ist.',
       http_retry: 'Erneut versuchen',
       epicbox_off: 'Ihre Epicbox ist nicht eingerichtet. Aktualisieren Sie Ihre Einstellungen und legen Sie eine Epicbox-Webadresse fest',
       epicbox_listening_on: 'Empfangsbereit über {0}',

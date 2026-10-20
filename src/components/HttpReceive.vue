@@ -36,7 +36,7 @@
               </p>
               <!-- the HTTP listener isn't running: say why; Epicbox goes on (QA W01) -->
               <p v-if="httpFailed" class="help is-danger" role="status">
-                {{ httpFailed.reason == 'port_in_use' ? $t("msg.httpReceive.http_failed_port", [httpFailed.port]) : $t("msg.httpReceive.http_failed") }}
+                {{ httpFailed.reason == 'port_in_use' ? $t("msg.httpReceive.http_failed_port", [httpFailed.port]) : (httpFailed.reason == 'node' ? $t("msg.httpReceive.http_failed_node") : $t("msg.httpReceive.http_failed")) }}
                 &nbsp;<a href="#" @click.prevent="httpRetrying || retryHttp()">{{ $t("msg.httpReceive.http_retry") }}</a>
               </p>
 

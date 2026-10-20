@@ -8,6 +8,7 @@ import { pathToFileURL } from 'url'
 import { createDirectory } from './shared/nodeDirectory'
 import { createReleaseLink } from './shared/releaseLink'
 import { createProcessRegistry, createPidCheck } from './shared/processOwnership'
+import { createWinFindProcess } from './shared/winProcessList'
 import { resolveRoot, layout, legacyPaths } from './shared/appPaths'
 import { scanLegacy, scanChains, resolveWalletFolder } from './shared/legacyScan'
 import { createFolderLock, KINDS as LOCK_KINDS } from './shared/folderLock'
@@ -24,7 +25,13 @@ import { httpUrl, isAppUrl, isInside, nodeRequest, contentSecurityPolicy } from 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 const path = require('path')
 const ps = require('ps-node');
-const findProcess = require('find-process');
+//Windows: our own list (JSON); find-process's text parse broke long command lines (shared/winProcessList.js)
+const findProcess = process.platform === 'win32'
+  ? createWinFindProcess({ env: process.env,
+    run: (file, args, opts) => new Promise((resolve, reject) => {
+      execFile(file, args, { ...opts, windowsHide: true }, (err, stdout) => err ? reject(err) : resolve({ stdout }));
+    }) })
+  : require('find-process');
 const os = require('os');
 const fs = require('fs');
 

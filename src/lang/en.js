@@ -443,6 +443,7 @@ const messages = {
       //the HTTP listener didn't start while Epicbox runs (QA W01); {0} is the port (3415)
       http_failed_port: 'HTTP is not receiving: port {0} is used by another program. Close it, then try again.',
       http_failed: 'HTTP is not receiving: the listener could not start.',
+      http_failed_node: 'HTTP is not receiving: the node did not answer, so the listener could not start. Try again once the node is reachable.',
       http_retry: 'Try again',
       epicbox_off: 'Your epicbox is not configured. Update your settings and define a epicbox domain',
       epicbox_listening_on: 'Listening on {0}',
