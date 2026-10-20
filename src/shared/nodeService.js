@@ -8,6 +8,8 @@ import { assessNodeStatus, directoryReferenceHeight, createBehindTracker } from 
 //network tip older than DIRECTORY_MAX_AGE_MS is not used
 const DIRECTORY_EVERY_MS = 10 * 60 * 1000;
 const DIRECTORY_MAX_AGE_MS = 15 * 60 * 1000;
+//a node whose /v1/status is locked is asked the whole way again this often (it may have changed)
+const STATUS_VIA_RECHECK_MS = 10 * 60 * 1000;
 
 const log = window.log;
 console.log = log.log;
@@ -177,13 +179,28 @@ class NodeService {
     let baseURL = this.configService.config['check_node_api_http_addr'] ? this.configService.config['check_node_api_http_addr'] : this.configService.defaultEpicNode;
 
     //GET /v1/status; on a 401 (plain node 4.1.0) the same status from POST /v2/owner get_status,
-    //else the tip from POST /v2/foreign get_tip. The node secret is sent to the local node only
-    const res = await fetchNodeStatus(baseURL, {apiSecret: this.configService.apisecret, timeoutMs: 10000, referenceHeight: () => this.referenceHeight(), version: this.nodeVersion || ''});
+    //else the tip from POST /v2/foreign get_tip. The node secret is sent to the local node only.
+    //A node read via owner or foreign is asked that way at once (no 401s first), from the start again
+    //every STATUS_VIA_RECHECK_MS. Reads at the same time (the poll, the Epicbox wait) share one request
+    const now = Date.now();
+    const recheck = baseURL !== this.statusViaBase || now - (this.statusViaAt || 0) >= STATUS_VIA_RECHECK_MS;
+    const via = !recheck && (this.statusVia == 'owner' || this.statusVia == 'foreign') ? this.statusVia : '';
+    const key = baseURL + ' ' + via;
+    if(!this.statusRead || this.statusRead.key !== key){
+      const read = fetchNodeStatus(baseURL, {apiSecret: this.configService.apisecret, timeoutMs: 10000, referenceHeight: () => this.referenceHeight(), version: this.nodeVersion || '', via});
+      this.statusRead = {key, read};
+      read.finally(() => { if(this.statusRead && this.statusRead.read === read) this.statusRead = null; });
+    }
+    const res = await this.statusRead.read;
     if(!res.ok){
       window.log ? console.log('NodeService.fetch', res.reason) : null;
     }
-    //how the status was read last: 'v1', 'owner' or null
+    //how the status was read last: 'v1', 'owner', 'foreign' or null
     this.statusVia = res.ok ? res.via : null;
+    if(!via){
+      this.statusViaBase = baseURL;
+      this.statusViaAt = now;
+    }
     let response = res.ok ? res.status : false;
     if(response && res.via != 'foreign'){
       this.noteHeight(response);

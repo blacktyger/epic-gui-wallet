@@ -49,13 +49,14 @@
 
   import mixin from './mixin.js';
   import { MIN_CONFIRMATIONS, outputConfirmationState } from '@/shared/confirmations';
-  import { walletSyncAfterSummary, needsNodeRefresh, nextRefreshDelay } from '@/shared/walletSync';
+  import { walletSyncAfterSummary, needsNodeRefresh, nextRefreshDelay, refreshFromNode } from '@/shared/walletSync';
+  import { nextNodePollDelay } from '@/shared/nodePoll';
   import { wantsRefresh } from '@/shared/epicboxListener';
   import { serverLabel } from '@/shared/epicboxConfig';
   import { httpListenerState } from '@/shared/httpListener';
   import { kernelsDue, minHeightFor, fetchKernelHeight } from '@/shared/sendAllKernel';
   import { useI18n } from 'vue-i18n';
-  import { withoutUserinfo } from '@/shared/nodeVersion';
+  import { withoutUserinfo, isLocal } from '@/shared/nodeVersion';
   import { ref, watch, onUnmounted } from 'vue';
   import { applyLocale } from '@/shared/locale';
   import { useStore } from '@/store';
@@ -154,6 +155,12 @@
           e.preventDefault();
           this.emitter.emit('app.logout');
         }
+      });
+
+      //the window hidden or minimized polls less (nodePoll.js, walletSync.js); shown again, the node
+      //is asked at once if the last poll is older than a visible poll would be
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) this.onWindowShown();
       });
 
       window.nodeChildProcess.on('firstscan-stdout', (payload) => {
@@ -362,7 +369,9 @@
         this.locale = locale;
       })
 
+      //a refresh the user (or a transaction screen) asked for: from the node, even at the same tip
       this.emitter.on('app.update', () => {
+        this.forceNodeRefresh = true;
         this.requestRefresh();
       });
 
@@ -501,6 +510,8 @@
         window.clipboard.wipeSecret().catch(() => {});
         this.stopRefreshNode();
         this.stopRefresh();
+        this.lastNodeRefresh = null;
+        this.nodeRetries = 0;
         this.loginSession = (this.loginSession || 0) + 1;
         //a node check still running (nodeStart, reclassifyNode) belongs to no session any more
         this.nodeStartGen = (this.nodeStartGen || 0) + 1;
@@ -549,8 +560,9 @@
         }
       },
 
-      /* the node is synced, for Epicbox: asked at once and every 2 s (the status poll runs every 10 s
-         and starts 10 s after login), not only read from the poll. false after timeoutMs or logout */
+      /* the node is synced, for Epicbox: asked at once and then every 2 s (a node on this computer)
+         or 10 s (a remote one: a public node that is behind would be asked 30 times a minute), not
+         only read from the poll, which starts 10 s after login. false after timeoutMs or logout */
       async waitForNodeReady(session, timeoutMs = 10*60*1000, blocked = () => false){
         const started = Date.now();
         while(session === this.loginSession && Date.now() - started < timeoutMs){
@@ -565,7 +577,7 @@
             window.nodeSynced = true;
             return true;
           }
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, this.nodeIsLocal() ? 2000 : 10000));
         }
         return false;
       },
@@ -698,6 +710,9 @@
 
         this.stopRefreshNode();
         this.nodeStatusFailed = false;
+        this.nodePollFailures = 0;
+        //another node (or the same one checked again): its first refresh asks it
+        this.lastNodeRefresh = null;
         window.nodeSynced = null;
         this.$nodeService.resetHealth();
         this.store.commit('nodeStatus', {});
@@ -772,6 +787,7 @@
         }
         if(respNode){
           this.nodeStatusFailed = false;
+          this.nodePollFailures = 0;
           if(!this.store.state.user.nodeInternal && this.store.state.nodeProblem && this.store.state.nodeProblem.kind == 'unreachable'){
             this.reclassifyNode();
           }
@@ -813,10 +829,29 @@
             }
           }
           this.nodeStatusFailed = true;
+          this.nodePollFailures = (this.nodePollFailures || 0) + 1;
           window.nodeSynced = false;
           this.store.commit('nodeStatus', {error: true});
         }
 
+      },
+      /* the window is hidden or minimized (the polls back off, nodePoll.js / walletSync.js) */
+      windowHidden(){
+        return typeof document !== 'undefined' && !!document.hidden;
+      },
+      /* the node is on this computer: the built-in one or a local address (polled as before) */
+      nodeIsLocal(){
+        return !!this.store.state.user.nodeInternal || isLocal(this.configService.config['check_node_api_http_addr'] || '');
+      },
+      /* shown again after a hidden poll interval: ask the node now (a new block refreshes the wallet) */
+      onWindowShown(){
+        if(!this.loggedIn || !this.nodePollActive || this.nodePolling){
+          return;
+        }
+        if(Date.now() - (this.nodePolledAt || 0) >= nextNodePollDelay({local: this.nodeIsLocal()})){
+          this.stopRefreshNode();
+          this.startRefreshNode();
+        }
       },
       /* run a wallet refresh now; one already running is followed by another */
       requestRefresh(){
@@ -852,17 +887,27 @@
             node: this.store.state.nodeStatus,
             failed: this.walletApiFailed || this.refreshFailed,
             pendingTx: this.hasPendingTx(),
+            hidden: this.windowHidden(),
+            nodeRetries: this.nodeRetries || 0,
           }))
           const gen = this.refreshGen || 0;
           this.refreshing = true;
           this.refreshAgain = false;
           try {
-            let refreshfromNode = this.store.state.nodeStatus.sync_status == 'synced' ?  true : false;
+            //each refresh from the node makes epic-wallet fetch all the wallet's outputs and rescan the
+            //last 100 blocks: once per tip (walletSync.refreshFromNode), local reads in between
+            const node = this.store.state.nodeStatus;
+            const force = !!this.forceNodeRefresh;
+            this.forceNodeRefresh = false;
+            let refreshfromNode = refreshFromNode({node, last: this.lastNodeRefresh, force});
+            const atTip = node && node.tip ? Number(node.tip.height) || 0 : 0;
+            //the node was asked at this tip and answered: the balance shown is still the synced one
+            const sameTip = !refreshfromNode && !!node && node.sync_status == 'synced';
             const started = performance.now();
 
             //skip txs and outputs while the wallet api is down
             this.refreshFailed = true;
-            if(await this.getSummaryinfo(refreshfromNode, gen)){
+            if(await this.getSummaryinfo(refreshfromNode, gen, {sameTip, atTip})){
               this.refreshFailed = false;
               //the summary call has just refreshed the wallet from the node (all three run the same
               //update), so txs and outputs read that state instead of asking the node twice more
@@ -871,7 +916,7 @@
               //a send-all epic-wallet leaves waiting: ask the node, in the background (QA T03)
               this.checkSendAllKernels();
             }
-            window.debug ? console.log('[refresh] ' + (refreshfromNode ? 'from node' : 'local') + ' +' + Math.round(performance.now() - started) + ' ms') : null;
+            window.debug ? console.log('[refresh] ' + (refreshfromNode ? 'from node' : (sameTip ? 'local, same tip' : 'local')) + ' +' + Math.round(performance.now() - started) + ' ms') : null;
 
 
           }
@@ -896,9 +941,16 @@
       async startRefreshNode() {
 
 
-          //often enough to see each new block soon, which triggers a wallet refresh
-          let refresh = _ => this.startRefreshNodeId = setTimeout(this.startRefreshNode, 1000*10)
+          //often enough to see each new block soon, which triggers a wallet refresh; less while the
+          //window is hidden and after polls that got no answer, a remote node less than a local one
+          let refresh = _ => this.startRefreshNodeId = setTimeout(this.startRefreshNode, nextNodePollDelay({
+            local: this.nodeIsLocal(),
+            hidden: this.windowHidden(),
+            failures: this.nodePollFailures || 0,
+          }))
           const gen = this.nodeRefreshGen || 0;
+          this.nodePollActive = true;
+          this.nodePolling = true;
 
           try {
             await this.nodeStatus();
@@ -908,6 +960,8 @@
             clearTimeout(this.startRefreshNodeId);
           }
           finally {
+            this.nodePolling = false;
+            this.nodePolledAt = Date.now();
             if(gen === (this.nodeRefreshGen || 0)){
               refresh()
             }
@@ -917,6 +971,7 @@
       stopRefreshNode(){
         //invalidate a poll that is still running, so it does not schedule another one
         this.nodeRefreshGen = (this.nodeRefreshGen || 0) + 1;
+        this.nodePollActive = false;
         clearTimeout(this.startRefreshNodeId);
       },
 
@@ -925,7 +980,7 @@
         return gen !== undefined && gen !== (this.refreshGen || 0);
       },
 
-      async getSummaryinfo(refreshfromNode, gen) {
+      async getSummaryinfo(refreshfromNode, gen, {sameTip = false, atTip = 0} = {}) {
 
           let summary = await this.$walletService.getSummaryInfo(MIN_CONFIRMATIONS, refreshfromNode);
           if(this.isStale(gen)){
@@ -934,7 +989,14 @@
           if(summary && summary.result && summary.result.Ok){
             let data = summary.result.Ok
             //data[0]: the wallet was refreshed from the node; else this is the wallet's last known state
-            const sync = walletSyncAfterSummary(this.store.state.walletSync, data[0], refreshfromNode, this.store.state.nodeStatus);
+            //a local read at the tip the node last answered for: still synced
+            const sync = sameTip && this.store.state.walletSync == 'synced'
+              ? 'synced' : walletSyncAfterSummary(this.store.state.walletSync, data[0], refreshfromNode, this.store.state.nodeStatus);
+            if(refreshfromNode){
+              //the next refresh at this tip reads locally; one the node could not update backs off
+              this.lastNodeRefresh = data[0] ? {tip: atTip, at: Date.now()} : null;
+              this.nodeRetries = data[0] ? 0 : (this.nodeRetries || 0) + 1;
+            }
             if(refreshfromNode && !data[0]){
               //the wallet says no more than that: its own log has the reason
               console.log('[refresh] the wallet could not update from the node ' + (this.configService.walletNodeAddr || this.configService.config['check_node_api_http_addr']) + ', showing its last known balance');

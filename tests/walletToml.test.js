@@ -206,3 +206,15 @@ test('chainTypeToNetwork / tomlNetwork: one rule for configService and legacySca
   assert.equal(localNodeUrl('floonet'), 'http://127.0.0.1:13413');
   assert.equal(localNodeUrl('usernet'), 'http://127.0.0.1:23413');
 });
+
+test('regression: a node address with a trailing slash never reaches epic-wallet (it would ask for //v2/foreign)', () => {
+  for (const nodeUrl of ['https://node.example.org:3413/', 'https://node.example.org:3413//', '  https://node.example.org:3413/ ']) {
+    const r = readToml(renderWalletToml({ template: WALLET_TEMPLATE, network: 'mainnet', configDir: '/a', dataDir: '/a', nodeUrl }));
+    assert.equal(r.wallet.check_node_api_http_addr, 'https://node.example.org:3413');
+  }
+  //a path is kept (a node behind a reverse proxy), only its trailing slash goes
+  const p = readToml(renderWalletToml({ template: WALLET_TEMPLATE, network: 'mainnet', configDir: '/a', dataDir: '/a', nodeUrl: 'https://host.example/epic/' }));
+  assert.equal(p.wallet.check_node_api_http_addr, 'https://host.example/epic');
+  const none = readToml(renderWalletToml({ template: WALLET_TEMPLATE, network: 'mainnet', configDir: '/a', dataDir: '/a', nodeUrl: '/' }));
+  assert.equal(none.wallet.check_node_api_http_addr, 'http://127.0.0.1:3413');
+});

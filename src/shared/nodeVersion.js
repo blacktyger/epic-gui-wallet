@@ -196,34 +196,49 @@ export async function fetchTipHeight(address, {fetch: fetchFn = defaultNodeFetch
  * and failing that from POST /v2/foreign get_tip (what epic-wallet uses; see foreignTipToV1).
  * apiSecret: the local node's secret, sent only when the address is local.
  * referenceHeight: a number, or an async function giving one, for the get_tip sync state
+ * via: how the last status of this node was read ('owner' or 'foreign'): a node whose /v1/status
+ *   answered 401 is asked that way at once, not with one or two 401s first on every poll; if that
+ *   fails, the whole chain again
  *
  * returns {ok: true, status, via: 'v1' | 'owner' | 'foreign', locked} or {ok: false, reason, locked}
  *   locked: /v1/status answered 401
  */
-export async function fetchNodeStatus(address, {fetch: fetchFn = defaultNodeFetch(), apiSecret = '', timeoutMs = 10000, redirect = 'manual', referenceHeight = 0, version = ''} = {}){
+export async function fetchNodeStatus(address, opts = {}){
+  const r = await readNodeStatus(address, opts);
+  return r || readNodeStatus(address, {...opts, via: ''});
+}
+
+/* fetchNodeStatus's chain, starting where opts.via says; null when that hinted way failed */
+async function readNodeStatus(address, opts){
+  const {fetch: fetchFn = defaultNodeFetch(), apiSecret = '', timeoutMs = 10000, redirect = 'manual', referenceHeight = 0, version = '', via = ''} = opts;
 
   const base = baseOf(address);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const headers = {'Content-Type': 'application/json', ...authHeaders(base, apiSecret)};
+  const skip = via == 'foreign' ? 2 : (via == 'owner' ? 1 : 0);
 
   try{
-    //redirect 'manual': epic-wallet doesn't follow redirects, so a node behind one is not usable
-    const res = await fetchFn(base + '/v1/status', {method: 'GET', headers, signal: controller.signal, redirect});
-    if(res.ok){
-      const status = await readJson(res);
-      return status && status.tip
-        ? {ok: true, status, via: 'v1', locked: false}
-        : {ok: false, reason: 'no node status in the reply', locked: false};
-    }
-    if(res.status != 401){
-      return {ok: false, reason: 'HTTP ' + res.status, locked: false};
+    if(!skip){
+      //redirect 'manual': epic-wallet doesn't follow redirects, so a node behind one is not usable
+      const res = await fetchFn(base + '/v1/status', {method: 'GET', headers, signal: controller.signal, redirect});
+      if(res.ok){
+        const status = await readJson(res);
+        return status && status.tip
+          ? {ok: true, status, via: 'v1', locked: false}
+          : {ok: false, reason: 'no node status in the reply', locked: false};
+      }
+      if(res.status != 401){
+        return {ok: false, reason: 'HTTP ' + res.status, locked: false};
+      }
     }
 
-    const res2 = await fetchFn(base + '/v2/owner', {method: 'POST', headers, body: rpc('get_status'), signal: controller.signal, redirect});
-    const status = res2.ok ? ownerStatusToV1(await readJson(res2)) : null;
-    if(status){
-      return {ok: true, status, via: 'owner', locked: true};
+    if(skip < 2){
+      const res2 = await fetchFn(base + '/v2/owner', {method: 'POST', headers, body: rpc('get_status'), signal: controller.signal, redirect});
+      const status = res2.ok ? ownerStatusToV1(await readJson(res2)) : null;
+      if(status){
+        return {ok: true, status, via: 'owner', locked: true};
+      }
     }
 
     //the foreign API: public, no secret, and what the wallet itself talks to
@@ -237,7 +252,8 @@ export async function fetchNodeStatus(address, {fetch: fetchFn = defaultNodeFetc
         return {ok: true, status: fromTip, via: 'foreign', locked: true};
       }
     }
-    return {ok: false, reason: 'HTTP 401', locked: true};
+    //the way that worked last time no longer does: ask from the start (the node may have changed)
+    return skip ? null : {ok: false, reason: 'HTTP 401', locked: true};
 
   }catch(e){
     return {ok: false, reason: failReason(e, timeoutMs), locked: false};
