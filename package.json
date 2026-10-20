@@ -13,6 +13,7 @@
     "test": "node --test --no-warnings=MODULE_TYPELESS_PACKAGE_JSON \"tests/**/*.test.js\"",
     "test:gate": "bash scripts/test-gate.sh",
     "test:gate:quick": "bash scripts/test-gate.sh --quick",
+    "test:gate:windows": "bash scripts/test-gate-windows.sh",
     "test:components": "vitest run --config tests/components/vitest.config.mjs",
     "electron:build": "vue-cli-service electron:build",
     "electron:publish": "vue-cli-service electron:build --publish=always",
