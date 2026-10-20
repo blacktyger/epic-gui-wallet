@@ -109,7 +109,7 @@
 
 <style>
   /* wider than a confirm dialog: it shows log text; three buttons wrap instead of overflowing */
-  .e-sup-dialog { width: min(640px, calc(100vw - 48px)); }
+  dialog.e-dialog.e-sup-dialog { width: min(640px, calc(100vw - 48px)); }
   .e-sup-dialog .e-dialog-foot { flex-wrap: wrap; }
   .e-sup { display: grid; gap: 14px; min-width: 0; }
   .e-sup > div, .e-sup > form { display: grid; gap: 14px; min-width: 0; }

@@ -10,13 +10,18 @@ token. The server cannot decrypt anything: it has no private key.
 | Part | Where (bot repo) |
 |---|---|
 | `POST /v1/report` on its own listener, **loopback only** (`127.0.0.1:8791`), separate from the tailnet fleet API | `feedbackbot/support.py` |
-| Table `support_reports` (schema v7 → **v8**, additive; to undo: `DROP TABLE support_reports; PRAGMA user_version = 7`) | `feedbackbot/db.py` |
+| Table `support_reports` (schema v7 → **v8**, additive; to undo: `DROP TABLE support_reports; PRAGMA user_version = 7`), plus **v9** `expired_at` for the retention sweep (`ALTER TABLE support_reports DROP COLUMN expired_at; PRAGMA user_version = 8`) | `feedbackbot/db.py` |
 | `/report <id>`: Patryk only. The file always goes to his **private chat**, even if he types the command in the group. `/report` with no id lists the latest reports | `feedbackbot/commands.py`, `main.py` (`Reply.private`) |
 | Fleet API (tailnet, bearer token): `GET /support` lists the reports, `GET /support/<id>` returns the raw bytes | `feedbackbot/fleet.py` |
 | Settings | `feedbackbot/config.py`, `.env.example` |
 | nginx site, ready to apply | `deploy/nginx-support.btlabs.co.uk.conf` |
 | Local instance with a dry-run Telegram client (prints posts instead of sending them) | `scripts/support_local.py` |
-| Tests (43 new; the full suite has 238, all passing) | `tests/test_support.py` |
+| Tests (66 in `test_support.py`; the full suite has 261, all passing) | `tests/test_support.py` |
+
+Hardened after a security review (bot commits `b25db7f`, `6ff7c3d` on `feat/support-intake`):
+group posting off by default and defanged with its own daily cap (H1), nginx connection limits
+and smaller buffers (M1), items marked as untrusted text (M2), a higher store-only cap (M3),
+rate-limit hits counted before the body is read, and a retention sweep.
 
 ### The request (as in DESIGN.md "Intake request")
 
