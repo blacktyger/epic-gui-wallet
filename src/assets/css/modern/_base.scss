@@ -66,6 +66,9 @@ html[data-ui='modern'] { -webkit-text-size-adjust: 100%; }
 
 .e-mono,
 .e-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums slashed-zero; font-feature-settings: 'zero' 1; }
+/* Persian (html dir=rtl, shared/locale.js): addresses, hosts, paths and amounts stay left-to-right, so
+   "http://host/" keeps its slashes in place and a name cut to fit loses its end, not its start */
+[dir='rtl'] :is(code, kbd, pre, input.e-mono, .e-mono, .e-num, .e-addr-inline) { direction: ltr; unicode-bidi: isolate; }
 .e-dim { color: var(--dim); }
 .e-faint { color: var(--faint); }
 .e-ok { color: var(--ok); }
