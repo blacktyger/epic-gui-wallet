@@ -66,7 +66,12 @@ H.runCase('addwallet', async (t) => {
   await t.step('Welcome: the three ways to add a wallet', () => U.welcome(w), { fatal: true });
   await t.step('Welcome › Advanced › App data folder: one short line, the rest folded', async () => {
     await w.getByText('Advanced', { exact: true }).first().click();
-    await w.getByText('Where the app keeps wallets, settings and the blockchain.').first().waitFor({ timeout: 5000 });
+    await w.getByText('Where the app keeps wallets and settings.').first().waitFor({ timeout: 5000 });
+    const tip = w.getByRole('button', { name: 'More about this' }).first();
+    if (await tip.getAttribute('aria-expanded') !== 'false') throw new Error('the toggletip is not closed');
+    await tip.click();
+    await w.getByText('With the built-in node, the blockchain is kept here too.').first().waitFor({ state: 'visible', timeout: 3000 });
+    await tip.click();
     const more = w.locator('details').filter({ hasText: 'More about this' }).last();
     if (await more.getAttribute('open') !== null) throw new Error('the longer text is not folded');
     await more.locator('summary').click();
@@ -74,7 +79,7 @@ H.runCase('addwallet', async (t) => {
     await shot('welcome-advanced');
     await w.getByText('Advanced', { exact: true }).first().click();
     await shot('welcome');
-    return 'short line shown; "More about this" folds the rest';
+    return 'short line shown; the ⓘ toggletip opens the blockchain note; "More about this" folds the rest';
   });
 
   /* ---- A: Welcome › Create ---- */
@@ -161,16 +166,16 @@ H.runCase('addwallet', async (t) => {
     copyWallet(recA.dataDir, copyA);
     await pickerReturns(copyA);
     await w.getByRole('button', { name: 'Choose a folder…' }).first().click();
-    //no epic-wallet.toml in the copy and no network in its name: the app asks
-    await U.waitText(w, /Which network is this wallet on\?/, 15000);
-    await shot('add-existing-network');
-    await w.locator('select').last().selectOption('mainnet');
-    await w.getByRole('button', { name: 'Continue', exact: true }).first().click();
+    //no epic-wallet.toml in the copy and no network in its name: no question any more, the folder is
+    //added at once (Welcome's network, Mainnet by default) and Unlock opens with it chosen
     const id = await U.unlockChosen(w);
     if (id !== 'w4') throw new Error('Unlock chose ' + id);
+    if (await w.getByText(/Which network is this wallet on\?/).count()) throw new Error('the app still asks for the network');
+    await shot('add-existing-no-network-prompt');
     const d = settings().wallets.find((x) => x.id === 'w4');
     if (d.dataDir !== copyA) throw new Error('w4 data folder ' + d.dataDir);
-    return 'w4 = ~/copy-of-a; Unlock chose it';
+    if (d.network !== 'mainnet') throw new Error('w4 network ' + d.network);
+    return 'w4 = ~/copy-of-a (mainnet, no network question); Unlock chose it';
   }, { fatal: true, timeout: 60000 });
   const lookForWallets = async () => {
     await U.clickable(w, 'Look for wallets').first().click({ timeout: 10000 });
@@ -223,9 +228,6 @@ H.runCase('addwallet', async (t) => {
     await U.clickable(w, 'Add an existing wallet').first().click({ timeout: 10000 });
     await pickerReturns(copyB);
     await w.getByRole('button', { name: 'Choose a folder…' }).first().click({ timeout: 10000 });
-    await U.waitText(w, /Which network is this wallet on\?/, 15000);
-    await w.locator('select').last().selectOption('mainnet');
-    await w.getByRole('button', { name: 'Continue', exact: true }).first().click();
     const id = await U.unlockChosen(w);
     if (id !== 'w7') throw new Error('Unlock chose ' + id);
     return 'w7 = ~/copy-of-b; Unlock chose it';

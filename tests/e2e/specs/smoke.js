@@ -30,7 +30,9 @@ H.runCase('smoke', async (t) => {
   const callsBefore = outputCalls();
   await t.step('unlock with the right password', () => U.unlock(w, ui, password), { fatal: true, timeout: 120000 });
   await t.step('after unlock: the stub node, synced', () => U.waitText(w, ui === 'modern' ? /Synced · block 3,100,000/ : /Node \(http:\/\/127\.0\.0\.1:13413\)/, 30000));
-  await t.step('after unlock: the HTTP listener starts', () => t.waitLog(/\[login\] http listener started/, { from: mark, timeout: 30000 }));
+  //Modern: the HTTP listener is off until Start with wallet or Receive › Turn on (node-load); Classic starts it
+  await t.step(ui === 'modern' ? 'after unlock: the HTTP listener stays off (Start with wallet is off)' : 'after unlock: the HTTP listener starts',
+    () => t.waitLog(ui === 'modern' ? /\[login\] http listener not started \(Start with wallet is off\)/ : /\[login\] http listener started/, { from: mark, timeout: 30000 }));
   await t.step('after unlock: the wallet updates from the node', async () => {
     //the wallet's refresh reads its outputs from the node; the page must not fall back to the last known balance
     const calls = await H.waitFor(() => outputCalls() > callsBefore && outputCalls() - callsBefore, { timeout: 30000 });
@@ -78,6 +80,7 @@ H.runCase('smoke', async (t) => {
 
   /* ---- Receive ---- */
   const addr = await t.step('Receive shows the Epic address', () => U.receiveAddress(w, ui));
+  if (ui === 'modern') await t.step('Receive: Turn on starts the HTTP listener', () => U.startHttpListener(w));
   await t.step('Receive with the listener stopped: address still shown', async () => {
     const s = await U.stopListener(w, ui);
     await w.waitForTimeout(800);

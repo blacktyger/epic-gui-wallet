@@ -60,14 +60,18 @@ async function unlockChosen(w) {
   await w.waitForURL(/login/, { timeout: 90000 });
   await w.locator('[data-added]').first().waitFor({ timeout: 15000 });
   const said = (await w.locator('[data-added]').first().innerText()).trim();
-  if (!/was added\. Enter its password to unlock it\./.test(said)) throw new Error('Unlock says: ' + said);
+  //Modern: "<name> added." (msg.wallets.added_unlock_m); the name is the chosen wallet's own
+  const nm = /^(.+) added\.$/.exec(said);
+  if (!nm) throw new Error('Unlock says: ' + said);
   const r = await w.evaluate(() => {
     const q = new URLSearchParams(location.search || location.hash.split('?')[1] || '');
     const sel = document.querySelector('#loginWallet');
     const radio = document.querySelector('input[name=unlock-wallet]:checked');
-    return { want: q.get('wallet'), chosen: sel ? sel.value : radio ? radio.value : q.get('wallet') };
+    const lab = radio && (radio.closest('label') || document.querySelector(`label[for="${radio.id}"]`));
+    return { label: lab ? lab.innerText : '', want: q.get('wallet'), chosen: sel ? sel.value : radio ? radio.value : q.get('wallet') };
   });
   if (!r.want || r.chosen !== r.want) throw new Error(`Unlock chose ${r.chosen}, the new wallet is ${r.want}`);
+  if (r.label && !r.label.includes(nm[1])) throw new Error(`Unlock says "${said}", the chosen wallet reads "${r.label}"`);
   return r.want;
 }
 
@@ -287,13 +291,20 @@ async function receiveAddress(w, ui) {
 
 /** Stop the listener (if it runs) from the Receive page; the address must stay. */
 async function stopListener(w, ui) {
-  const stop = w.getByRole('button', { name: ui === 'modern' ? /^Stop receiving$|^Stop listener$/ : /^Stop( listener)?$/ });
+  const stop = w.getByRole('button', { name: ui === 'modern' ? /^Stop receiving$|^Stop listener$|^Turn off$/ : /^Stop( listener)?$/ });
   if (await stop.count()) {
     await stop.first().click({ timeout: 8000 });
   }
-  const start = w.getByRole('button', { name: ui === 'modern' ? /^Start (listener|receiving)$/ : /^Start( listener)?$/ });
+  const start = w.getByRole('button', { name: ui === 'modern' ? /^Start (listener|receiving)$|^Turn on$/ : /^Start( listener)?$/ });
   await start.first().waitFor({ timeout: 30000 });
   return 'listener off: Start is offered';
+}
+
+/** Modern Receive › HTTP address: Turn on (the HTTP listener is off until asked), wait for Turn off. */
+async function startHttpListener(w) {
+  await w.getByRole('button', { name: 'Turn on', exact: true }).first().click({ timeout: 8000 });
+  await w.getByRole('button', { name: 'Turn off', exact: true }).first().waitFor({ timeout: 60000 });
+  return 'HTTP listener on: Turn off is offered';
 }
 
 /* ---------- lock, unlock ---------- */
@@ -383,6 +394,6 @@ async function setLanguage(w, ui, code) {
   return a;
 }
 
-module.exports = { ADDR_RE, toasts, contactNames, contactMessages, addContact, cancelContact, htmlAttrs, setLanguage, NODE_URL, PAGES, clickable, text, route, main, waitText, welcome, createWallet, createOnly, unlockChosen, submitPassword, skipTour, nav, heading, visit,
+module.exports = { startHttpListener, ADDR_RE, toasts, contactNames, contactMessages, addContact, cancelContact, htmlAttrs, setLanguage, NODE_URL, PAGES, clickable, text, route, main, waitText, welcome, createWallet, createOnly, unlockChosen, submitPassword, skipTour, nav, heading, visit,
   openSettings, typeNodeAddress, saveNode, sendTo, sendAmt, sendBtn, sendErrors, trySend, epicAddress, receiveAddress, stopListener,
   lock, unlock, wrongPassword, openGear, setupAssistant };

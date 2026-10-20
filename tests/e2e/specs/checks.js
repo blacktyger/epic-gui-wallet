@@ -92,9 +92,11 @@ H.runCase('checks', async (t) => {
   //Try again shows only while Epicbox listens; Epicbox can't connect here (no network), so the
   //listener is started again with Start listener (Modern) / Start (Classic), as a user would
   const retry = () => w.getByRole('button', { name: 'Try again' }).or(w.getByRole('link', { name: 'Try again' }))
-    .or(w.getByRole('button', { name: ui === 'modern' ? 'Start listener' : /^Start( listener)?$/ })).first();
+    .or(w.getByRole('button', { name: ui === 'modern' ? 'Turn on' : /^Start( listener)?$/ })).first();
   await t.step('Receive: HTTP not receiving, port 3415 named', async () => {
     await U.nav(w, ui, U.PAGES[ui].find((p) => p[1] === '/httpReceive'));
+    //Modern: the HTTP listener is off after unlock (Start with wallet is off); Turn on is what meets the busy port
+    if (ui === 'modern') await w.getByRole('button', { name: 'Turn on', exact: true }).first().click({ timeout: 8000 });
     const s = await U.waitText(w, /port 3415 (is )?used by another program[^.]*\./i, 45000);
     await retry().waitFor({ timeout: 5000 });
     return s;
@@ -115,7 +117,7 @@ H.runCase('checks', async (t) => {
   //login, which settles at once, so there it shows about every other run
   await t.step('Receive: Start listener, then leave the page at once', async () => {
     await U.stopListener(w, ui);
-    await w.getByRole('button', { name: ui === 'modern' ? 'Start listener' : /^Start( listener)?$/ }).first().click();
+    await w.getByRole('button', { name: ui === 'modern' ? 'Turn on' : /^Start( listener)?$/ }).first().click();
     await U.nav(w, ui, U.PAGES[ui][0]);
     return 'on ' + await U.route(w);
   }, { allowConsole: [E2E_1] });

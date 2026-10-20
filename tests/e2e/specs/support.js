@@ -70,7 +70,7 @@ H.runCase('support', async (t) => {
       const seen = [];
       //the tour opens a moment after the first unlock
       await w.locator('#e-tour-t').waitFor({ state: 'visible', timeout: 10000 });
-      for (let i = 0; i < 8 && (await w.locator('#e-tour-t').count()); i++) {
+      for (let i = 0; i < 14 && (await w.locator('#e-tour-t').count()); i++) {
         seen.push((await w.locator('.e-tour-count').innerText()) + ' ' + (await w.locator('#e-tour-t').innerText()));
         await w.locator('.e-tour-foot .e-btn-primary').click();
         await w.waitForTimeout(250);
@@ -84,7 +84,7 @@ H.runCase('support', async (t) => {
     await U.lock(w, ui);
     await shot(w, '0-unlock-link');
     await U.unlock(w, ui, password);
-    return t.waitLog(/\[login\] http listener started/, { timeout: 60000 });
+    return t.waitLog(/\[login\] http listener (started|not started \(Start with wallet is off\))/, { timeout: 60000 });
   }, { fatal: true, timeout: 150000 });
 
   /* ---- logs on by default ---- */
