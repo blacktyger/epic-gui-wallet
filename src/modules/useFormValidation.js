@@ -2,12 +2,12 @@ import { reactive } from "vue";
 import { i18n } from '../i18n';
 import useValidators from '@/modules/Validators';
 import { epicToNano, amountProblem } from '@/shared/sendMath';
-import { isOnionAddress } from '@/shared/sendForm';
+import { isOnionAddress, isUnknownRecipient } from '@/shared/sendForm';
 
 const errors = reactive({});
 
 
-const { isEmpty, isEqual, minLength, isSpendable, isDirEmpty, isHttpAddress, isEpicboxAddress } = useValidators();
+const { isEmpty, minLength, isSpendable, isDirEmpty, isHttpAddress, isEpicboxAddress } = useValidators();
 
 export default function useFormValidation() {
 
@@ -15,7 +15,7 @@ export default function useFormValidation() {
         let message = null;
 
         if(repeat){
-          message = !fieldValue ? isEmpty(fieldName, fieldValue) : minLength(fieldName, fieldValue, 4) || isEqual(fieldName, fieldValue, repeat);
+          message = !fieldValue ? isEmpty(fieldName, fieldValue) : minLength(fieldName, fieldValue, 4) || (fieldValue !== repeat ? i18n.global.t("msg.validators.password_mismatch") : null);
         }else{
           message = !fieldValue ? isEmpty(fieldName, fieldValue) : minLength(fieldName, fieldValue, 4);
         }
@@ -41,6 +41,8 @@ export default function useFormValidation() {
           const amount = epicToNano(raw);
           if(problem == 'decimals'){
             message = i18n.global.t("msg.validators.decimals", [fieldName]);
+          }else if(problem == 'large'){
+            message = i18n.global.t("msg.validators.spendable");
           }else if(problem){
             message = i18n.global.t("msg.validators.number", [fieldName]);
           }else if(amount === 0){
@@ -84,7 +86,7 @@ export default function useFormValidation() {
         }else if(fieldValue.includes('@') || fieldValue.startsWith('es') || fieldValue.startsWith('epicbox')) { 
           message = !fieldValue ? isEmpty(fieldName, fieldValue) : isEpicboxAddress(fieldName, fieldValue);
         }else{
-          message = isEmpty(fieldName, fieldValue);
+          message = isEmpty(fieldName, fieldValue) || (isUnknownRecipient(fieldValue) ? i18n.global.t("msg.validators.address") : null);
         }
 
 

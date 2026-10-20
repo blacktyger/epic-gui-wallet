@@ -224,6 +224,9 @@ const messages = {
       deleted: 'Address deleted!',
       error_delete: 'Error delete address!',
       error_save: 'The contact could not be saved.',
+      error_name: 'Give the contact a name.',
+      error_address: 'Add an address to send to.',
+      error_epicbox: 'This is not a valid Epicbox address.',
     },
     remove: {
       warning: 'Warning',
@@ -455,6 +458,8 @@ const messages = {
     validators:{
       empty: 'The {0} field is required',
       equal: 'The {0} must be equal',
+      password_mismatch: 'The passwords don\'t match',
+      address: 'Not an address the wallet can send to',
       http_address: 'No valid HTTP(S) Address',
       epicbox_address: 'No valid Epicbox Address',
       onion_address: 'Tor addresses aren\'t supported.',

@@ -1,7 +1,7 @@
 // Tests for src/shared/contacts.js, what a contact save writes and what a search shows: `npm test`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { contactFields, searchContacts, CONTACT_TEXT_FIELDS } from '../src/shared/contacts.js';
+import { contactFields, searchContacts, contactProblem, CONTACT_TEXT_FIELDS } from '../src/shared/contacts.js';
 
 const zoe = { id: 1, user_id: 7, name: 'Zoë Łukasz', country: '', city: 'Kraków', onion: '', proofaddr: '',
   externalOne: 'esWg1ygtow@epicbox.epiccash.com', externalTwo: '', notice: 'rig contact, C:\\path\\with\\backslashes' };
@@ -46,4 +46,16 @@ test('an empty or blank search shows all contacts; no match shows none', () => {
   assert.equal(searchContacts([zoe, bob], '   ').length, 2);
   assert.equal(searchContacts([zoe, bob], 'nomatch-xyz').length, 0);
   assert.deepEqual(searchContacts(null, 'x'), []);
+});
+
+test('a contact needs a name and an address to send to; an Epicbox address must be one (QA T04)', () => {
+  const box = 'esWY5xrwwGme5Ca6Aje8joEvtqNLtUcKfkycNFDQSYQbHi14LyEM@epicbox.epiccash.com';
+  assert.equal(contactProblem({}), 'name');
+  assert.equal(contactProblem({ name: '   ', externalOne: box }), 'name');
+  assert.equal(contactProblem({ name: 'Alice' }), 'address');
+  assert.equal(contactProblem({ name: 'Alice', externalOne: 'not an address!!' }), 'epicbox');
+  assert.equal(contactProblem({ name: 'Alice', externalOne: box }), null);
+  assert.equal(contactProblem({ name: 'Alice', externalOne: box.split('@')[0] }), null);
+  assert.equal(contactProblem({ name: 'Alice', externalTwo: 'http://1.2.3.4:3415' }), null);
+  assert.equal(contactProblem({ name: 'Alice', onion: 'a'.repeat(56) }), 'address');
 });

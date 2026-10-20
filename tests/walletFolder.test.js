@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { resolveWalletFolder } from '../src/shared/walletFolder.js';
+import { resolveWalletFolder, pickedReadDirs } from '../src/shared/walletFolder.js';
 import { fakeWinFs } from './fixtures/fakeWinFs.js';
 
 const W = path.win32;
@@ -133,4 +133,28 @@ test('Windows paths (path.win32): network folders in another case still tell the
   assert.deepEqual(dirs(r(epic + '\\Main')), [[epic + '\\Main', 'mainnet']]);
   assert.deepEqual(dirs(r(epic + '\\FLOO\\beta\\wallet_data')), [[epic + '\\FLOO\\beta', 'floonet']]);
   assert.deepEqual(dirs(r(epic + '\\gamma\\User')), [[epic + '\\gamma\\User', 'usernet']]);
+});
+
+test('after a pick, only the wallet folders found become readable, never the picked folder (#32)', (t) => {
+  const home = tmpHome(t);
+  // a folder with no wallet: nothing may be read
+  const docs = path.join(home, 'Documents');
+  fs.mkdirSync(path.join(docs, 'private'), { recursive: true });
+  assert.deepEqual(pickedReadDirs(pick(docs)), []);
+  // ~/.epic with two wallets: those two folders, not ~/.epic itself
+  const a = path.join(home, '.epic', 'main');
+  const b = path.join(home, '.epic', 'work', 'main');
+  wallet(a); wallet(b);
+  const r = pick(path.join(home, '.epic'));
+  const allowed = pickedReadDirs(r);
+  assert.deepEqual([...allowed].sort(), [a, b].sort());
+  assert.ok(!allowed.includes(path.join(home, '.epic')));
+  // chain_data alone: the wallet next to it, not chain_data
+  const c = path.join(home, 'old', 'main');
+  wallet(c, { chain: true });
+  assert.deepEqual(pickedReadDirs(pick(path.join(c, 'chain_data'))), [c]);
+  // cancelled, or garbage
+  assert.deepEqual(pickedReadDirs({ canceled: true, picked: docs, wallets: [{ dir: a }] }), []);
+  assert.deepEqual(pickedReadDirs(null), []);
+  assert.deepEqual(pickedReadDirs({ canceled: false, picked: docs, wallets: [null, { dir: '' }, { dir: 5 }] }), []);
 });

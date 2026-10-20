@@ -42,7 +42,9 @@
             <p class="e-rcv-status" role="status">
               <template v-if="!listening"><EIcon name="minusc" size="sm" class="e-faint" />{{ $t('msg.modern.send.rcv_not_listening') }}</template>
               <template v-else-if="epicboxLine && epicboxLine.tone != 'ok'"><EIcon :name="epicboxLine.tone == 'busy' ? 'sync' : 'alert'" size="sm" :class="epicboxLine.tone == 'busy' ? 'e-faint' : 'e-warn'" />{{ epicboxLine.text }}</template>
-              <template v-else-if="store.state.walletEpicboxService"><EIcon name="okc" size="sm" class="e-ok" />{{ $t('msg.modern.send.rcv_listening_via', { domain: epicDomainName }) }}</template>
+              <template v-else-if="store.state.walletEpicboxService && epicDomainName"><EIcon name="okc" size="sm" class="e-ok" />{{ $t('msg.modern.send.rcv_listening_via', { domain: epicDomainName }) }}</template>
+              <!-- the listener is up but the address isn't known yet (the first seconds after unlock): not "Listening via " with no server -->
+              <template v-else-if="store.state.walletEpicboxService"><EIcon name="sync" size="sm" class="e-faint" />{{ $t('msg.modern.svc_connecting') }}</template>
               <template v-else><EIcon name="alert" size="sm" class="e-warn" />{{ $t('msg.modern.send.rcv_listening_no_epicbox') }}</template>
             </p>
           </div>
@@ -50,7 +52,7 @@
         <div class="e-rcv-qrbox">
           <div class="e-qr e-rcv-qr" :class="{ 'e-is-off': !listening }">
             <canvas v-show="addressTypeHeader" id="qrcodeCanvas" role="img" :aria-label="addressTypeHeader ? $t('msg.httpReceive.your_qrcode', [addressTypeHeader]) : null"></canvas>
-            <p v-show="!addressTypeHeader" class="e-rcv-qr-empty"><EIcon name="qr" size="lg" />{{ $t('msg.httpReceive.click_qrcode_icon') }}</p>
+            <p v-show="!addressTypeHeader" class="e-rcv-qr-empty"><EIcon name="qr" size="lg" />{{ $t('msg.modern.send.rcv_qr_empty') }}</p>
             <span v-if="!listening && addressTypeHeader" class="e-rcv-qr-note" aria-hidden="true">{{ $t('msg.modern.send.rcv_paused') }}</span>
           </div>
           <p v-if="addressTypeHeader" class="e-small e-faint e-rcv-qr-cap">{{ $t('msg.httpReceive.your_qrcode', [addressTypeHeader]) }}</p>

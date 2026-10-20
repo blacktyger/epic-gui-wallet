@@ -72,7 +72,7 @@ export default {
   setup() {
 
     const passwordField = ref('');
-    const { resetFormErrors } = useFormValidation();
+    const { resetFormErrors, errors } = useFormValidation();
     const seeds = ref([]);
     const vueCanvas = ref(null);
     const qrText = ref('');
@@ -80,6 +80,7 @@ export default {
     return {
       passwordField,
       resetFormErrors,
+      errors,
       seeds,
       qrText
     }
@@ -123,7 +124,15 @@ export default {
           let valueChunks = res.result.Ok.split(" ").map(item => item.trim());
           this.seeds = valueChunks;
         }else{
-          this.$toast.error(res.error.message);
+          //the wallet can't open its seed file with this password ("Lifecycle: Error opening wallet seed
+          //file"): say so under the password field, not as the raw error (QA T25)
+          //no answer at all (the wallet API down or timed out) is not a wrong password
+          const message = res && res.error && res.error.message ? String(res.error.message) : '';
+          if(/seed file|decrypt/i.test(message)){
+            this.errors.password = this.$t('msg.modern.unlock.wrong_password');
+          }else{
+            this.$toast.error(message || this.$t('msg.app.wallet_api_unreachable'));
+          }
         }
       }
 

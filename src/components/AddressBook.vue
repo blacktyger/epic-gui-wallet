@@ -154,7 +154,7 @@ const log = window.log;
 import { ref } from 'vue';
 import { useStore } from '@/store';
 import ModalBox from '@/components/layout/ModalBox.vue'
-import { contactFields } from '@/shared/contacts.js';
+import { contactFields, contactProblem } from '@/shared/contacts.js';
 
 
 export default {
@@ -330,6 +330,15 @@ export default {
 
     },
     /* the form's fields as a save writes them (shared/contacts.js) */
+    //refuse a contact with no name, no address, or an Epicbox address that isn't one (QA T04)
+    contactOk(){
+      const problem = contactProblem(this.formFields());
+      if(problem){
+        this.$toast.error(this.$t('msg.addressbook.error_' + problem));
+        return false;
+      }
+      return true;
+    },
     formFields(){
       return contactFields({
         name: this.name,
@@ -344,6 +353,7 @@ export default {
       });
     },
     async updateAddressById(){
+      if(!this.contactOk()) return;
 
       let updated;
       try{
@@ -361,6 +371,7 @@ export default {
 
     },
     async addAddress(){
+      if(!this.contactOk()) return;
 
       let inserted;
       try{

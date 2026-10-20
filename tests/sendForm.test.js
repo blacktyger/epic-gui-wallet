@@ -1,7 +1,7 @@
 // Tests for src/shared/sendForm.js: the Send form is cleared after a successful send. `npm test`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clearSendForm, inputAfterSend, isEpicboxAddress, isOnionAddress, sendMethod } from '../src/shared/sendForm.js';
+import { clearSendForm, inputAfterSend, isEpicboxAddress, isOnionAddress, isUnknownRecipient, sendMethod } from '../src/shared/sendForm.js';
 
 function field(v) {
   return { input: v, setValue(x) { this.input = x; } };
@@ -67,4 +67,17 @@ test('the send method: Epicbox by choice or by address, else the chosen one', ()
   assert.equal(sendMethod('http', 'esAbc@epicbox.epiccash.com'), 'epicbox');
   assert.equal(sendMethod('http', 'http://1.2.3.4:3415'), 'http');
   assert.equal(sendMethod(undefined, 'http://1.2.3.4:3415'), 'http');
+});
+
+test('a recipient that is no address at all is refused; Epicbox, http(s) and Tor addresses are not (Tor is refused by its own check) (QA T05)', () => {
+  for (const bad of ['hello world', 'alice', '12345', 'not an address!!', 'ftp://x']) assert.equal(isUnknownRecipient(bad), true, bad);
+  const onion = 'a'.repeat(52) + 'abcd';
+  for (const ok of ['', '   ', 'esWY5xrwwGme5Ca6Aje8joEvtqNLtUcKfkycNFDQSYQbHi14LyEM@epicbox.epiccash.com', 'es123', 'x@epicbox.epiccash.com',
+    'http://1.2.3.4:3415', 'https://example.com', 'HTTP://1.2.3.4:3415', '192.168.1.10:3415', 'mywallet.example.com:3415',
+    'localhost:3415', 'epicbox://es123', onion, onion + '.onion', onion + '.onion:3415/', onion + '.onion/v2/foreign']) {
+    assert.equal(isUnknownRecipient(ok), false, ok);
+  }
+  assert.equal(isOnionAddress(onion + '.onion'), true);
+  assert.equal(isOnionAddress(onion), true);
+  assert.equal(isOnionAddress('a'.repeat(55)), false);
 });
