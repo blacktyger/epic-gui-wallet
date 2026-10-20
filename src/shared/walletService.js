@@ -5,7 +5,8 @@ import { parseEpicboxToml, normalizeEpicbox, sameServer, serverUrl, serverFromUr
 import { createOldServerCheck, oldServerCheckStep, CHECK_TIMES } from '@/shared/epicboxListener';
 import { EPICBOX_CHECK_DIR, isEpicboxCheckDir } from '@/shared/processOwnership';
 import { ownerApiArgs, listenArgs, epicboxArgs as buildEpicboxArgs, initArgs, statusMessageText, OWNER_API_START_DIR } from '@/shared/walletArgs';
-import { WALLET_API_ORIGIN, isWalletApiUrl } from '@/shared/security';
+import { walletApiOrigin, isWalletApiUrl } from '@/shared/security';
+import { ownerApiPort as findOwnerApiPort } from '@/shared/testPorts';
 import { isAddrInUse } from '@/shared/httpListener';
 const Buffer = require('buffer').Buffer;
 
@@ -13,7 +14,9 @@ require('promise.prototype.finally').shim();
 
 const log = window.log;
 console.log = log.log;
-const ownerApiPort = 3420;
+//3420 (a test run's own port only with EPIC_GUI_TEST: shared/testPorts.js; the preload is there before this runs)
+const ownerApiPort = findOwnerApiPort();
+const WALLET_API_ORIGIN = walletApiOrigin();
 const jsonRPCUrl = WALLET_API_ORIGIN + '/v3/owner'
 const jsonRPCForeignUrl = WALLET_API_ORIGIN + '/v2/foreign'
 

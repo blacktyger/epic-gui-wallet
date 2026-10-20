@@ -20,6 +20,7 @@ import { createShutdown, SIGNALS } from './shared/shutdown'
 import { createSecretClipboard } from './shared/secretClipboard'
 import { registerSessionIpc, wipeWithWindow, wipeWithApp } from './shared/sessionIpc'
 import { httpUrl, isAppUrl, isInside, nodeRequest, contentSecurityPolicy } from './shared/security'
+import { portOffset, ownerApiPort } from './shared/testPorts'
 import { createSupport, intakeResult } from './shared/supportReport'
 import { SUPPORT_PUBLIC_KEY, supportUrl } from './shared/supportKey'
 import { sanitizeText, KNOWN_PUBLIC_HOSTS } from './shared/logSanitize'
@@ -80,6 +81,8 @@ app.userAgentFallback = 'Mozilla/5.0';
 
 //the dev server in development (electron:serve), else '' (the app is served on app://)
 const devServer = process.env.WEBPACK_DEV_SERVER_URL || '';
+//a test run's ports (EPIC_GUI_TEST + EPIC_GUI_TEST_PORT_OFFSET, shared/testPorts.js); nothing in normal use
+if (portOffset()) console.log('test run: ports moved by ' + portOffset() + ', owner API ' + ownerApiPort())
 const csp = contentSecurityPolicy({ dev: !!devServer, devServer: devServer ? new URL(devServer).origin : '' });
 
 
