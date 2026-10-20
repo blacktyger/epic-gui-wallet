@@ -410,6 +410,7 @@ const messages = {
       epicbox_address_unknown: 'Nie udało się odczytać Twojego adresu Epic. Za chwilę otwórz ponownie stronę Odbierz.',
       http_failed_port: 'HTTP nie odbiera: port {0} jest zajęty przez inny program. Zamknij go i spróbuj ponownie.',
       http_failed: 'HTTP nie odbiera: nie udało się uruchomić nasłuchu.',
+      http_failed_node: 'HTTP nie odbiera: węzeł nie odpowiedział, więc nie udało się uruchomić nasłuchu. Spróbuj ponownie, gdy węzeł będzie dostępny.',
       http_retry: 'Spróbuj ponownie',
       epicbox_off: 'Twój Epicbox nie jest skonfigurowany. Zaktualizuj ustawienia i podaj domenę Epicbox',
       epicbox_listening_on: 'Nasłuch na serwerze {0}',

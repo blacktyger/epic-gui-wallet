@@ -24,6 +24,15 @@ test('another program on 3415: failed, port in use (the pre-start check or the l
   assert.deepEqual(httpListenerState({ success: false, msg: 'ERROR ... (os error 10048)' }, 13415), { state: 'failed', port: 13415, reason: 'port_in_use' });
 });
 
+test('the node did not answer the listener at its start (6.1.5 Classic Try again on the rig): failed, node', () => {
+  //execListen's answer for epic-wallet's "Failed to check node sync status: ... ready_for_txs ..."
+  assert.deepEqual(httpListenerState({ success: false, msg: 'node not synced' }, 3415), { state: 'failed', port: 3415, reason: 'node' });
+  assert.deepEqual(httpListenerState({ success: false, msg: 'ERROR Failed to check node sync status: Client Callback Error: Error calling ready_for_txs' }, 3415),
+    { state: 'failed', port: 3415, reason: 'node' });
+  //a busy port still wins
+  assert.equal(httpListenerState({ success: false, msg: 'node not synced', portInUse: 3415 }, 3415).reason, 'port_in_use');
+});
+
 test('any other failure (no session, it exited, no answer): failed, generic', () => {
   assert.deepEqual(httpListenerState({ success: false, noSession: true }, 3415), { state: 'failed', port: 3415, reason: 'error' });
   assert.deepEqual(httpListenerState({ success: false, msg: 'listener exited (1)' }, 3415), { state: 'failed', port: 3415, reason: 'error' });

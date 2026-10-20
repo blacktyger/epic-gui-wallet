@@ -410,6 +410,7 @@ const messages = {
       epicbox_address_unknown: 'Vaši adresu Epic se nepodařilo načíst. Za chvíli znovu otevřete stránku Přijmout.',
       http_failed_port: 'HTTP nepřijímá: port {0} používá jiný program. Zavřete ho a zkuste to znovu.',
       http_failed: 'HTTP nepřijímá: naslouchání se nepodařilo spustit.',
+      http_failed_node: 'HTTP nepřijímá: uzel neodpověděl, a tak se naslouchání nepodařilo spustit. Zkuste to znovu, až bude uzel dostupný.',
       http_retry: 'Zkusit znovu',
       epicbox_off: 'Váš Epicbox není nastaven. Upravte nastavení a zadejte doménu Epicboxu',
       epicbox_listening_on: 'Naslouchá na {0}',

@@ -473,6 +473,8 @@ export default {
     rcv_http_failed_error: ' شنوندهٔ HTTP راه‌اندازی نشد. دوباره تلاش کنید، یا دریافت را متوقف و دوباره روشن کنید.',
     rcv_http_failed_port_short: 'پورت {port} را برنامهٔ دیگری استفاده می‌کند',
     rcv_http_failed_error_short: 'شنونده راه‌اندازی نشد',
+    rcv_http_failed_node: ' نود پاسخ نداد، برای همین شنوندهٔ HTTP راه‌اندازی نشد. وقتی نود در دسترس بود دوباره تلاش کنید.',
+    rcv_http_failed_node_short: 'نود پاسخ نداد',
     rcv_check_again: 'بررسی دوباره',
     rcv_copy_http: 'کپی آدرس HTTP',
     rcv_copy_http_off: 'کپی آدرس HTTP (در حال گوش دادن نیست)',

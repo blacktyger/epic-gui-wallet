@@ -473,6 +473,8 @@ export default {
     rcv_http_failed_error: ' Naslouchání HTTP se nepodařilo spustit. Zkuste to znovu, nebo příjem zastavte a znovu spusťte.',
     rcv_http_failed_port_short: 'port {port} používá jiný program',
     rcv_http_failed_error_short: 'naslouchání se nepodařilo spustit',
+    rcv_http_failed_node: ' Uzel neodpověděl, a tak se naslouchání HTTP nepodařilo spustit. Zkuste to znovu, až bude uzel dostupný.',
+    rcv_http_failed_node_short: 'uzel neodpověděl',
     rcv_check_again: 'Zkontrolovat znovu',
     rcv_copy_http: 'Kopírovat adresu HTTP',
     rcv_copy_http_off: 'Kopírovat adresu HTTP (nenaslouchá)',
