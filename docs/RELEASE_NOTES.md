@@ -1,5 +1,21 @@
 # Release notes
 
+## 6.1.5
+
+- Removing a wallet: "Remove everything, including the recovery phrase" is now "Remove everything, including the wallet seed". The app never stores your recovery phrase; this option deletes the wallet's seed file, and the wallet can then be restored only with the recovery phrase you wrote down. The confirmation says the same (feedback #29).
+- In use by another program: before it offers blockchain data, opens or adds a wallet folder, or deletes a wallet's files, the app now checks whether another Epic program (a node or a command-line wallet) is using that folder, by trying the same lock that program holds, and says "Another Epic program is using this folder." A lock file that is merely left on disk no longer counts, and the app never creates or deletes lock files in folders it doesn't own (feedback #33).
+  - What is refused while another program holds the folder: deleting the wallet's files ("Remove from the list only" still works), opening or importing that wallet, and using that blockchain data (the offer shows the message and comes back later).
+  - If the check itself can't run, files are not deleted ("This app couldn’t check…"), while opening a wallet still works. On Windows the check runs through PowerShell and can take a few seconds the first time.
+- Settings › Wallets: the button that adds an existing wallet is now called "Add a wallet from a folder…" (it was "Open a wallet folder", which sounded like it would open the wallet's own folder). Each wallet in the list has a new "Show in folder" button that opens that wallet's own folder in your file manager (feedback #34).
+- WALLET.txt (in each wallet's folder) is easier to read: what the file is, then a "YOUR WALLET DETAILS" block with label, created date, network, wallet id and data folder; the data folder is listed once. It is updated when you rename the wallet. It never holds secrets (feedback #35).
+- Menu › Lock wallet (Ctrl+L), above Quit: locks the open wallet, like the Lock button (feedback #36).
+- Help and translations:
+  - The help no longer suggests taking a screenshot of your recovery words: write them down on paper.
+  - "Import offline transaction": the file comes from the sender (the help said the receiver).
+  - The help pages in Bulgarian, Czech, German, Persian and Hindi now cover the same topics as the English (old Ngrok topics removed, mixed-in English translated), with "recovery phrase" instead of "mnemonic words".
+  - Classic: page titles (e.g. "Dashboard") and the node's status ("synced", "downloading blocks"…) are translated; the Modern overview shows the node's sync state in your language too.
+- A proposal for an optional blockchain download ("head start") from the Epic project's server is in docs/plans/bootstrap.md, for testers to comment on. Nothing of it is in this version (feedback #30).
+
 ## 6.1.4
 
 - Languages: the Modern interface is translated into every language of the app (Bulgarian, Czech, German, Persian, Hindi), and Polish is new in both interfaces, help texts included. Until now Modern was English-only. Each language was translated and then reviewed separately against the English; the Classic strings got the same terms (e.g. "recovery phrase" instead of the older "mnemonic words").
