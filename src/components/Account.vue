@@ -20,7 +20,7 @@
         <div class="field">
           <label class="label">{{ $t('msg.wallets.wallet_folder') }}</label>
           <p class="help">{{ importedDir ? $t('msg.wallets.wallet_folder_imported') : $t('msg.wallets.wallet_folder_hint') }}</p>
-          <p><code style="word-break: break-all;">{{ dataDir }}</code></p>
+          <p><code style="word-break: break-all;" translate="no">{{ dataDir }}</code></p>
           <div class="buttons" style="margin-top: 0.25rem;">
             <button type="button" class="button is-small is-outlined" data-open="wallet" @click="openFolder(dataDir)">{{ $t('msg.wallets.open_this_folder') }}</button>
             <button type="button" class="button is-small is-outlined" @click="copyPath(dataDir)">{{ $t('msg.wallets.copy_path') }}</button>
@@ -28,7 +28,7 @@
         </div>
         <div v-if="showConfigDir" class="field">
           <label class="label">{{ $t('msg.wallets.config_folder') }}</label>
-          <p><code style="word-break: break-all;">{{ configDir }}</code></p>
+          <p><code style="word-break: break-all;" translate="no">{{ configDir }}</code></p>
           <div class="buttons" style="margin-top: 0.25rem;">
             <button type="button" class="button is-small is-outlined" @click="openFolder(configDir)">{{ $t('msg.wallets.open_folder') }}</button>
             <button type="button" class="button is-small is-outlined" @click="copyPath(configDir)">{{ $t('msg.wallets.copy_path') }}</button>

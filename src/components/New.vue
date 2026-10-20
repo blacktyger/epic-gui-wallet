@@ -41,7 +41,7 @@
                       <div class="field">
                         <label class="label is-small">{{ $t('msg.wallets.root_title') }}</label>
                         <p class="help">{{ $t('msg.wallets.root_hint') }}</p>
-                        <p class="is-size-7" style="margin: 0.25rem 0;"><code style="word-break: break-all;">{{ appFolder }}</code></p>
+                        <p class="is-size-7" style="margin: 0.25rem 0;"><code style="word-break: break-all;" translate="no">{{ appFolder }}</code></p>
                         <details class="is-size-7" style="margin-bottom: 0.5rem;">
                           <summary style="cursor: pointer;">{{ $t('msg.wallets.root_more') }}</summary>
                           <p style="margin-top: 0.25rem;">{{ $t('msg.wallets.root_more_text') }}</p>

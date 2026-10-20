@@ -10,7 +10,7 @@
           <div class="level-left"><div>
             <b>{{ nameOf(w) }}</b> <span v-if="badge(w.network)" class="tag is-warning is-light">{{ badge(w.network) }}</span>
             <span v-if="w.id === walletId" class="tag is-success is-light">{{ $t('msg.wallets.open_now') }}</span>
-            <p class="is-size-7"><code :title="folderOf(w)">{{ short(folderOf(w)) }}</code></p>
+            <p class="is-size-7"><code :title="folderOf(w)" translate="no">{{ short(folderOf(w)) }}</code></p>
           </div></div>
           <div class="level-right"><div class="buttons">
             <button type="button" class="button is-small is-outlined" @click="showInFolder(w)" :aria-label="$t('msg.wallets.show_in_folder_named', [nameOf(w)])">{{ $t('msg.wallets.show_in_folder') }}</button>
