@@ -477,7 +477,7 @@ button.e-svc:hover { background: var(--hover); }
 .e-tx.e-is-selected { background: var(--s3); }
 .e-tx-ico { display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-sm); border: 1px solid var(--line-strong); color: var(--dim); }
 .e-tx-ico.e-in { color: var(--ok); }
-.e-tx-ico.e-out { color: var(--text); }
+.e-tx-ico.e-out { color: var(--accent-text); }
 .e-tx-ico.e-off { color: var(--faint); border-style: dashed; }
 .e-tx-who { min-width: 0; }
 .e-tx-who b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -508,7 +508,8 @@ button.e-svc:hover { background: var(--hover); }
   border-radius: var(--r-sm); border: 1px solid var(--line-strong); background: var(--s2);
 }
 .e-addr code { flex: 1; min-width: 0; font: 400 0.8125rem/1.55 var(--font-mono); overflow-wrap: anywhere; color: var(--text); }
-.e-addr code .e-hl { color: var(--accent-text); }
+/* the one address emphasis (first/last characters): accent colour + medium weight, no background */
+.e-hl { color: var(--accent-text); font-weight: 600; }
 .e-addr.e-lg code { font-size: 0.9062rem; }
 
 /* ------------------------------------------------------------------ overlays */

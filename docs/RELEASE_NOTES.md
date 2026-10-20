@@ -15,6 +15,8 @@
   - The help pages in Bulgarian, Czech, German, Persian and Hindi now cover the same topics as the English (old Ngrok topics removed, mixed-in English translated), with "recovery phrase" instead of "mnemonic words".
   - Classic: page titles (e.g. "Dashboard") and the node's status ("synced", "downloading blocks"…) are translated; the Modern overview shows the node's sync state in your language too.
 - Classic, dark mode: the remove-wallet dialog is dark like the rest; its Cancel button was white on white and a disabled Delete button red on red.
+- Modern: the arrow of a sent transaction is gold (Overview › Recent activity and Activity, light and dark); received stays green, amounts are unchanged (feedback #20).
+- Modern: the first and last characters of an address are emphasised the same way everywhere (Receive, Review Send): gold text in medium weight, no background, so it never looks like a selection (feedback #47).
 - A proposal for an optional blockchain download ("head start") from the Epic project's server is in docs/plans/bootstrap.md, for testers to comment on. Nothing of it is in this version (feedback #30).
 
 ## 6.1.4
