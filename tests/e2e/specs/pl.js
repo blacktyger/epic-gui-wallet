@@ -26,7 +26,8 @@ const flat = (o, p = '', r = {}) => {
 //words of English UI text that are not Polish words ("to", "on", "a", "i" and "import" are); whole
 //words only, Polish letters count as letters ("Hasło" has no "has")
 //not 'node': the Polish strings say "node" (node'a, node'em), the user's choice in 6.1.5
-const STOP = /(?<!\p{L})(the|and|your|you|are|is|of|with|this|that|not|will|can|please|from|have|has|been|here|there|wallet|wallets|transaction|address|settings|balance|password|amount|send|receive|cancel|delete|save|close|open|copy|details|back|next|done|loading|error|failed|wrong|update|updates|log|out|thank|learn|more|about|connect|recheck|profile|finalize|dashboard|help|confirm|action|message|file|port|clipboard)(?!\p{L})/iu;
+//nor "port" (Polish too: "zajęty port"); an exact English message "Port" still counts through the EN check
+const STOP = /(?<!\p{L})(the|and|your|you|are|is|of|with|this|that|not|will|can|please|from|have|has|been|here|there|wallet|wallets|transaction|address|settings|balance|password|amount|send|receive|cancel|delete|save|close|open|copy|details|back|next|done|loading|error|failed|wrong|update|updates|log|out|thank|learn|more|about|connect|recheck|profile|finalize|dashboard|help|confirm|action|message|file|clipboard)(?!\p{L})/iu;
 //the same in every language: names, units, technical words, language names
 const SAME = /^(Epic( Cash)?|EPIC|Epicbox|HTTP|HTTPS|Tor|Dandelion\+\+|BT Labs|btlabs|Johannes Hahn|Cypher Stack|mainnet|floonet|usernet|Mainnet|Floonet|Usernet|GitHub|Polski|English|Deutsch|Čeština|Česko|България|Български|فارسی|हिन्दी|OK|QR|ID|URL|API|PID \d+|MW\/Epic [\d.]+)$/;
 
@@ -38,7 +39,7 @@ function english(texts, EN, PL, data) {
     if (/@|:\/\/|^[a-z0-9]{30,}$/i.test(bare) || /^[a-z0-9-]+(\.[a-z0-9-]+)+(:\d+)?(\/\S*)?$/i.test(bare) || /^[~/]|^[A-Z]:\\/.test(bare)) return false;
     if (EN.has(bare) && !PL.has(bare)) return true;
     //names, paths and host names may stand inside a Polish sentence; the stop words may not
-    return STOP.test(bare.replace(/\b(Epic Cash|Epic Wallet|Epicbox|GitHub|BT Labs|Dandelion\+\+)\b/g, '').replace(/(?:[A-Z]:\\|~?\/)\S*|\S+\.[a-z]{2,}(?::\d+)?\S*/g, ''));
+    return STOP.test(bare.replace(/(?<!\p{L})node(?:['’]?(?:a|em|y|ów|owi|u))?(?!\p{L})/giu, '').replace(/\b(Epic Cash|Epic Wallet|Epicbox|GitHub|BT Labs|Dandelion\+\+)\b/g, '').replace(/(?:[A-Z]:\\|~?\/)\S*|\S+\.[a-z]{2,}(?::\d+)?\S*/g, ''));
   });
 }
 
@@ -134,7 +135,7 @@ H.runCase('pl', async (t) => {
   }
 
   await t.step('Polish: the other wallet\'s removal dialog', async () => {
-    await V.openWalletSettings(w, ui);
+    await V.openAllWallets(w, ui);
     const name = PL['msg.wallets.wallet_n'].replace('{0}', '1');
     await w.getByRole('button', { name: PL['msg.removal.open_named'].replace('{0}', name) }).first().click({ timeout: 10000 });
     const dlg = w.locator('dialog[open], .modal.is-active').last();

@@ -103,8 +103,9 @@ H.runCase('confirm615', async (t) => {
     const ok = await H.waitFor(() => (settings().wallets.find((x) => x.label === label) ? true : null), { timeout: 10000 });
     if (!ok) throw new Error('label not saved');
   };
-  const retry = () => w.getByRole('button', { name: 'Try again' }).or(w.getByRole('link', { name: 'Try again' }))
-    .or(w.getByRole('button', { name: ui === 'modern' ? 'Start listener' : /^Start( listener)?$/ })).first();
+  //Modern: the busy-port notice offers Try again (the banner's Start listener starts Epicbox only)
+  const retry = () => (ui === 'modern' ? w.getByRole('button', { name: 'Try again' }) : w.getByRole('button', { name: 'Try again' }).or(w.getByRole('link', { name: 'Try again' }))
+    .or(w.getByRole('button', { name: /^Start( listener)?$/ }))).first();
 
   //a fake xdg-open first on the app's PATH: what Show in folder asks the system to open, logged
   const fakebin = path.join(home, 'fakebin'); const xdgLog = path.join(home, 'xdg-open.log');
@@ -220,6 +221,8 @@ H.runCase('confirm615', async (t) => {
   }, { fatal: true, timeout: 120000 });
   await check('c', 'Receive says the port is used, in the 6.1.5 wording', async () => {
     await U.nav(w, ui, U.PAGES[ui].find((p) => p[1] === '/httpReceive'));
+    //HTTP receiving is off until asked (fix/node-load): Turn on meets the busy port
+    if (ui === 'modern') await w.getByRole('button', { name: 'Turn on', exact: true }).first().click({ timeout: 8000 });
     const s = await U.waitText(w, /Port 3415 is used by another program, for example another Epic wallet\. Close it, then try again\./, 45000);
     await snap('c', 'port-busy');
     return s;
@@ -295,7 +298,7 @@ H.runCase('confirm615', async (t) => {
 
   /* ---------- i: Show in folder ---------- */
   await check('i', 'Show in folder on Alpha asks the system to open Alpha\'s own folder', async () => {
-    await V.openWalletSettings(w, ui);
+    await V.openAllWallets(w, ui);
     await w.getByRole('button', { name: 'Show Alpha in folder' }).first().click({ timeout: 10000 });
     const got = await H.waitFor(() => { try { return fs.readFileSync(xdgLog, 'utf8').trim(); } catch (e) { return null; } }, { timeout: 10000 });
     await snap('i', 'settings-wallets-show-in-folder');

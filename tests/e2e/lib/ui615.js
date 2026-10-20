@@ -15,7 +15,11 @@ const U = require('./ui');
 const WALLET_PAGE = { modern: ['This wallet', '/account', null, 'stg'], classic: ['Profile', '/account', null, 'gear'] };
 const WALLETS_PAGE = { modern: ['All wallets', '/wallets', null, 'stg'], classic: ['All wallets', '/wallets', null, 'gear'] };
 const openWalletSettings = (w, ui) => U.nav(w, ui, WALLET_PAGE[ui]);
-const openAllWallets = (w, ui) => U.nav(w, ui, WALLETS_PAGE[ui]);
+const openAllWallets = async (w, ui) => {
+  //a refused Add an existing wallet leaves its full-screen page: Back first (the Settings menu isn't there)
+  if (ui === 'modern' && /add-existing|\/found/.test(await U.route(w))) await w.getByRole('link', { name: 'Back' }).first().click({ timeout: 5000 }).catch(() => {});
+  return U.nav(w, ui, WALLETS_PAGE[ui]);
+};
 
 /** Settings › All wallets › Create a new wallet: a second wallet; Unlock chooses it, it is unlocked
     with the password just set, so it is the open one. */
