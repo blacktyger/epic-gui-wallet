@@ -57,8 +57,8 @@ const messages = {
     rescan: 'Ustawienia › Ponowne skanowanie',
     restore: 'Przywróć z frazy odzyskiwania (na pierwszym ekranie, w sekcji Odblokuj › Dodaj portfel albo Ustawienia › Wszystkie portfele › Dodaj portfel)',
     wallet_files: 'Ustawienia › Ten portfel › Folder portfela',
-    node_settings: 'Ustawienia › Węzeł i odbieranie',
-    epicbox_setting: 'Ustawienia › Węzeł i odbieranie › Odbieranie',
+    node_settings: 'Ustawienia › Node i odbieranie',
+    epicbox_setting: 'Ustawienia › Node i odbieranie › Odbieranie',
     report: 'Ustawienia › Pomoc › Zgłoś problem',
     confirming_label: 'Potwierdzanie',
     locked_label: 'Zablokowane w wysyłanych transakcjach',
@@ -70,7 +70,7 @@ const messages = {
     { id: 'start', title: 'Pierwsze kroki' },
     { id: 'how', title: 'Jak działa Epic Cash' },
     { id: 'safety', title: 'Jak zadbać o bezpieczeństwo portfela' },
-    { id: 'network', title: 'Węzły i Epicbox' },
+    { id: 'network', title: 'Node’y i Epicbox' },
     { id: 'trouble', title: 'Gdy coś pójdzie nie tak' },
   ],
 
@@ -88,7 +88,7 @@ const messages = {
           <li>Skopiuj adres (albo pokaż jego kod QR) i wyślij go osobie, która ma Ci zapłacić.</li>
           <li>Płatność sama pojawi się w sekcji Aktywność. Nie musisz niczego naciskać.</li>
         </ol>
-        <p>Po odblokowaniu portfel sam zaczyna odbierać płatności, gdy tylko węzeł zostanie zsynchronizowany. Jeśli ktoś Ci
+        <p>Po odblokowaniu portfel sam zaczyna odbierać płatności, gdy tylko node zostanie zsynchronizowany. Jeśli ktoś Ci
         zapłaci, gdy portfel jest zamknięty, Epicbox przechowa płatność, a portfel odbierze ją przy następnym odblokowaniu.</p>
         <p>Nowa płatność najpierw czeka, aż portfel nadawcy ją dokończy, a potem jest potwierdzana. Po 3 potwierdzeniach,
         czyli po około 3 minutach, możesz ją wydać.</p>`,
@@ -111,7 +111,7 @@ const messages = {
         <p><b>Brak odpowiedzi?</b> Po kilku minutach pojawi się status „Oczekiwanie na odpowiedź odbiorcy”. Poproś odbiorcę,
         żeby otworzył swój portfel. Jeśli odpowiedź nigdy nie nadejdzie, anuluj wysyłkę (<b>[[cancel]]</b>), żeby odblokować
         monety. Wysyłka nigdy nie jest anulowana automatycznie.</p>
-        <p>Wysyłać możesz, gdy Twój węzeł jest zsynchronizowany. Do wysyłki na adres Epic Twój portfel musi mieć też połączenie z Epicbox; do tego czasu możesz wysłać płatność plikiem. Możesz też wysłać na
+        <p>Wysyłać możesz, gdy Twój node jest zsynchronizowany. Do wysyłki na adres Epic Twój portfel musi mieć też połączenie z Epicbox; do tego czasu możesz wysłać płatność plikiem. Możesz też wysłać na
         adres http(s), ale wtedy portfel odbiorcy musi być w tym momencie online i dostępny.</p>`,
     },
     {
@@ -159,7 +159,7 @@ const messages = {
         transakcją to pierwsze potwierdzenie, a każdy następny blok dodaje kolejne i utrudnia cofnięcie transakcji.</p>
         <p>Ten portfel uznaje transakcję za ostateczną po <b>3 potwierdzeniach</b>. Do tego czasu ma ona status
         <b>[[confirming_label]]</b>, a otrzymanych monet nie można jeszcze wydać. Tej liczby nie można zmienić.</p>
-        <p>Trwa to dłużej niż zwykle? Portfel widzi nowe bloki tylko przez swój węzeł: sprawdź, czy węzeł jest zsynchronizowany.</p>`,
+        <p>Trwa to dłużej niż zwykle? Portfel widzi nowe bloki tylko przez swój node: sprawdź, czy node jest zsynchronizowany.</p>`,
     },
     {
       id: 'private',
@@ -175,7 +175,7 @@ const messages = {
           <li><b>Twoje notatki nie trafiają do blockchaina.</b> Wiadomość, którą dodasz, trafia tylko do drugiego portfela.
           Kontakty i nazwy portfeli zostają na tym komputerze.</li>
         </ul>
-        <p>Co nie jest ukryte: węzeł, z którego korzystasz, i Twój serwer Epicbox widzą Twój adres IP, a węzeł publiczny widzi,
+        <p>Co nie jest ukryte: node, z którego korzystasz, i Twój serwer Epicbox widzą Twój adres IP, a node publiczny widzi,
         o które monety pyta Twój portfel. Jeśli zależy Ci na ukryciu adresu IP, użyj VPN.</p>`,
     },
     {
@@ -242,18 +242,18 @@ const messages = {
     {
       id: 'nodes',
       section: 'network',
-      title: 'Węzły: wbudowany czy zewnętrzny',
-      short: 'Węzeł łączy portfel z siecią Epic Cash. Najszybciej zaczniesz z węzłem publicznym, a wbudowany to Twój własny węzeł.',
-      body: `<p>Portfel potrzebuje węzła, aby odczytywać blockchain (Twoje saldo i potwierdzenia) i wysyłać Twoje transakcje do sieci.</p>
+      title: 'Node’y: wbudowany czy zewnętrzny',
+      short: 'Node łączy portfel z siecią Epic Cash. Najszybciej zaczniesz z node’em publicznym, a wbudowany to Twój własny node.',
+      body: `<p>Portfel potrzebuje node’a, aby odczytywać blockchain (Twoje saldo i potwierdzenia) i wysyłać Twoje transakcje do sieci.</p>
         <ul>
-          <li><b>Węzeł zewnętrzny</b> (domyślny): węzeł publiczny, na przykład node.epiccash.com. Działa od razu. Jego właściciel
+          <li><b>Node zewnętrzny</b> (domyślny): node publiczny, na przykład node.epiccash.com. Działa od razu. Jego właściciel
           widzi Twój adres IP i to, o które monety pyta Twój portfel.</li>
-          <li><b>Wbudowany węzeł</b>: działa na tym komputerze. Najpierw pobiera cały blockchain, co trochę trwa i wymaga miejsca
-          na dysku, a potem jest w pełni Twój. Na czas synchronizacji portfel korzysta z węzła publicznego.</li>
+          <li><b>Node wbudowany</b>: działa na tym komputerze. Najpierw pobiera cały blockchain, co trochę trwa i wymaga miejsca
+          na dysku, a potem jest w pełni Twój. Na czas synchronizacji portfel korzysta z node’a publicznego.</li>
         </ul>
-        <p>Węzeł zmienisz w sekcji <b>[[node_settings]]</b>. Zmianę zatwierdź przyciskiem Zapisz, a portfel sam połączy się
-        z nowym węzłem. Możesz wpisać adres węzła albo wybrać jeden z węzłów publicznych z listy, na której widać też ich stan.</p>
-        <p>Wysyłać można tylko wtedy, gdy węzeł jest zsynchronizowany. Jeśli Twój węzeł zostanie w tyle, portfel zaproponuje
+        <p>Node zmienisz w sekcji <b>[[node_settings]]</b>. Zmianę zatwierdź przyciskiem Zapisz, a portfel sam połączy się
+        z nowym node’em. Możesz wpisać adres node’a albo wybrać jeden z publicznych node’ów z listy, na której widać też ich stan.</p>
+        <p>Wysyłać można tylko wtedy, gdy node jest zsynchronizowany. Jeśli Twój node zostanie w tyle, portfel zaproponuje
         przełączenie się na inny.</p>`,
     },
     {
@@ -277,21 +277,21 @@ const messages = {
       id: 'troubleshooting',
       section: 'trouble',
       title: 'Rozwiązywanie problemów',
-      short: 'Najczęściej przyczyną jest węzeł, który wciąż się synchronizuje, odbiorca, który jeszcze nie odpowiedział, albo zajęty port.',
-      body: `<p><b>„Węzeł niezsynchronizowany”: nie mogę wysłać.</b> Wysyłanie będzie możliwe, gdy węzeł nadrobi zaległości.
-        Poczekaj chwilę albo wybierz inny węzeł w sekcji [[node_settings]].</p>
+      short: 'Najczęściej przyczyną jest node, który wciąż się synchronizuje, odbiorca, który jeszcze nie odpowiedział, albo zajęty port.',
+      body: `<p><b>„Node niezsynchronizowany”: nie mogę wysłać.</b> Wysyłanie będzie możliwe, gdy node nadrobi zaległości.
+        Poczekaj chwilę albo wybierz inny node w sekcji [[node_settings]].</p>
         <p><b>„Brak połączenia z Epicbox”.</b> Twój portfel nie może jeszcze połączyć się ze swoim serwerem Epicbox. Poczekaj
         chwilę. Jeśli problem nie ustąpi, sprawdź połączenie z internetem albo wybierz inny serwer w sekcji [[epicbox_setting]].
         W międzyczasie możesz wysyłać za pomocą pliku.</p>
         <p><b>Moja wysyłka ma status „Oczekiwanie na odpowiedź odbiorcy”.</b> Portfel odbiorcy jeszcze nie odpowiedział. Poproś
         odbiorcę, żeby otworzył swój portfel. Jeśli nigdy tego nie zrobi, anuluj wysyłkę ([[cancel]]), żeby odblokować monety.</p>
-        <p><b>Nie dotarła do mnie płatność.</b> Sprawdź na ekranie [[receive]], czy odbieranie jest włączone i czy Twój węzeł
+        <p><b>Nie dotarła do mnie płatność.</b> Sprawdź na ekranie [[receive]], czy odbieranie jest włączone i czy Twój node
         jest zsynchronizowany. Jeśli zmienił się Twój serwer Epicbox, upewnij się, że nadawca użył Twojego nowego
         adresu. Portfel nadawcy musi też dokończyć transakcję, a potem trzeba poczekać kilka minut na potwierdzenia.</p>
         <p><b>„Port 3415 jest zajęty przez inny program”.</b> Inny program, często inny portfel Epic, korzysta z tego portu do
         płatności HTTP. Zamknij ten program, a potem naciśnij przycisk Spróbuj ponownie na ekranie [[receive]]. Epicbox i pliki
         w tym czasie nadal działają.</p>
-        <p><b>„Inny program Epic używa tego folderu”.</b> Inny portfel lub węzeł Epic ma otwarte te same pliki. Zamknij ten
+        <p><b>„Inny program Epic używa tego folderu”.</b> Inny portfel lub node Epic ma otwarte te same pliki. Zamknij ten
         program i spróbuj ponownie.</p>
         <p><b>„Nieprawidłowe hasło”.</b> Sprawdź Caps Lock i układ klawiatury. Jeśli nie pamiętasz hasła, przywróć portfel
         z frazy odzyskiwania i ustaw nowe hasło.</p>

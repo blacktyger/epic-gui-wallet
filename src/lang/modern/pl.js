@@ -33,7 +33,7 @@ export default {
   node_behind: 'Twój node jest w tyle. Bloki do nadrobienia: {n}.',
   switch_node: 'Zmień node',
   svc_receiving: 'Odbieranie',
-  svc_open_node: 'Otwórz ustawienia węzła',
+  svc_open_node: 'Otwórz ustawienia node’a',
   svc_open_epicbox: 'Otwórz ustawienia Epicbox',
   svc_open_wallet: 'Otwórz ustawienia portfela',
   svc_listener_starting: 'Uruchamianie nasłuchu…',

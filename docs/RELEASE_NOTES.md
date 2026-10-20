@@ -1,100 +1,45 @@
 # Release notes
 
-## Next version (after 6.1.5)
-
-- Settings › Node › External node: the address is checked while you type it (you asked for a "test the connection" button). A short moment after you stop typing, or at once when you paste, a line under the field says whether an Epic node answers there: Online or Syncing, its version, its block height against the network ("at tip" or "N behind"), its peers and how fast it replied; or, in plain words, why not: it doesn't answer, it's slow, something answers but it isn't an Epic node, or it redirects. Tips cover the usual mistakes: https:// instead of http:// (and the other way round for a node on your own network) and the port (Epic nodes use 3413). The check never blocks typing or Save, and Save still checks the address itself, as before. Nodes from the public list keep their own status from the status page and aren't asked again.
-- My nodes: "Add to my nodes" next to the address field saves the address with a label of your own (optional). The dialog checks the address too, but you can save a node that is offline right now. The same node can't be added twice, however it's written (a trailing "/", capital letters, the default port). Saved nodes are listed under the field with their live status (state, at tip, ms), checked when you open the page and every few minutes while it stays open. Each one has Use (puts the address in the field; Save applies it), Edit and Remove (asks first, in the row).
-  - The list is kept in the app's settings (settings.json, "myNodes"), one list per network, for all your wallets: a node serves every wallet on its network. Older 6.1 versions keep the list untouched if you go back.
-  - Privacy: only addresses you typed or saved are asked, through the same path as the app's other node checks, with a timeout, over http(s) only. The node's API secret is never sent by these checks.
-
-## Next version (branch feat/contacts)
-
-- Contacts, redesigned (feedback #38; the BT Labs Theme interface — Classic keeps its contacts as in 6.1.5, with the Send picker):
-  - Click a contact (or press Enter on it) and Send opens with their address filled in: the Epicbox address, or the HTTP one when that is all they have.
-  - Send: a Contacts button next to the recipient field opens a searchable list of your contacts. Choosing a name fills in their address and takes you to the amount. A contact with both kinds of address has a small "HTTP" button for the other one. The address is still checked as if you had typed it, so a Tor address is refused.
-  - The list looks like a messaging app's: a picture or initials, the name, a short address (start…end of the key and the server), the kind of address, and when you last sent to or received from them. Search as you type; sort by name or by most recent.
-  - Each contact has a small "…" menu with Details, Send via HTTP (when it also has an HTTP address), Copy Epicbox address / Copy HTTP address, Edit and Delete (it asks first, quietly). It works with the keyboard (Enter or ↓ opens it, ↑/↓ move, Esc closes it) and with screen readers.
-  - Details: each address with a Copy button (it says "Copied"), the note, Edit, Delete, and the transactions with this contact (sends you made to them from Send).
-  - Country and city are gone from contacts: not shown, searched or asked for. What older versions stored there stays in the contact, untouched.
-  - The form checks each address as you leave the field and says what is wrong under it (an incomplete Epicbox address, a non-HTTP address, a Tor address), instead of a message that disappears.
-  - Pictures: the initials sit on a colour taken from the name, the same every time, readable in both themes. You can also pick a photo (PNG, JPEG, WebP or GIF, up to 10 MB): the app makes a small 128-pixel copy, which drops the photo's hidden details (location, camera, date), and keeps only that copy, separately from your contacts. SVG files and pictures from the internet are not accepted.
-  - On a narrow window or with large text, the list and the contact take turns, with an "All contacts" button to go back.
-  - Nothing changes in how contacts are stored: older versions still open them, and the hidden fields of very old contacts (a Tor address, payment proof settings, country and city) are kept.
-
-## Next (feat/support-logs)
-
-- Report a problem: in Settings › Help (Classic: Help), the Help menu and on the unlock screen, so it works before a wallet is open too. Describe what happened, add a contact if you like, and keep "Attach logs (recommended)" ticked. The whole report is encrypted on your computer and goes to the Epic GUI Wallet developer: only the developer can read it. "Show what's sent" shows its content first. Send it, or save it to a file and send that yourself. Nothing is sent without your click, and a description that looks like a recovery phrase is refused (feedback #40).
-  - Before anything is sealed, the logs and the description are cleaned: your user name, home folder, computer name, email addresses, IP addresses, private node addresses and wallet addresses become placeholders such as `<ip-1>`, and anything that looks like a password, key, slate or recovery phrase is dropped. Amounts and transaction ids stay: a payment problem can't be looked into without them.
-  - Encryption: X25519 + AES-256-GCM to the developer's public key, built into the app.
-- Logs are on by default, at debug level, and bounded: the app's own logs (`logs/main.log`, `logs/renderer.log`, 2 MiB each plus one older file), each wallet's `epic-wallet.log` (5 MiB × 4 files) and the built-in node's `epic-server.log` (Info level, 5 MiB × 3 files). Existing wallets get it the next time they are opened. The page log used to be a new file every day that started empty on every start.
-- The logs hold what is needed to find a problem, with less noise: versions and system at start, every process the app starts (passwords redacted), node state changes (not every 10 seconds), send and receive steps with their transaction ids, wallet errors once instead of on every refresh. They never contain passwords, recovery phrases, seeds, API secrets, slates or the clipboard.
-- The first-unlock tour (BT Labs Theme) has one more step: "Need help? Settings › Help › Report a problem."
-
-## Next (branch feat/add-wallet-flow)
-
-- Adding a wallet, made clear (feedback #34). There are three ways, the same everywhere: on the Welcome screen, behind "Add a wallet" on the Unlock screen, and in Settings › All wallets:
-  - **Create a new wallet**: a new wallet with a new recovery phrase.
-  - **Add an existing wallet**: a wallet already on this computer, either one an older Epic Wallet left (the app looks for them) or any wallet folder you choose. The picker still finds the wallet when you choose a folder above it. The wallet stays where it is.
-  - **Restore from recovery phrase**.
-
-  Each one adds a new wallet to the list. Nothing replaces or overwrites a wallet you already have, and tests check this for every way of adding.
-- After you create, add or restore a wallet, the open wallet is locked (its background programs are stopped) and the Unlock screen opens with the new wallet already chosen. It says "… was added. Enter its password to unlock it." After creating a wallet you now unlock it on that screen. It no longer opens straight from the recovery-phrase page.
-- Settings › This wallet (it was "Wallet") is about the open wallet only. Its "Open wallet folder" button opens that wallet's own folder in your file manager. The confusing "Add a wallet from a folder…" button is gone from this page. Your other wallets, each with "Show in folder" and "Remove…", and the three ways to add one are on the new Settings › All wallets page. In Classic it is in the gear menu.
-- Welcome › Advanced › App data folder: one short line saying what it is, with the rest under "More about this". It works as before: choose a new, empty folder, the app restarts and uses it, and "Use the default folder" goes back.
-
-## Unreleased (feat/help-rework)
-
-- One name for Epicbox: the setting and the setup review row say "Epicbox server" (they said "Epicbox Domain", "Epicbox Web Address" and "Relay"), and no screen calls it a relay any more, in every language (feedback #10). "Receiving" stays the name of the feature.
-- Settings › Help is new (BT Labs Theme): short topics for people new to Epic Cash ("Receive your first EPIC", "Send with a file", "Why does a transaction need both sides?", "Confirmations", "Your recovery phrase", "Fees", "Troubleshooting", …), each a one-line answer with the detail behind "Read more".
-  - Search as you type, in your language, with the words marked; "/" or Ctrl+F jumps to it, Esc clears it.
-  - A step-by-step picture of how a transaction travels between the two wallets, over Epicbox or with a file (no animation with reduced motion).
-  - Every fact checked against this version: 3 confirmations, the default node is a public one, a send is never cancelled by itself.
-  - In all seven languages. The Classic interface keeps its help as it was.
-
 ## 6.1.5
 
-- Removing a wallet: "Remove everything, including the recovery phrase" is now "Remove everything, including the wallet seed". The app never stores your recovery phrase; this option deletes the wallet's seed file, and the wallet can then be restored only with the recovery phrase you wrote down. The confirmation says the same (feedback #29).
-- In use by another program: before it offers blockchain data, opens or adds a wallet folder, or deletes a wallet's files, the app now checks whether another Epic program (a node or a command-line wallet) is using that folder, by trying the same lock that program holds, and says "Another Epic program is using this folder." A lock file that is merely left on disk no longer counts, and the app never creates or deletes lock files in folders it doesn't own (feedback #33).
-  - What is refused while another program holds the folder: deleting the wallet's files ("Remove from the list only" still works), opening or importing that wallet, and using that blockchain data (the offer shows the message and comes back later).
-  - If the check itself can't run, files are not deleted ("This app couldn’t check…"), while opening a wallet still works. On Windows the check runs through PowerShell and can take a few seconds the first time.
-- Settings › Wallets: the button that adds an existing wallet is now called "Add a wallet from a folder…" (it was "Open a wallet folder", which sounded like it would open the wallet's own folder). Each wallet in the list has a new "Show in folder" button that opens that wallet's own folder in your file manager (feedback #34).
-- WALLET.txt (in each wallet's folder) is easier to read: what the file is, then a "YOUR WALLET DETAILS" block with label, created date, network, wallet id and data folder; the data folder is listed once. It is updated when you rename the wallet. It never holds secrets (feedback #35).
-- Menu › Lock wallet (Ctrl+L), above Quit: locks the open wallet, like the Lock button (feedback #36).
-- Modern sidebar: the wallet's icon and name are now a link to Settings › Wallet, like Node and Receiving; the Lock button next to it still only locks. Node opens Settings at the Node section, and Receiving opens the Epicbox settings: the section scrolls into view, is highlighted briefly (no animation with reduced motion) and the Epicbox server field is focused, also when Settings is already open. The links have labels for screen readers ("Open node settings", "Open Epicbox settings", "Open wallet settings") in all seven languages (feedback #37).
-- Help and translations:
-  - The help no longer suggests taking a screenshot of your recovery words: write them down on paper.
-  - "Import offline transaction": the file comes from the sender (the help said the receiver).
-  - The help pages in Bulgarian, Czech, German, Persian and Hindi now cover the same topics as the English (old Ngrok topics removed, mixed-in English translated), with "recovery phrase" instead of "mnemonic words".
-  - Classic: page titles (e.g. "Dashboard") and the node's status ("synced", "downloading blocks"…) are translated; the Modern overview shows the node's sync state in your language too.
-- Classic, dark mode: the remove-wallet dialog is dark like the rest; its Cancel button was white on white and a disabled Delete button red on red.
-- Windows: after Lock, a switch to another wallet or Quit, the wallet's receiving processes (the HTTP and Epicbox listeners) sometimes kept running in the background. The app reads the list of running processes to find its own; on Windows that list came from a text format that wraps long lines, and a listener's line (two wallet folder paths) was read back with a space missing, so the app no longer recognised it as its own and left it running. The list is now read in a format that is never wrapped (JSON). Checked on Windows: Lock three times, four wallet switches, and Receive › Try again followed by Lock, with no listener left over.
-- Receive: when HTTP can't start because the node didn't answer (the listener asks the node first), it now says so ("the node did not answer… Try again once the node is reachable") instead of only "the listener could not start". Try again works as soon as the node answers. This was the cause of a "Try again" that seemed to do nothing on Windows while the public node had a short outage.
-- Classic: Ctrl+L locks the wallet from the page too, as in Modern; before, only the menu shortcut did, which needs the window to have the keyboard focus.
-- Polish: the remaining English texts are translated (Classic About page, the app menu, confirmation and first-scan dialogs, some toasts and hover titles, the Restore error for a wrong phrase), a wallet's default name ("Wallet 2") shows in the app's language, and the Modern sidebar shows the full wallet name ("Portfel 2" was cut off). The app menu is translated in every language.
-- Modern: the arrow of a sent transaction is gold (Overview › Recent activity and Activity, light and dark); received stays green, amounts are unchanged (feedback #20).
-- Modern: the first and last characters of an address are emphasised the same way everywhere (Receive, Review Send): gold text in medium weight, no background, so it never looks like a selection (feedback #47).
-- A proposal for an optional blockchain download ("head start") from the Epic project's server is in docs/plans/bootstrap.md, for testers to comment on. Nothing of it is in this version (feedback #30).
+Everything since 6.1.2. The new features are in the BT Labs Theme interface; Classic gets fixes only.
 
-## 6.1.4
+**New**
 
-- Languages: the Modern interface is translated into every language of the app (Bulgarian, Czech, German, Persian, Hindi), and Polish is new in both interfaces, help texts included. Until now Modern was English-only. Each language was translated and then reviewed separately against the English; the Classic strings got the same terms (e.g. "recovery phrase" instead of the older "mnemonic words").
-  - Persian shows right-to-left, and the page's language is set for screen readers (QA T10, T26).
-- Fixes:
-  - Settings › Node: an address like `http://192.168.0.1:3413` showed as `http: /192…` on Windows: one slash went missing. The address font's "//" ligature drew the first slash in the empty space before it, and Windows dropped that slash. The bundled font has no ligatures now, so addresses, paths and amounts show every character as typed. The saved address was always right.
-  - Receive: your Epic address stays visible (dimmed) while receiving is off, and Copy and its QR code keep working. Payments sent to it wait on Epicbox until you start receiving again. It used to say "Epicbox not available. Wait for the Node to be synced…" (QA T09).
-  - "Send all" no longer stays "Waiting for confirmations" forever. The wallet confirms a send when it sees the send's change on chain, and a send of everything has no change. For that case only (a posted send, no change, nothing left in the wallet), the app asks the node once a minute where the transaction is (its kernel, a public lookup), then shows it as sent with its confirmations. It is shown only, never written to the wallet; if the node doesn't answer, it keeps waiting. Sends with change are unchanged (QA T03).
-  - Receiving over HTTP when another program uses port 3415: the app said "Receiving · HTTP" though HTTP wasn't running. Now HTTP shows as failed, with the reason ("Port 3415 is used by another program") and a Try again button. Epicbox keeps working (QA W01).
+- Settings › Help: short topics for people new to Epic Cash (receiving your first EPIC, sending with a file, confirmations, fees, your recovery phrase, troubleshooting), with search and a picture of how a transaction travels between two wallets. In all seven languages.
+- Report a problem: in Settings › Help, the Help menu and the Unlock screen. Describe what happened and keep "Attach logs" ticked. The report is encrypted on your computer so that only the developer can read it, and your user name, folders, addresses and anything that looks like a password or key are removed first. "Show what's sent" shows exactly what goes out. You can also save it to a file instead.
+- Logs are on by default and limited in size, and they never contain passwords, recovery phrases or keys.
+- Contacts, redesigned: click a contact to open Send with their address filled in, or pick one from the new Contacts button on Send. Contacts show a picture or initials, a short address and when you last sent to or received from them, and each has a "…" menu (details, copy, edit, delete).
+- Adding a wallet: Create a new wallet, Add an existing wallet, or Restore from recovery phrase, the same on the Welcome screen, the Unlock screen and the new Settings › All wallets page. Adding a wallet never replaces one you have. Afterwards the Unlock screen opens with the new wallet chosen.
+- Settings › This wallet is about the open wallet only, and its "Open wallet folder" button opens that wallet's own folder.
+- Settings › Node: the address is checked as you type (online or syncing, version, blocks behind, response time), with tips for the usual mistakes. "Add to my nodes" keeps a list of your own nodes with their live status.
+- The sidebar's wallet name, Node and Receiving open their part of Settings.
+- Polish, and the BT Labs Theme in every language of the app (Bulgarian, Czech, German, Persian, Hindi). Persian shows right to left.
+- Menu › Lock wallet (Ctrl+L).
 
-## 6.1.3
+**Changed**
 
-- Tor removed. Receiving and sending over Tor didn't work in the current form. It needs a rework and is postponed, with no ETA.
-- Payment proofs removed from Send and Receive. They weren't fully working (never over Epicbox) and were very niche. A proof already on a transaction still shows in its details. The command-line wallet still has proofs (they barely work there too).
-- Fixes:
-  - The Quit button on the settings-error screen quits again (it did nothing) and stops the wallet's background processes (feedback #31).
-  - Open a wallet folder: only the wallet folders the app finds become readable, not the whole folder you picked (feedback #32).
-  - Send: a recipient that is no address at all ("hello world") is refused; an amount larger than your balance says "Not enough balance" instead of "must be a number".
-  - Contacts: a contact needs a name and an address, and an Epicbox address must be a real one (empty or nonsense contacts used to be saved).
-  - Create/Restore: "The passwords don't match" instead of "The password2 must be equal".
-  - Recovery phrase page: a wrong password says so under the field instead of "Lifecycle: Error opening wallet seed file".
-  - Receive (Modern): "Connecting…" instead of an empty "Listening via " while the Epicbox connection starts.
-- Smaller downloads: the app no longer ships its development files (node_modules and source maps in app.asar), only the Chromium languages it uses, and stripped Linux helpers. Every release is now built with one scripted, checked flow.
+- Less load on the node: the wallet asks the node for its status less often, much less often while the window is minimized or hidden, and backs off when the node doesn't answer.
+- Receiving over HTTP is off until you turn it on (Receive, or Settings with "Start with the wallet"). Epicbox and files work as before. The Receive page says plainly that HTTP is reachable only from this computer unless you set it up yourself.
+- One name, "Epicbox server", everywhere (it was also called "relay" or "domain").
+- Removing a wallet: "Remove everything, including the wallet seed" (the app never stores your recovery phrase).
+- WALLET.txt in each wallet's folder is easier to read and never holds secrets.
+- A sent transaction's arrow is gold, and the start and end of an address are marked the same way on every page.
+- Tor and payment proofs are removed for now. They didn't work reliably (proofs never worked over Epicbox). A proof already on a transaction still shows in its details.
+- Smaller downloads.
+
+**Fixed**
+
+- Windows: the receiving programs sometimes kept running after Lock, a wallet switch or Quit.
+- Windows: a node address like `http://192.168.0.1:3413` lost a slash on screen.
+- "Send all" no longer stays "Waiting for confirmations" forever.
+- The app checks that no other Epic program is using a folder before it opens, adds or deletes a wallet there or uses its blockchain data.
+- Receive explains why HTTP couldn't start (the port is in use, or the node didn't answer) and Try again works.
+- Your Epic address stays visible on Receive while receiving is off.
+- Quit on the settings-error screen works again.
+- Opening a wallet folder gives the app access to the wallet folders it finds only, not the whole folder you picked.
+- Send refuses a recipient that isn't an address and says "Not enough balance" when it is so. Contacts need a name and a real address.
+- Clearer messages for mismatched passwords and a wrong password on the recovery-phrase page.
+- Help: write your recovery words on paper (no screenshots); the offline-transaction file comes from the sender.
+- Translations: the remaining English text in Polish and the other languages, translated page titles and node states, and a second wallet's default name in your language.
+- Classic: Ctrl+L locks from the page, and the remove-wallet dialog is readable in dark mode.
