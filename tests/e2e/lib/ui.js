@@ -84,11 +84,11 @@ const PAGES = {
     ['Sign a transaction file', '/importTransaction', null, 'rcv-sign'], ['Finalize a transaction file', '/finalizeTransaction', null, 'rcv-fin'],
   ],
   classic: [
-    ['Dashboard', '/dashboard', 'Dashboard'], ['Address Book', '/addressBook', 'Addressbook'], ['Send', '/httpSend', 'Send'],
+    ['Dashboard', '/dashboard', 'Dashboard'], ['Address Book', '/addressBook', 'Address Book'], ['Send', '/httpSend', 'Send'],
     ['Finalize offline transaction', '/finalizeTransaction', 'Finalize offline transaction'], ['Receive', '/httpReceive', 'Receive'],
     ['Import offline transaction', '/importTransaction', 'Import offline transaction'], ['About', '/about', 'About'], ['Help', '/help', 'Help'],
-    ['Profile', '/account', 'Account', 'gear'], ['Settings', '/settings', 'Settings', 'gear'], ['Recheck Balance', '/recheckBalance', 'Recheck balance', 'gear'],
-    ['Mnemonic Words', '/mnemonic', 'Mnemonic Words', 'gear'],
+    ['Profile', '/account', 'Profile', 'gear'], ['Settings', '/settings', 'Settings', 'gear'], ['Recheck Balance', '/recheckBalance', 'Recheck Balance', 'gear'],
+    ['Mnemonic Words', '/mnemonic', 'Recovery phrase', 'gear'],
   ],
 };
 
