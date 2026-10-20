@@ -240,6 +240,12 @@ export default {
     kind_http: 'HTTP',
     last_tx: 'Последна транзакция: {when}',
     back: 'Всички контакти',
+    row_send: 'Изпрати на:',
+    menu_label: 'Още опции за {name}',
+    menu_details: 'Подробности',
+    copy_epicbox: 'Копирай Epicbox адрес',
+    copy_http: 'Копирай HTTP адрес',
+    pick_hint: 'Изберете контакт, за да му изпратите плащане. Бутонът … до всеки контакт дава достъп до подробностите, „Промени“ и „Изтрий“.',
 
     //one contact
     epicbox_address: 'Epicbox адрес',

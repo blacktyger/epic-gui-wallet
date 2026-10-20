@@ -1,10 +1,11 @@
 /*
- * Contacts (6.1.6), once per interface: add (with live checks), a contact's own picture (made safe:
- * re-encoded, metadata gone, an SVG refused), edit, search, sort, copy, Send from a contact, the
- * Send screen's picker (tester item #38), delete. No node is needed: nothing is sent.
+ * Contacts (6.1.6), Modern only (Classic is no longer tested): add (with live checks), a contact's own picture (made safe:
+ * re-encoded, metadata gone, an SVG refused), edit, search, sort, copy, a click on a contact opens
+ * Send on it, the row's … menu (also by keyboard), the Send screen's picker (tester item #38), delete. No node is needed: nothing is sent.
  * E2E_CONTACT_SHOTS=1 also takes the screenshots for the release notes (desktop and a narrow
  * window at 150 % text; Modern also light), in the case's shots/ folder.
  */
+// e2e-ui: modern
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -56,7 +57,15 @@ H.runCase('contacts', async (t) => {
 
   const size = (width, height) => t.app.evaluate(({ BrowserWindow }, [a, b]) => { const win = BrowserWindow.getAllWindows()[0]; win.setSize(a, b); }, [width, height]);
   const shot = async (name) => { if (SHOTS) { await w.waitForTimeout(350); await t.screenshot(name); } };
-  const openRow = async (name) => { await w.locator(row).filter({ hasText: name }).first().click(); await w.waitForTimeout(200); };
+  //a row sends; its details are the first item of its … menu
+  const item = (name) => w.locator(m ? '.e-con-item' : '.cbook-item').filter({ has: w.locator('b', { hasText: name }) }).first();
+  const menuPick = async (name, i) => {
+    await item(name).locator('.rmenu-btn').click();
+    const items = item(name).locator('[role=menuitem]');
+    await (typeof i === 'number' ? items.nth(i) : items.filter({ hasText: i }).first()).click();
+    await w.waitForTimeout(200);
+  };
+  const openRow = (name) => menuPick(name, 0);
   const toValue = () => w.locator('input[placeholder="Recipient\'s address"], input[placeholder*="address" i]').first().inputValue();
 
   await t.step('first start: Welcome', () => U.welcome(w), { fatal: true });
@@ -82,7 +91,6 @@ H.runCase('contacts', async (t) => {
     await shot('form-error');
     await w.locator(`#${p}-f-box`).fill(BOX_MARA);
     await w.locator(`#${p}-f-ext`).fill(HTTP_MARA);
-    await w.locator(`#${p}-f-city`).fill('Kraków');
     await w.locator(`#${p}-f-note`).fill('Flatmate. Rent share on the 18th.');
     await w.locator(m ? '.e-con-form-foot button[type=submit]' : '.cbook-foot button[type=submit]').click();
     await H.waitFor(async () => (await U.contactNames(w, ui)).includes('Mara Okafor'), { timeout: 8000 });
@@ -186,14 +194,36 @@ H.runCase('contacts', async (t) => {
     }
   }
 
-  await t.step('Send from a contact: Send opens with its HTTP address filled', async () => {
-    await openRow('Mara O. Okafor');
-    await w.getByRole('button', { name: 'Send via HTTP' }).click();
+  await t.step('a click on a contact: Send opens with its Epicbox address; its … menu: Send via HTTP', async () => {
+    await item('Mara O. Okafor').locator(row).click();
     await H.waitFor(async () => /httpSend/.test(await U.route(w)), { timeout: 5000 });
     const v = await H.waitFor(async () => { const x = await toValue(); return x || null; }, { timeout: 5000 });
-    if (v !== HTTP_MARA) throw new Error('recipient: ' + v);
+    if (v !== BOX_MARA) throw new Error('recipient: ' + v);
     await shot('send-prefilled');
-    return 'recipient ' + v;
+    await U.nav(w, ui, U.PAGES[ui].find((x) => x[1] === '/addressBook'));
+    await w.waitForTimeout(300);
+    await item('Mara O. Okafor').locator('.rmenu-btn').click();
+    await shot('row-menu');
+    await item('Mara O. Okafor').locator('[role=menuitem]', { hasText: 'Send via HTTP' }).click();
+    const h = await H.waitFor(async () => { const x = await toValue(); return x === HTTP_MARA ? x : null; }, { timeout: 5000 });
+    if (!h) throw new Error('recipient: ' + (await toValue()));
+    return 'Epicbox by the row, HTTP from the menu';
+  });
+
+  await t.step('the … menu by keyboard: Enter opens it, ↓ moves, Esc closes back to the button', async () => {
+    await U.nav(w, ui, U.PAGES[ui].find((x) => x[1] === '/addressBook'));
+    await w.waitForTimeout(300);
+    const btn = item('Juno Reyes').locator('.rmenu-btn');
+    await btn.focus();
+    await w.keyboard.press('Enter');
+    const first = await w.evaluate(() => document.activeElement && document.activeElement.getAttribute('role') + ':' + document.activeElement.textContent.trim());
+    if (first !== 'menuitem:Details') throw new Error('focus after Enter: ' + first);
+    await w.keyboard.press('ArrowDown');
+    await w.keyboard.press('Escape');
+    const back = await w.evaluate(() => document.activeElement && document.activeElement.className);
+    if (!/rmenu-btn/.test(back)) throw new Error('focus after Esc: ' + back);
+    if (await item('Juno Reyes').locator('[role=menu]').count()) throw new Error('the menu stayed open');
+    return 'Details first, Esc back to the … button';
   });
 
   await t.step('Send › the contact button: choose Juno, the recipient is filled (item #38)', async () => {
@@ -243,7 +273,8 @@ H.runCase('contacts', async (t) => {
     await shot('delete');
     await w.getByRole('button', { name: 'Keep contact' }).click();
     if (!(await U.contactNames(w, ui)).includes('Café Lumen')) throw new Error('Keep deleted it');
-    await w.locator('.e-con-del, .cbook-del-btn').first().click();
+    //this time from the row's … menu
+    await menuPick('Café Lumen', 'Delete');
     await w.locator(m ? 'dialog[open]' : '.modal.is-active').getByRole('button', { name: 'Delete contact' }).click();
     const n = await H.waitFor(async () => { const x = await U.contactNames(w, ui); return x.length === 2 ? x : null; }, { timeout: 5000 });
     if (!n) throw new Error('still listed: ' + (await U.contactNames(w, ui)).join(', '));

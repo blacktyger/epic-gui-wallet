@@ -240,6 +240,12 @@ export default {
     kind_http: 'HTTP',
     last_tx: 'Ostatnia transakcja: {when}',
     back: 'Wszystkie kontakty',
+    row_send: 'Wyślij do:',
+    menu_label: 'Więcej opcji kontaktu {name}',
+    menu_details: 'Szczegóły',
+    copy_epicbox: 'Kopiuj adres Epicbox',
+    copy_http: 'Kopiuj adres HTTP',
+    pick_hint: 'Wybierz kontakt, aby wysłać mu płatność. Pod przyciskiem … przy każdym kontakcie znajdziesz szczegóły oraz opcje „Edytuj” i „Usuń”.',
 
     //one contact
     epicbox_address: 'Adres Epicbox',

@@ -48,10 +48,12 @@
           </div>
         </div>
         <ul v-if="shownList.length" class="e-con-list">
-          <li v-for="c in shownList" :key="c.id">
-            <button type="button" class="e-con-row" :aria-current="isSelected(c) ? 'true' : null" @click="callAddress(c)">
+          <li v-for="c in shownList" :key="c.id" class="e-con-item">
+            <!-- the row sends: Send opens with this contact's address (its details are in the … menu) -->
+            <button type="button" class="e-con-row" :aria-current="isSelected(c) ? 'true' : null" @click="openContact(c)">
               <ContactAvatar :name="c.name" :image="avatarOf(c)" size="md" />
               <span class="e-con-row-text">
+                <span v-if="sendableOf(c).length" class="e-sr-only">{{ $t('msg.contacts.row_send') }}</span>
                 <b>{{ c.name }}</b>
                 <small class="e-con-row-addr" translate="no">{{ shortOf(c) }}</small>
               </span>
@@ -62,6 +64,7 @@
                 <small v-if="lastShort(c)">{{ lastShort(c) }}</small>
               </span>
             </button>
+            <RowMenu :label="$t('msg.contacts.menu_label', { name: c.name })" :items="menuItems(c)" @select="onMenu(c, $event)" />
           </li>
         </ul>
         <div v-else-if="addressList.length" class="e-con-none">
@@ -107,16 +110,6 @@
             <p v-if="errorOf('externalTwo')" id="con-f-ext-e" class="e-error-msg"><EIcon name="alertc" />{{ $t(errorOf('externalTwo')) }}</p>
             <p id="con-f-ext-h" class="e-help">{{ $t('msg.contacts.hint_http') }}</p>
           </div>
-          <div class="e-con-grid2">
-            <div class="e-field">
-              <label class="e-label" for="con-f-country">{{ $t('msg.addressbook.country') }} <span class="e-opt">{{ $t('msg.contacts.optional') }}</span></label>
-              <input id="con-f-country" v-model="country" class="e-input" type="text" autocomplete="off" />
-            </div>
-            <div class="e-field">
-              <label class="e-label" for="con-f-city">{{ $t('msg.addressbook.city') }} <span class="e-opt">{{ $t('msg.contacts.optional') }}</span></label>
-              <input id="con-f-city" v-model="city" class="e-input" type="text" autocomplete="off" />
-            </div>
-          </div>
           <div class="e-field">
             <label class="e-label" for="con-f-note">{{ $t('msg.contacts.note') }} <span class="e-opt">{{ $t('msg.modern.settings.notice_optional') }}</span></label>
             <textarea id="con-f-note" v-model="notice" class="e-textarea" rows="3"></textarea>
@@ -136,16 +129,12 @@
           <ContactAvatar :name="name" :image="avatarOf(selectedAddress)" size="xl" />
           <div class="e-grow">
             <h2 id="con-name">{{ name }}</h2>
-            <p v-if="place" class="e-small e-dim">{{ place }}</p>
             <p v-if="selectedLast" class="e-small e-dim">{{ selectedLast }}</p>
           </div>
         </div>
         <div class="e-con-actions">
-          <button v-for="(a, i) in selectedSendable" :key="a.field" type="button" class="e-btn" :class="i == 0 ? 'e-btn-primary' : ''" @click="sendTo(a.field)">
-            <EIcon name="send" />{{ selectedSendable.length > 1 ? $t('msg.contacts.send_' + a.kind) : $t('msg.contacts.send') }}
-          </button>
           <button type="button" class="e-btn" @click="edit()"><EIcon name="pencil" />{{ $t('msg.edit') }}</button>
-          <button type="button" class="e-icon-btn e-con-del" :aria-label="$t('msg.modern.settings.delete_contact')" :title="$t('msg.modern.settings.delete_contact')" @click="trashModalOpen(selectedAddress)"><EIcon name="trash" /></button>
+          <button type="button" class="e-btn e-btn-ghost e-con-del" @click="trashModalOpen(selectedAddress)"><EIcon name="trash" />{{ $t('msg.delete') }}</button>
         </div>
 
         <dl class="e-con-facts">
@@ -170,7 +159,7 @@
 
       <section v-else class="e-panel e-con-main e-con-idle">
         <EIcon name="contacts" />
-        <p class="e-dim">{{ $t('msg.modern.settings.pick_contact') }}</p>
+        <p class="e-dim">{{ $t('msg.contacts.pick_hint') }}</p>
       </section>
     </div>
 
@@ -199,9 +188,10 @@
   import EDialog from '@/components/modern/ui/EDialog.vue';
   import ContactAvatar from '@/components/ContactAvatar.vue';
   import ContactTx from '@/components/modern/activity/ContactTx.vue';
+  import RowMenu from '@/components/RowMenu.vue';
 
   export default reskin(AddressBook, {
-    components: { EIcon, EDialog, ContactAvatar, ContactTx },
+    components: { EIcon, EDialog, ContactAvatar, ContactTx, RowMenu },
     computed: {
       showEmpty() {
         return this.listReady && !this.addressList.length && !this.isNewAddress;

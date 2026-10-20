@@ -240,6 +240,12 @@ export default {
     kind_http: 'HTTP',
     last_tx: 'Poslední transakce: {when}',
     back: 'Všechny kontakty',
+    row_send: 'Odeslat kontaktu:',
+    menu_label: 'Další možnosti kontaktu {name}',
+    menu_details: 'Podrobnosti',
+    copy_epicbox: 'Kopírovat adresu Epicbox',
+    copy_http: 'Kopírovat adresu HTTP',
+    pick_hint: 'Vyberte kontakt, kterému chcete odeslat platbu. Tlačítko … u každého kontaktu nabízí podrobnosti, „Upravit“ a „Smazat“.',
 
     //one contact
     epicbox_address: 'Adresa Epicbox',

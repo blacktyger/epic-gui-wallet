@@ -7,9 +7,7 @@
  */
 import { describe, test, expect, vi } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
-import AddressBook from '@/components/AddressBook.vue';
 import ContactsView from '@/components/modern/views/ContactsView.vue';
-import HttpSend from '@/components/HttpSend.vue';
 import SendView from '@/components/modern/views/SendView.vue';
 import { mountView, t } from './support/mountView.js';
 import { makeStore } from './support/fakeStore.js';
@@ -62,8 +60,8 @@ function fakeAvatars(initial = {}) {
   };
 }
 
+//Modern only: the Classic interface is no longer tested (it shares this logic: AddressBook.vue)
 const BOOKS = [
-  { name: 'Classic', Component: AddressBook },
   { name: 'Modern', Component: ContactsView },
 ];
 
@@ -74,11 +72,18 @@ async function openBook(ui, { book = fakeBook(), avatars = fakeAvatars(), txs = 
   return { ...m, book, avatars, w: m.wrapper };
 }
 const rowNames = (w) => w.findAll('li button[aria-current], li .cbook-row, li .e-con-row').map((b) => b.find('b').text());
-const pick = async (w, name) => {
-  const row = w.findAll('.cbook-row, .e-con-row').find((b) => b.text().includes(name));
-  await row.trigger('click');
+const rowOf = (w, name) => w.findAll('.cbook-item, .e-con-item').find((li) => li.find('b').text().includes(name));
+/* a row's … menu: open it, then the item with this text */
+const menu = async (w, name, item) => {
+  await rowOf(w, name).find('.rmenu-btn').trigger('click');
+  await flushPromises();
+  const it = rowOf(w, name).findAll('[role=menuitem]').find((b) => b.text() == item);
+  if (!it) throw new Error('no menu item ' + item + ' in: ' + rowOf(w, name).text());
+  await it.trigger('click');
   await flushPromises();
 };
+/* a contact's details, through its … menu */
+const pick = (w, name) => menu(w, name, t('msg.contacts.menu_details'));
 
 describe.each(BOOKS)('Contacts ($name)', (ui) => {
   test('the list: avatars with initials, the short address, the kinds; only this wallet\'s contacts', async () => {
@@ -98,8 +103,11 @@ describe.each(BOOKS)('Contacts ($name)', (ui) => {
   test('search filters as you type; nothing found says so', async () => {
     const { w } = await openBook(ui);
     const q = w.find('input[type=search]');
-    await q.setValue('kraków');
+    await q.setValue('flatmate');
     expect(w.findAll('.cbook-row b, .e-con-row b').map((b) => b.text())).toEqual(['Mara Okafor']);
+    //the country and city an older version stored are not searched (nor shown)
+    await q.setValue('kraków');
+    expect(w.findAll('.cbook-row b, .e-con-row b').map((b) => b.text())).toEqual([]);
     await q.setValue('cafe.example');
     expect(w.findAll('.cbook-row b, .e-con-row b').map((b) => b.text())).toEqual(['Café Lumen']);
     await q.setValue('zzz');
@@ -118,14 +126,68 @@ describe.each(BOOKS)('Contacts ($name)', (ui) => {
     expect(w.text()).toContain('yesterday');
   });
 
-  test('a contact\'s Send opens Send on that contact (its id and field, not the address)', async () => {
+  test('a click on a contact opens Send on it (its id and field, not the address); Epicbox first, HTTP from the menu', async () => {
     const { w, $router } = await openBook(ui);
-    await pick(w, 'Mara');
-    await button(w, t('msg.contacts.send_http'), { partial: true }).trigger('click');
-    expect($router.push).toHaveBeenCalledWith({ name: 'httpSend', query: { contact: '4', use: 'externalTwo' } });
-    await pick(w, 'Café');
-    await button(w, t('msg.contacts.send'), { partial: true }).trigger('click');
+    const mara = rowOf(w, 'Mara').find('.cbook-row, .e-con-row');
+    //the row says what it does to a screen reader
+    expect(mara.text()).toContain(t('msg.contacts.row_send'));
+    await mara.trigger('click');
+    expect($router.push).toHaveBeenLastCalledWith({ name: 'httpSend', query: { contact: '4', use: 'externalOne' } });
+    await rowOf(w, 'Café').find('.cbook-row, .e-con-row').trigger('click');
     expect($router.push).toHaveBeenLastCalledWith({ name: 'httpSend', query: { contact: '5', use: 'externalTwo' } });
+    await menu(w, 'Mara', t('msg.contacts.send_http'));
+    expect($router.push).toHaveBeenLastCalledWith({ name: 'httpSend', query: { contact: '4', use: 'externalTwo' } });
+    //no Send button on the contact's details any more
+    await pick(w, 'Mara');
+    expect(w.findAll('button').filter((b) => /^Send/.test(b.text().trim())).length).toBe(0);
+  });
+
+  test('a contact with nothing to send to (an old Tor-only one) shows its details instead', async () => {
+    const list = rows();
+    list.push({ id: 11, user_id: 1, name: 'Tor only', country: '', city: '', onion: 'x.onion', alwaysproof: false, proofaddr: '', externalOne: '', externalTwo: '', notice: 'old' });
+    const { w, $router } = await openBook(ui, { book: fakeBook(list) });
+    await rowOf(w, 'Tor only').find('.cbook-row, .e-con-row').trigger('click');
+    await flushPromises();
+    expect($router.push).not.toHaveBeenCalled();
+    expect(w.find('h2').text()).toBe('Tor only');
+  });
+
+  test('the … menu: keyboard (↓ opens on the first item, ↑/↓ move, Esc closes back to the button)', async () => {
+    const { w } = await openBook(ui);
+    const btn = rowOf(w, 'Mara').find('.rmenu-btn');
+    expect(btn.attributes('aria-label')).toBe(t('msg.contacts.menu_label', { name: 'Mara Okafor' }));
+    expect(btn.attributes('aria-haspopup')).toBe('menu');
+    await btn.trigger('keydown', { key: 'ArrowDown' });
+    await flushPromises();
+    expect(btn.attributes('aria-expanded')).toBe('true');
+    const items = rowOf(w, 'Mara').findAll('[role=menuitem]');
+    expect(items.map((i) => i.text())).toEqual([t('msg.contacts.menu_details'), t('msg.contacts.send_http'), t('msg.contacts.copy_epicbox'), t('msg.contacts.copy_http'), t('msg.edit'), t('msg.delete')]);
+    expect(document.activeElement).toBe(items[0].element);
+    await rowOf(w, 'Mara').find('[role=menu]').trigger('keydown', { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(items[items.length - 1].element);
+    await rowOf(w, 'Mara').find('[role=menu]').trigger('keydown', { key: 'Escape' });
+    await flushPromises();
+    expect(rowOf(w, 'Mara').find('[role=menu]').exists()).toBe(false);
+    expect(document.activeElement).toBe(btn.element);
+  });
+
+  test('copy from the menu puts the address on the clipboard', async () => {
+    const { w } = await openBook(ui);
+    await menu(w, 'Mara', t('msg.contacts.copy_http'));
+    expect(window.clipboard.writeText).toHaveBeenCalledWith(HTTP);
+  });
+
+  test('country and city: never shown or edited, but kept when the contact is saved', async () => {
+    const { w, book } = await openBook(ui);
+    await pick(w, 'Mara');
+    expect(w.text()).not.toContain('Kraków');
+    await button(w, t('msg.edit'), { partial: true }).trigger('click');
+    expect(w.find('input[id$=f-country]').exists()).toBe(false);
+    expect(w.find('input[id$=f-city]').exists()).toBe(false);
+    await w.find('input[id$=f-name]').setValue('Mara O.');
+    await w.find('form[novalidate]').trigger('submit');
+    await flushPromises();
+    expect(book.updateAddressById).toHaveBeenCalledWith(4, expect.objectContaining({ name: 'Mara O.', country: 'PL', city: 'Kraków' }));
   });
 
   test('copy puts the address on the clipboard and the button says so', async () => {
@@ -243,6 +305,15 @@ describe.each(BOOKS)('Contacts ($name)', (ui) => {
     expect(avatars.set).not.toHaveBeenCalled();
   });
 
+  test('delete from the menu asks first, then removes', async () => {
+    const { w, book } = await openBook(ui);
+    await menu(w, 'Café', t('msg.delete'));
+    expect(book.removeAddress).not.toHaveBeenCalled();
+    await button(w, t('msg.modern.settings.delete_contact'), { partial: true }).trigger('click');
+    await flushPromises();
+    expect(book.removeAddress).toHaveBeenCalledWith(5);
+  });
+
   test('no contacts: the empty state, not an empty list', async () => {
     const { w } = await openBook(ui, { book: fakeBook([]) });
     expect(w.text()).toContain(t('msg.modern.settings.empty_title'));
@@ -252,7 +323,6 @@ describe.each(BOOKS)('Contacts ($name)', (ui) => {
 /* ---- Send: choosing a contact ---- */
 
 const SENDS = [
-  { name: 'Classic', Component: HttpSend, dialog: (w) => w.find('.cpick') },
   { name: 'Modern', Component: SendView, dialog: (w) => w.find('dialog.e-cpick') },
 ];
 

@@ -18,7 +18,14 @@ test('a save writes every text column as a string, missing or null ones empty', 
 
 test('search ignores case, also for non-ASCII letters', () => {
   assert.deepEqual(searchContacts([zoe, bob], 'łuk').map(c => c.id), [1]);
-  assert.deepEqual(searchContacts([zoe, bob], 'KRAKÓW').map(c => c.id), [1]);
+  assert.deepEqual(searchContacts([zoe, bob], 'ŁUKASZ').map(c => c.id), [1]);
+});
+
+test('country and city an older version stored are kept on save but not searched (they are not shown any more)', () => {
+  assert.deepEqual(searchContacts([zoe, bob], 'kraków').map(c => c.id), []);
+  assert.deepEqual(searchContacts([bob], 'UK').map(c => c.id), []);
+  assert.equal(contactFields(zoe).city, 'Kraków');
+  assert.equal(contactFields(bob).country, 'UK');
 });
 
 test('search takes the text literally: regex characters and backslashes neither throw nor match everything', () => {

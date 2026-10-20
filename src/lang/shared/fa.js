@@ -240,6 +240,12 @@ export default {
     kind_http: 'HTTP',
     last_tx: 'آخرین تراکنش: {when}',
     back: 'همهٔ مخاطبان',
+    row_send: 'ارسال به:',
+    menu_label: 'گزینه‌های بیشتر برای {name}',
+    menu_details: 'جزئیات',
+    copy_epicbox: 'کپی آدرس Epicbox',
+    copy_http: 'کپی آدرس HTTP',
+    pick_hint: 'برای ارسال به یک مخاطب، او را انتخاب کنید. دکمهٔ … کنار هر مخاطب شامل جزئیات، «ویرایش» و «پاک کردن» است.',
 
     //one contact
     epicbox_address: 'آدرس Epicbox',

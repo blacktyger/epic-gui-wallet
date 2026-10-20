@@ -240,6 +240,12 @@ export default {
     kind_http: 'HTTP',
     last_tx: 'Letzte Transaktion: {when}',
     back: 'Alle Kontakte',
+    row_send: 'Senden an:',
+    menu_label: 'Weitere Optionen für {name}',
+    menu_details: 'Details',
+    copy_epicbox: 'Epicbox-Adresse kopieren',
+    copy_http: 'HTTP-Adresse kopieren',
+    pick_hint: 'Wählen Sie einen Kontakt aus, um ihm etwas zu senden. Die Schaltfläche … neben jedem Kontakt bietet Details, „Bearbeiten“ und „Löschen“.',
 
     //one contact
     epicbox_address: 'Epicbox-Adresse',

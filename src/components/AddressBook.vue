@@ -213,6 +213,7 @@ export default {
 
     const id = ref(0);
     const name = ref('');
+    //country and city an older version asked for: no longer shown, searched or edited, but kept on save
     const country = ref('');
     const city = ref('');
 
@@ -312,7 +313,6 @@ export default {
     },
     /* the detail or the form is open (on a narrow window it takes the place of the list) */
     paneOpen(){ return this.addressLoaded || this.isEditAddress || this.isNewAddress; },
-    place(){ return [this.city, this.country].filter(Boolean).join(', '); },
     problems(){
       const p = contactProblems(this.formFields());
       //a Tor address gets its own message, under the field that holds it
@@ -320,6 +320,8 @@ export default {
       if (isOnionAddress(this.externalTwo)) p.onionWeb = true;
       return p;
     },
+    //Classic's detail (frozen) still shows them
+    place(){ return [this.city, this.country].filter(Boolean).join(', '); },
     selectedAddresses(){ return contactAddresses(this.selectedAddress); },
     /* the ones a Send button is offered for (not a Tor address) */
     selectedSendable(){ return sendableAddresses(this.selectedAddress); },
@@ -401,6 +403,7 @@ export default {
       this.searched = false;
     },
     trashModalOpen(obj){
+      this.trashOpener = document.activeElement;
       this.trashObject = obj
       this.isModalActive = true
       this.$nextTick(() => { if (this.$refs.keepBtn) this.$refs.keepBtn.focus(); });
@@ -421,10 +424,10 @@ export default {
 
     trashCancel(){
       this.isModalActive = false
-      //Classic's modal: back to the contact's delete button (Modern's dialog does this itself)
+      //Classic's modal: back to what opened it, the Delete button or a row's … menu (Modern's dialog does this itself)
+      const back = this.trashOpener;
       this.$nextTick(() => {
-        const b = document.querySelector('.cbook-del-btn');
-        if (b && b.focus) b.focus();
+        if (back && back.focus && document.contains(back)) back.focus();
       });
     },
     copy(text, field){
@@ -434,9 +437,34 @@ export default {
       clearTimeout(this.copiedTimer);
       this.copiedTimer = setTimeout(() => { this.copied = ''; }, 1600);
     },
+    sendableOf(c){ return sendableAddresses(c); },
+    /* a row: Send on this contact's address; a contact with nothing to send to (an old Tor-only one)
+       shows its details instead */
+    openContact(c){
+      if (sendableAddresses(c).length) this.sendTo(null, c);
+      else this.callAddress(c);
+    },
+    /* the row's … menu: details, copy each address, Send via HTTP (the row uses Epicbox first), edit, delete */
+    menuItems(c){
+      const items = [{ key: 'details', label: this.$t('msg.contacts.menu_details') }];
+      const send = sendableAddresses(c);
+      if (send.length > 1) items.push({ key: 'send:' + send[1].field, label: this.$t('msg.contacts.send_' + send[1].kind) });
+      for (const a of contactAddresses(c)) items.push({ key: 'copy:' + a.field, label: this.$t('msg.contacts.copy_' + a.kind) });
+      items.push({ key: 'edit', label: this.$t('msg.edit') });
+      items.push({ key: 'delete', label: this.$t('msg.delete'), danger: true });
+      return items;
+    },
+    onMenu(c, key){
+      const [what, field] = String(key).split(':');
+      if (what == 'details') this.callAddress(c);
+      else if (what == 'send') this.sendTo(field, c);
+      else if (what == 'copy') this.copy(String(c[field] || '').trim(), field);
+      else if (what == 'edit') { this.callAddress(c); this.edit(); }
+      else if (what == 'delete') this.trashModalOpen(c);
+    },
     /* Send, opened on this contact's address (HttpSend.vue reads the contact by its id) */
-    sendTo(field){
-      const c = this.selectedAddress;
+    sendTo(field, contact){
+      const c = contact || this.selectedAddress;
       if (!c || !c.id) return;
       const use = field || (sendableAddresses(c)[0] || {}).field;
       if (!use) return;

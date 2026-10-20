@@ -11,6 +11,13 @@ export default {
   kind_http: 'HTTP',
   last_tx: 'Last transaction: {when}',
   back: 'All contacts',
+  //a row opens Send on the contact (said before its name to screen readers); its … menu has the rest
+  row_send: 'Send to',
+  menu_label: 'More for {name}',
+  menu_details: 'Details',
+  copy_epicbox: 'Copy Epicbox address',
+  copy_http: 'Copy HTTP address',
+  pick_hint: 'Choose a contact to send to them. The … button next to each one has their details, Edit and Delete.',
 
   //one contact
   epicbox_address: 'Epicbox address',

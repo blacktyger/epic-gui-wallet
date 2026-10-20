@@ -240,6 +240,12 @@ export default {
     kind_http: 'HTTP',
     last_tx: 'अंतिम लेन-देन: {when}',
     back: 'सभी संपर्क',
+    row_send: 'इन्हें भेजें:',
+    menu_label: '{name} के लिए और विकल्प',
+    menu_details: 'विवरण',
+    copy_epicbox: 'Epicbox एड्रेस कॉपी करें',
+    copy_http: 'HTTP एड्रेस कॉपी करें',
+    pick_hint: 'किसी संपर्क को भुगतान भेजने के लिए उसे चुनें। हर संपर्क के बगल के … बटन में उसका विवरण, “संपादन करना” और “डिलीट” मिलेंगे।',
 
     //one contact
     epicbox_address: 'Epicbox एड्रेस',
