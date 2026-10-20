@@ -41,17 +41,21 @@ export function isEpicboxAddress(address) {
   return v.includes('@') || v.startsWith('es') || v.startsWith('epicbox');
 }
 
-/* a bare Tor address (56 base32 characters, with or without .onion / a port), as a contact can fill it in */
+/* a bare Tor address (56 base32 characters, with or without .onion, a port, a path), as a contact can fill it in */
 export function isOnionAddress(address) {
-  return /^[a-z2-7]{56}(\.onion)?(:\d+)?\/?$/i.test(String(address == null ? '' : address).trim());
+  return /^[a-z2-7]{56}(\.onion)?(:\d+)?(\/\S*)?$/i.test(String(address == null ? '' : address).trim());
 }
 
-/* a recipient that is none of the kinds the Send form can send to: not http(s), not Epicbox-like, not Tor
-   ("hello world" used to pass, QA T05) */
+/* a host the wallet can send to over HTTP without a scheme: name.tld, an IPv4 address or localhost,
+   with an optional port and path */
+const HOST_ADDRESS = /^(localhost|[a-z0-9-]+(\.[a-z0-9-]+)+)(:\d+)?(\/\S*)?$/i;
+
+/* a recipient that is none of the kinds the Send form can send to: not http(s) (any case), not
+   Epicbox-like, not Tor, not a bare host ("hello world" used to pass, QA T05) */
 export function isUnknownRecipient(address) {
   const v = String(address == null ? '' : address).trim();
-  if (v === '' || v.includes('http') || isEpicboxAddress(v)) return false;
-  return !isOnionAddress(v);
+  if (v === '' || /http/i.test(v) || isEpicboxAddress(v)) return false;
+  return !isOnionAddress(v) && !HOST_ADDRESS.test(v);
 }
 
 /* the send method: the chosen one (an Epicbox contact sets 'epicbox'), or 'epicbox' for an Epicbox address */

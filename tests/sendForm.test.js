@@ -81,7 +81,8 @@ test('a recipient that is no address at all is refused; Epicbox, http(s) and Tor
   for (const bad of ['hello world', 'alice', '12345', 'not an address!!', 'ftp://x']) assert.equal(isUnknownRecipient(bad), true, bad);
   const onion = 'a'.repeat(52) + 'abcd';
   for (const ok of ['', '   ', 'esWY5xrwwGme5Ca6Aje8joEvtqNLtUcKfkycNFDQSYQbHi14LyEM@epicbox.epiccash.com', 'es123', 'x@epicbox.epiccash.com',
-    'http://1.2.3.4:3415', 'https://example.com', onion, onion + '.onion', onion + '.onion:3415/']) {
+    'http://1.2.3.4:3415', 'https://example.com', 'HTTP://1.2.3.4:3415', '192.168.1.10:3415', 'mywallet.example.com:3415',
+    'localhost:3415', 'epicbox://es123', onion, onion + '.onion', onion + '.onion:3415/', onion + '.onion/v2/foreign']) {
     assert.equal(isUnknownRecipient(ok), false, ok);
   }
   assert.equal(isOnionAddress(onion + '.onion'), true);
