@@ -1,6 +1,11 @@
+/* Hindi (hi): the Classic interface; the shared and Modern strings are imported. The same keys, in the same order, as the English (see the comments there).
+ * A missing key falls back to English (tests/i18n.test.js lists the allowed ones). */
+import shared from './shared/hi.js';
+import modern from './modern/hi.js';
+
 const messages = {
   msg: {
-
+    ...shared,
     title: '',
     password: 'पासवर्ड',
     passwordAgain: 'पासवर्ड फिर से दर्ज करें',
@@ -12,23 +17,28 @@ const messages = {
     clearup: 'साफ़ करें',
     close: 'बंद करें',
     jump: 'कूदें',
-    error: 'कृपया करके इन गलतियों को सही करें):',
-    confirmed: 'पुष्टि करें',
-    ok: 'Ok',
-    confirm: 'Confirm',
-    confirm_action: 'Confirm action',
+    error: 'कृपया ये गलतियां ठीक करें:',
+    confirmed: 'पुष्टि हो गई',
     unconfirmed: 'पुष्टिकरण की प्रतीक्षा',
-    sent_confirmed: 'Sent',
-    received_confirmed: 'Received',
-    sent_unconfirmed: '... waiting for receiver to sign',
-    received_unconfirmed: '... waiting for sender to finalize',
-    received_mempool: '... waiting for confirmation',
-    locked: 'बंद',
+    sent_confirmed: 'भेजा गया',
+    received_confirmed: 'प्राप्त हुआ',
+    sent_unconfirmed: 'पाने वाले के हस्ताक्षर की प्रतीक्षा',
+    sent_waiting_reply: 'प्राप्तकर्ता के जवाब की प्रतीक्षा है। जवाब न आए तो इसे रद्द करें',
+    received_unconfirmed: 'भेजने वाले के अंतिम रूप देने की प्रतीक्षा',
+    received_mempool: 'पुष्टियों की प्रतीक्षा',
+    locked: 'लॉक',
     send: 'भेजें',
+    node_not_synced: 'नोड सिंक नहीं है',
+    epicbox_not_connected: 'Epicbox कनेक्ट नहीं है',
+    epicbox_not_connected_hint: 'Epicbox लिसनर चलने के बाद ही Epicbox एड्रेस पर भेजना संभव है। तब तक फ़ाइल या HTTP एड्रेस इस्तेमाल करें।',
+    node_not_synced_hint: 'नोड के सिंक होने के बाद ही भेजना संभव है।',
     dandelion: 'Dandelion++',
-    dandelion_hint: 'Broadcasting transactions via Dandelion++',
-    createofflinetx: 'Create offline transaction',
-    cancel:'रद्द करें',
+    dandelion_hint: 'Dandelion++ के ज़रिए लेन-देन प्रसारित करना',
+    createofflinetx: 'ऑफ़लाइन लेन-देन बनाएं',
+    cancel: 'रद्द करें',
+    ok: 'ठीक है',
+    confirm: 'पुष्टि करें',
+    confirm_action: 'कार्रवाई की पुष्टि करें',
     save: 'सहेजें',
     delete: 'डिलीट',
     edit: 'संपादन करना',
@@ -40,128 +50,116 @@ const messages = {
     more: 'अधिक',
     wrongAddressFormat: 'गलत एड्रेस प्रारूप',
     node_server: 'नोड सर्वर',
-    node_server_builtin: 'अंतर्निहित नोड सर्वर',
+    node_server_builtin: 'इनबिल्ट नोड सर्वर',
     node_server_external: 'बाहरी नोड सर्वर',
     node_server_address: 'नोड सर्वर एड्रेस',
-    copy_to_clipboard: 'क्लिपबोर्ड पर कॉपी!',
+    copy_to_clipboard: 'क्लिपबोर्ड पर कॉपी हो गया!',
     placeholder_search: 'खोज...',
     refresh: 'ताज़ा करें',
     page_of: '{1} का पृष्ठ {0}',
     only_letter: 'a-z से केवल लोअर केस अक्षर,',
     custom_settings: 'कस्टम सेटिंग्स',
-    advanced_settings: 'Advanced Settings',
-    step_of: 'कदम {0}/{1}',
-    close_all_process: 'Terminate all processes',
-    waiting_for_nodesync: '... waiting for node to be synced.',
-
-    menu:{
+    step_of: 'चरण {0}/{1}',
+    close_all_process: 'सभी प्रक्रियाएं बंद करें',
+    waiting_for_nodesync: '... नोड के सिंक होने की प्रतीक्षा है।',
+    menu: {
       general: 'सामान्य',
       dashboard: 'डैशबोर्ड',
       address_book: 'एड्रेस बुक',
       send: 'भेजें',
       finalize: 'ऑफ़लाइन लेन-देन को अंतिम रूप दें',
-      receive: 'पाना',
+      receive: 'प्राप्त करें',
       import: 'ऑफ़लाइन लेन-देन आयात करें',
       misc: 'विविध',
       about: 'हमारे बारे में',
-      help: 'मदद करना',
+      help: 'सहायता',
       logout: 'लॉग आउट',
-      account: 'खाता',
-      settings: 'समायोजन',
-      recheck: 'बैलेंस रीचेक करें',
-      mnemonic: 'Mnemonic शब्द',
-      run_setup: 'रन सेटअप सहायक',
+      account: 'प्रोफ़ाइल',
+      settings: 'सेटिंग्स',
+      recheck: 'बैलेंस दोबारा जांचें',
+      mnemonic: 'रिकवरी वाक्यांश',
+      run_setup: 'सेटअप सहायक चलाएं',
       updates: 'अपडेट',
-      openepichidden: 'Epic wallet location',
+      openepichidden: 'Epic वॉलेट का स्थान',
     },
-
     headerbar: {
-      howdy: 'हाउडी,',
+      howdy: 'नमस्ते,',
       version: 'संस्करण',
-      peers: 'समकक्ष लोग',
-      status: 'दर्जा',
+      peers: 'पीयर',
+      status: 'स्थिति',
       node: 'नोड',
       sync_height: 'सिंक ऊंचाई',
-      progress: 'Progress',
+      progress: 'प्रगति',
       block_height: 'ब्लॉकचेन हाइट',
-      node_sync_status: 'Internal node sync status',
+      node_sync_status: 'इनबिल्ट नोड की सिंक स्थिति',
+      node_behind: 'आपका नोड {n} ब्लॉक पीछे है।',
+      switch_node: 'नोड बदलें',
     },
-    dashboard:{
-      transactions: 'लेनदेन',
-      coins: 'सिक्के'
+    dashboard: {
+      transactions: 'लेन-देन',
+      coins: 'सिक्के',
     },
-    create:{
+    create: {
       select: 'अपने वॉलेट के लिए निर्देशिका का चयन करें',
-      seedPhrase: 'सीड वाक्यांश',
+      seedPhrase: 'रिकवरी वाक्यांश',
       toNewMsg: 'एक नया वॉलेट बनाएँ.',
       newWallet: 'नया वॉलेट बनाएं',
-      backupNote: 'महत्वपूर्ण! अपने वॉलेट को पुनर्स्थापित करने के लिए कृपया अपने बीज वाक्यांश का बैकअप लें',
+      backupNote: 'महत्वपूर्ण! अपना वॉलेट पुनर्स्थापित कर सकने के लिए कृपया अपने रिकवरी वाक्यांश का बैकअप लें',
       fatal_create: 'घातक: क्रिया "{0}" पर निर्मित विफल',
-      fatal_update: 'घातक: ऐप कॉन्फ़िगरेशन अपडेट नहीं किया गया।'
+      fatal_update: 'घातक: ऐप कॉन्फ़िगरेशन अपडेट नहीं किया गया।',
+      stage_create: 'वॉलेट और उसका रिकवरी वाक्यांश बनाया जा रहा है',
+      stage_save: 'खाता सहेजा जा रहा है',
+      backupWarning: 'इन शब्दों को इसी क्रम में कागज़ पर लिख लें और किसी सुरक्षित, ऑफ़लाइन जगह पर रखें। यदि यह कंप्यूटर या इसकी फ़ाइलें खो जाएं, तो इस वॉलेट को वापस पाने का एकमात्र तरीका यही शब्द हैं। जिसके पास ये शब्द होंगे, वह आपके फ़ंड ले सकता है: इन्हें कभी किसी से साझा न करें, और फ़ोटो, स्क्रीनशॉट या फ़ाइल के रूप में न रखें।',
+      writtenDown: 'मैंने इसे लिख लिया है, आगे बढ़ें',
     },
-
-    setupwizard:{
+    setupwizard: {
       setup_assistant: 'सेटअप सहायक',
       account_information: 'खाते की जानकारी',
       your_name: 'आपका नाम',
       name_only_internal: 'नाम केवल आंतरिक उपयोग किया गया है',
-      next_step: 'अगला कदम',
+      next_step: 'अगला चरण',
       network_node: 'नेटवर्क नोड',
       network_node_txt: `आपके वॉलेट को लेन-देन भेजने और प्राप्त करने के लिए एक नेटवर्क नोड की आवश्यकता होती है।<br/>
-      आप अंतर्निर्मित नोड सर्वर और बाहरी नोड सर्वर के बीच चयन कर सकते हैं।<br/>
+      आप इनबिल्ट नोड सर्वर और बाहरी नोड सर्वर के बीच चयन कर सकते हैं।<br/>
       <br/>
       यदि आप सुनिश्चित नहीं हैं कि किसका उपयोग करना है, तो सेटिंग को वैसे ही रहने दें जैसे वे हैं।<br/>`,
-      previous_step: 'पिछला कदम',
-      receive_transactions: 'लेन-देन प्राप्त करना',
-      receive_transactions_txt: `अन्य वॉलेट्स से लेन-देन प्राप्त करने के लिए, आपका वॉलेट इंटरनेट पर सुलभ होना चाहिए।<br/>
-      <br/>
-      इस प्रक्रिया को आसान बनाने के लिए, हमने ngrok टूल को वॉलेट में एकीकृत किया है।<br/>
-      एक बार ngrok सक्रिय हो जाने के बाद, आपका वॉलेट एक अस्थायी ngrok पते के माध्यम से पहुँचा जा सकेगा।<br/>
-      यदि आप राउटर सेटिंग्स और पोर्ट फ़ॉरवर्डिंग से परिचित नहीं हैं, तो हम ngrok सेवा का उपयोग करने की सलाह देते हैं।<br/>
-      <br/>
-      अपना ngrok प्रमाणीकरण टोकन प्राप्त करने के लिए, कृपया ngrok.com पर एक नया खाता बनाएँ।<br/>
-      <br/>
-      <br/>
-      यदि आप ngrok सेवा का उपयोग नहीं करना चाहते हैं, तो नीचे के खाने को खाली छोड़ दें।<br/>`,
-      authtoken: 'आपका ngrok Authtoken',
-      howto: 'ngrok से अपना Authtoken कैसे प्राप्त करें',
+      previous_step: 'पिछला चरण',
+      receive_transactions: 'नई सुविधा* Epic एड्रेस',
       values_correct: 'क्या ये मान सही हैं?',
       save_and_finish: 'सहेजें और समाप्त करें',
       name: 'नाम',
       language: 'भाषा',
-      ngrok_authtoken: 'Ngrok Auth-Token',
       db_fatal: 'DB घातक: DB सम्मिलित नहीं कर सकता',
       errors_save: 'उपयोगकर्ता सेटिंग सहेजने में त्रुटि: {0}',
-      epicbox_domain: 'Epicbox Web Address',
-      epicbox_off: 'turned off',
-      epicbox_domain_hint: `Leave field blank if you don't want to use this service.`,
-      noninteractive_transactions: `Intro to EPIC Addresses<br/>
+      epicbox_domain: 'Epicbox वेब एड्रेस',
+      epicbox_off: 'बंद',
+      epicbox_domain_hint: 'यदि आप इस सेवा का उपयोग नहीं करना चाहते, तो फ़ील्ड को खाली छोड़ दें।',
+      noninteractive_transactions: `EPIC एड्रेस का परिचय<br/>
       <br/>
-      EPIC addresses provide an easy way to send EPIC when the receiving wallet is offline.<br/>
+      जब पाने वाला वॉलेट ऑफ़लाइन हो, तब EPIC एड्रेस EPIC भेजने का आसान तरीका देते हैं।<br/>
       <br/>
-      This is accomplished securely and privately by using an external relay server called "Epicbox"<br/>
-      Relay servers such as epicbox.epiccash.com and others to come later are provided by our community.<br/>
+      यह “Epicbox” नामक बाहरी रिले सर्वर के ज़रिए सुरक्षित और निजी रूप से किया जाता है।<br/>
+      epicbox.epiccash.com जैसे रिले सर्वर, और आगे आने वाले अन्य सर्वर, हमारे समुदाय द्वारा उपलब्ध कराए जाते हैं।<br/>
       <br/>
-      How it works:<br/>
-      Transactions are sent to the Epicbox server and delivered to the recipient as soon as the receiver's wallet is online.<br/>
-      <br/>The receiver signs the transaction and responds with a confirmation back to the sender which 'finalizes' the transaction if the sender is online.<br/>
-      <br/>If both wallets are online when a transaction is created, the process takes place immediately.<br/>
+      यह कैसे काम करता है:<br/>
+      लेन-देन Epicbox सर्वर को भेजे जाते हैं और पाने वाले का वॉलेट ऑनलाइन होते ही उसे पहुंचा दिए जाते हैं।<br/>
+      <br/>पाने वाला लेन-देन पर हस्ताक्षर करता है और भेजने वाले को पुष्टि वापस भेजता है, जिससे भेजने वाले के ऑनलाइन होने पर लेन-देन “अंतिम रूप” ले लेता है।<br/>
+      <br/>यदि लेन-देन बनाते समय दोनों वॉलेट ऑनलाइन हों, तो यह प्रक्रिया तुरंत हो जाती है।<br/>
       <br/>
-      This system does not anonymize your IP and a VPN is recommended for IP address privacy.<br/>
-      <br/>Transactions are fully encrypted which assures a private transaction exchanged between the sender and receiver.<br/>
+      यह व्यवस्था आपके IP को गुमनाम नहीं करती; IP एड्रेस की निजता के लिए VPN की सलाह दी जाती है।<br/>
+      <br/>लेन-देन पूरी तरह एन्क्रिप्टेड होते हैं, जिससे भेजने वाले और पाने वाले के बीच होने वाला लेन-देन निजी रहता है।<br/>
       <br/>
       `,
     },
-    transaction:{
-
-      received: 'प्राप्त करें',
+    transaction: {
+      received: 'प्राप्त हुआ',
       send: 'भेजें',
-      transaction_id: 'लेनदेन ID',
+      transaction_id: 'लेन-देन ID',
       creation_date: 'निर्माण तिथि',
-      receiver: 'From/To',
+      receiver: 'किससे/किसे',
       payment_proof: 'भुगतान का प्रमाण',
       amount: 'राशि (शुल्क)',
-      status: 'Status',
+      status: 'स्थिति',
       transfer_type: 'ट्रांसफर टाइप',
       id: 'ID',
       slate_id: 'स्लेट ID',
@@ -169,6 +167,7 @@ const messages = {
       amount_credited: 'जमा की गई राशि',
       amount_debited: 'काटी गई राशि',
       fee: 'शुल्क',
+      transaction_fee: 'लेन-देन शुल्क',
       message: 'संदेश',
       type: 'टाइप',
       receiver_address: 'प्राप्तकर्ता का एड्रेस',
@@ -176,61 +175,70 @@ const messages = {
       sender_address: 'भेजने वाले का एड्रेस',
       sender_signature: 'प्रेषक हस्ताक्षर',
       sender_address_path: 'प्रेषक एड्रेस पथ',
-      sendall: 'All'
-
+      sendall: 'सब',
+      sendall_failed: 'यह पता नहीं चल सका कि कितना भेजा जा सकता है। कुछ देर बाद फिर कोशिश करें।',
     },
-
-    commit:{
+    commit: {
       unspentCmt: 'अव्ययित आउटपुट',
       heightCreated: 'बनाए जाने पर ब्लॉक ऊंचाई',
       unspent: 'बिना खर्च',
       spent: 'खर्च किया गया',
       noCmtFound: 'कोई खर्च न हुआ आउटपुट कमिटमेंट नहीं मिला',
-      noCmt:'बिना खर्च के आउटपुट कमिटमेंट नहीं',
+      noCmt: 'बिना खर्च के आउटपुट कमिटमेंट नहीं',
       copied: 'कॉपी किया',
       unconfirmed: 'अपुष्ट',
       coins: 'सिक्के',
       coin_id: 'सिक्का ID',
       value: 'कीमत',
-      status: 'स्टेट्स',
-      copy: 'कमिट कॉपी'
-
-
+      status: 'स्थिति',
+      copy: 'कमिट कॉपी',
     },
     account: {
-      account: 'खाता',
-      your_name: 'तुम्हारा  नाम',
-      settings_saved: 'खाता सेटिंग सहेजी गई',
-      error_save: 'त्रुटि बचत खाता'
+      account: 'प्रोफ़ाइल',
+      your_name: 'आपका नाम',
+      settings_saved: 'प्रोफ़ाइल सेटिंग्स सहेजी गईं',
+      error_save: 'प्रोफ़ाइल सेटिंग्स सहेजने में त्रुटि',
     },
-    addressbook:{
+    addressbook: {
       name: 'नाम',
       country: 'देश',
       city: 'शहर',
-      external_one: 'बाहरी एड्रेस 1',
+      external_one: 'Epicbox एड्रेस',
       external_two: 'बाहरी एड्रेस 2',
       notice: 'सूचना',
       deleted: 'एड्रेस हटा दिया गया!',
       error_delete: 'एड्रेस हटाने में त्रुटि!',
+      error_save: 'संपर्क सहेजा नहीं जा सका।',
+      error_name: 'संपर्क को एक नाम दें।',
+      error_address: 'भेजने के लिए एक एड्रेस जोड़ें।',
+      error_epicbox: 'यह मान्य Epicbox एड्रेस नहीं है।',
     },
     remove: {
       warning: 'चेतावनी',
       info: 'जानकारी',
-      help: 'मदद करना',
+      help: 'सहायता',
       remove: 'हटाना',
-      success: 'सफलता'
+      success: 'सफलता',
     },
     login: {
-      listener_started: 'वॉलेट लीस्टेनर शुरू हो गया',
-      error_listener_started: 'वॉलेट लीस्टेनर प्रारंभ करने में त्रुटि',
+      listener_started: 'वॉलेट लिसनर शुरू हो गया',
+      error_listener_started: 'वॉलेट लिसनर शुरू करने में त्रुटि',
+      port_in_use: 'पोर्ट {0} किसी दूसरे प्रोग्राम (जैसे आपके अपने epic-wallet) द्वारा इस्तेमाल हो रहा है। उसे बंद करें, फिर दोबारा कोशिश करें।',
+      epicbox_started: 'Epicbox शुरू हो गया',
+      error_epicbox_started: 'Epicbox शुरू करने में त्रुटि',
+      stage_check: 'वॉलेट की फ़ाइलें जांची जा रही हैं',
+      stage_processes: 'अब भी चल रही वॉलेट प्रक्रियाएं खोजी जा रही हैं',
+      stage_closing: 'पुरानी वॉलेट प्रक्रियाएं बंद की जा रही हैं',
+      stage_wallet: 'वॉलेट सेवा शुरू की जा रही है',
+      stage_unlock: 'वॉलेट अनलॉक किया जा रहा है',
+      folder_missing: 'वॉलेट “{0}” का फ़ोल्डर नहीं मिला: {1}। हो सकता है उसे हटाया, नाम बदला या दूसरी जगह ले जाया गया हो।',
+      folder_unknown: 'वॉलेट “{0}” के लिए कोई फ़ोल्डर सहेजा नहीं गया है।',
     },
-    seed:{
-      errorGetMnemonic: 'Mnemonic प्राप्त करने में त्रुटि। क्या पासवर्ड सही है?',
-      mnemonic: 'Mnemonic शब्द'
+    seed: {
+      errorGetMnemonic: 'रिकवरी वाक्यांश प्राप्त करने में त्रुटि। क्या पासवर्ड सही है?',
+      mnemonic: 'रिकवरी वाक्यांश',
     },
-
-
-    new:{
+    new: {
       create: 'नया वॉलेट बनाएं',
       restore: 'वॉलेट को पुनर्स्थापित करें',
       select: 'मौजूदा वॉलेट स्थान चुनें',
@@ -238,146 +246,171 @@ const messages = {
       networkErr: 'नेटवर्क प्रकार निर्धारित नहीं किया जा सकता।<br/>कृपया एक चुनें।',
       selectNetwork: 'जारी रखें',
     },
-
-    restore:{
-
-      title: 'सीड वाक्यांश के माध्यम से वॉलेट को पुनर्स्थापित करें',
-      addSeedsInfo: 'कृपया शब्द(शब्दों) पर क्लिक करके सीड वाक्यांश जोड़ें',
-      yourSeedsInfo: 'आपका सीड वाक्यांश है',
+    walletfolder: {
+      onedrive_title: 'यह फ़ोल्डर OneDrive में है',
+      onedrive_warning: '{0} को OneDrive सिंक करता है। वॉलेट खुला होने पर सिंक होने से वॉलेट डेटाबेस खराब हो सकता है, दूसरे कंप्यूटर पर आपस में टकराने वाली कॉपियां बन सकती हैं, और इनबिल्ट नोड कई गीगाबाइट चेन डेटा अपलोड कर देगा। OneDrive के बाहर का फ़ोल्डर चुनें, जैसे {1}।',
+    },
+    restore: {
+      title: 'रिकवरी वाक्यांश से वॉलेट पुनर्स्थापित करें',
+      addSeedsInfo: 'कृपया शब्दों पर क्लिक करके रिकवरी वाक्यांश जोड़ें',
+      yourSeedsInfo: 'आपका रिकवरी वाक्यांश है',
       added: 'वॉलेट पुनर्प्राप्त करें',
       newPassword: 'एक नया पासवर्ड सेट करें',
       recover: 'वापस पाना',
       walletLocation: 'वॉलेट स्थान',
-      search_placeholder: 'शब्दों को खोजने के लिए टाइप करें / या सीड वाक्यांश पेस्ट करें',
+      search_placeholder: 'शब्द खोजने के लिए टाइप करें / या रिकवरी वाक्यांश पेस्ट करें',
+      paste_info: 'अपना पूरा रिकवरी वाक्यांश बॉक्स में या पहले शब्द में पेस्ट करें, या एक-एक शब्द करके टाइप करें।',
+      phrase: 'रिकवरी वाक्यांश',
+      phrase_placeholder: 'शब्द1 शब्द2 शब्द3 …',
+      phrase_length: 'लंबाई',
+      n_words: '{0} शब्द',
+      word_n: 'शब्द {0}',
+      word_count: '{1} में से {0} शब्द',
+      invalid_words: 'शब्द-सूची से बाहर: {0} (लाल रंग से चिह्नित)',
+      bad_length: 'रिकवरी वाक्यांश में 12, 15, 18, 21 या 24 शब्द होते हैं',
       create_new: 'नया खाता बनाएँ',
-      change_seed: 'सीड शब्द बदलें',
-      wallet_recovered: 'आपका वॉलेट बरामद हो गया है। कृपया लॉगिन करें और सेटअप पूरा करें।',
-      recover_fail: 'फटल: कार्रवाई "{0}" पर पुनर्प्राप्ति विफल',
-      fatal_app: 'फटल: ऐप कॉन्फ़िगरेशन अपडेट नहीं किया गया।'
-
+      change_seed: 'रिकवरी वाक्यांश के शब्द बदलें',
+      wallet_recovered: 'आपका वॉलेट पुनर्स्थापित हो गया है। कृपया लॉग इन करें और सेटअप पूरा करें।',
+      recover_fail: 'घातक: कार्रवाई "{0}" पर पुनर्प्राप्ति विफल',
+      fatal_app: 'घातक: ऐप कॉन्फ़िगरेशन अपडेट नहीं किया गया।',
     },
-
-    app:{
+    app: {
       create: 'लेन-देन बनाएँ (फ़ाइल)',
-      finalize: 'लेनदेन को अंतिम रूप दें (फ़ाइल)',
+      finalize: 'लेन-देन को अंतिम रूप दें (फ़ाइल)',
       httpSend: 'HTTP/HTTPS के ज़रिए भेजें',
-      createRespFile: 'आयात लेनदेन (फ़ाइल)',
+      createRespFile: 'लेन-देन आयात करें (फ़ाइल)',
       httpReceive: 'HTTP/HTTPS के माध्यम से प्राप्त करें',
-      height:'ब्लॉक ऊंचाई',
+      height: 'ब्लॉक ऊंचाई',
       updateTitle: 'नया संस्करण मिला',
       updateMsg: 'EPIC वॉलेट का नया संस्करण मिला। कृपया अभी अद्यतन करें।',
       yes: 'हां',
       no: 'नहीं',
-      ngrok_service_started: 'Ngrok service started',
-      ngrok_address_changed: 'Your ngrok address has changed',
-      ngrok_service_stopped: 'Ngrok service stopped',
-      ngrok_service_error: 'Error starting Ngrok service',
-      error_setup_internal_node: 'Can not setup internal node server',
-      node_started: 'Node started',
-      node_restarting: 'Node is restarting',
-      node_not_started: 'Node not started',
-      node_offline: 'Node is offline',
-      external_node_online: 'External Node is online',
-      external_node_offline: 'External Node is offline',
-      background_process: 'Please close all processes before continuing.',
-
-      walletonline: 'Your wallet is online',
-      walletoffline: 'Your wallet is offline.',
-
+      error_setup_internal_node: 'इनबिल्ट नोड सर्वर सेट अप नहीं किया जा सकता',
+      node_started: 'नोड शुरू हो गया',
+      node_restarting: 'नोड रीस्टार्ट हो रहा है',
+      node_not_started: 'नोड शुरू नहीं हुआ',
+      node_port_in_use: 'नोड शुरू नहीं हुआ: पोर्ट {0} किसी दूसरे प्रोग्राम (जैसे आपके अपने epic नोड) द्वारा इस्तेमाल हो रहा है। उसे बंद करें, या सेटिंग्स में उसे बाहरी नोड की तरह इस्तेमाल करें।',
+      node_offline: 'नोड ऑफ़लाइन है',
+      external_node_online: 'बाहरी नोड ऑनलाइन है',
+      external_node_offline: 'बाहरी नोड ऑफ़लाइन है',
+      external_node_invalid: 'आपका नोड एड्रेस {0} Epic नोड नहीं है ({1})। इसे सेटिंग्स में बदलें।',
+      epicbox_wait_timeout: 'Epicbox शुरू नहीं हुआ: नोड सिंक नहीं है। इसे प्राप्त करें पेज से शुरू करें।',
+      epicbox_switched: 'Epicbox अब {0} पर सुन रहा है',
+      epicbox_connecting: 'Epicbox {0} से कनेक्ट हो रहा है…',
+      epicbox_switch_failed: 'Epicbox नए सर्वर पर शुरू नहीं हो सका। इसे प्राप्त करें पेज से शुरू करें।',
+      epicbox_old_checked: 'पुराने सर्वर {1} से मिले भुगतान संदेश: {0}',
+      epicbox_owner_config_failed: 'वॉलेट API ने नया Epicbox सर्वर स्वीकार नहीं किया: भेजने से पहले वॉलेट को लॉक करके फिर अनलॉक करें।',
+      node_unreachable: 'नोड तक पहुंच नहीं हो पा रही',
+      wallet_api_unreachable: 'वॉलेट API तक पहुंच नहीं हो पा रही',
+      balance_loading: 'बैलेंस पढ़ा जा रहा है…',
+      balance_updating: 'नोड से बैलेंस अपडेट हो रहा है…',
+      balance_waiting_node: 'आखिरी ज्ञात बैलेंस, नोड के सिंक होने पर अपडेट होगा',
+      balance_node_unreachable: 'आखिरी ज्ञात बैलेंस, नोड तक पहुंच नहीं हो पा रही',
+      balance_wallet_no_node: 'आखिरी ज्ञात बैलेंस, वॉलेट नोड से अपडेट नहीं हो सका',
+      listener_starting: 'वॉलेट लिसनर शुरू हो रहा है…',
+      loading_wallet_data: 'लोड हो रहा है…',
+      background_process: 'आगे बढ़ने से पहले कृपया सभी प्रक्रियाएं बंद करें।',
+      walletonline: 'आपका वॉलेट ऑनलाइन है',
+      walletoffline: 'आपका वॉलेट ऑफ़लाइन है।',
     },
-
+    progress: {
+      done: 'पूरा',
+      active: 'जारी है',
+      pending: 'प्रतीक्षा में',
+    },
     info: {
       spendable: 'खर्च करने योग्य',
-      total: 'बेलेंस',
+      total: 'बैलेंस',
       unfinalization: 'अपुष्ट',
-      immature: 'अपरिपक्व'
+      immature: 'अपरिपक्व',
     },
-
-    txs:{
-      tx: 'लेनदेन',
-      canceled:'रद्द',
+    txs: {
+      tx: 'लेन-देन',
+      canceled: 'रद्द',
       noTxFound: 'कोई लेन-देन नहीं मिले',
-      noTx:'कोई लेन-देन नहीं',
+      noTx: 'कोई लेन-देन नहीं',
       cancelSuccess: 'यह लेन-देन रद्द',
     },
-
-
-
-    fileSend:{
+    confirmations: {
+      of: 'पुष्टियां: {0}/{1}',
+      confirming: 'पुष्टि हो रही है',
+      confirmed: 'पुष्टि हो गई',
+      confirmed_count: 'पुष्टि हो गई (पुष्टियां: {0})',
+      confirmed_spendable_count: 'पुष्टि हो गई, खर्च योग्य (पुष्टियां: {0})',
+      waiting: 'पुष्टियों की प्रतीक्षा',
+    },
+    fileSend: {
       sendAmount: 'भेजी जाने वाली राशि',
       createTxFile: 'लेन-देन बनाएँ',
       WrongAmount: 'ग़लत राशि',
       NotEnough: 'पर्याप्त बैलेंस नहीं',
-      saveMsg: 'लेन-देन फ़ाइल सहेजें बनाया गया',
+      saveMsg: 'बनाई गई लेन-देन फ़ाइल सहेजें',
       CreateFailed: 'नई लेन-देन फ़ाइल बनाने में विफल',
     },
-
-    httpSend:{
+    httpSend: {
       sendAmount: 'भेजी जाने वाली राशि',
       address: 'प्राप्तकर्ता का एड्रेस',
       WrongAmount: 'ग़लत राशि',
       NotEnough: 'पर्याप्त बैलेंस नहीं।',
       WrongAddress: 'गलत एड्रेस',
-      WrongTxData: 'लेनदेन बनाने में विफल',
+      WrongTxData: 'लेन-देन बनाने में विफल',
       success: 'लेन-देन की सफलता',
-      TxFailed: 'भेजें लेन-देन विफल',
+      TxFailed: 'लेन-देन भेजना विफल रहा',
       TxResponseFailed: 'प्राप्तकर्ता से सही प्रतिक्रिया प्राप्त करने में विफल',
-      TxCreateFailed: 'लेनदेन बनाना विफल',
+      TxCreateFailed: 'लेन-देन बनाना विफल रहा',
       salteVersion: 'स्लेट फ़ाइल संस्करण',
-      salteVersionHelp: 'यदि आप epic भेजने में विफल रहे, तो स्लेट फ़ाइल संस्करण को बदलने का प्रयास करें और फिर से भेजें'
+      salteVersionHelp: 'यदि आप epic भेजने में विफल रहे, तो स्लेट फ़ाइल संस्करण को बदलने का प्रयास करें और फिर से भेजें',
     },
-
     receive: {
       dropMsg: 'प्राप्त करने के लिए लेन-देन फ़ाइल छोड़ें या अपलोड करने के लिए क्लिक करें',
       WrongFileType: 'गलत लेन-देन फ़ाइल प्रकार',
-      saveMsg: 'प्रतिक्रिया लेनदेन फ़ाइल सहेजें',
-      CreateFailed: 'नई प्रतिक्रिया लेनदेन फ़ाइल बनाने में विफल',
+      saveMsg: 'बनाई गई जवाब वाली लेन-देन फ़ाइल सहेजें',
+      CreateFailed: 'नई जवाब वाली लेन-देन फ़ाइल बनाने में विफल',
       NoSavePlace: 'कृपया सहेजने के लिए स्थान चुनें',
       dragdrop: 'फ़ाइल को खींचें और छोड़ें',
       error_read: 'फ़ाइल सामग्री पढ़ने में त्रुटि',
       success: 'लेन-देन की सफलता',
     },
-
     finalize: {
       finalize: 'अंतिम रूप दें',
       success: 'लेन-देन की सफलता',
       ok: 'ठीक है',
       sending: 'भेजना',
-      dropMsg: 'प्रतिक्रिया लेनदेन फ़ाइल को अंतिम रूप देने के लिए ड्रॉप करें या अपलोड करने के लिए क्लिक करें',
+      dropMsg: 'अंतिम रूप देने के लिए जवाब वाली लेन-देन फ़ाइल यहां छोड़ें या अपलोड करने के लिए क्लिक करें',
       WrongFileType: 'गलत लेन-देन फ़ाइल प्रकार',
-      TxFailed: 'लेन - देन विफल',
+      TxFailed: 'लेन-देन विफल',
       dragdrop: 'फ़ाइल को खींचें और छोड़ें',
-      error_read: 'फ़ाइल सामग्री पढ़ने में त्रुटि'
+      error_read: 'फ़ाइल सामग्री पढ़ने में त्रुटि',
     },
-
     httpReceive: {
-      launchSucess: 'सफलतापूर्वक प्रारंभ',
-      listening: "आपका वॉलेट इस पते के माध्यम से लेन-देन प्राप्त कर सकता है।",
+      listening: 'आपका वॉलेट इन एड्रेस के ज़रिए लेन-देन प्राप्त कर सकता है।',
       address: 'वॉलेट एड्रेस',
-      reachableMsg2: 'सुनिश्चित करें कि आपका ip एड्रेस सार्वजनिक है और इंटरनेट द्वारा पहुंच योग्य है।',
-      close: 'स्टॉप लीस्टेनर',
+      close: 'लिसनर रोकें',
       attention: 'ध्यान',
-      reachableMsg: 'ऑनलाइन लेन-देन प्राप्त करने के लिए, आपका वॉलेट लिस्टन मोड में शुरू होना चाहिए।',
-      password: 'वॉलेट पासवर्ड (HTTP लिस्टन प्रारंभ करने के लिए प्रयुक्त)',
+      reachableMsg: 'ऑनलाइन लेन-देन प्राप्त करने के लिए, आपका वॉलेट लिसनर मोड में शुरू होना चाहिए।',
       start: 'शुरू',
       error: 'कोई पासवर्ड नहीं।',
-      failed: 'प्रारंभ विफल, शायद गलत पासवर्ड',
-      failed2: 'HTTP लिस्टन विफल, आपका सार्वजनिक ip इंटरनेट उपयोगकर्ता द्वारा पहुंच योग्य नहीं है। लेन-देन फ़ाइल का प्रयास करें',
-      failed3: 'आपका सार्वजनिक ip प्राप्त करने में विफल; बाद में कोशिश करो',
-      failed4: 'लीस्टेनर अब लोकलहोस्ट:3415 पर चल रहा है। हालाँकि आपका ip इंटरनेट उपयोगकर्ता द्वारा उपलब्ध नहीं है। लेन-देन फ़ाइल का प्रयास करें',
       ip: 'आपका सार्वजनिक ip',
-      current_ngrok_address: 'Current Ngrok Address',
-      local_address: 'Local address',
-      session_end: 'You are using ngrok without an account. Your session will end in {0} hour, {1} minutes',
-      epicbox_address: 'Your public Epic address',
-      your_qrcode: 'Your QRcode for your "{0}" address',
-      click_qrcode_icon: 'Click the qr code icon',
-      epicbox_not_available: 'Epicbox not available. Wait for the Node to be synced or try to restart the wallet listener',
-      epicbox_off: 'Your epicbox is not configured. Update your settings and define a epicbox domain',
-      check_port_open_done: 'Recheck done!',
-      listener_stopped: 'Wallet listener stopped',
+      local_address: 'लोकल एड्रेस',
+      epicbox_address: 'आपका सार्वजनिक Epic एड्रेस',
+      your_qrcode: 'आपके “{0}” एड्रेस का QR कोड',
+      click_qrcode_icon: 'QR कोड आइकन पर क्लिक करें',
+      epicbox_address_off: 'प्राप्त करना बंद है। जब तक आप इसे शुरू नहीं करते, भुगतान Epicbox पर प्रतीक्षा करते हैं।',
+      epicbox_address_unknown: 'आपका Epic एड्रेस पढ़ा नहीं जा सका। थोड़ी देर में प्राप्त करें पेज फिर से खोलें।',
+      http_failed_port: 'HTTP प्राप्त नहीं कर रहा: पोर्ट {0} किसी दूसरे प्रोग्राम द्वारा इस्तेमाल हो रहा है। उसे बंद करें, फिर दोबारा कोशिश करें।',
+      http_failed: 'HTTP प्राप्त नहीं कर रहा: लिसनर शुरू नहीं हो सका।',
+      http_retry: 'दोबारा कोशिश करें',
+      epicbox_off: 'आपका Epicbox कॉन्फ़िगर नहीं है। अपनी सेटिंग्स अपडेट करें और Epicbox डोमेन तय करें',
+      epicbox_listening_on: '{0} पर सुन रहा है',
+      epicbox_listening: 'Epicbox सुन रहा है',
+      epicbox_connecting_to: '{0} से कनेक्ट हो रहा है…',
+      epicbox_starting_on: '{0} पर शुरू हो रहा है…',
+      epicbox_paused_on: '{0} पर, नोड के सिंक होने तक रुका हुआ',
+      epicbox_checking_old: 'आपके पुराने एड्रेस पर भेजे गए भुगतानों के लिए पुराना सर्वर {0} जांचा जा रहा है…',
+      epicbox_listener_off: 'Epicbox लिसनर बंद है',
+      check_port_open_done: 'दोबारा जांच पूरी हुई!',
+      listener_stopped: 'वॉलेट लिसनर रुक गया',
     },
-
     check: {
       checking: 'री-चेकिंग, धैर्य रखें…',
       stop: 'स्टॉप चेक',
@@ -386,54 +419,72 @@ const messages = {
       start: 'शुरू',
       delete_unconfirmed: 'अपुष्ट सिक्का आउटपुट हटाएं',
       scan_finished: 'वॉलेट स्कैन समाप्त।',
-      error_scan: 'त्रुटि प्रारंभ स्कैन। क्या पासवर्ड सही है?',
-      scan_stop: 'वॉलेट स्कैन बंद हो गया।'
-
+      error_scan: 'स्कैन शुरू करने में त्रुटि। क्या पासवर्ड सही है?',
+      scan_stop: 'वॉलेट स्कैन बंद हो गया।',
     },
-    firstruncheck: {
-      title: 'अपने वॉलेट आउटपुट के लिए ब्लॉकचेन स्कैन करें, धैर्य रखें…',
-    },
-
     lang: {
       title: 'भाषा का चयन करें',
       lang: 'भाषा',
-      select: 'चुनना'
+      select: 'चुनना',
     },
-
     settings: {
-      title: 'सेटिंग',
+      title: 'सेटिंग्स',
       check_node_api_http_addr: 'नोड api एड्रेस',
       node_api_addr_hint: 'जहां वॉलेट को रनिंग नोड मिलना चाहिए',
       network: 'नेटवर्क',
-      wallet_listener: 'वॉलेट लीस्टेनर',
-      auto_start: 'लॉगिन के बाद स्वचालित रूप से वॉलेट listener प्रारंभ करें',
-      authtoken: 'आपका Ngrok Authtoken',
-      howto: 'ngrok से अपना Authtoken कैसे प्राप्त करें',
+      wallet_listener: 'वॉलेट लिसनर',
+      auto_start: 'लॉगिन के बाद वॉलेट लिसनर और Epicbox अपने आप शुरू करें',
       settings_saved: 'सेटिंग्स को सहेजा गया',
       error_save: 'सेटिंग सहेजने में त्रुटि',
-      ngrok_force_start: 'use ngrok without Authtoken',
-      ngrok_hint: 'The ngrok address is active for 2 hours then gets renewed.',
-      ngrok_account_hint: 'To receive your ngrok authentication token, please create a new account at https://ngrok.com',
-      authtoken_hint: 'With a ngrok Authtoken, your address is active as long as the wallet is in listening mode',
-      epicbox_domain: 'Epicbox Domain',
-      epicbox_domain_hint: `The domain of the relay server, where your epicbox is connected to. Leave field blank if you don't want to use this service. Default: epicbox.epiccash.com`,
-      node_background: 'sync in background',
-      node_background_hint: 'the built-in node server continues to sync in the background even when the app is closed. The next time you run the wallet, you do not have to wait for the synchronization with the blockchain.',
-
+      epicbox_domain: 'Epicbox डोमेन',
+      epicbox_domain_hint: 'रिले सर्वर का डोमेन, जिससे आपका Epicbox जुड़ा है। यदि आप इस सेवा का उपयोग नहीं करना चाहते, तो फ़ील्ड को खाली छोड़ दें। डिफ़ॉल्ट: epicbox.epiccash.com',
+      node_background: 'बैकग्राउंड में सिंक',
+      node_background_hint: 'ऐप बंद होने पर भी इनबिल्ट नोड सर्वर बैकग्राउंड में सिंक होता रहता है। अगली बार वॉलेट चलाने पर आपको ब्लॉकचेन से सिंक होने की प्रतीक्षा नहीं करनी पड़ेगी।',
+      node_load_warning: 'स्कैन पूरा होने तक यह बहुत सारा CPU और मेमोरी इस्तेमाल करता है।',
     },
-
-    validators:{
+    validators: {
       empty: '{0} फ़ील्ड आवश्यक है',
       equal: '{0} बराबर होना चाहिए',
-      http_address: 'कोई मान्य HTTPS(S) एड्रेस नहीं',
+      password_mismatch: 'पासवर्ड मेल नहीं खाते',
+      address: 'यह ऐसा एड्रेस नहीं है जिस पर वॉलेट भेज सके',
+      http_address: 'मान्य HTTP(S) एड्रेस नहीं',
+      epicbox_address: 'मान्य Epicbox एड्रेस नहीं है',
+      onion_address: 'Tor एड्रेस समर्थित नहीं हैं।',
       min_length: '{0} फ़ील्ड कम से कम {1} वर्ण लंबा होना चाहिए',
       only_letters: '{0} में a-z के केवल निचले अक्षर हो सकते हैं जिनमें कोई रिक्त स्थान नहीं है',
       number: '{0} फ़ील्ड एक संख्या होनी चाहिए',
+      decimals: '{0} में अधिकतम 8 दशमलव अंक हो सकते हैं',
+      positive: '{0} 0 से अधिक होना चाहिए',
       spendable: 'पर्याप्त शेष राशि नहीं',
       exist: 'खाता "{0}" पहले से मौजूद है',
-      notexist: 'खाता "{0}" मौजूद नहीं है'
-    }
+      notexist: 'खाता "{0}" मौजूद नहीं है',
+      not_epic_node: 'Epic नोड नहीं है: {0}',
+    },
+    node_problem: {
+      title_too_old: 'इस नोड का संस्करण इस वॉलेट के साथ संगत नहीं है।',
+      title_status_locked: 'इस नोड का संस्करण इस वॉलेट के साथ संगत नहीं है।',
+      title_unreachable: 'यह नोड जवाब नहीं दे रहा।',
+      title_not_epic: 'यह एड्रेस Epic Cash नोड नहीं है।',
+      node: 'नोड',
+      epicbox_skipped: 'Epicbox शुरू नहीं हुआ। आप इसे प्राप्त करें पेज पर शुरू कर सकते हैं।',
+      go_receive: 'प्राप्त करें पर जाएं',
+      fixes: 'आप क्या कर सकते हैं',
+      fix_public: 'कोई सार्वजनिक नोड इस्तेमाल करें',
+      node_list: 'नोड सूची',
+      fix_builtin: 'इनबिल्ट नोड इस्तेमाल करें',
+      fix_other: 'कोई दूसरा नोड इस्तेमाल करें',
+      fix_upgrade: 'अपना नोड अपडेट करें',
+      opens_browser: '(आपके ब्राउज़र में खुलेगा)',
+      switched: 'इनबिल्ट नोड पर स्विच कर दिया गया। पूरा करने के लिए लॉग आउट करके फिर लॉग इन करें।',
+      switch_failed: 'इनबिल्ट नोड पर स्विच नहीं किया जा सका',
+      hide: 'छिपाएं',
+      hide_label: 'अगले लॉगिन तक इस सूचना को छिपाएं',
+      address_changed_title: 'आपका नोड एड्रेस अपडेट कर दिया गया',
+      address_changed: 'अब {0} की जगह {1} इस्तेमाल हो रहा है।',
+      ok: 'ठीक है',
+    },
+    modern,
+  },
+};
 
-  }
-}
 export default messages

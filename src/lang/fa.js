@@ -1,58 +1,68 @@
+/* Persian (fa): the Classic interface; the shared and Modern strings are imported. The same keys, in the same order, as the English (see the comments there).
+ * A missing key falls back to English (tests/i18n.test.js lists the allowed ones). */
+import shared from './shared/fa.js';
+import modern from './modern/fa.js';
+
 const messages = {
   msg: {
-
+    ...shared,
     title: '',
-    password: 'رمز Password',
-    passwordAgain: 'رمز را دوباره تکرار کنید',
-    wrongPassword: 'رمز اشتباه است',
+    password: 'رمز عبور',
+    passwordAgain: 'رمز عبور را دوباره وارد کنید',
+    wrongPassword: 'رمز عبور اشتباه است',
     login_: 'ورود',
-    continue: 'ادامه دادن بصورت آفلاین',
+    continue: 'ادامه به‌صورت آفلاین',
     logout: 'خروج',
     search: 'جستجو',
     clearup: 'پاک کردن',
     close: 'بستن',
     jump: 'پریدن',
     error: 'لطفا ایراد یا ایرادات زیر را اصلاح کنید:',
-    confirmed: 'تائید شد',
-    confirm_action: 'Confirm action',
-    unconfirmed: 'در انتظار تائیدیه',
-    sent_confirmed: 'Sent',
-    received_confirmed: 'Received',
-    sent_unconfirmed: '... waiting for receiver to sign',
-    received_unconfirmed: '... waiting for sender to finalize',
-    received_mempool: '... waiting for confirmation',
+    confirmed: 'تأیید شد',
+    unconfirmed: 'در انتظار تأییدیه',
+    sent_confirmed: 'ارسال شد',
+    received_confirmed: 'دریافت شد',
+    sent_unconfirmed: 'در انتظار امضای گیرنده',
+    sent_waiting_reply: 'در انتظار پاسخ گیرنده. اگر پاسخ نیامد آن را لغو کنید',
+    received_unconfirmed: 'در انتظار نهایی شدن توسط فرستنده',
+    received_mempool: 'در انتظار تأییدیه‌ها',
     locked: 'قفل شده',
     send: 'فرستادن',
+    node_not_synced: 'نود همگام نیست',
+    epicbox_not_connected: 'Epicbox متصل نیست',
+    epicbox_not_connected_hint: 'ارسال به آدرس Epicbox پس از راه‌اندازی شنوندهٔ Epicbox ممکن است. تا آن زمان از فایل یا آدرس HTTP استفاده کنید.',
+    node_not_synced_hint: 'ارسال پس از همگام شدن نود ممکن است.',
     dandelion: 'Dandelion++',
-    dandelion_hint: 'Broadcasting transactions via Dandelion++',
-    createofflinetx: 'Create offline transaction',
-    cancel:'لغو کردن',
+    dandelion_hint: 'پخش تراکنش‌ها با Dandelion++',
+    createofflinetx: 'ساخت تراکنش آفلاین',
+    cancel: 'لغو کردن',
+    ok: 'تأیید',
+    confirm: 'تأیید',
+    confirm_action: 'تأیید عملیات',
     save: 'ذخیره',
     delete: 'پاک کردن',
-    edit: 'ادیت',
-    welcome: 'به کیف اپیک خوش آمدید',
+    edit: 'ویرایش',
+    welcome: 'به کیف پول Epic خوش آمدید',
     back: 'برگشتن',
     reset: 'شروع مجدد',
-    addall: 'همه را از بالا اضافه کن Add all from above',
-    msg: 'پیغام',
+    addall: 'همه را از بالا اضافه کن',
+    msg: 'پیام',
     more: 'بیشتر',
     wrongAddressFormat: 'فرم آدرس اشتباه',
-    node_server: 'سرور گِره یا نود Node Server',
-    node_server_builtin: 'سرور نود داخلیِ کیف Built-in node server',
-    node_server_external: 'سرور نود خارجی External node server',
-    node_server_address: 'آدرس سرور گِره یا نود Node Server Address',
+    node_server: 'سرور نود',
+    node_server_builtin: 'سرور نود داخلی',
+    node_server_external: 'سرور نود خارجی',
+    node_server_address: 'آدرس سرور نود',
     copy_to_clipboard: 'در کلیپ بورد کپی شد',
     placeholder_search: 'جستجو...',
     refresh: 'تازه کردن',
-    page_of: 'Page {0} of {1}',
+    page_of: 'صفحهٔ {0} از {1}',
     only_letter: ' a-z فقط حروف کوچک از,',
     custom_settings: 'تنظیمات سفارشی',
     step_of: 'مرحله {0}/{1}',
-    close_all_process: 'Terminate all processes',
-    advanced_settings: 'Advanced Settings',
-    waiting_for_nodesync: '... waiting for node to be synced.',
-
-    menu:{
+    close_all_process: 'پایان دادن به همهٔ پردازش‌ها',
+    waiting_for_nodesync: '… در انتظار همگام شدن نود.',
+    menu: {
       general: 'عمومی',
       dashboard: 'داشبورد',
       address_book: 'دفترچه آدرس',
@@ -66,42 +76,46 @@ const messages = {
       logout: 'خروج',
       account: 'حساب',
       settings: 'تنظیمات',
-      recheck: 'موجودی را دوباره بررسی کنید',
-      mnemonic: 'کلمات یادآوری Mnemonic Words',
-      run_setup: 'Run Setup Assistant',
+      recheck: 'بررسی مجدد موجودی',
+      mnemonic: 'عبارت بازیابی',
+      run_setup: 'اجرای دستیار راه‌اندازی',
       updates: 'به روز رسانی ها',
-      openepichidden: 'Epic wallet location',
+      openepichidden: 'مکان کیف پول Epic',
     },
-
     headerbar: {
       howdy: ' درود,',
       version: 'نسخه',
-      peers: 'همتایان یا جفت ها',
+      peers: 'همتاها',
       status: 'وضعیت',
-      node: 'گِره Node',
+      node: 'نود',
       sync_height: 'همگام سازی ارتفاع',
-      progress: 'Progress',
+      progress: 'پیشرفت',
       block_height: 'ارتفاع بلاک چین',
-      node_sync_status: 'Internal node sync status',
+      node_sync_status: 'وضعیت همگام‌سازی نود داخلی',
+      node_behind: 'نود شما {n} بلاک عقب است.',
+      switch_node: 'تعویض نود',
     },
-    dashboard:{
-      transactions: 'تراکنشها یا معاملات',
-      coins: 'سکه ها'
+    dashboard: {
+      transactions: 'تراکنش‌ها',
+      coins: 'سکه ها',
     },
-    create:{
+    create: {
       select: 'یک پوشه برای داده های کیف پول خود انتخاب کنید',
-      seedPhrase: 'عبارات بازیابی Seed Phrase',
+      seedPhrase: 'عبارت بازیابی',
       toNewMsg: 'یک کیف پول جدید ایجاد کنید.',
       newWallet: 'کیف پول جدید ایجاد کنید',
-      backupNote: 'مهم! لطفاً از عبارت بازیابی خود برای بازیابی کیف پول خود نسخه پشتیبان تهیه کنید',
-      fatal_create: 'حیاتی: شکست در عملیات ایجاد شده است Fatal: created fail on action "{0}"',
-      fatal_update: 'حیاتی: پیکربندی برنامه به‌روزرسانی نشد '
+      backupNote: 'مهم! از عبارت بازیابی خود نسخهٔ پشتیبان تهیه کنید تا بتوانید کیف پول را بازیابی کنید',
+      fatal_create: 'خطای جدی: ساخت در مرحلهٔ «{0}» ناموفق بود',
+      fatal_update: 'حیاتی: پیکربندی برنامه به‌روزرسانی نشد ',
+      stage_create: 'در حال ساخت کیف پول و عبارت بازیابی آن',
+      stage_save: 'در حال ذخیرهٔ حساب',
+      backupWarning: 'این کلمات را به همین ترتیب روی کاغذ بنویسید و در جایی امن و آفلاین نگه دارید. اگر این رایانه یا فایل‌هایش از بین بروند، تنها راه بازیابی این کیف پول همین کلمات است. هر کسی آنها را داشته باشد می‌تواند دارایی شما را بردارد: هرگز آنها را به کسی ندهید و به شکل عکس، تصویر صفحه یا فایل نگه ندارید.',
+      writtenDown: 'آن را نوشتم، ادامه',
     },
-
-    setupwizard:{
-      setup_assistant: 'دستیار_تنظیم',
+    setupwizard: {
+      setup_assistant: 'دستیار راه‌اندازی',
       account_information: 'اطلاعات حساب',
-      your_name:'نام شما',
+      your_name: 'نام شما',
       name_only_internal: 'نام فقط در داخل کیف شما استفاده می شود',
       next_step: 'مرحله بعد',
       network_node: 'نودِ شبکه',
@@ -111,102 +125,81 @@ const messages = {
       اگر مطمئن نیستید که از کدام یک استفاده کنید، تنظیمات را همانطور که هستند رها کنید<br/>`,
       previous_step: 'مرحله قبلی',
       receive_transactions: 'در حال دریافت تراکنش',
-      receive_transactions_txt: `برای دریافت تراکنش از کیف پول های دیگر، کیف پول شما باید از طریق اینترنت قابل دسترسی باشد<br/>
-      <br/>
-      اگر با تنظیمات روتر مودم و ارسال پورت آشنایی ندارید، استفاده از سرویس
-      ngrok
-      را به شما توصیه می کنیم<br/>
-     هنگامی که
-     ngrok
-     فعال شد، کیف پول شما از طریق یک آدرس موقت
-     ngrok
-     قابل دسترسی خواهد بود.<br/>
-      <br/>
-      <br/>
-      اگر نمی خواهید از سرویس
-      ngrok
-      استفاده کنید، قسمت های زیر را خالی بگذارید`,
-      authtoken: 'Your ngrok Authtoken آت توکنِ مربوط به اِنگِروک شما',
-      howto: 'ngrok Authtoken چگونه آت توکنِ اِنگروکِ خود را دریافت کنید',
       values_correct: 'آیا این مقادیر صحیح است؟',
       save_and_finish: 'ذخیره و پایان',
       name: 'نام',
       language: 'زبان',
-      ngrok_authtoken: '  اِنگِروک آت توکنِ ngrok Auth-Token',
-      db_fatal: ' مهلک: دی بی را نمی توان وارد کرد DB ',
+      db_fatal: 'خطای جدی پایگاه داده: درج در پایگاه داده ممکن نشد',
       errors_save: 'خطا در ذخیره تنظیمات کاربر: {0}',
-      epicbox_domain: 'Epicbox Web Address',
-      epicbox_off: 'turned off',
-      epicbox_domain_hint: `Leave field blank if you don't want to use this service.`,
-      noninteractive_transactions: `Intro to EPIC Addresses<br/>
+      epicbox_domain: 'آدرس وب Epicbox',
+      epicbox_off: 'خاموش',
+      epicbox_domain_hint: 'اگر نمی‌خواهید از این سرویس استفاده کنید، این فیلد را خالی بگذارید.',
+      noninteractive_transactions: `آشنایی با آدرس‌های EPIC<br/>
       <br/>
-      EPIC addresses provide an easy way to send EPIC when the receiving wallet is offline.<br/>
+      آدرس‌های EPIC راهی ساده برای ارسال EPIC هستند، حتی وقتی کیف پول گیرنده آفلاین است.<br/>
       <br/>
-      This is accomplished securely and privately by using an external relay server called "Epicbox"<br/>
-      Relay servers such as epicbox.epiccash.com and others to come later are provided by our community.<br/>
+      این کار با یک سرور واسط خارجی به نام «Epicbox» به‌صورت امن و خصوصی انجام می‌شود.<br/>
+      سرورهای واسطی مانند epicbox.epiccash.com، و موارد دیگری که بعداً اضافه می‌شوند، را جامعهٔ ما فراهم می‌کند.<br/>
       <br/>
-      How it works:<br/>
-      Transactions are sent to the Epicbox server and delivered to the recipient as soon as the receiver's wallet is online.<br/>
-      <br/>The receiver signs the transaction and responds with a confirmation back to the sender which 'finalizes' the transaction if the sender is online.<br/>
-      <br/>If both wallets are online when a transaction is created, the process takes place immediately.<br/>
+      روش کار:<br/>
+      تراکنش‌ها به سرور Epicbox فرستاده می‌شوند و به محض آنلاین شدن کیف پول گیرنده به او تحویل داده می‌شوند.<br/>
+      <br/>گیرنده تراکنش را امضا می‌کند و تأییدیه‌ای برای فرستنده برمی‌گرداند؛ اگر فرستنده آنلاین باشد، این تأییدیه تراکنش را «نهایی» می‌کند.<br/>
+      <br/>اگر هنگام ساخت تراکنش هر دو کیف پول آنلاین باشند، این فرایند بلافاصله انجام می‌شود.<br/>
       <br/>
-      This system does not anonymize your IP and a VPN is recommended for IP address privacy.<br/>
-      <br/>Transactions are fully encrypted which assures a private transaction exchanged between the sender and receiver.<br/>
+      این سیستم آی‌پی شما را ناشناس نمی‌کند و برای حفظ حریم خصوصی آی‌پی، استفاده از VPN توصیه می‌شود.<br/>
+      <br/>تراکنش‌ها کاملاً رمزگذاری می‌شوند و این تضمین می‌کند که تبادل میان فرستنده و گیرنده خصوصی بماند.<br/>
       <br/>
       `,
     },
-    transaction:{
-
+    transaction: {
       received: 'دریافت شده',
       send: 'فرستادن',
       transaction_id: 'شناسه تراکنش',
       creation_date: 'تاریخ ایجاد',
-      receiver: 'From/To',
+      receiver: 'از/به',
       payment_proof: 'سند پرداخت',
       amount: 'مبلغ (کارمزد)',
       status: 'وضعیت',
       transfer_type: 'نوع انتقال',
-      id: 'آی دی یا شناسه',
-      slate_id: ' آی دی ثبت یا حک شده Slate ID',
-      confirmation_date: 'تاریخ تایید',
+      id: 'شناسه',
+      slate_id: 'شناسهٔ slate',
+      confirmation_date: 'تاریخ تأیید',
       amount_credited: 'مبلغ اعتبار داده شده',
       amount_debited: 'مبلغ بدهکار شده',
       fee: 'کارمزد',
-      message: 'پیفام',
+      transaction_fee: 'کارمزد تراکنش',
+      message: 'پیام',
       type: 'نوع',
       receiver_address: 'آدرس گیرنده',
       receiver_signature: 'امضای گیرنده',
       sender_address: 'آدرس فرستنده',
       sender_signature: 'امضای فرستنده',
       sender_address_path: 'مسیر آدرس فرستنده',
-      sendall: 'All'
-
+      sendall: 'همه',
+      sendall_failed: 'نتوانستیم مقدار قابل ارسال را حساب کنیم. کمی بعد دوباره تلاش کنید.',
     },
-
-    commit:{
+    commit: {
       unspentCmt: 'خروجی های مصرف نشده',
       heightCreated: 'ارتفاع بلاک در زمان ایجاد',
-      unspent: 'خرج نشده',
-      spent: 'خرج کردن',
+      unspent: 'خرج‌نشده',
+      spent: 'خرج‌شده',
       noCmtFound: 'هیچ تعهد خروجی خرج نشده ای یافت نشد',
-      noCmt:'بدون تعهد خروجی خرج نشده',
+      noCmt: 'بدون تعهد خروجی خرج نشده',
       copied: 'کپی شده است',
-      unconfirmed: 'تایید نشده',
+      unconfirmed: 'تأییدنشده',
       coins: 'سکه ها',
       coin_id: 'شناسه سکه',
       value: 'مقدار',
       status: 'وضعیت',
-      copy: 'تعهد کپی شد'
-
-
+      copy: 'تعهد کپی شد',
     },
     account: {
       account: 'حساب',
       your_name: 'نام شما',
       settings_saved: 'تنظیمات حساب ذخیره شد',
-      error_save: 'خطا در ذخیره حساب'
+      error_save: 'خطا در ذخیره حساب',
     },
-    addressbook:{
+    addressbook: {
       name: 'نام',
       country: 'کشور',
       city: 'شهر',
@@ -215,99 +208,138 @@ const messages = {
       notice: 'توجه',
       deleted: 'آدرس حذف شد!',
       error_delete: '!خطا در حذف آدرس',
+      error_save: 'مخاطب ذخیره نشد.',
+      error_name: 'برای مخاطب نامی بنویسید.',
+      error_address: 'آدرسی برای ارسال اضافه کنید.',
+      error_epicbox: 'این آدرس Epicbox معتبر نیست.',
     },
     remove: {
       warning: 'هشدار',
       info: 'اطلاعات',
       help: 'کمک',
       remove: 'زدودن',
-      success: 'موفقیت'
+      success: 'موفقیت',
     },
     login: {
       listener_started: 'شنونده کیف پول، شروع به کار کرد',
       error_listener_started: 'خطا در راه اندازی شنونده کیف پول',
-      epicbox_started: 'Epicbox started',
-      error_epicbox_started: 'Error starting Epicbox',
+      port_in_use: 'پورت {0} را برنامهٔ دیگری استفاده می‌کند (مثلاً epic-wallet خودتان). آن را متوقف کنید و دوباره تلاش کنید.',
+      epicbox_started: 'Epicbox شروع به کار کرد',
+      error_epicbox_started: 'خطا در راه‌اندازی Epicbox',
+      stage_check: 'در حال بررسی فایل‌های کیف پول',
+      stage_processes: 'در حال جست‌وجوی پردازش‌های کیف پول که هنوز اجرا می‌شوند',
+      stage_closing: 'در حال بستن پردازش‌های قدیمی کیف پول',
+      stage_wallet: 'در حال راه‌اندازی سرویس کیف پول',
+      stage_unlock: 'در حال باز کردن قفل کیف پول',
+      folder_missing: 'پوشهٔ کیف پول «{0}» پیدا نشد: {1}. ممکن است جابه‌جا، تغییر نام یا حذف شده باشد.',
+      folder_unknown: 'برای کیف پول «{0}» پوشه‌ای ذخیره نشده است.',
     },
-    seed:{
-      errorGetMnemonic: 'آیا رمز عبور صحیح است؟ خطا در دریافت کلمات یادگاریMnemonic Words',
-      mnemonic: 'کلمات یادگاری Mnemonic Words'
+    seed: {
+      errorGetMnemonic: 'خطا در دریافت عبارت بازیابی. آیا رمز عبور درست است؟',
+      mnemonic: 'عبارت بازیابی',
     },
-
-
-    new:{
+    new: {
       create: 'ساخت کیف پول جدید',
       restore: 'بازیابی کیف پول',
       select: 'مکان داده کیف پول موجود را انتخاب کنید wallet_data ',
-      selectErr: 'پوشه انتخاب شده فاقد راهنمای "داده کیف" و پیکربندی کیف پول است wallet_data',
+      selectErr: 'پوشهٔ انتخاب‌شده پوشهٔ «wallet_data» و پیکربندی کیف پول را ندارد.',
       networkErr: 'نوع شبکه نمی تواند تشخیص داده شود<br/>لطفا یکی را انتخاب کنید',
       selectNetwork: 'ادامه',
     },
-
-    restore:{
-
-      title: 'بازیابی کیف پول از طریق عبارت یادآوری ',
-      addSeedsInfo: 'لطفاً با کلیک کردن روی کلمه یا کلمه ها عبارت یادآوری را اضافه کنید ',
-      yourSeedsInfo: 'عبارات یادآوری شما این است',
+    walletfolder: {
+      onedrive_title: 'این پوشه در OneDrive است',
+      onedrive_warning: '{0} با OneDrive همگام می‌شود. همگام‌سازی ممکن است تا زمانی که کیف پول باز است به پایگاه دادهٔ آن آسیب بزند، رایانهٔ دوم ممکن است نسخه‌های متناقض بسازد و نود داخلی چندین گیگابایت دادهٔ بلاک‌چین را آپلود می‌کند. پوشه‌ای خارج از OneDrive انتخاب کنید، مثلاً {1}.',
+    },
+    restore: {
+      title: 'بازیابی کیف پول با عبارت بازیابی',
+      addSeedsInfo: 'با کلیک روی کلمه‌ها، عبارت بازیابی را وارد کنید',
+      yourSeedsInfo: 'عبارت بازیابی شما:',
       added: 'بازیابی کیف پول',
       newPassword: 'تنظیم یک رمز عبور جدید',
       recover: 'بازیابی',
       walletLocation: 'موقعیت مکانی داده کیف پول',
-      search_placeholder: 'برای جستجوی کلمات، تایپ کنیدو یا عبارات یادآوری را وارد کنید ',
+      search_placeholder: 'برای جست‌وجوی کلمات تایپ کنید، یا عبارت بازیابی را جایگذاری کنید',
+      paste_info: 'کل عبارت بازیابی را در کادر یا در کلمهٔ اول جایگذاری کنید، یا کلمه به کلمه تایپ کنید.',
+      phrase: 'عبارت بازیابی',
+      phrase_placeholder: 'کلمهٔ۱ کلمهٔ۲ کلمهٔ۳ …',
+      phrase_length: 'طول',
+      n_words: '{0} کلمه',
+      word_n: 'کلمهٔ {0}',
+      word_count: '{0} از {1} کلمه',
+      invalid_words: '{0} در فهرست کلمات نیست (با رنگ قرمز مشخص شده)',
+      bad_length: 'عبارت بازیابی ۱۲، ۱۵، ۱۸، ۲۱ یا ۲۴ کلمه دارد',
       create_new: 'ایجاد حساب کاربری جدید',
-      change_seed: 'کلمات یادآوری را تغییر دهید',
+      change_seed: 'تغییر کلمات عبارت بازیابی',
       wallet_recovered: 'کیف پول شما بازیابی شد. لطفا وارد شوید و تنظیمات را تمام کنید',
       recover_fail: 'مهلک: بازیابی در عمل ناموفق بود "{0}"',
-      fatal_app: 'مهلک: پیکربندی برنامه به روز نشده است'
-
+      fatal_app: 'مهلک: پیکربندی برنامه به روز نشده است',
     },
-
-    app:{
+    app: {
       create: 'ایجاد تراکنش (فایل)',
       finalize: 'نهایی کردن تراکنش (فایل) ',
       httpSend: ' HTTP/HTTPS فرستادن از طریق',
       createRespFile: 'وارد کردن تراکنش (فایل)',
       httpReceive: ' HTTP/HTTPS دریافت از طریق',
-      height:'ارتفاع بلاک',
+      height: 'ارتفاع بلاک',
       updateTitle: 'نسخه جدید پیدا شد',
-      updateMsg: 'نسخه جدید کیف پول اپیک پیدا شد. لطفا همین الان به روز رسانی کنید.',
+      updateMsg: 'نسخهٔ جدید کیف پول Epic پیدا شد. لطفاً همین حالا به‌روزرسانی کنید.',
       yes: 'بله',
       no: 'خیر',
-
-      ngrok_service_started: 'خدمات اِنگِروک شروع شد Ngrok',
-      ngrok_address_changed: 'آدرس اِنگِروک شما تغییر کرده است',
-      ngrok_service_stopped: 'سرویس اِنگروک متوقف شد',
-      ngrok_service_error: 'Ngrok خطا در راه اندازی سرویس اِنگِروک',
       error_setup_internal_node: 'نمی توان سرور نود داخلی را راه اندازی کرد',
       node_started: 'نود شبکه شروع شد',
-      node_restarting: 'Node is restarting',
-      node_not_started: 'نود یا گِره شبکه شروع نشده است',
+      node_restarting: 'نود در حال راه‌اندازی مجدد است',
+      node_not_started: 'نود راه‌اندازی نشد',
+      node_port_in_use: 'نود راه‌اندازی نشد: پورت {0} را برنامهٔ دیگری استفاده می‌کند (مثلاً نود Epic خودتان). آن را متوقف کنید یا در تنظیمات از آن به‌عنوان نود خارجی استفاده کنید.',
       node_offline: 'نود آفلاین است',
       external_node_online: 'نود خارجی آنلاین است',
       external_node_offline: 'نود خارجی آفلاین است',
+      external_node_invalid: 'آدرس نود شما، {0}، یک نود Epic نیست ({1}). آن را در تنظیمات تغییر دهید.',
+      epicbox_wait_timeout: 'Epicbox راه‌اندازی نشد: نود همگام نیست. آن را از صفحهٔ دریافت راه‌اندازی کنید.',
+      epicbox_switched: 'Epicbox اکنون روی {0} گوش می‌دهد',
+      epicbox_connecting: 'Epicbox در حال اتصال به {0}…',
+      epicbox_switch_failed: 'Epicbox روی سرور جدید راه‌اندازی نشد. آن را از صفحهٔ دریافت راه‌اندازی کنید.',
+      epicbox_old_checked: '{0} پیام پرداخت از سرور قدیمی {1} دریافت شد',
+      epicbox_owner_config_failed: 'API کیف پول سرور جدید Epicbox را نپذیرفت: پیش از ارسال، کیف پول را قفل کنید و دوباره بازش کنید.',
+      node_unreachable: 'نود در دسترس نیست',
+      wallet_api_unreachable: 'API کیف پول در دسترس نیست',
+      balance_loading: 'در حال خواندن موجودی…',
+      balance_updating: 'در حال به‌روزرسانی موجودی از نود…',
+      balance_waiting_node: 'آخرین موجودی شناخته‌شده؛ پس از همگام شدن نود به‌روز می‌شود',
+      balance_node_unreachable: 'آخرین موجودی شناخته‌شده؛ نود در دسترس نیست',
+      balance_wallet_no_node: 'آخرین موجودی شناخته‌شده؛ کیف پول نتوانست از نود به‌روز شود',
+      listener_starting: 'در حال راه‌اندازی شنوندهٔ کیف پول…',
+      loading_wallet_data: 'در حال بارگذاری…',
       background_process: 'ما برخی از پردازش های کیف پول و نودِ در حال اجرا را در پس زمینه پیدا کردیم. لطفاً قبل از اجرای این برنامه ابتدا آنها را ببندید',
-    
-      walletonline: 'Your wallet is online',
-      walletoffline: 'Your wallet is offline.',
+      walletonline: 'کیف پول شما آنلاین است',
+      walletoffline: 'کیف پول شما آفلاین است.',
+    },
+    progress: {
+      done: 'انجام شد',
+      active: 'در حال انجام',
+      pending: 'در انتظار',
     },
     info: {
-      spendable: 'قابل مصرف',
+      spendable: 'قابل خرج',
       total: 'موجودی',
-      unfinalization: 'تایید نشده',
-      immature: 'نابالغ'
+      unfinalization: 'تأییدنشده',
+      immature: 'نابالغ',
     },
-
-    txs:{
+    txs: {
       tx: 'تراکنش ها',
-      canceled:'لغو شده',
+      canceled: 'لغو شده',
       noTxFound: 'هیچ تراکنشی یافت نشد',
-      noTx:'هیچ تراکنشی وجود ندارد',
-      cancelSuccess:'این تراکنش لغو شد',
+      noTx: 'هیچ تراکنشی وجود ندارد',
+      cancelSuccess: 'این تراکنش لغو شد',
     },
-
-
-
-    fileSend:{
+    confirmations: {
+      of: '{0} از {1} تأییدیه',
+      confirming: 'در حال تأیید',
+      confirmed: 'تأیید شد',
+      confirmed_count: 'تأیید شد ({0} تأییدیه)',
+      confirmed_spendable_count: 'تأیید شد، قابل خرج ({0} تأییدیه)',
+      waiting: 'در انتظار تأییدیه‌ها',
+    },
+    fileSend: {
       sendAmount: 'مقدار برای ارسال',
       createTxFile: 'ایجاد تراکنش',
       WrongAmount: 'مقدار اشتباه',
@@ -315,10 +347,9 @@ const messages = {
       saveMsg: 'ذخیره فایلِ تراکنشِ ایجاد شده',
       CreateFailed: 'عدم موفقیت در ایجاد فایلِ تراکنش جدید',
     },
-
-    httpSend:{
+    httpSend: {
       sendAmount: 'مبلغ برای ارسال',
-      address:'آدرس گیرنده',
+      address: 'آدرس گیرنده',
       WrongAmount: 'مقدارِ اشتباه',
       NotEnough: 'موجودیِ ناکافی .',
       WrongAddress: 'آدرسِ اشتباه',
@@ -327,10 +358,9 @@ const messages = {
       TxFailed: 'ارسال تراکنش ناموفق بود',
       TxResponseFailed: 'دریافت پاسخ صحیح از گیرنده ناموفق بود',
       TxCreateFailed: 'ایجاد تراکنش ناموفق بود',
-      salteVersion: 'نسخه فایل برنامه ریزی شده',
-      salteVersionHelp: 'اگر نتوانستید اپیک را ارسال کنید، نسخه فایل برنامه ریزی را تغییر دهید و سپس دوباره ارسال کنید'
+      salteVersion: 'نسخهٔ فایل slate',
+      salteVersionHelp: 'اگر ارسال EPIC ناموفق بود، نسخهٔ فایل slate را تغییر دهید و دوباره ارسال کنید',
     },
-
     receive: {
       dropMsg: 'فایل تراکنش را برای دریافت اینجا رها کنید یا برای آپلود کلیک کنید',
       WrongFileType: 'نوع فایل تراکنش اشتباه است',
@@ -341,102 +371,120 @@ const messages = {
       error_read: 'خطا در خواندن محتوای فایل',
       success: 'موفقیت در تراکنش',
     },
-
     finalize: {
       finalize: 'نهایی کردن',
       success: 'موفقیت در تراکنش',
-      ok:'OK',
+      ok: 'OK',
       sending: 'در حال ارسال',
       dropMsg: 'فایلِ تراکنشِ پاسخ را برای نهایی کردن اینجا رها کنید یا برای آپلود کلیک کنید',
       WrongFileType: 'نوع فایلِ تراکنش اشتباه است',
       TxFailed: 'تراکنش ناموفق بود',
       dragdrop: 'فایل را بِکشید و رها کنید',
-      error_read: 'خطا در خواندن محتوای فایل'
+      error_read: 'خطا در خواندن محتوای فایل',
     },
-
     httpReceive: {
-      launchSucess: 'با موفقیت شروع شد',
-      listening: "کیف پول شما می تواند تراکنش ها را از طریق این آدرس ها دریافت کند",
+      listening: 'کیف پول شما می تواند تراکنش ها را از طریق این آدرس ها دریافت کند',
       address: 'آدرس کیف پول',
-      reachableMsg2: 'اطمینان حاصل کنید که آدرس آی پی شما عمومی است و قابل دسترسی از طریق اینترنت باشد.',
       close: 'شنونده را متوقف کنید',
       attention: 'توجه',
       reachableMsg: 'برای دریافت تراکنش های آنلاین، کیف پول شما باید در حالت گوش دادن راه اندازی شود',
-      password: ' HTTP رمز عبور کیف پول (برای شروع گوش دادن اِج تی تی پی استفاده میشود)  ',
       start: 'شروع',
       error: 'بدون رمز عبور',
-      failed: 'شروعِ ناموفق، شاید رمزِ عبور اشتباه باشد',
-      failed2: 'گوش دادن به اچ تی تی پی ناموفق بود، آی پی عمومی شما توسط کاربر اینترنت قابل دسترسی و مشاهده نیست. فایل تراکنش را امتحان کنید ',
-      failed3: 'دریافت آی پی عمومی شما ناموفق بود. بعدا دوباره تلاش کنید',
-      failed4: ' گوش دهنده اکنون در لوکال‌هاست 3415 در حال اجرا است.  با این حال آی پی شما توسط کاربر اینترنت قابل دسترسی نیست. فایل تراکنش را امتحان کنید',
       ip: 'آی پی عمومی شما',
-      current_ngrok_address: 'آدرس اِنگِروک در حال حاضر شما',
       local_address: 'آدرس محلی',
-      session_end: 'شما از انگروکِ بدون حساب کاربری استفاده می کنید. مهلت استفاده شما در {0} ساعت و {1} دقیقه به پایان می رسد',
+      epicbox_address: 'آدرس عمومی Epic شما',
       your_qrcode: 'کد کیوآر شما برای آدرس "{0}" شما ',
       click_qrcode_icon: 'روی نماد کد کیوآر کلیک کنید',
-      epicbox_address: 'Your public Epic address',
-      epicbox_not_available: 'Epicbox not available. Wait for the Node to be synced or try to restart the wallet listener',
-      epicbox_off: 'Your epicbox is not configured. Update your settings and define a epicbox domain',
+      epicbox_address_off: 'دریافت خاموش است. پرداخت‌ها تا زمانی که دریافت را روشن کنید روی Epicbox می‌مانند.',
+      epicbox_address_unknown: 'آدرس Epic شما خوانده نشد. کمی بعد دوباره صفحهٔ دریافت را باز کنید.',
+      http_failed_port: 'HTTP دریافت نمی‌کند: پورت {0} را برنامهٔ دیگری استفاده می‌کند. آن برنامه را ببندید و دوباره تلاش کنید.',
+      http_failed: 'HTTP دریافت نمی‌کند: شنونده راه‌اندازی نشد.',
+      http_retry: 'تلاش دوباره',
+      epicbox_off: 'Epicbox شما پیکربندی نشده است. تنظیمات را به‌روز کنید و یک دامنهٔ Epicbox تعیین کنید',
+      epicbox_listening_on: 'در حال گوش دادن روی {0}',
+      epicbox_listening: 'Epicbox در حال گوش دادن است',
+      epicbox_connecting_to: 'در حال اتصال به {0}…',
+      epicbox_starting_on: 'در حال راه‌اندازی روی {0}…',
+      epicbox_paused_on: 'روی {0}، تا همگام شدن نود متوقف است',
+      epicbox_checking_old: 'در حال بررسی سرور قدیمی {0} برای پرداخت‌هایی که به آدرس قدیمی شما فرستاده شده…',
+      epicbox_listener_off: 'شنوندهٔ Epicbox خاموش است',
+      check_port_open_done: 'بررسی مجدد انجام شد!',
+      listener_stopped: 'شنوندهٔ کیف پول متوقف شد',
     },
-
     check: {
       checking: 'بررسی مجدد، لطفا صبور باشید...',
       stop: 'توقف بررسی',
       introTitle: 'اطلاعات',
-      intro1: 'این کار تمام بلاک چِین را برای یافتن خروجی سکه های خرج نشده که به کیف پول شما تعلق دارد اسکن می کند',
+      intro1: 'این کار کل بلاک‌چین را برای یافتن خروجی‌های خرج‌نشده‌ای که به کیف پول شما تعلق دارند اسکن می‌کند',
       start: 'شروع',
       delete_unconfirmed: 'خروجی های سکه تایید نشده را حذف کنید',
       scan_finished: 'اسکن کیف پول تمام شد',
       error_scan: 'خطای شروع اسکن. آیا رمز عبور صحیح است؟',
-      scan_stop: 'اسکن کیف پول متوقف شد'
-
+      scan_stop: 'اسکن کیف پول متوقف شد',
     },
-    firstruncheck: {
-      title: 'بلاک چین را برای خروجی های کیف پول خود اسکن کنید، لطفا صبور باشید...',
-    },
-
     lang: {
       title: 'زبان را انتخاب کنید',
       lang: 'زبان',
-      select: 'انتخاب'
+      select: 'انتخاب',
     },
-
     settings: {
       title: 'تنظیمات',
-      check_node_api_http_addr: 'آدرس اِی پی آیِ نود یا گِره',
+      check_node_api_http_addr: 'آدرس API نود',
       node_api_addr_hint: 'جایی که کیف پول باید یک نود در حال اجرا پیدا کند',
       network: 'شبکه',
       wallet_listener: 'شنونده کیف پول',
       auto_start: 'پس از ورود به سیستم، شنونده کیف پول را به طور خودکار راه اندازی کنید',
-      authtoken: 'اِنگروک آت توکِن شما ngrok Authtoken',
-      ngrok_force_start: 'از اِنگروه بدون آت توکن استفاده کنید ',
-      ngrok_hint: 'آدرس انگروک به مدت 2 ساعت فعال است و سپس تمدید می شود.',
-      ngrok_account_hint: 'https://ngrok.com برای دریافت رمز احراز هویت انگروک خود، لطفاً یک حساب کاربری جدید در این آدرس ایجاد کنید',
-      authtoken_hint: 'با داشتن یک آت توکن اِنگروک، آدرس شما تا زمانی که کیف پول در حالت گوش دادن است فعال است ،ngrok Authtoken',
-      howto: ' How to get your Authtoken from ngrok چگونه از اِنگروک، آت توکن بگیریم ',
       settings_saved: 'تنظیمات ذخیره شدند',
       error_save: 'خطا در ذخیره کردن تنظیمات',
-      epicbox_domain: 'Epicbox Domain',
-      epicbox_domain_hint: `The domain of the relay server, where your epicbox is connected to. Leave field blank if you don't want to use this service. Default: epicbox.epiccash.com`,
-
-      node_background: 'sync in background',
-      node_background_hint: 'the built-in node server continues to sync in the background even when the app is closed. The next time you run the wallet, you do not have to wait for the synchronization with the blockchain.',
-
+      epicbox_domain: 'دامنهٔ Epicbox',
+      epicbox_domain_hint: 'دامنهٔ سرور واسطی که Epicbox شما به آن متصل است. اگر نمی‌خواهید از این سرویس استفاده کنید، این فیلد را خالی بگذارید. پیش‌فرض: epicbox.epiccash.com',
+      node_background: 'همگام‌سازی در پس‌زمینه',
+      node_background_hint: 'سرور نود داخلی حتی وقتی برنامه بسته است در پس‌زمینه همگام‌سازی را ادامه می‌دهد. دفعهٔ بعد که کیف پول را اجرا کنید، لازم نیست منتظر همگام‌سازی با بلاک‌چین بمانید.',
+      node_load_warning: 'اسکن تا پایان کار از پردازنده و حافظهٔ زیادی استفاده می‌کند.',
     },
-
-    validators:{
+    validators: {
       empty: 'فیلد {0} الزامی است',
       equal: '{0} باید برابر باشد',
-      http_address: 'آدرس اچ تی تی پی (اس) معتبری وجود ندارد HTTP(S)',
+      password_mismatch: 'رمزهای عبور یکسان نیستند',
+      address: 'آدرسی نیست که کیف پول بتواند به آن ارسال کند',
+      http_address: 'آدرس HTTP(S) معتبر نیست',
+      epicbox_address: 'آدرس Epicbox معتبر نیست',
+      onion_address: 'آدرس‌های Tor پشتیبانی نمی‌شوند.',
       min_length: 'فیلد {0} باید حداقل {1} کاراکتر داشته باشد',
       only_letters: '{0} فقط می تواند حروف کوچک انگلیسی اِی تا زی را بدون فاصله داشته باشد',
       number: 'فیلد {0} باید یک عدد باشد',
+      decimals: '{0} حداکثر ۸ رقم اعشار می‌تواند داشته باشد',
+      positive: '{0} باید بیشتر از ۰ باشد',
       spendable: 'موجودی کافی وجود ندارد',
       exist: 'حساب "{0}" از قبل وجود دارد',
-      notexist: 'حساب "{0}" وجود ندارد'
-    }
+      notexist: 'حساب "{0}" وجود ندارد',
+      not_epic_node: 'نود Epic نیست: {0}',
+    },
+    node_problem: {
+      title_too_old: 'نسخهٔ این نود با این کیف پول سازگار نیست.',
+      title_status_locked: 'نسخهٔ این نود با این کیف پول سازگار نیست.',
+      title_unreachable: 'این نود پاسخ نمی‌دهد.',
+      title_not_epic: 'این آدرس یک نود Epic Cash نیست.',
+      node: 'نود',
+      epicbox_skipped: 'Epicbox راه‌اندازی نشد. می‌توانید آن را از صفحهٔ دریافت راه‌اندازی کنید.',
+      go_receive: 'رفتن به دریافت',
+      fixes: 'کارهایی که می‌توانید بکنید',
+      fix_public: 'استفاده از یک نود عمومی',
+      node_list: 'فهرست نودها',
+      fix_builtin: 'استفاده از نود داخلی',
+      fix_other: 'استفاده از نود دیگر',
+      fix_upgrade: 'به‌روزرسانی نود خود',
+      opens_browser: '(در مرورگر شما باز می‌شود)',
+      switched: 'به نود داخلی تغییر داده شد. برای پایان کار، از کیف پول خارج و دوباره وارد شوید.',
+      switch_failed: 'تعویض به نود داخلی ممکن نشد',
+      hide: 'پنهان کردن',
+      hide_label: 'پنهان کردن این اعلان تا ورود بعدی',
+      address_changed_title: 'آدرس نود شما به‌روز شد',
+      address_changed: 'اکنون به‌جای {0} از {1} استفاده می‌شود.',
+      ok: 'تأیید',
+    },
+    modern,
+  },
+};
 
-  }
-}
 export default messages

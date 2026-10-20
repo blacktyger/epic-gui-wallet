@@ -1,9 +1,13 @@
+/* Czech (cz): the Classic interface; the shared and Modern strings are imported. The same keys, in the same order, as the English (see the comments there).
+ * A missing key falls back to English (tests/i18n.test.js lists the allowed ones). */
+import shared from './shared/cz.js';
+import modern from './modern/cz.js';
+
 const messages = {
   msg: {
-
+    ...shared,
     title: '',
     password: 'Heslo',
-
     passwordAgain: 'Znovu vložte heslo',
     wrongPassword: 'Špatné heslo',
     login_: 'Přihlásit se',
@@ -15,157 +19,155 @@ const messages = {
     jump: 'Přeskočit',
     error: 'Prosím opravte následující chybu(y):',
     confirmed: 'Potvrzeno',
-    unconfirmed: 'Čekám na potvrzení',
-    sent_confirmed: 'Sent',
-    received_confirmed: 'Received',
-    sent_unconfirmed: '... waiting for receiver to sign',
-    received_unconfirmed: '... waiting for sender to finalize',
-    received_mempool: '... waiting for confirmation',
+    unconfirmed: 'Čeká na potvrzení',
+    sent_confirmed: 'Odesláno',
+    received_confirmed: 'Přijato',
+    sent_unconfirmed: 'Čeká se na podpis příjemce',
+    sent_waiting_reply: 'Čeká se na odpověď příjemce. Pokud nepřijde, transakci zrušte',
+    received_unconfirmed: 'Čeká se na dokončení odesílatelem',
+    received_mempool: 'Čeká na potvrzení',
     locked: 'Uzamčeno',
     send: 'Posláno',
+    node_not_synced: 'Uzel není synchronizován',
+    epicbox_not_connected: 'Epicbox není připojen',
+    epicbox_not_connected_hint: 'Odesílat na adresu Epicboxu lze, jakmile běží naslouchání Epicboxu. Mezitím použijte soubor nebo adresu HTTP.',
+    node_not_synced_hint: 'Odesílat lze, jakmile je uzel synchronizován.',
     dandelion: 'Dandelion++',
-    dandelion_hint: 'Broadcasting transactions via Dandelion++',
-    createofflinetx: 'Create offline transaction',
-    cancel:'Zrušit',
+    dandelion_hint: 'Šíření transakcí přes Dandelion++',
+    createofflinetx: 'Vytvořit offline transakci',
+    cancel: 'Zrušit',
     ok: 'Ok',
-    confirm: 'Confirm',
-    confirm_action: 'Confirm action',
+    confirm: 'Potvrdit',
+    confirm_action: 'Potvrdit akci',
     save: 'Uložit',
     delete: 'Smazat',
     edit: 'Upravit',
-    welcome: 'Vítejte v EPIC walletě',
+    welcome: 'Vítejte v peněžence EPIC',
     back: 'Zpět',
-    reset: 'Reset',
+    reset: 'Vymazat',
     addall: 'Přidat vše shora',
     msg: 'Zpráva',
     more: 'Více',
     wrongAddressFormat: 'adresa má špatný formát',
-    node_server: 'Node Server',
-    node_server_builtin: 'Built-in node server',
-    node_server_external: 'External node server',
-    node_server_address: 'Adresa pro Node Server',
+    node_server: 'Server uzlu',
+    node_server_builtin: 'Vestavěný server uzlu',
+    node_server_external: 'Externí server uzlu',
+    node_server_address: 'Adresa serveru uzlu',
     copy_to_clipboard: 'Zkopírováno do schránky',
     placeholder_search: 'Vyhledat...',
     refresh: 'Obnovit',
     page_of: 'Strana {0} z {1}',
     only_letter: 'Pouze malá písmena od a-z,',
     custom_settings: 'Vlastní nastavení',
-    advanced_settings: 'Advanced Settings',
     step_of: 'Krok {0}/{1}',
-    close_all_process: 'Terminate all processes',
-    waiting_for_nodesync: '... waiting for node to be synced.',
-    menu:{
+    close_all_process: 'Ukončit všechny procesy',
+    waiting_for_nodesync: '… čeká se na synchronizaci uzlu.',
+    menu: {
       general: 'Všeobecné',
-      dashboard: 'Menu',
+      dashboard: 'Přehled',
       address_book: 'Adresář',
-      send: 'Poslat',
+      send: 'Odeslat',
       finalize: 'Dokončit offline transakci',
-      receive: 'Obdržet',
+      receive: 'Přijmout',
       import: 'Import offline transakce',
       misc: 'Různé',
-      about: 'About',
-      help: 'Pomoc',
+      about: 'O aplikaci',
+      help: 'Nápověda',
       logout: 'Odhlásit se',
       account: 'Účet',
       settings: 'Nastavení',
       recheck: 'Znovu zkontrolovat zůstatek',
-      mnemonic: 'Mnemonic slova',
+      mnemonic: 'Obnovovací fráze',
       run_setup: 'Spustit asistenta nastavení',
       updates: 'Aktualizace',
-      openepichidden: 'Epic wallet location',
+      openepichidden: 'Umístění peněženky Epic',
     },
-
     headerbar: {
       howdy: 'Dobrý den,',
       version: 'Verze',
-      peers: 'Peers',
-      status: 'Status',
-      node: 'Node',
-      sync_height: 'Sync Height',
-      progress: 'Progress',
-      block_height: 'Blockchain Height',
-      node_sync_status: 'Internal node sync status',
+      peers: 'Protějšky',
+      status: 'Stav',
+      node: 'Uzel',
+      sync_height: 'Synchronizovaná výška',
+      progress: 'Průběh',
+      block_height: 'Výška blockchainu',
+      node_sync_status: 'Stav synchronizace vestavěného uzlu',
+      node_behind: 'Váš uzel je pozadu, chybějící bloky: {n}.',
+      switch_node: 'Přepnout uzel',
     },
-    dashboard:{
+    dashboard: {
       transactions: 'Transakce',
-      coins: 'Coiny'
+      coins: 'Mince',
     },
-    create:{
+    create: {
       select: 'Vyberte adresář pro data Vaší peněženky',
-      seedPhrase: 'Seed Phrase',
+      seedPhrase: 'Obnovovací fráze',
       toNewMsg: 'Vytvořit novou peněženku.',
       newWallet: 'Vytvořit novou peněženku',
-      backupNote: 'Důležité！Zálohujte si Seed Phrase, abyste mohli obnovit svou peněženku',
+      backupNote: 'Důležité! Zálohujte si obnovovací frázi, abyste mohli peněženku obnovit',
       fatal_create: 'Závažné: Selhání během akce "{0}"',
-      fatal_update: 'Závažné: App config nebyl aktualizován.'
+      fatal_update: 'Závažné: App config nebyl aktualizován.',
+      stage_create: 'Vytváření peněženky a její obnovovací fráze',
+      stage_save: 'Ukládání účtu',
+      backupWarning: 'Tato slova si zapište na papír, ve správném pořadí, a uložte je na bezpečné místo offline. Jsou jedinou možností, jak tuto peněženku obnovit, pokud o tento počítač nebo jeho soubory přijdete. Kdo je má, může vám vzít prostředky: nikdy je nesdílejte a neukládejte je jako fotku, snímek obrazovky ani soubor.',
+      writtenDown: 'Mám ji zapsanou, pokračovat',
     },
-
-    setupwizard:{
+    setupwizard: {
       setup_assistant: 'Asistent nastavení',
       account_information: 'Informace o účtu',
-      your_name:'Vaše jméno',
+      your_name: 'Vaše jméno',
       name_only_internal: 'Jméno je použito pouze interně',
       next_step: 'Další krok',
-      network_node: 'Network node',
-      network_node_txt: `Vaše peněženka vyžaduje network node k odeslání a příjímání transakcí.<br/>
-      Můžete si vybrat mezi built-in node serverem a external node serverem .<br/>
+      network_node: 'Uzel sítě',
+      network_node_txt: `Vaše peněženka potřebuje k odesílání a přijímání transakcí uzel sítě.<br/>
+      Můžete si vybrat mezi vestavěným serverem uzlu a externím serverem uzlu.<br/>
       <br/>
       Pokud si nejste jisti, který z nich použít, ponechte nastavení tak, jak je.<br/>`,
       previous_step: 'Předchozí krok',
       receive_transactions: 'Příchozí transakce',
-      receive_transactions_txt: `Abyste mohli přijímat transakce z jiných peněženek, musí být Vaše peněženka dostupná přes internet.<br/>
-      <br/>
-      Pokud nejste neumíte pracovat s nastavením routeru a přesměrováním portů, doporučujeme použít službu ngrok.<br/>
-      Jakmile bude ngrok aktivován, Vaše peněženka bude přístupná prostřednictvím dočasné adresy ngrok.<br/>
-      <br/>
-      <br/>
-      Nechte pole níže prázdné, pokud nechcete používat službu ngrok.`,
-      authtoken: 'Váš ngrok Authtoken',
-      howto: 'Jak získat Váš Authtoken z ngrok',
       values_correct: 'Jsou tyto hodnoty správné?',
       save_and_finish: 'Uložit a ukončit',
       name: 'Název',
       language: 'Jazyk',
-      ngrok_authtoken: 'ngrok Auth-Token',
       db_fatal: 'DB Fatal: nelze vložit DB',
       errors_save: 'Při ukládání uživatelských nastavení došlo k chybě: {0}',
-      epicbox_domain: 'Epicbox Web Address',
-      epicbox_off: 'turned off',
-      epicbox_domain_hint: `Leave field blank if you don't want to use this service.`,
-      noninteractive_transactions: `Intro to EPIC Addresses<br/>
+      epicbox_domain: 'Webová adresa Epicboxu',
+      epicbox_off: 'vypnuto',
+      epicbox_domain_hint: 'Pokud tuto službu nechcete používat, nechte pole prázdné.',
+      noninteractive_transactions: `Úvod do adres EPIC<br/>
       <br/>
-      EPIC addresses provide an easy way to send EPIC when the receiving wallet is offline.<br/>
+      Adresy EPIC umožňují snadno poslat EPIC, i když je peněženka příjemce offline.<br/>
       <br/>
-      This is accomplished securely and privately by using an external relay server called "Epicbox"<br/>
-      Relay servers such as epicbox.epiccash.com and others to come later are provided by our community.<br/>
+      Děje se tak bezpečně a soukromě pomocí externího předávacího serveru zvaného „Epicbox“.<br/>
+      Předávací servery, jako je epicbox.epiccash.com a další, které přibudou později, poskytuje naše komunita.<br/>
       <br/>
-      How it works:<br/>
-      Transactions are sent to the Epicbox server and delivered to the recipient as soon as the receiver's wallet is online.<br/>
-      <br/>The receiver signs the transaction and responds with a confirmation back to the sender which 'finalizes' the transaction if the sender is online.<br/>
-      <br/>If both wallets are online when a transaction is created, the process takes place immediately.<br/>
+      Jak to funguje:<br/>
+      Transakce se odešlou na server Epicbox a doručí se příjemci, jakmile je jeho peněženka online.<br/>
+      <br/>Příjemce transakci podepíše a odpoví odesílateli potvrzením, které transakci „dokončí“, pokud je odesílatel online.<br/>
+      <br/>Pokud jsou obě peněženky při vytvoření transakce online, proběhne celý postup okamžitě.<br/>
       <br/>
-      This system does not anonymize your IP and a VPN is recommended for IP address privacy.<br/>
-      <br/>Transactions are fully encrypted which assures a private transaction exchanged between the sender and receiver.<br/>
+      Tento systém neskrývá vaši IP adresu; pro soukromí IP adresy doporučujeme VPN.<br/>
+      <br/>Transakce jsou plně šifrované, takže výměna mezi odesílatelem a příjemcem zůstává soukromá.<br/>
       <br/>
       `,
     },
-    transaction:{
-
+    transaction: {
       received: 'Přijato',
       send: 'Posláno',
       transaction_id: 'ID transakce',
       creation_date: 'Datum vzniku',
-      receiver: 'From/To',
+      receiver: 'Od/komu',
       payment_proof: 'Doklad o platbě',
       amount: 'Množství (poplatek)',
-      status: 'Status',
+      status: 'Stav',
       transfer_type: 'Typ převodu',
       id: 'ID',
-      slate_id: 'Slate ID',
+      slate_id: 'ID slate',
       confirmation_date: 'Datum potvrzení',
       amount_credited: 'Připsaná částka',
       amount_debited: 'Odečtená částka',
       fee: 'Poplatek',
+      transaction_fee: 'Poplatek za transakci',
       message: 'Zpráva',
       type: 'Typ',
       receiver_address: 'Adresa příjemce',
@@ -173,132 +175,171 @@ const messages = {
       sender_address: 'Adresa odesílatele',
       sender_signature: 'Podpis odesílatele',
       sender_address_path: 'Cesta adresy odesílatele',
-      sendall: 'All'
-
+      sendall: 'Vše',
+      sendall_failed: 'Nepodařilo se zjistit, kolik lze odeslat. Zkuste to za chvíli znovu.',
     },
-
-    commit:{
-      unspentCmt: 'Nevyčerpané prostředky',
-      heightCreated: 'Block height po vytvoření',
-      unspent: 'Nevyčerpané',
-      spent: 'Vyčerpáno',
-      noCmtFound: 'Nebylo nalezeno žádné nevyčerpané potvrzení výstupu',
-      noCmt:'Žádné nevyčerpané výstupní potvrzení',
+    commit: {
+      unspentCmt: 'Neutracené výstupy',
+      heightCreated: 'Výška bloku při vytvoření',
+      unspent: 'Neutracené',
+      spent: 'Utraceno',
+      noCmtFound: 'Nebyl nalezen žádný neutracený výstup',
+      noCmt: 'Žádný neutracený výstup',
       copied: 'Zkopírováno',
       unconfirmed: 'Nepotvrzeno',
-      coins: 'Coiny',
-      coin_id: 'Coin ID',
+      coins: 'Mince',
+      coin_id: 'ID mince',
       value: 'Hodnota',
-      status: 'Status',
-      copy: 'Závazek zkopírován'
-
-
+      status: 'Stav',
+      copy: 'Závazek zkopírován',
     },
     account: {
       account: 'Účet',
       your_name: 'Vaše jméno',
       settings_saved: 'Nastavení účtu uloženo',
-      error_save: 'Při ukládání účtu došlo k chybě'
+      error_save: 'Při ukládání účtu došlo k chybě',
     },
-    addressbook:{
+    addressbook: {
       name: 'Jméno',
       country: 'Země',
       city: 'Město',
-      external_one: 'Externí adresa 1',
+      external_one: 'Adresa Epicboxu',
       external_two: 'Externí adresa 2',
       notice: 'Upozornění',
       deleted: 'Adresa smazána!',
       error_delete: 'Chyba při mazání adresy!',
+      error_save: 'Kontakt se nepodařilo uložit.',
+      error_name: 'Zadejte kontaktu jméno.',
+      error_address: 'Přidejte adresu, na kterou se bude odesílat.',
+      error_epicbox: 'Toto není platná adresa Epicboxu.',
     },
     remove: {
       warning: 'Varování',
-      info: 'Info',
+      info: 'Informace',
       help: 'Pomoc',
       remove: 'Odstranit',
-      success: 'Úspěch'
+      success: 'Úspěch',
     },
     login: {
-      listener_started: 'Wallet listener byl spuštěn',
-      error_listener_started: 'Chyba při spouštění wallet listener',
+      listener_started: 'Naslouchání peněženky bylo spuštěno',
+      error_listener_started: 'Chyba při spouštění naslouchání peněženky',
+      port_in_use: 'Port {0} používá jiný program (např. váš vlastní epic-wallet). Ukončete ho a zkuste to znovu.',
+      epicbox_started: 'Epicbox byl spuštěn',
+      error_epicbox_started: 'Chyba při spouštění Epicboxu',
+      stage_check: 'Kontrola souborů peněženky',
+      stage_processes: 'Hledání stále běžících procesů peněženky',
+      stage_closing: 'Zavírání starých procesů peněženky',
+      stage_wallet: 'Spouštění služby peněženky',
+      stage_unlock: 'Odemykání peněženky',
+      folder_missing: 'Složka peněženky „{0}“ nebyla nalezena: {1}. Možná byla přesunuta, přejmenována nebo smazána.',
+      folder_unknown: 'Pro peněženku „{0}“ není uložena žádná složka.',
     },
-    seed:{
-      errorGetMnemonic: 'Chyba při získávání Mnemonic slov. Je heslo správné?',
-      mnemonic: 'Mnemonic slova'
+    seed: {
+      errorGetMnemonic: 'Chyba při získávání obnovovací fráze. Je heslo správné?',
+      mnemonic: 'Obnovovací fráze',
     },
-
-
-    new:{
+    new: {
       create: 'Vytvořit novou peněženku',
       restore: 'Obnovit peněženku',
       select: 'Vyberte existující umístění dat peněženky',
-      selectErr: 'Zvolená složka nemá žádný adresář "wallet_data" dir a wallet config.',
+      selectErr: 'Zvolená složka neobsahuje adresář „wallet_data“ ani konfiguraci peněženky.',
       networkErr: 'Nelze určit typ sítě.<br/>Vyberte prosím jednu.',
       selectNetwork: 'Pokračovat',
     },
-
-    restore:{
-
-      title: 'Obnovit peněženku skrze seed phrase',
-      addSeedsInfo: 'Přidat seed phrase kliknutím na slovo(a)',
-      yourSeedsInfo: 'Váš seed phrase je',
+    walletfolder: {
+      onedrive_title: 'Tato složka je v OneDrive',
+      onedrive_warning: '{0} synchronizuje OneDrive. Synchronizace může poškodit databázi peněženky, když je peněženka otevřená, druhý počítač může vytvořit konfliktní kopie a vestavěný uzel by nahrával gigabajty dat blockchainu. Vyberte složku mimo OneDrive, například {1}.',
+    },
+    restore: {
+      title: 'Obnovit peněženku z obnovovací fráze',
+      addSeedsInfo: 'Přidejte obnovovací frázi kliknutím na slova',
+      yourSeedsInfo: 'Vaše obnovovací fráze je',
       added: 'Obnovit peněženku',
       newPassword: 'Nastavit nové heslo',
       recover: 'Obnovit',
       walletLocation: 'Umístění dat peněženky',
-      search_placeholder: 'zadejte nová slova / nebo vložte seed phrase',
+      search_placeholder: 'pište pro hledání slov / nebo vložte obnovovací frázi',
+      paste_info: 'Vložte celou obnovovací frázi do pole nebo do prvního slova, případně ji pište slovo po slovu.',
+      phrase: 'Obnovovací fráze',
+      phrase_placeholder: 'slovo1 slovo2 slovo3 …',
+      phrase_length: 'Délka',
+      n_words: '{0} slov',
+      word_n: 'Slovo {0}',
+      word_count: '{0} z {1} slov',
+      invalid_words: '{0} není v seznamu slov (označeno červeně)',
+      bad_length: 'obnovovací fráze má 12, 15, 18, 21 nebo 24 slov',
       create_new: 'Vytvořit nový účet',
-      change_seed: 'Změnit seed slova',
+      change_seed: 'Změnit slova obnovovací fráze',
       wallet_recovered: 'Vaše peněženka je obnovena. Přihlaste se a dokončete nastavení.',
       recover_fail: 'Závažné: obnovení se nezdařilo "{0}"',
-      fatal_app: 'Závažné: Konfigurace aplikace není aktualizována.'
-
+      fatal_app: 'Závažné: Konfigurace aplikace není aktualizována.',
     },
-
-    app:{
+    app: {
       create: 'Vytvořit transakci (soubor)',
       finalize: 'Dokončit transakci (soubor)',
-      httpSend: 'Poslat skrze HTTP/HTTPS',
+      httpSend: 'Odeslat přes HTTP/HTTPS',
       createRespFile: 'Importovat transakci (soubor)',
-      httpReceive: 'Obdržet skrze HTTP/HTTPS',
-      height:'Block Height',
+      httpReceive: 'Přijmout přes HTTP/HTTPS',
+      height: 'Výška bloku',
       updateTitle: 'Nalezena nová verze',
       updateMsg: 'Nalezena nová verze EPIC peněženky. Aktualizujte prosím hned TEĎ.',
       yes: 'ano',
       no: 'ne',
-
-      ngrok_service_started: 'Služba Ngrok byla spuštěna',
-      ngrok_address_changed: 'Vaše adresa ngrok se změnila',
-      ngrok_service_stopped: 'Služba Ngrok zastavena',
-      ngrok_service_error: 'Chyba při spouštění služby Ngrok',
-      error_setup_internal_node: 'Nelze nastavit internal node server',
-      node_started: 'Node spuštěn',
-      node_not_started: 'Node nebyl spuštěn',
-      node_offline: 'Node je offline',
-      external_node_online: 'External node je online',
-      external_node_offline: 'External node je offline',
+      error_setup_internal_node: 'Nelze nastavit vestavěný server uzlu',
+      node_started: 'Uzel spuštěn',
+      node_restarting: 'Uzel se restartuje',
+      node_not_started: 'Uzel nebyl spuštěn',
+      node_port_in_use: 'Uzel nebyl spuštěn: port {0} používá jiný program (např. váš vlastní epic node). Ukončete ho, nebo ho v Nastavení použijte jako externí uzel.',
+      node_offline: 'Uzel je offline',
+      external_node_online: 'Externí uzel je online',
+      external_node_offline: 'Externí uzel je offline',
+      external_node_invalid: 'Adresa vašeho uzlu {0} není uzel Epic ({1}). Změňte ji v Nastavení.',
+      epicbox_wait_timeout: 'Epicbox nebyl spuštěn: uzel není synchronizován. Spusťte ho na stránce Přijmout.',
+      epicbox_switched: 'Epicbox nyní naslouchá na {0}',
+      epicbox_connecting: 'Epicbox se připojuje k {0}…',
+      epicbox_switch_failed: 'Epicbox se na novém serveru nepodařilo spustit. Spusťte ho na stránce Přijmout.',
+      epicbox_old_checked: 'Ze starého serveru {1} bylo vyzvednuto platebních zpráv: {0}',
+      epicbox_owner_config_failed: 'API peněženky nepřijalo nový server Epicbox: před odesláním peněženku zamkněte a znovu odemkněte.',
+      node_unreachable: 'uzel není dostupný',
+      wallet_api_unreachable: 'API peněženky není dostupné',
+      balance_loading: 'Načítání zůstatku…',
+      balance_updating: 'Aktualizace zůstatku z uzlu…',
+      balance_waiting_node: 'Poslední známý zůstatek, aktualizuje se po synchronizaci uzlu',
+      balance_node_unreachable: 'Poslední známý zůstatek, uzel není dostupný',
+      balance_wallet_no_node: 'Poslední známý zůstatek, peněženku se z uzlu nepodařilo aktualizovat',
+      listener_starting: 'Spouštění naslouchání peněženky…',
+      loading_wallet_data: 'Načítání…',
       background_process: 'Našli jsme nějaké běžící procesy peněženky a uzlů na pozadí. Před spuštěním této aplikace je nejprve zavřete.',
-      walletonline: 'Your wallet is online',
-      walletoffline: 'Your wallet is offline.',
+      walletonline: 'Vaše peněženka je online',
+      walletoffline: 'Vaše peněženka je offline.',
     },
-
+    progress: {
+      done: 'hotovo',
+      active: 'probíhá',
+      pending: 'čeká',
+    },
     info: {
       spendable: 'Utratitelné',
       total: 'Zůstatek',
       unfinalization: 'Nepotvrzeno',
-      immature: 'Immature'
+      immature: 'Nedozrálé',
     },
-
-    txs:{
+    txs: {
       tx: 'Transakce',
-      canceled:'Zrušeno',
+      canceled: 'Zrušeno',
       noTxFound: 'Nenalezena žádná transakce',
-      noTx:'Žádné transakce',
-      cancelSuccess:'Tato transakce byla zrušena',
+      noTx: 'Žádné transakce',
+      cancelSuccess: 'Tato transakce byla zrušena',
     },
-
-
-
-    fileSend:{
+    confirmations: {
+      of: '{0} z {1} potvrzení',
+      confirming: 'Potvrzuje se',
+      confirmed: 'Potvrzeno',
+      confirmed_count: 'Potvrzeno (potvrzení: {0})',
+      confirmed_spendable_count: 'Potvrzeno, lze utratit (potvrzení: {0})',
+      waiting: 'Čeká na potvrzení',
+    },
+    fileSend: {
       sendAmount: 'Částka k odeslání',
       createTxFile: 'Vytvořte transakci',
       WrongAmount: 'Špatná částka',
@@ -306,10 +347,9 @@ const messages = {
       saveMsg: 'Uložení vytvořeného souboru transakce',
       CreateFailed: 'Vytvoření nového transakčního souboru se nezdařilo',
     },
-
-    httpSend:{
+    httpSend: {
       sendAmount: 'Množství k poslání',
-      address:'Adresa příjemce',
+      address: 'Adresa příjemce',
       WrongAmount: 'Špatná částka',
       NotEnough: 'Nedostatečný zůstatek.',
       WrongAddress: 'Špatná adresa',
@@ -319,117 +359,132 @@ const messages = {
       TxResponseFailed: 'Nelze získat správnou odpověď od příjemce',
       TxCreateFailed: 'Vytvoření transakce se nezdařilo',
       salteVersion: 'Verze souboru Slate',
-      salteVersionHelp: 'Pokud se vám nepodařilo odeslat EPICky, zkuste změnit verzi souboru Slate a poté jej znovu odešlete'
+      salteVersionHelp: 'Pokud se vám nepodařilo odeslat EPIC, zkuste změnit verzi souboru Slate a odeslat znovu',
     },
-
     receive: {
-      dropMsg: 'Přetáhněte transakční soubor do kolonky příjmout nebo kliknutím nahrajte',
+      dropMsg: 'Přetáhněte sem soubor transakce k přijetí nebo ho kliknutím nahrajte',
       WrongFileType: 'Nesprávný typ souboru transakce',
       saveMsg: 'Uložení vytvořeného souboru transakce',
       CreateFailed: 'Vytvoření nového transakčního souboru se nezdařilo',
       NoSavePlace: 'Prosím vyberte místo uložení',
-      dragdrop: 'Drag & drop soubor',
+      dragdrop: 'Přetáhněte soubor',
       error_read: 'Chyba při čtení obsahu souboru',
       success: 'Transakce proběhla v pořádku',
     },
-
     finalize: {
       finalize: 'Dokončit',
       success: 'Transakce proběhla v pořádku',
-      ok:'OK',
+      ok: 'OK',
       sending: 'Odesílání',
-      dropMsg: 'Přetáhněte transakční soubor do kolonky příjmout nebo kliknutím nahrajte',
+      dropMsg: 'Přetáhněte sem soubor s odpovědí k dokončení nebo ho kliknutím nahrajte',
       WrongFileType: 'Nesprávný typ souboru transakce',
       TxFailed: 'Transakce selhala',
-      dragdrop: 'Drag & drop soubor',
-      error_read: 'Chyba při čtení obsahu souboru'
+      dragdrop: 'Přetáhněte soubor',
+      error_read: 'Chyba při čtení obsahu souboru',
     },
-
     httpReceive: {
-      launchSucess: 'Úspěšně zahájeno',
-      listening: "Vaše peněženka může přijímat transakce prostřednictvím těchto adres.",
+      listening: 'Vaše peněženka může přijímat transakce prostřednictvím těchto adres.',
       address: 'Adresa peněženky',
-      reachableMsg2: 'Ujistěte se, že Vaše IP adresa je veřejná a dostupná přes internet.',
-      close: 'Stop listener',
+      close: 'Zastavit naslouchání',
       attention: 'Upozornění',
-      reachableMsg: 'Chcete-li přijímat online transakce, musí být Vaše peněženka spuštěna v režimu listen mode.',
-      password: 'Heslo peněženky (používá se ke spuštění HTTP listen) (used to start HTTP listen)',
-      start: 'Start',
+      reachableMsg: 'Chcete-li přijímat online transakce, musí mít vaše peněženka spuštěné naslouchání.',
+      start: 'Spustit',
       error: 'Žádné heslo.',
-      failed: 'Start se nezdařil, možná špatné heslo',
-      failed2: 'HTTP listen selhalo, Vaše veřejná IP není pro uživatele internetu dostupná. Zkuste transakční soubor',
-      failed3: 'Nepodařilo se získat Vaši veřejnou IP; Zkuste to později',
-      failed4: 'Listener nyní běží na localhost:3415. Vaše ip však není pro uživatele internetu dostupná. Zkuste transakční soubor',
-       ip: 'vaše veřejná ip',
-      current_ngrok_address: 'Aktuální adresa Ngrok',
+      ip: 'vaše veřejná ip',
       local_address: 'Místní adresa',
-      session_end: 'Používáte ngrok bez účtu. Vaše relace skončí za {0} h, {1} min',
-      epicbox_address: 'Your public Epic address',
+      epicbox_address: 'Vaše veřejná adresa Epic',
       your_qrcode: 'Váš QR kód pro Vaši "{0}" adresu',
       click_qrcode_icon: 'Klikněte na ikonu QR kódu',
-      epicbox_not_available: 'Epicbox not available. Wait for the Node to be synced or try to restart the wallet listener',
-      epicbox_off: 'Your epicbox is not configured. Update your settings and define a epicbox domain',
-      check_port_open_done: 'Recheck done!',
-      listener_stopped: 'Wallet listener stopped',
+      epicbox_address_off: 'Příjem je vypnutý. Platby čekají na Epicboxu, dokud ho nespustíte.',
+      epicbox_address_unknown: 'Vaši adresu Epic se nepodařilo načíst. Za chvíli znovu otevřete stránku Přijmout.',
+      http_failed_port: 'HTTP nepřijímá: port {0} používá jiný program. Zavřete ho a zkuste to znovu.',
+      http_failed: 'HTTP nepřijímá: naslouchání se nepodařilo spustit.',
+      http_retry: 'Zkusit znovu',
+      epicbox_off: 'Váš Epicbox není nastaven. Upravte nastavení a zadejte doménu Epicboxu',
+      epicbox_listening_on: 'Naslouchá na {0}',
+      epicbox_listening: 'Epicbox naslouchá',
+      epicbox_connecting_to: 'Připojování k {0}…',
+      epicbox_starting_on: 'Spouštění na {0}…',
+      epicbox_paused_on: 'Na {0}, pozastaveno do synchronizace uzlu',
+      epicbox_checking_old: 'Kontrola starého serveru {0}, zda tam nečekají platby na vaši starou adresu…',
+      epicbox_listener_off: 'Naslouchání Epicboxu je vypnuto',
+      check_port_open_done: 'Kontrola dokončena!',
+      listener_stopped: 'Naslouchání peněženky bylo zastaveno',
     },
-
     check: {
       checking: 'Opětovná kontrola, buďte trpěliví ...',
       stop: 'Zastavit kontrolu',
-      introTitle: 'Info',
-      intro1: 'Prohledá celý Blockchain a najde neutracené výstupy coinů, které patří do Vaší peněženky.',
-      start: 'Start',
-      delete_unconfirmed: 'Smažte nepotvrzené výstupy coinů',
-      scan_finished: 'Skenování peněženky dokončeno.',
-      error_scan: 'Chyba při spuštění skenování. Je heslo správné?',
-      scan_stop: 'Kontrola peněženky byla zastavena.'
-
+      introTitle: 'Informace',
+      intro1: 'Prohledá celý blockchain a najde neutracené výstupy, které patří do vaší peněženky.',
+      start: 'Spustit',
+      delete_unconfirmed: 'Smazat nepotvrzené výstupy',
+      scan_finished: 'Prohledání peněženky dokončeno.',
+      error_scan: 'Chyba při spuštění prohledávání. Je heslo správné?',
+      scan_stop: 'Prohledávání peněženky bylo zastaveno.',
     },
-    firstruncheck: {
-      title: 'Skenuje blockchain pro výstupy z peněženky, buďte trpěliví ...',
-    },
-
     lang: {
       title: 'Vyberte jazyk',
       lang: 'Jazyk',
-      select: 'Vybrat'
+      select: 'Vybrat',
     },
-
     settings: {
       title: 'Nastavení',
-      check_node_api_http_addr: 'Node api adresa',
-      node_api_addr_hint: 'kde by peněženka měla najít běžící node',
+      check_node_api_http_addr: 'Adresa API uzlu',
+      node_api_addr_hint: 'kde má peněženka najít běžící uzel',
       network: 'Síť',
-      wallet_listener: 'Wallet listener',
-      auto_start: 'automaticky spustí listener peněženky po přihlášení',
-      authtoken: 'Váš ngrok Authtoken',
-      ngrok_force_start: 'Použijte ngrok bez Authtokenu',
-      ngrok_hint: 'Adresa ngrok je aktivní 2 hodiny a poté se obnoví.',
-      ngrok_account_hint: 'Chcete-li získat svůj ngrok Authtoken, vytvořte si nový účet na https://ngrok.com',
-      authtoken_hint: 'S ngrok Authtokenem je Vaše adresa aktivní, dokud je peněženka v listening mode',
-      howto: 'Jak získat svůj Authtoken od ngrok',
+      wallet_listener: 'Naslouchání peněženky',
+      auto_start: 'po přihlášení automaticky spustit naslouchání peněženky a Epicbox',
       settings_saved: 'Nastavení uloženo',
       error_save: 'Při ukládání nastavení došlo k chybě',
-      epicbox_domain: 'Epicbox Domain',
-      epicbox_domain_hint: `The domain of the relay server, where your epicbox is connected to. Leave field blank if you don't want to use this service. Default: epicbox.epiccash.com`,
-
-      node_background: 'sync in background',
-      node_background_hint: 'the built-in node server continues to sync in the background even when the app is closed. The next time you run the wallet, you do not have to wait for the synchronization with the blockchain.',
-
+      epicbox_domain: 'Doména Epicboxu',
+      epicbox_domain_hint: 'Doména předávacího serveru, ke kterému je váš Epicbox připojen. Pokud tuto službu nechcete používat, nechte pole prázdné. Výchozí: epicbox.epiccash.com',
+      node_background: 'synchronizace na pozadí',
+      node_background_hint: 'vestavěný server uzlu se synchronizuje na pozadí, i když je aplikace zavřená. Až peněženku příště spustíte, nemusíte čekat na synchronizaci s blockchainem.',
+      node_load_warning: 'Prohledávání, dokud neskončí, využívá hodně procesoru a paměti.',
     },
-
-    validators:{
+    validators: {
       empty: 'Pole {0} je povinné',
       equal: 'Hodnota {0} se musí rovnat',
+      password_mismatch: 'Hesla se neshodují',
+      address: 'Není to adresa, na kterou peněženka umí odesílat',
       http_address: 'HTTP(S) adresa není platná',
+      epicbox_address: 'Neplatná adresa Epicboxu',
+      onion_address: 'Adresy Tor nejsou podporovány.',
       min_length: 'Pole {0} musí mít alespoň {1} znaků',
       only_letters: '{0} může mít pouze malá písmena od a-z bez mezer',
       number: 'Pole {0} musí být číslo',
+      decimals: 'Pole {0} může mít nejvýše 8 desetinných míst',
+      positive: 'Pole {0} musí být větší než 0',
       spendable: 'Nedostatečný zůstatek',
       exist: 'Účet "{0}" již existuje',
-      notexist: 'Účet "{0}" neexistuje'
-    }
+      notexist: 'Účet "{0}" neexistuje',
+      not_epic_node: 'Není to uzel Epic: {0}',
+    },
+    node_problem: {
+      title_too_old: 'Verze tohoto uzlu není s touto peněženkou kompatibilní.',
+      title_status_locked: 'Verze tohoto uzlu není s touto peněženkou kompatibilní.',
+      title_unreachable: 'Tento uzel neodpovídá.',
+      title_not_epic: 'Tato adresa není uzel Epic Cash.',
+      node: 'Uzel',
+      epicbox_skipped: 'Epicbox se nespustil. Můžete ho spustit na stránce Přijmout.',
+      go_receive: 'Přejít na Přijmout',
+      fixes: 'Co můžete udělat',
+      fix_public: 'Použít veřejný uzel',
+      node_list: 'seznam uzlů',
+      fix_builtin: 'Použít vestavěný uzel',
+      fix_other: 'Použít jiný uzel',
+      fix_upgrade: 'Aktualizovat svůj uzel',
+      opens_browser: '(otevře se v prohlížeči)',
+      switched: 'Přepnuto na vestavěný uzel. Pro dokončení se odhlaste a znovu přihlaste.',
+      switch_failed: 'Na vestavěný uzel se nepodařilo přepnout',
+      hide: 'Skrýt',
+      hide_label: 'Skrýt toto upozornění do příštího přihlášení',
+      address_changed_title: 'Adresa vašeho uzlu byla aktualizována',
+      address_changed: 'Nyní se používá {1} místo {0}.',
+      ok: 'OK',
+    },
+    modern,
+  },
+};
 
-  }
-}
 export default messages

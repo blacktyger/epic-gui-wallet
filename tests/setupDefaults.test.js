@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { supportedLocale, initialNodeChoice, initialEpicboxDomain, isLocalNodeAddress, currentEpicboxDomain } from '../src/shared/setupDefaults.js';
 
-const langs = {'bg': 'България', 'cz': 'Česko', 'de': 'Deutsch', 'en': 'English', 'fa': 'فارسی', 'hi': 'हिन्दी'};
+const langs = {'bg': 'България', 'cz': 'Česko', 'de': 'Deutsch', 'en': 'English', 'fa': 'فارسی', 'hi': 'हिन्दी', 'pl': 'Polski'};
 const DEFAULT = 'epicbox.epiccash.com';
 
 test('a language that is no longer offered falls back to English', () => {

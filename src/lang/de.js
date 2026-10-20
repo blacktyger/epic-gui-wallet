@@ -1,6 +1,11 @@
+/* German (de): the Classic interface; the shared and Modern strings are imported. The same keys, in the same order, as the English (see the comments there).
+ * A missing key falls back to English (tests/i18n.test.js lists the allowed ones). */
+import shared from './shared/de.js';
+import modern from './modern/de.js';
+
 const messages = {
   msg: {
-
+    ...shared,
     title: '',
     password: 'Passwort',
     passwordAgain: 'Passwort erneut eingeben',
@@ -14,19 +19,26 @@ const messages = {
     jump: 'jump',
     error: 'Bitte korrigieren Sie den (die) folgenden Fehler:',
     confirmed: 'Bestätigt',
-    confirm_action: 'Aktion erforderlich',
     unconfirmed: 'Warten auf Bestätigung',
     sent_confirmed: 'Gesendet',
     received_confirmed: 'Empfangen',
     sent_unconfirmed: '... warte auf die Unterschrift des Empfängers',
+    sent_waiting_reply: 'Warten auf die Antwort des Empfängers. Brechen Sie ab, falls sie nicht kommt',
     received_unconfirmed: '... warte auf den Absender, um den Vorgang abzuschließen',
     received_mempool: '... warte auf Bestätigung',
     locked: 'Gesperrt',
     send: 'Senden',
+    node_not_synced: 'Netzwerkknoten nicht synchronisiert',
+    epicbox_not_connected: 'Epicbox nicht verbunden',
+    epicbox_not_connected_hint: 'Das Senden an eine Epicbox-Adresse ist möglich, sobald der Epicbox-Empfänger läuft. Verwenden Sie in der Zwischenzeit eine Datei oder eine HTTP-Adresse.',
+    node_not_synced_hint: 'Das Senden ist möglich, sobald der Netzwerkknoten synchronisiert ist.',
     dandelion: 'Dandelion++',
-    dandelion_hint: 'Broadcasting transactions via Dandelion++',
-    createofflinetx: 'Create offline transaction',
-    cancel:'Abbrechen',
+    dandelion_hint: 'Transaktionen über Dandelion++ verbreiten',
+    createofflinetx: 'Offline-Transaktion erstellen',
+    cancel: 'Abbrechen',
+    ok: 'OK',
+    confirm: 'Bestätigen',
+    confirm_action: 'Aktion erforderlich',
     save: 'Speichern',
     delete: 'Löschen',
     edit: 'Bearbeiten',
@@ -38,9 +50,9 @@ const messages = {
     more: 'Mehr',
     wrongAddressFormat: 'falsches Adressformat',
     node_server: 'Netzwerkknoten',
-    node_server_builtin: 'Eingebauter Netzwerkknoten',
+    node_server_builtin: 'Integrierter Netzwerkknoten',
     node_server_external: 'Externer Netzwerkknoten',
-    node_server_address: 'Netzwerkknoten Adresse',
+    node_server_address: 'Netzwerkknoten-Adresse',
     copy_to_clipboard: 'In Zwischenablage kopiert!',
     placeholder_search: 'Suche...',
     refresh: 'Aktualisieren',
@@ -49,11 +61,10 @@ const messages = {
     custom_settings: 'Benutzerdefinierte Einstellungen',
     step_of: 'Schritt {0}/{1}',
     close_all_process: 'Alle Prozesse beenden',
-    advanced_settings: 'Advanced Settings',
-    waiting_for_nodesync: '... waiting for node to be synced.',
-    menu:{
+    waiting_for_nodesync: '... warte auf die Synchronisierung des Netzwerkknotens.',
+    menu: {
       general: 'Allgemein',
-      dashboard: 'Dashboard',
+      dashboard: 'Übersicht',
       address_book: 'Adressbuch',
       send: 'Senden',
       finalize: 'Offline-Transaktion abschließen',
@@ -65,13 +76,12 @@ const messages = {
       logout: 'Abmelden',
       account: 'Konto',
       settings: 'Einstellungen',
-      recheck: 'Saldo erneut prüfen',
-      mnemonic: 'Mnemonik Wortliste',
+      recheck: 'Kontostand erneut prüfen',
+      mnemonic: 'Wiederherstellungsphrase',
       run_setup: 'Einrichtungsassistent ausführen',
       updates: 'Updates',
       openepichidden: 'Epic-Wallet Speicherort',
     },
-
     headerbar: {
       howdy: 'Guten Tag,',
       version: 'Version',
@@ -79,25 +89,30 @@ const messages = {
       status: 'Status',
       node: 'Netzwerkknoten',
       sync_height: 'Sync-Höhe',
-      progress: 'Progress',
+      progress: 'Fortschritt',
       block_height: 'Blockchain-Höhe',
-      node_sync_status: 'Interner Netzwerkknoten'
+      node_sync_status: 'Synchronisierungsstatus des integrierten Netzwerkknotens',
+      node_behind: 'Ihrem Netzwerkknoten fehlen noch Blöcke: {n}.',
+      switch_node: 'Netzwerkknoten wechseln',
     },
-    dashboard:{
+    dashboard: {
       transactions: 'Transaktionen',
-      coins: 'Coins'
+      coins: 'Coins',
     },
-    create:{
+    create: {
       select: 'Wählen Sie ein Verzeichnis für Ihre Wallet-Daten',
-      seedPhrase: 'Mnemonik Wortliste zum Wiederherstellen',
+      seedPhrase: 'Wiederherstellungsphrase',
       toNewMsg: 'Erstellen Sie eine neue Wallet.',
       newWallet: 'Neue Wallet erstellen',
-      backupNote: 'WICHTIG!Bitte sichern Sie die Mnemonik Wortliste um Ihre Wallet wiederherstellen zu können',
+      backupNote: 'WICHTIG! Bitte sichern Sie Ihre Wiederherstellungsphrase, um Ihre Wallet wiederherstellen zu können.',
       fatal_create: 'Schwerwiegender Fehler: Erstellungsfehler bei Aktion "{0}"',
-      fatal_update: 'Schwerwiegender Fehler: App-Konfiguration nicht aktualisiert.'
+      fatal_update: 'Schwerwiegender Fehler: App-Konfiguration nicht aktualisiert.',
+      stage_create: 'Wallet und Wiederherstellungsphrase werden erstellt',
+      stage_save: 'Konto wird gespeichert',
+      backupWarning: 'Schreiben Sie diese Wörter in dieser Reihenfolge auf Papier und bewahren Sie sie sicher und offline auf. Sie sind die einzige Möglichkeit, diese Wallet wiederherzustellen, wenn dieser Computer oder seine Dateien verloren gehen. Wer sie besitzt, kann Ihr Guthaben an sich nehmen: Geben Sie sie niemals weiter und speichern Sie sie nicht als Foto, Screenshot oder Datei.',
+      writtenDown: 'Ich habe sie aufgeschrieben, weiter',
     },
-
-    setupwizard:{
+    setupwizard: {
       setup_assistant: 'Einrichtungsassistent',
       account_information: 'Kontoinformationen',
       your_name: 'Ihr Name',
@@ -110,47 +125,36 @@ const messages = {
       Wenn Sie sich nicht sicher sind, welche Sie verwenden sollen, lassen Sie die Einstellungen so, wie sie sind.<br/>`,
       previous_step: 'Vorheriger Schritt',
       receive_transactions: 'Empfangen von Transaktionen',
-      receive_transactions_txt: `Um Transaktionen von anderen Wallets zu empfangen, muss Ihre Wallet über das Internet zugänglich sein.<br/>
-      <br/>
-      Wenn Sie mit Router-Einstellungen und Port-Weiterleitung nicht vertraut sind, empfehlen wir die Verwendung des ngrok-Dienstes.<br/>
-      Sobald ngrok aktiviert ist, wird Ihre Wallet über eine temporäre ngrok-Adresse zugänglich sein.<br/>
-      <br/>
-      <br/>
-      Lassen Sie die Felder unten leer, wenn Sie den ngrok-Dienst nicht nutzen möchten.`,
-      authtoken: 'Ihr ngrok Authtoken',
-      howto: 'Wie Sie Ihren Authtoken von ngrok erhalten',
       values_correct: 'Sind diese Werte korrekt?',
       save_and_finish: 'Speichern und beenden',
       name: 'Name',
       language: 'Sprache',
-      ngrok_authtoken: 'ngrok Authtoken',
       db_fatal: 'Schwerwiegender Fehler: DB kann nicht eingefügt werden',
       errors_save: 'Fehler beim Speichern von Benutzereinstellungen: {0}',
-      epicbox_domain: 'Epicbox Web Address',
-      epicbox_off: 'turned off',
-      epicbox_domain_hint: `Leave field blank if you don't want to use this service.`,
-      noninteractive_transactions: `Intro to EPIC Addresses<br/>
+      epicbox_domain: 'Epicbox-Webadresse',
+      epicbox_off: 'ausgeschaltet',
+      epicbox_domain_hint: 'Lassen Sie das Feld leer, wenn Sie diesen Dienst nicht nutzen möchten.',
+      noninteractive_transactions: `Einführung in EPIC-Adressen<br/>
       <br/>
-      EPIC addresses provide an easy way to send EPIC when the receiving wallet is offline.<br/>
+      EPIC-Adressen bieten eine einfache Möglichkeit, EPIC zu senden, wenn die empfangende Wallet offline ist.<br/>
       <br/>
-      This is accomplished securely and privately by using an external relay server called "Epicbox"<br/>
-      Relay servers such as epicbox.epiccash.com and others to come later are provided by our community.<br/>
+      Das geschieht sicher und privat über einen externen Relay-Server namens „Epicbox“.<br/>
+      Relay-Server wie epicbox.epiccash.com und weitere, die später folgen, werden von unserer Community bereitgestellt.<br/>
       <br/>
-      How it works:<br/>
-      Transactions are sent to the Epicbox server and delivered to the recipient as soon as the receiver's wallet is online.<br/>
-      <br/>The receiver signs the transaction and responds with a confirmation back to the sender which 'finalizes' the transaction if the sender is online.<br/>
-      <br/>If both wallets are online when a transaction is created, the process takes place immediately.<br/>
+      So funktioniert es:<br/>
+      Transaktionen werden an den Epicbox-Server gesendet und dem Empfänger zugestellt, sobald dessen Wallet online ist.<br/>
+      <br/>Der Empfänger signiert die Transaktion und sendet eine Bestätigung an den Absender zurück, die die Transaktion „abschließt“, sofern der Absender online ist.<br/>
+      <br/>Sind beide Wallets online, wenn eine Transaktion erstellt wird, läuft der Vorgang sofort ab.<br/>
       <br/>
-      This system does not anonymize your IP and a VPN is recommended for IP address privacy.<br/>
-      <br/>Transactions are fully encrypted which assures a private transaction exchanged between the sender and receiver.<br/>
+      Dieses System anonymisiert Ihre IP-Adresse nicht; für den Schutz Ihrer IP-Adresse wird ein VPN empfohlen.<br/>
+      <br/>Transaktionen sind vollständig verschlüsselt, was einen privaten Austausch zwischen Absender und Empfänger sicherstellt.<br/>
       <br/>
       `,
     },
-    transaction:{
-
+    transaction: {
       received: 'Empfangen',
       send: 'Senden',
-      transaction_id: 'Transaktions ID',
+      transaction_id: 'Transaktions-ID',
       creation_date: 'Erstellungsdatum',
       receiver: 'Sender/Empfänger',
       payment_proof: 'Zahlungsnachweis',
@@ -158,24 +162,23 @@ const messages = {
       status: 'Status',
       transfer_type: 'Art der Übertragung',
       id: 'ID',
-      slate_id: 'Slate ID',
+      slate_id: 'Slate-ID',
       confirmation_date: 'Bestätigungsdatum',
       amount_credited: 'Gutgeschriebener Betrag',
       amount_debited: 'Belasteter Betrag',
       fee: 'Gebühr',
-      transaction_fee: 'Transaktions Gebühr',
+      transaction_fee: 'Transaktionsgebühr',
       message: 'Nachricht',
       type: 'Art',
       receiver_address: 'Adresse des Empfängers',
-      receiver_signature: 'Signatur des Empfangers',
+      receiver_signature: 'Signatur des Empfängers',
       sender_address: 'Adresse des Absenders',
       sender_signature: 'Signatur des Absenders',
       sender_address_path: 'Pfad der Absenderadresse',
-      sendall: 'Alles'
-
+      sendall: 'Alles',
+      sendall_failed: 'Der sendbare Betrag konnte nicht ermittelt werden. Versuchen Sie es gleich noch einmal.',
     },
-
-    commit:{
+    commit: {
       unspentCmt: 'Nicht ausgegebene Coins',
       heightCreated: 'Blockhöhe bei Erstellung',
       unspent: 'Nicht ausgegeben',
@@ -185,48 +188,57 @@ const messages = {
       copied: 'Kopiert',
       unconfirmed: 'Unbestätigt',
       coins: 'Coins',
-      coin_id: 'Coin ID',
+      coin_id: 'Coin-ID',
       value: 'Wert',
       status: 'Status',
-      copy: 'Coin ID kopiert'
-
-
+      copy: 'Coin ID kopiert',
     },
     account: {
       account: 'Konto',
       your_name: 'Ihr Name',
       settings_saved: 'Kontoeinstellungen gespeichert',
-      error_save: 'Fehler beim Speichern des Kontos'
+      error_save: 'Fehler beim Speichern des Kontos',
     },
-    addressbook:{
+    addressbook: {
       name: 'Name',
       country: 'Land',
       city: 'Stadt',
-      external_one: 'Epicbox Adresse',
+      external_one: 'Epicbox-Adresse',
       external_two: 'Externe Adresse 2',
       notice: 'Hinweis',
       deleted: 'Adresse gelöscht!',
       error_delete: 'Fehler beim Löschen der Adresse!',
+      error_save: 'Der Kontakt konnte nicht gespeichert werden.',
+      error_name: 'Geben Sie dem Kontakt einen Namen.',
+      error_address: 'Fügen Sie eine Adresse hinzu, an die gesendet werden soll.',
+      error_epicbox: 'Das ist keine gültige Epicbox-Adresse.',
     },
     remove: {
       warning: 'Warnung',
       info: 'Info',
       help: 'Hilfe',
       remove: 'Entfernen',
-      success: 'Erfolg'
+      success: 'Erfolg',
     },
     login: {
       listener_started: 'Wallet-Empfänger gestartet',
       error_listener_started: 'Fehler beim Starten des Wallet-Empfängers',
+      port_in_use: 'Port {0} wird von einem anderen Programm verwendet (z. B. Ihrem eigenen epic-wallet). Beenden Sie es und versuchen Sie es dann erneut.',
       epicbox_started: 'Epicbox gestartet',
+      error_epicbox_started: 'Fehler beim Starten von Epicbox',
+      stage_check: 'Wallet-Dateien werden geprüft',
+      stage_processes: 'Suche nach noch laufenden Wallet-Prozessen',
+      stage_closing: 'Alte Wallet-Prozesse werden beendet',
+      stage_wallet: 'Wallet-Dienst wird gestartet',
+      stage_unlock: 'Wallet wird entsperrt',
+      folder_missing: 'Der Ordner der Wallet „{0}“ wurde nicht gefunden: {1}. Er wurde möglicherweise verschoben, umbenannt oder gelöscht.',
+      folder_unknown: 'Für die Wallet „{0}“ ist kein Ordner gespeichert.',
     },
-    seed:{
-      errorGetMnemonic: 'Fehler beim Anzeigen der Mnemonik Wortliste. Ist Passwort richtig?',
-      mnemonic: 'Mnemonik Wortliste'
+    seed: {
+      errorGetMnemonic: 'Fehler beim Anzeigen der Wiederherstellungsphrase. Ist das Passwort richtig?',
+      mnemonic: 'Wiederherstellungsphrase',
     },
-
-
-    new:{
+    new: {
       create: 'Neue Wallet erstellen',
       restore: 'Wallet wiederherstellen',
       select: 'Vorhandenen Speicherort der Wallet-Daten auswählen',
@@ -234,72 +246,100 @@ const messages = {
       networkErr: 'Netzwerktyp kann nicht bestimmt werden.<br/>Bitte wählen Sie eines aus.',
       selectNetwork: 'Weiter',
     },
-
-    restore:{
-
-      title: 'Wallet über Mnemonik Wortliste wiederherstellen',
-      addSeedsInfo: 'Fügen Sie bitte die Mnemonik Wortliste durch Anklicken der Wörter hinzu',
-      yourSeedsInfo: 'Ihre Mnemonik Wortliste lautet',
+    walletfolder: {
+      onedrive_title: 'Dieser Ordner liegt in OneDrive',
+      onedrive_warning: '{0} wird von OneDrive synchronisiert. Die Synchronisierung kann die Wallet-Datenbank beschädigen, während die Wallet geöffnet ist, ein zweiter Computer kann widersprüchliche Kopien erzeugen, und der integrierte Netzwerkknoten würde mehrere Gigabyte an Blockchain-Daten hochladen. Wählen Sie einen Ordner außerhalb von OneDrive, zum Beispiel {1}.',
+    },
+    restore: {
+      title: 'Wallet mit Wiederherstellungsphrase wiederherstellen',
+      addSeedsInfo: 'Fügen Sie bitte die Wiederherstellungsphrase durch Anklicken der Wörter hinzu',
+      yourSeedsInfo: 'Ihre Wiederherstellungsphrase lautet',
       added: 'Wallet wiederherstellen',
       newPassword: 'Neues Passwort festlegen',
       recover: 'Wiederherstellen',
       walletLocation: 'Speicherort der Wallet-Daten',
-      search_placeholder: 'Tippen um nach Wörtern zu suchen / oder Mnemonik Wortliste einfügen.',
+      search_placeholder: 'Tippen, um nach Wörtern zu suchen, oder Wiederherstellungsphrase einfügen.',
+      paste_info: 'Fügen Sie Ihre gesamte Wiederherstellungsphrase in das Feld oder in das erste Wort ein oder tippen Sie sie Wort für Wort ein.',
+      phrase: 'Wiederherstellungsphrase',
+      phrase_placeholder: 'wort1 wort2 wort3 …',
+      phrase_length: 'Länge',
+      n_words: '{0} Wörter',
+      word_n: 'Wort {0}',
+      word_count: '{0} von {1} Wörtern',
+      invalid_words: '{0} nicht in der Wortliste (rot markiert)',
+      bad_length: 'eine Wiederherstellungsphrase hat 12, 15, 18, 21 oder 24 Wörter',
       create_new: 'Neues Konto erstellen',
       change_seed: 'Passwort ändern',
       wallet_recovered: 'Ihre Wallet ist wiederhergestellt. Bitte melden Sie sich an und schließen Sie die Einrichtung ab.',
       recover_fail: 'Schwerwiegender Fehler: Wiederherstellung fehlgeschlagen bei Aktion "{0}"',
-      fatal_app: 'Schwerwiegender Fehler: App-Konfiguration nicht aktualisiert.'
-
+      fatal_app: 'Schwerwiegender Fehler: App-Konfiguration nicht aktualisiert.',
     },
-
-    app:{
+    app: {
       create: 'Transaktion erstellen (Datei)',
       finalize: 'Transaktion abschließen (Datei)',
       httpSend: 'Senden über HTTP/HTTPS',
       createRespFile: 'Transaktion importieren (Datei)',
       httpReceive: 'Empfangen über HTTP/HTTPS',
-      height:'Blockhöhe',
+      height: 'Blockhöhe',
       updateTitle: 'Neue Version gefunden',
       updateMsg: 'Neue Version von EPIC wallet gefunden. Bitte aktualisieren Sie JETZT.',
       yes: 'Ja',
       no: 'Nein',
-
-      ngrok_service_started: 'Ngrok-Dienst gestartet',
-      ngrok_address_changed: 'Ihre ngrok-Adresse hat sich geändert',
-      ngrok_service_stopped: 'Ngrok-Dienst angehalten',
-      ngrok_service_error: 'Fehler beim Starten des ngrok-Dienstes',
-      error_setup_internal_node: 'Interner Netzwerkknoten kann nicht eingerichtet werden',
+      error_setup_internal_node: 'Integrierter Netzwerkknoten kann nicht eingerichtet werden',
       node_started: 'Netzwerkknoten gestartet',
-      node_restarting: 'Netzwerkknoten wird neu gestarted',
+      node_restarting: 'Netzwerkknoten wird neu gestartet',
       node_not_started: 'Netzwerkknoten nicht gestartet',
+      node_port_in_use: 'Netzwerkknoten nicht gestartet: Port {0} wird von einem anderen Programm verwendet (z. B. Ihrem eigenen Epic-Netzwerkknoten). Beenden Sie es oder verwenden Sie es in den Einstellungen als externen Netzwerkknoten.',
       node_offline: 'Netzwerkknoten ist offline',
       external_node_online: 'Externer Netzwerkknoten ist online',
       external_node_offline: 'Externer Netzwerkknoten ist offline',
+      external_node_invalid: 'Ihre Netzwerkknoten-Adresse {0} ist kein Epic-Netzwerkknoten ({1}). Ändern Sie sie in den Einstellungen.',
+      epicbox_wait_timeout: 'Epicbox nicht gestartet: Netzwerkknoten nicht synchronisiert. Starten Sie sie auf der Seite „Empfangen“.',
+      epicbox_switched: 'Epicbox empfängt jetzt über {0}',
+      epicbox_connecting: 'Epicbox verbindet sich mit {0} …',
+      epicbox_switch_failed: 'Epicbox konnte auf dem neuen Server nicht gestartet werden. Starten Sie sie auf der Seite „Empfangen“.',
+      epicbox_old_checked: '{0} Zahlungsnachricht(en) vom alten Server {1} abgeholt',
+      epicbox_owner_config_failed: 'Die Wallet-API hat den neuen Epicbox-Server nicht übernommen: Sperren und entsperren Sie die Wallet vor dem Senden.',
+      node_unreachable: 'Netzwerkknoten nicht erreichbar',
+      wallet_api_unreachable: 'Wallet-API nicht erreichbar',
+      balance_loading: 'Kontostand wird gelesen …',
+      balance_updating: 'Kontostand wird vom Netzwerkknoten aktualisiert …',
+      balance_waiting_node: 'Zuletzt bekannter Kontostand, wird aktualisiert, sobald der Netzwerkknoten synchronisiert ist',
+      balance_node_unreachable: 'Zuletzt bekannter Kontostand, der Netzwerkknoten ist nicht erreichbar',
+      balance_wallet_no_node: 'Zuletzt bekannter Kontostand, die Wallet konnte keine Daten vom Netzwerkknoten abrufen',
+      listener_starting: 'Wallet-Empfänger wird gestartet …',
+      loading_wallet_data: 'Wird geladen …',
       background_process: 'Bitte schließen Sie alle Prozesse, bevor Sie fortfahren.',
-
-      walletonline: 'Dein Wallet ist online',
-      walletoffline: 'Dein Wallet ist offline.',
+      walletonline: 'Ihre Wallet ist online',
+      walletoffline: 'Ihre Wallet ist offline.',
     },
-
+    progress: {
+      done: 'erledigt',
+      active: 'läuft',
+      pending: 'wartet',
+    },
     info: {
       spendable: 'Verwendbar',
-      total: 'Saldo',
+      total: 'Kontostand',
       unfinalization: 'Unbestätigt',
-      immature: 'Unvollständig'
+      immature: 'Unreif',
     },
-
-    txs:{
+    txs: {
       tx: 'Transaktionen',
       canceled: 'Abgebrochen',
       noTxFound: 'Keine Transaktionen gefunden',
       noTx: 'Keine Transaktionen',
       cancelSuccess: 'Diese Transaktion wurde storniert',
     },
-
-
-
-    fileSend:{
+    confirmations: {
+      of: '{0} von {1} Bestätigungen',
+      confirming: 'Wird bestätigt',
+      confirmed: 'Bestätigt',
+      confirmed_count: 'Bestätigt (Bestätigungen: {0})',
+      confirmed_spendable_count: 'Bestätigt, verwendbar (Bestätigungen: {0})',
+      waiting: 'Warten auf Bestätigungen',
+    },
+    fileSend: {
       sendAmount: 'Zu sendender Betrag',
       createTxFile: 'Transaktion erstellen',
       WrongAmount: 'Falscher Betrag',
@@ -307,8 +347,7 @@ const messages = {
       saveMsg: 'Erstellte Transaktionsdatei speichern',
       CreateFailed: 'Neue Transaktionsdatei konnte nicht erstellt werden',
     },
-
-    httpSend:{
+    httpSend: {
       sendAmount: 'Zu sendender Betrag',
       address: 'Adresse des Empfängers',
       WrongAmount: 'Falscher Betrag',
@@ -320,9 +359,8 @@ const messages = {
       TxResponseFailed: 'Keine korrekte Antwort vom Empfänger erhalten',
       TxCreateFailed: 'Transaktion erstellen fehlgeschlagen',
       salteVersion: 'Slate-Datei Version',
-      salteVersionHelp: 'Wenn Sie EPIC nicht senden konnten, versuchen Sie, die Version der Slate-Datei zu ändern und senden Sie sie erneut.'
+      salteVersionHelp: 'Wenn Sie EPIC nicht senden konnten, versuchen Sie, die Version der Slate-Datei zu ändern und senden Sie sie erneut.',
     },
-
     receive: {
       dropMsg: 'Transaktionsdatei zum Empfangen hier ablegen oder zum Hochladen hier anklicken',
       WrongFileType: 'Falscher Transaktionsdateityp',
@@ -333,102 +371,120 @@ const messages = {
       error_read: 'Fehler beim Lesen des Dateiinhalts',
       success: 'Erfolgreiche Transaktion',
     },
-
     finalize: {
       finalize: 'Fertigstellen',
       success: 'Erfolgreiche Transaktion',
-      ok:'OK',
+      ok: 'OK',
       sending: 'Senden',
       dropMsg: 'Antwort-Transaktionsdatei zum Abschließen hier ablegen oder zum Hochladen hier anklicken',
       WrongFileType: 'Falscher Transaktionsdateityp',
       TxFailed: 'Transaktion fehlgeschlagen',
       dragdrop: 'Drag & drop Datei',
-      error_read: 'Fehler beim Lesen des Dateiinhalts'
+      error_read: 'Fehler beim Lesen des Dateiinhalts',
     },
-
     httpReceive: {
-      launchSucess: 'Erfolgreich gestartet',
-      listening: "Ihre Wallet kann Transaktionen über diese Adressen empfangen.",
-      address: 'Wallet Adresse',
-      reachableMsg2: 'Stellen Sie sicher, dass Ihre IP-Adresse öffentlich und über das Internet erreichbar ist.',
+      listening: 'Ihre Wallet kann Transaktionen über diese Adressen empfangen.',
+      address: 'Wallet-Adresse',
       close: 'Wallet-Empfänger anhalten',
       attention: 'Achtung',
       reachableMsg: 'Um Online-Transaktionen zu empfangen, muss Ihr Wallet-Empfänger eingeschaltet sein.',
-      password: 'Wallet-Passwort (wird zum Starten des HTTP-Wallet-Empfängers verwendet)',
-      start: 'Start',
+      start: 'Starten',
       error: 'Kein Passwort.',
-      failed: 'Start fehlgeschlagen, vielleicht falsches Passwort',
-      failed2: 'HTTP-Wallet-Empfänger Start fehlgeschlagen, Ihre öffentliche IP ist für den Internetbenutzer nicht erreichbar. Versuchen Sie die Transaktionsdatei.',
-      failed3: 'Ihre öffentliche IP konnte nicht abgerufen werden; versuchen Sie es später noch einmal',
-      failed4: 'Der Wallet-Empfänger läuft jetzt auf localhost:3415. Ihre IP ist jedoch für den Internetbenutzer nicht erreichbar. Versuchen Sie die Transaktionsdatei',
       ip: 'Ihre öffentliche IP',
-      current_ngrok_address: 'Aktuelle ngrok-Adresse',
       local_address: 'Lokale Adresse',
-      session_end: 'Sie benutzen ngrok ohne ein Konto. Ihre Sitzung endet in {0} h, {1} min',
+      epicbox_address: 'Ihre öffentliche Epic-Adresse',
       your_qrcode: 'Ihr QRcode für Ihre "{0}" Adresse',
       click_qrcode_icon: 'Klicken Sie auf das qr-Code-Symbol',
-      epicbox_address: 'Your public Epic address',
-      epicbox_not_available: 'Epicbox not available. Wait for the Node to be synced or try to restart the wallet listener',
-      epicbox_off: 'Your epicbox is not configured. Update your settings and define a epicbox domain',
+      epicbox_address_off: 'Der Empfang ist aus. Zahlungen warten bei Epicbox, bis Sie den Empfang starten.',
+      epicbox_address_unknown: 'Ihre Epic-Adresse konnte nicht gelesen werden. Öffnen Sie „Empfangen“ gleich noch einmal.',
+      http_failed_port: 'HTTP ist nicht empfangsbereit: Port {0} wird von einem anderen Programm verwendet. Schließen Sie es und versuchen Sie es erneut.',
+      http_failed: 'HTTP ist nicht empfangsbereit: Der Wallet-Empfänger konnte nicht starten.',
+      http_retry: 'Erneut versuchen',
+      epicbox_off: 'Ihre Epicbox ist nicht eingerichtet. Aktualisieren Sie Ihre Einstellungen und legen Sie eine Epicbox-Webadresse fest',
+      epicbox_listening_on: 'Empfangsbereit über {0}',
+      epicbox_listening: 'Epicbox empfangsbereit',
+      epicbox_connecting_to: 'Verbindung mit {0} wird hergestellt …',
+      epicbox_starting_on: 'Wird auf {0} gestartet …',
+      epicbox_paused_on: 'Auf {0}, pausiert, bis der Netzwerkknoten synchronisiert ist',
+      epicbox_checking_old: 'Der alte Server {0} wird auf Zahlungen an Ihre alte Adresse geprüft …',
+      epicbox_listener_off: 'Epicbox-Empfänger aus',
+      check_port_open_done: 'Erneute Prüfung abgeschlossen!',
+      listener_stopped: 'Wallet-Empfänger angehalten',
     },
-
     check: {
       checking: 'Nochmals prüfen, geduldig bleiben...',
-      stop: 'Stop Check',
+      stop: 'Prüfung stoppen',
       introTitle: 'Info',
       intro1: 'Dies scannt die gesamte Blockchain nach unverbrauchten Coins, die zu Ihrer Wallet gehören.',
-      start: 'Start',
-      delete_unconfirmed: 'Unbestätigte Coin Ausgänge löschen',
+      start: 'Starten',
+      delete_unconfirmed: 'Unbestätigte Coins löschen',
       scan_finished: 'Wallet Scan beendet.',
       error_scan: 'Fehler beim Starten des Scans. Ist das Passwort korrekt?',
-      scan_stop: 'Wallet Scan gestoppt.'
-
+      scan_stop: 'Wallet Scan gestoppt.',
     },
-    firstruncheck: {
-      title: 'Scannen der Blockchain nach Wallet-Ausgaben, geduldig bleiben.',
-    },
-
     lang: {
       title: 'Sprache auswählen',
       lang: 'Sprache',
-      select: 'Auswählen'
+      select: 'Auswählen',
     },
-
     settings: {
       title: 'Einstellungen',
-      check_node_api_http_addr: 'Netzwerkknoten api Adresse',
+      check_node_api_http_addr: 'API-Adresse des Netzwerkknotens',
       node_api_addr_hint: 'wo die Wallet einen laufenden Netzwerkknoten finden soll',
       network: 'Netzwerk',
       wallet_listener: 'Wallet-Empfänger',
       auto_start: 'Wallet-Empfänger nach Anmeldung automatisch starten',
-      authtoken: 'Ihr ngrok Authtoken',
-      ngrok_force_start: 'ngrok ohne Authtoken verwenden',
-      ngrok_hint: 'Die ngrok-Adresse ist für 2 Stunden aktiv und wird dann erneuert.',
-      ngrok_account_hint: 'Um Ihren ngrok-Authentifizierungs Token zu erhalten, erstellen Sie bitte ein neues Konto unter https://ngrok.com.',
-      authtoken_hint: 'Mit einem ngrok Authtoken ist Ihre Adresse so lange aktiv, wie die Wallet auf Empfang gestellt ist',
-      howto: 'Wie Sie Ihren Authtoken von ngrok erhalten',
       settings_saved: 'Einstellungen gespeichert',
       error_save: 'Fehler beim Speichern der Einstellungen',
-      epicbox_domain: 'Epicbox Domain',
-      epicbox_domain_hint: `The domain of the relay server, where your epicbox is connected to. Leave field blank if you don't want to use this service. Default: epicbox.epiccash.com`,
-
-      node_background: 'sync in background',
-      node_background_hint: 'the built-in node server continues to sync in the background even when the app is closed. The next time you run the wallet, you do not have to wait for the synchronization with the blockchain.',
-
+      epicbox_domain: 'Epicbox-Domain',
+      epicbox_domain_hint: 'Die Domain des Relay-Servers, mit dem Ihre Epicbox verbunden ist. Lassen Sie das Feld leer, wenn Sie diesen Dienst nicht nutzen möchten. Standard: epicbox.epiccash.com',
+      node_background: 'im Hintergrund synchronisieren',
+      node_background_hint: 'Der integrierte Netzwerkknoten synchronisiert im Hintergrund weiter, auch wenn die App geschlossen ist. Beim nächsten Start der Wallet müssen Sie nicht auf die Synchronisierung mit der Blockchain warten.',
+      node_load_warning: 'Der Scan beansprucht viel CPU und Arbeitsspeicher, bis er fertig ist.',
     },
-
-    validators:{
+    validators: {
       empty: 'Das Feld {0} ist erforderlich',
       equal: 'Die {0} müssen gleich sein',
+      password_mismatch: 'Die Passwörter stimmen nicht überein',
+      address: 'Keine Adresse, an die die Wallet senden kann',
       http_address: 'Keine gültige HTTP(S)-Adresse',
+      epicbox_address: 'Keine gültige Epicbox-Adresse',
+      onion_address: 'Tor-Adressen werden nicht unterstützt.',
       min_length: 'Das Feld {0} muss mindestens {1} Zeichen lang sein',
       only_letters: '{0} kann nur Kleinbuchstaben von a-z ohne Leerzeichen enthalten',
       number: 'Das Feld {0} muss eine Zahl sein',
+      decimals: '{0} darf höchstens 8 Dezimalstellen haben',
+      positive: '{0} muss größer als 0 sein',
       spendable: 'Nicht ausreichend Guthaben',
       exist: 'Das Konto "{0}" existiert bereits',
-      notexist: 'Das Konto "{0}" existiert nicht'
-    }
+      notexist: 'Das Konto "{0}" existiert nicht',
+      not_epic_node: 'Kein Epic-Netzwerkknoten: {0}',
+    },
+    node_problem: {
+      title_too_old: 'Die Version dieses Netzwerkknotens ist mit dieser Wallet nicht kompatibel.',
+      title_status_locked: 'Die Version dieses Netzwerkknotens ist mit dieser Wallet nicht kompatibel.',
+      title_unreachable: 'Dieser Netzwerkknoten antwortet nicht.',
+      title_not_epic: 'Diese Adresse ist kein Epic-Cash-Netzwerkknoten.',
+      node: 'Netzwerkknoten',
+      epicbox_skipped: 'Epicbox wurde nicht gestartet. Sie können sie auf der Seite „Empfangen“ starten.',
+      go_receive: 'Zu „Empfangen“',
+      fixes: 'Was Sie tun können',
+      fix_public: 'Einen öffentlichen Netzwerkknoten verwenden',
+      node_list: 'Netzwerkknoten-Liste',
+      fix_builtin: 'Den integrierten Netzwerkknoten verwenden',
+      fix_other: 'Einen anderen Netzwerkknoten verwenden',
+      fix_upgrade: 'Netzwerkknoten aktualisieren',
+      opens_browser: '(öffnet sich im Browser)',
+      switched: 'Zum integrierten Netzwerkknoten gewechselt. Melden Sie sich ab und wieder an, um den Vorgang abzuschließen.',
+      switch_failed: 'Wechsel zum integrierten Netzwerkknoten nicht möglich',
+      hide: 'Ausblenden',
+      hide_label: 'Diesen Hinweis bis zur nächsten Anmeldung ausblenden',
+      address_changed_title: 'Ihre Netzwerkknoten-Adresse wurde aktualisiert',
+      address_changed: 'Es wird jetzt {1} statt {0} verwendet.',
+      ok: 'OK',
+    },
+    modern,
+  },
+};
 
-  }
-}
 export default messages

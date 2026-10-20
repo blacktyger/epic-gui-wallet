@@ -1,6 +1,11 @@
+/* Bulgarian (bg): the Classic interface; the shared and Modern strings are imported. The same keys, in the same order, as the English (see the comments there).
+ * A missing key falls back to English (tests/i18n.test.js lists the allowed ones). */
+import shared from './shared/bg.js';
+import modern from './modern/bg.js';
+
 const messages = {
   msg: {
-
+    ...shared,
     title: 'Epic Cash',
     password: 'Парола',
     passwordAgain: 'Въведете паролата отново',
@@ -15,20 +20,25 @@ const messages = {
     error: 'Моля поправете следните грешки:',
     confirmed: 'Потвърдено',
     unconfirmed: 'Изчаква потвърждение',
-    sent_confirmed: 'Sent',
-    received_confirmed: 'Received',
-    sent_unconfirmed: '... waiting for receiver to sign',
-    received_unconfirmed: '... waiting for sender to finalize',
-    received_mempool: '... waiting for confirmation',
+    sent_confirmed: 'Изпратено',
+    received_confirmed: 'Получено',
+    sent_unconfirmed: 'Изчаква подпис от получателя',
+    sent_waiting_reply: 'Изчакване на отговор от получателя. Отменете транзакцията, ако отговорът не дойде.',
+    received_unconfirmed: 'Изчаква финализиране от подателя',
+    received_mempool: 'Изчаква потвърждения',
     locked: 'Заключено',
     send: 'Изпрати ',
+    node_not_synced: 'Възелът не е синхронизиран',
+    epicbox_not_connected: 'Epicbox не е свързан',
+    epicbox_not_connected_hint: 'Изпращане към Epicbox адрес е възможно, след като слушателят на Epicbox работи. Дотогава използвайте файл или HTTP адрес.',
+    node_not_synced_hint: 'Изпращане е възможно, след като възелът се синхронизира.',
     dandelion: 'Dandelion++',
-    dandelion_hint: 'Broadcasting transactions via Dandelion++',
-    createofflinetx: 'Create offline transaction',
-    cancel:'Отмяна',
+    dandelion_hint: 'Разпространяване на транзакциите чрез Dandelion++',
+    createofflinetx: 'Създаване на офлайн транзакция',
+    cancel: 'Отмяна',
     ok: 'Ok',
-    confirm: 'Confirm',
-    confirm_action: 'Confirm action',
+    confirm: 'Потвърди',
+    confirm_action: 'Потвърдете действието',
     save: 'Запази',
     delete: 'Изтрий',
     edit: 'Промени',
@@ -39,26 +49,25 @@ const messages = {
     msg: 'Съобщение',
     more: 'Още',
     wrongAddressFormat: 'грешен формат на адреса',
-    node_server: 'Възлов Сървър',
-    node_server_builtin: 'Вграден Възлов Сървър',
-    node_server_external: 'Външен Възлов Сървър',
-    node_server_address: 'Адрес на Сървъра',
+    node_server: 'Възел',
+    node_server_builtin: 'Вграден възел',
+    node_server_external: 'Външен възел',
+    node_server_address: 'Адрес на възела',
     copy_to_clipboard: 'Копирано!',
     placeholder_search: 'Търси...',
     refresh: 'Обнови',
     page_of: 'Страница {0} от {1}',
     only_letter: 'Само малки букви от a-z,',
     custom_settings: 'Персонални настройки',
-    advanced_settings: 'Advanced Settings',
     step_of: 'Стъпка {0}/{1}',
-    close_all_process: 'Terminate all processes',
-    waiting_for_nodesync: '... waiting for node to be synced.',
-    menu:{
+    close_all_process: 'Прекрати всички процеси',
+    waiting_for_nodesync: '... изчакване на синхронизирането на възела.',
+    menu: {
       general: 'Общо',
       dashboard: 'Табло',
       address_book: 'Адресна книга',
       send: 'Изпрати',
-      finalize: 'Завърши офлайн транзакция',
+      finalize: 'Финализиране на офлайн транзакция',
       receive: 'Получи',
       import: 'Импортиране на офлайн транзакция',
       misc: 'Друго',
@@ -68,41 +77,45 @@ const messages = {
       account: 'Акаунт',
       settings: 'Настройки',
       recheck: 'Проверка на баланса',
-      mnemonic: 'Мнемонични думи',
+      mnemonic: 'Фраза за възстановяване',
       run_setup: 'Пускане на асистента за настройка',
-      updates: 'Обновления',
-      openepichidden: 'Epic wallet location',
+      updates: 'Актуализации',
+      openepichidden: 'Местоположение на портфейла Epic',
     },
-
     headerbar: {
       howdy: 'Здравейте,',
       version: 'Версия',
-      peers: 'Peers',
+      peers: 'Партньори',
       status: 'Статус',
       node: 'Възел',
       sync_height: 'Синхронизирана височина',
-      progress: 'Progress',
+      progress: 'Напредък',
       block_height: 'Блокчейн височина',
-      node_sync_status: 'Internal node sync status',
+      node_sync_status: 'Състояние на синхронизиране на вградения възел',
+      node_behind: 'Вашият възел изостава. Липсващи блокове: {n}.',
+      switch_node: 'Смяна на възела',
     },
-    dashboard:{
+    dashboard: {
       transactions: 'Транзакции',
-      coins: 'Монети'
+      coins: 'Монети',
     },
-    create:{
+    create: {
       select: 'Изберете директория за вашите портфейлни данни',
-      seedPhrase: 'Мнемонични думи',
+      seedPhrase: 'Фраза за възстановяване',
       toNewMsg: 'Създайте нов портфейл.',
       newWallet: 'Създайте нов портфейл',
-      backupNote: 'Важно ! Моля запазете вашите мнемонични думи на сигурно място, за да можете да възстановявате вашият портфейл!',
-      fatal_create: 'Fatal: created fail on action "{0}"',
-      fatal_update: 'Fatal: App config not updated.'
+      backupNote: 'Важно! Запишете фразата си за възстановяване и я пазете на сигурно място, за да можете да възстановите портфейла си!',
+      fatal_create: 'Фатална грешка: създаването е неуспешно при действие „{0}“',
+      fatal_update: 'Фатална грешка: конфигурацията на приложението не е обновена.',
+      stage_create: 'Създаване на портфейла и фразата му за възстановяване',
+      stage_save: 'Запазване на акаунта',
+      backupWarning: 'Запишете тези думи на хартия, в този ред, и ги пазете на безопасно място, офлайн. Те са единственият начин да възстановите този портфейл, ако този компютър или файловете му бъдат загубени. Всеки, който ги има, може да вземе средствата Ви: никога не ги споделяйте и не ги пазете като снимка, екранна снимка или файл.',
+      writtenDown: 'Записах ги, продължи',
     },
-
-    setupwizard:{
+    setupwizard: {
       setup_assistant: 'Асистент за Настройка',
       account_information: 'Информация за Акаунта',
-      your_name:'Вашето Име',
+      your_name: 'Вашето Име',
       name_only_internal: 'Името се използва само вътрешно',
       next_step: 'Следваща стъпка',
       network_node: 'Мрежов възел',
@@ -112,59 +125,49 @@ const messages = {
       Ако не сте сигурни кой да използвате, оставете настройките по подразбиране.<br/>`,
       previous_step: 'Предишна стъпка',
       receive_transactions: 'Получаване на транзакции',
-      receive_transactions_txt: `За да получите транзакции от други портфейли, трябва да сте достъпни през интернет.<br/>
-      <br/>
-      Ако не сте запознати с настройките на рутера и отваряне на портове, препоръчваме да използвате услугата Ngrok.<br/>
-      След като Ngrok се активира, портфейлът ви ше е достъпен през временен адрес.<br/>
-      <br/>
-      <br/>
-      Оставете тези полета празни, ако не искате да използвате услугата Ngrok.`,
-      authtoken: 'Вашият ngrok Authtoken',
-      howto: 'Как да си набавите Authtoken от ngrok',
       values_correct: 'Верни ли са тези стойности?',
       save_and_finish: 'Запазване и завършване',
       name: 'Име',
       language: 'Език',
-      ngrok_authtoken: 'ngrok Auth-Token',
-      db_fatal: 'DB Fatal: can not insert DB',
+      db_fatal: 'Фатална грешка на базата данни: записът не е възможен',
       errors_save: 'Грешка при запазване на настройките: {0}',
-      epicbox_domain: 'Epicbox Web Address',
-      epicbox_off: 'turned off',
-      epicbox_domain_hint: `Leave field blank if you don't want to use this service.`,
-      noninteractive_transactions: `Intro to EPIC Addresses<br/>
+      epicbox_domain: 'Уеб адрес на Epicbox',
+      epicbox_off: 'изключен',
+      epicbox_domain_hint: 'Оставете полето празно, ако не искате да използвате тази услуга.',
+      noninteractive_transactions: `Въведение в EPIC адресите<br/>
       <br/>
-      EPIC addresses provide an easy way to send EPIC when the receiving wallet is offline.<br/>
+      EPIC адресите са лесен начин да изпратите EPIC, когато портфейлът на получателя е офлайн.<br/>
       <br/>
-      This is accomplished securely and privately by using an external relay server called "Epicbox"<br/>
-      Relay servers such as epicbox.epiccash.com and others to come later are provided by our community.<br/>
+      Това става сигурно и поверително чрез външен сървър за препредаване, наречен „Epicbox“.<br/>
+      Сървъри за препредаване като epicbox.epiccash.com и други, които ще дойдат по-късно, се предоставят от нашата общност.<br/>
       <br/>
-      How it works:<br/>
-      Transactions are sent to the Epicbox server and delivered to the recipient as soon as the receiver's wallet is online.<br/>
-      <br/>The receiver signs the transaction and responds with a confirmation back to the sender which 'finalizes' the transaction if the sender is online.<br/>
-      <br/>If both wallets are online when a transaction is created, the process takes place immediately.<br/>
+      Как работи:<br/>
+      Транзакциите се изпращат до Epicbox сървъра и се доставят на получателя веднага щом портфейлът му е онлайн.<br/>
+      <br/>Получателят подписва транзакцията и връща потвърждение на подателя, което „финализира“ транзакцията, ако подателят е онлайн.<br/>
+      <br/>Ако и двата портфейла са онлайн при създаването на транзакцията, процесът протича веднага.<br/>
       <br/>
-      This system does not anonymize your IP and a VPN is recommended for IP address privacy.<br/>
-      <br/>Transactions are fully encrypted which assures a private transaction exchanged between the sender and receiver.<br/>
+      Тази система не прикрива Вашия IP адрес и за поверителност на IP адреса се препоръчва VPN.<br/>
+      <br/>Транзакциите са напълно криптирани, което гарантира поверителен обмен между подателя и получателя.<br/>
       <br/>
       `,
     },
-    transaction:{
-
+    transaction: {
       received: 'Получено',
       send: 'Изпрати',
       transaction_id: 'Номер на Транзакция',
       creation_date: 'Дата на създаване',
-      receiver: 'From/To',
+      receiver: 'От/До',
       payment_proof: 'Доказателство за плащане',
-      amount: 'Стойонст (такса)',
+      amount: 'Сума (такса)',
       status: 'Статус',
       transfer_type: 'Тип Трансфер',
       id: 'Номер',
-      slate_id: 'Slate Номер',
+      slate_id: 'Slate ID',
       confirmation_date: 'Дата на потвърждаване',
       amount_credited: 'Кредитирана сума',
       amount_debited: 'Дебитирана сума',
       fee: 'Такса',
+      transaction_fee: 'Такса за транзакцията',
       message: 'Съобщение',
       type: 'Тип',
       receiver_address: 'Адрес на получател',
@@ -172,33 +175,31 @@ const messages = {
       sender_address: 'Адрес на подател',
       sender_signature: 'Подпис на подател',
       sender_address_path: 'Път към адреса на подателя',
-      sendall: 'All'
+      sendall: 'Всичко',
+      sendall_failed: 'Не можа да се изчисли колко може да се изпрати. Опитайте отново след малко.',
     },
-
-    commit:{
-      unspentCmt: 'Непохарчена сума',
+    commit: {
+      unspentCmt: 'Непохарчени изходи',
       heightCreated: 'Височина на блокчейна при създаване',
       unspent: 'Непохарчени',
       spent: 'Похарчени',
-      noCmtFound: 'Не са открити непохарчени суми',
-      noCmt:'Няма непохарчени суми',
+      noCmtFound: 'Не са открити непохарчени изходи',
+      noCmt: 'Няма непохарчени изходи',
       copied: 'Копирано',
       unconfirmed: 'Непотвърдено',
       coins: 'Монети',
       coin_id: 'Номер на Монети',
       value: 'Стойност',
       status: 'Статус',
-      copy: 'Копирано'
-
-
+      copy: 'Копирано',
     },
     account: {
       account: 'Акаунт',
       your_name: 'Вашето Име',
       settings_saved: 'Настройки на акаунта запазени',
-      error_save: 'Грешка при запазване на акаунта'
+      error_save: 'Грешка при запазване на акаунта',
     },
-    addressbook:{
+    addressbook: {
       name: 'Име',
       country: 'Държава',
       city: 'Град',
@@ -207,97 +208,138 @@ const messages = {
       notice: 'Бележка',
       deleted: 'Адреса е изтрит!',
       error_delete: 'Грешка при изтриване!',
+      error_save: 'Контактът не можа да бъде запазен.',
+      error_name: 'Задайте име на контакта.',
+      error_address: 'Добавете адрес, към който да се изпраща.',
+      error_epicbox: 'Това не е валиден Epicbox адрес.',
     },
     remove: {
       warning: 'Внимание',
       info: 'Информация',
       help: 'Помощ',
       remove: 'Премахване',
-      success: 'Успех'
+      success: 'Успех',
     },
     login: {
-      listener_started: 'Портфейлния слушател е стартиран',
-      error_listener_started: 'Грешка при стартиране на портфейлния слушател',
+      listener_started: 'Слушателят на портфейла е стартиран',
+      error_listener_started: 'Грешка при стартиране на слушателя на портфейла',
+      port_in_use: 'Порт {0} се използва от друга програма (напр. Вашия собствен epic-wallet). Спрете я и опитайте отново.',
+      epicbox_started: 'Epicbox е стартиран',
+      error_epicbox_started: 'Грешка при стартиране на Epicbox',
+      stage_check: 'Проверка на файловете на портфейла',
+      stage_processes: 'Търсене на процеси на портфейла, които още работят',
+      stage_closing: 'Затваряне на старите процеси на портфейла',
+      stage_wallet: 'Стартиране на услугата на портфейла',
+      stage_unlock: 'Отключване на портфейла',
+      folder_missing: 'Папката на портфейла „{0}“ не беше намерена: {1}. Може да е била преместена, преименувана или изтрита.',
+      folder_unknown: 'За портфейла „{0}“ не е запазена папка.',
     },
-    seed:{
-      errorGetMnemonic: 'Грешка при показване на мнемоничните думи. Вярна ли е паролата?',
-      mnemonic: 'Мнемонични Думи'
+    seed: {
+      errorGetMnemonic: 'Грешка при показване на фразата за възстановяване. Вярна ли е паролата?',
+      mnemonic: 'Фраза за възстановяване',
     },
-
-
-    new:{
+    new: {
       create: 'Създаване на нов портфейл',
       restore: 'Възстановяване на портфейл',
       select: 'Избиране на локация за вече съществуващ портфейл.',
-      selectErr: 'Избраната папка не съдърща "wallet_data" и wallet config.',
+      selectErr: 'Избраната папка не съдържа "wallet_data" и wallet config.',
       networkErr: 'Вида на мрежата не е определен.<br/>Моля изберете един.',
       selectNetwork: 'продължаване',
     },
-
-    restore:{
-
-      title: 'Възстановяване на портфейл чрез мнемонични думи',
+    walletfolder: {
+      onedrive_title: 'Тази папка е в OneDrive',
+      onedrive_warning: '{0} се синхронизира от OneDrive. Синхронизирането може да повреди базата данни на портфейла, докато той е отворен, втори компютър може да създаде конфликтни копия, а вграденият възел би качвал гигабайти данни на блокчейна. Изберете папка извън OneDrive, например {1}.',
+    },
+    restore: {
+      title: 'Възстановяване на портфейл чрез фраза за възстановяване',
       addSeedsInfo: 'Добавете дума като кликнете върху нея',
-      yourSeedsInfo: 'Вашите мнемонични думи са',
+      yourSeedsInfo: 'Вашата фраза за възстановяване е',
       added: 'Възстановяване на портфейл',
       newPassword: 'Настройка на нова парола',
       recover: 'Възстановяване',
       walletLocation: 'Локация на портфейлни данни',
       search_placeholder: 'Пишете за да търсите думи или ги поставете',
+      paste_info: 'Поставете цялата си фраза за възстановяване в полето или в първата дума, или я въведете дума по дума.',
+      phrase: 'Фраза за възстановяване',
+      phrase_placeholder: 'дума1 дума2 дума3 …',
+      phrase_length: 'Дължина',
+      n_words: '{0} думи',
+      word_n: 'Дума {0}',
+      word_count: '{0} от {1} думи',
+      invalid_words: 'думи извън списъка: {0} (отбелязани в червено)',
+      bad_length: 'фразата за възстановяване има 12, 15, 18, 21 или 24 думи',
       create_new: 'Създаване на нов акаунт',
-      change_seed: 'Промяна на мнемоничните думи',
+      change_seed: 'Промяна на думите',
       wallet_recovered: 'Портфейлът Ви е възстановен. Моля логнете се и завършете настройката.',
-      recover_fail: 'Fatal: recover failed on action "{0}"',
-      fatal_app: 'Fatal: App config not updated.'
-
+      recover_fail: 'Фатална грешка: възстановяването е неуспешно при действие „{0}“',
+      fatal_app: 'Фатална грешка: конфигурацията на приложението не е обновена.',
     },
-
-    app:{
+    app: {
       create: 'Създаване на транзакция (Файл)',
       finalize: 'Финализиране на транзакция (Файл)',
       httpSend: 'Изпращане чрез HTTP/HTTPS',
       createRespFile: 'Импортиране на транзакция (Файл)',
-      httpReceive: 'Получване чрез HTTP/HTTPS',
-      height:'Височина на блокчейна',
+      httpReceive: 'Получаване чрез HTTP/HTTPS',
+      height: 'Височина на блокчейна',
       updateTitle: 'Открита нова версия',
       updateMsg: 'Открита е нова версия на EPIC портфейла. Моля обновете!',
       yes: 'да',
       no: 'не',
-
-      ngrok_service_started: 'Ngrok услугата е стартирана',
-      ngrok_address_changed: 'Вашият ngrok адрес е променен',
-      ngrok_service_stopped: 'Ngrok услугата е спряна',
-      ngrok_service_error: 'Грешка при стартиране на Ngrok',
-      error_setup_internal_node: 'Неуспешна настройка на вграденият сървър',
-      node_started: 'Сървърът е стартиран',
-      node_restarting: 'Node is restarting',
-      node_not_started: 'Сървърът не е стартиран',
-      node_offline: 'Сървърът е офлайн',
-      external_node_online: 'Външният Сървър е онлайн',
-      external_node_offline: 'Външният Сървър е офлайн',
+      error_setup_internal_node: 'Неуспешна настройка на вградения възел',
+      node_started: 'Възелът е стартиран',
+      node_restarting: 'Възелът се рестартира',
+      node_not_started: 'Възелът не е стартиран',
+      node_port_in_use: 'Възелът не е стартиран: порт {0} се използва от друга програма (напр. Вашия собствен epic възел). Спрете я или я използвайте като външен възел в Настройки.',
+      node_offline: 'Възелът е офлайн',
+      external_node_online: 'Външният възел е онлайн',
+      external_node_offline: 'Външният възел е офлайн',
+      external_node_invalid: 'Адресът на възела Ви {0} не е Epic възел ({1}). Променете го в Настройки.',
+      epicbox_wait_timeout: 'Epicbox не е стартиран: възелът не е синхронизиран. Стартирайте го от страницата Получаване.',
+      epicbox_switched: 'Epicbox вече слуша на {0}',
+      epicbox_connecting: 'Epicbox се свързва с {0}…',
+      epicbox_switch_failed: 'Epicbox не можа да бъде стартиран на новия сървър. Стартирайте го от страницата Получаване.',
+      epicbox_old_checked: 'Получени съобщения за плащане от стария сървър {1}: {0}',
+      epicbox_owner_config_failed: 'API на портфейла не прие новия Epicbox сървър: заключете и отключете портфейла преди да изпращате.',
+      node_unreachable: 'възелът е недостъпен',
+      wallet_api_unreachable: 'API на портфейла е недостъпен',
+      balance_loading: 'Четене на баланса…',
+      balance_updating: 'Обновяване на баланса от възела…',
+      balance_waiting_node: 'Последно известен баланс, обновява се, когато възелът се синхронизира',
+      balance_node_unreachable: 'Последно известен баланс, възелът е недостъпен',
+      balance_wallet_no_node: 'Последно известен баланс, портфейлът не можа да се обнови от възела',
+      listener_starting: 'Стартиране на слушателя на портфейла…',
+      loading_wallet_data: 'Зареждане…',
       background_process: 'Открихме работещ портфейл или сървър на заден план. Моля затворете ги преди да пуснете портфейла.',
-      walletonline: 'Your wallet is online',
-      walletoffline: 'Your wallet is offline.',
+      walletonline: 'Вашият портфейл е онлайн',
+      walletoffline: 'Вашият портфейл е офлайн.',
     },
-
+    progress: {
+      done: 'готово',
+      active: 'в процес',
+      pending: 'изчаква',
+    },
     info: {
       spendable: 'Готови за харчене',
       total: 'Баланс',
       unfinalization: 'Непотвърдени',
-      immature: 'Неотлежали'
+      immature: 'Неотлежали',
     },
-
-    txs:{
+    txs: {
       tx: 'Транзакции',
-      canceled:'Прекъснати',
+      canceled: 'Отменени',
       noTxFound: 'Няма открити транзакции',
-      noTx:'Няма транзакции',
-      cancelSuccess:'Транзакцията е отменена',
+      noTx: 'Няма транзакции',
+      cancelSuccess: 'Транзакцията е отменена',
     },
-
-
-
-    fileSend:{
+    confirmations: {
+      of: '{0} от {1} потвърждения',
+      confirming: 'Потвърждава се',
+      confirmed: 'Потвърдено',
+      confirmed_count: 'Потвърдено (потвърждения: {0})',
+      confirmed_spendable_count: 'Потвърдено, може да се харчи (потвърждения: {0})',
+      waiting: 'Изчакване на потвърждения',
+    },
+    fileSend: {
       sendAmount: 'Сума за изпращане',
       createTxFile: 'Създаване на транзакция',
       WrongAmount: 'Грешна стойност',
@@ -305,10 +347,9 @@ const messages = {
       saveMsg: 'Запазване на създаденият файл за транзакция',
       CreateFailed: 'Неуспешно създаване на файл за транзакция',
     },
-
-    httpSend:{
+    httpSend: {
       sendAmount: 'Сума за изпращане',
-      address:'Адрес на получателя',
+      address: 'Адрес на получателя',
       WrongAmount: 'Грешна стойност',
       NotEnough: 'Недостатъчна наличност.',
       WrongAddress: 'Грешен адрес',
@@ -318,9 +359,8 @@ const messages = {
       TxResponseFailed: 'Неуспешна връзка с получателя',
       TxCreateFailed: 'Неуспешно създаване на транзакция',
       salteVersion: 'Slate файл версия',
-      salteVersionHelp: 'Ако не успявате да изпратите EPIC, опитайте да промените Slate файл версията и опитайте пак'
+      salteVersionHelp: 'Ако не успявате да изпратите EPIC, опитайте да промените Slate файл версията и опитайте пак',
     },
-
     receive: {
       dropMsg: 'Поставете файл за транзакция или кликнете за ъплоуд.',
       WrongFileType: 'Грешен вид на файла за транзакция',
@@ -331,47 +371,46 @@ const messages = {
       error_read: 'Грешка при прочитане на файла',
       success: 'Успешна транзакция',
     },
-
     finalize: {
-      finalize: 'Завършване',
+      finalize: 'Финализиране',
       success: 'Успешна транзакция',
-      ok:'OK',
+      ok: 'OK',
       sending: 'Изпращане',
       dropMsg: 'Поставете файла за финализиране или кликнете за ъплоуд',
       WrongFileType: 'Грешен вид на файла за транзакция',
       TxFailed: 'Неуспешна транзакция',
       dragdrop: 'Издърпайте и поставете файл.',
-      error_read: 'Грешка при прочитане на файла'
+      error_read: 'Грешка при прочитане на файла',
     },
-
     httpReceive: {
-      launchSucess: 'Успешно стартиране на слушателя',
-      listening: "Вашият портфейл може да получи транзакции по тези адреси.",
+      listening: 'Вашият портфейл може да получи транзакции по тези адреси.',
       address: 'Адрес на Портфейла',
-      reachableMsg2: 'Уверете се, че вашето IP е публично и достъпно през интернет.',
       close: 'Спиране на слушателя',
       attention: 'Внимание',
       reachableMsg: 'За получаване на онлайн транзакции, портфейлът трябва да бъде в режим на слушане.',
-      password: 'Парола на портфейла (използва се за пускане на HTTP слушателя)',
       start: 'Пускане',
       error: 'Няма парола.',
-      failed: 'Неуспешно стартиране, може би паролата е грешна',
-      failed2: 'HTTP слушането е неуспешно, вашето IP не е достъпно за интернет потребители. Опитайте чрез файл за транзакция',
-      failed3: 'Неуспешно вземане на вашето публично IP; опитайте пак по-късно',
-      failed4: 'Слушателят е пуснат на localhost:3415. Обаче вашето IP не е достъпно за интернет потребители. Опитайте чрез файл за транзакция',
       ip: 'вашето публично IP',
-      current_ngrok_address: 'текущ Ngrok адрес',
       local_address: 'Локален адрес',
-      session_end: 'Използвате Ngrok без акаунт. Сесията Ви ще приключи след {0} hour, {1} minutes',
-      epicbox_address: 'Your public Epic address',
+      epicbox_address: 'Вашият публичен Epic адрес',
       your_qrcode: 'QR код за вашият "{0}" адрес',
       click_qrcode_icon: 'Кликнете иконката на QR кода',
-      epicbox_not_available: 'Epicbox not available. Wait for the Node to be synced or try to restart the wallet listener',
-      epicbox_off: 'Your epicbox is not configured. Update your settings and define a epicbox domain',
-      check_port_open_done: 'Recheck done!',
-      listener_stopped: 'Wallet listener stopped',
+      epicbox_address_off: 'Получаването е изключено. Плащанията чакат в Epicbox, докато не го включите.',
+      epicbox_address_unknown: 'Вашият Epic адрес не можа да бъде прочетен. Отворете Получаване отново след малко.',
+      http_failed_port: 'HTTP не получава: порт {0} се използва от друга програма. Затворете я и опитайте отново.',
+      http_failed: 'HTTP не получава: слушателят не можа да стартира.',
+      http_retry: 'Опитай отново',
+      epicbox_off: 'Epicbox не е конфигуриран. Обновете настройките си и задайте домейн на Epicbox',
+      epicbox_listening_on: 'Слуша на {0}',
+      epicbox_listening: 'Epicbox слуша',
+      epicbox_connecting_to: 'Свързване с {0}…',
+      epicbox_starting_on: 'Стартиране на {0}…',
+      epicbox_paused_on: 'На {0}, на пауза, докато възелът се синхронизира',
+      epicbox_checking_old: 'Проверка на стария сървър {0} за плащания, изпратени до стария Ви адрес…',
+      epicbox_listener_off: 'Слушателят на Epicbox е изключен',
+      check_port_open_done: 'Повторната проверка приключи!',
+      listener_stopped: 'Слушателят на портфейла е спрян',
     },
-
     check: {
       checking: 'Проверяване, имайте търпение ...',
       stop: 'Спиране на проверката',
@@ -381,54 +420,71 @@ const messages = {
       delete_unconfirmed: 'Изтриване на непотвърдени монети',
       scan_finished: 'Сканирането на портфейла е завършено.',
       error_scan: 'Грешка при стартиране. Вярна ли е паролата?',
-      scan_stop: 'Скенерът е спрян.'
-
+      scan_stop: 'Скенерът е спрян.',
     },
-    firstruncheck: {
-      title: 'Сканиране на блокчейна за вашите монети, имайте търпение ...',
-    },
-
     lang: {
       title: 'Избиране на език',
       lang: 'Език',
-      select: 'Избиране'
+      select: 'Избиране',
     },
-
     settings: {
       title: 'Настройки',
-      check_node_api_http_addr: 'Възлов api адрес',
-      node_api_addr_hint: 'Къде портфейлът ще намери работещ възлов сървър',
+      check_node_api_http_addr: 'API адрес на възела',
+      node_api_addr_hint: 'Къде портфейлът да намери работещ възел',
       network: 'Мрежа',
-      wallet_listener: 'Портфейлен слушател',
-      auto_start: 'автоматично включи слушателя след логин',
-      authtoken: 'Вашият ngrok Authtoken',
-      ngrok_force_start: 'използвайте ngrok без Authtoken',
-      ngrok_hint: 'Ngrok адреса е активен за 2 часа и после се променя.',
-      ngrok_account_hint: 'Зада получите ngrok authentication token, моля направете си акаунт на https://ngrok.com',
-      authtoken_hint: 'С ngrok Authtoken, вашият адрес не се променя докато сте в режим на слушане',
-      howto: 'Как да получите Authtoken from ngrok',
+      wallet_listener: 'Слушател на портфейла',
+      auto_start: 'автоматично стартиране на слушателя на портфейла и Epicbox след вход',
       settings_saved: 'Настройките са запазени',
       error_save: 'Грешка при запазване на настройките',
-      epicbox_domain: 'Epicbox Domain',
-      epicbox_domain_hint: `The domain of the relay server, where your epicbox is connected to. Leave field blank if you don't want to use this service. Default: epicbox.epiccash.com`,
-
-      node_background: 'sync in background',
-      node_background_hint: 'the built-in node server continues to sync in the background even when the app is closed. The next time you run the wallet, you do not have to wait for the synchronization with the blockchain.',
-
+      epicbox_domain: 'Домейн на Epicbox',
+      epicbox_domain_hint: 'Домейнът на сървъра за препредаване, към който е свързан Вашият epicbox. Оставете полето празно, ако не искате да използвате тази услуга. По подразбиране: epicbox.epiccash.com',
+      node_background: 'синхронизиране във фонов режим',
+      node_background_hint: 'вграденият възел продължава да се синхронизира във фонов режим, дори когато приложението е затворено. Следващия път, когато пуснете портфейла, няма да се налага да чакате синхронизирането с блокчейна.',
+      node_load_warning: 'Сканирането използва много процесор и памет, докато приключи.',
     },
-
-    validators:{
+    validators: {
       empty: '{0} полето е задължително',
       equal: '{0} трябва да е равно',
+      password_mismatch: 'Паролите не съвпадат',
+      address: 'Това не е адрес, към който портфейлът може да изпраща',
       http_address: 'Няма валиден HTTP(S) адрес',
+      epicbox_address: 'Невалиден Epicbox адрес',
+      onion_address: 'Tor адресите не се поддържат.',
       min_length: '{0} полето трябва да бъде {1} брой символи',
       only_letters: '{0} може да има само малки букви от a-z без празни места',
       number: '{0} полето трябва да бъде с цифри',
+      decimals: 'Полето „{0}“ може да има най-много 8 знака след десетичната запетая',
+      positive: 'Полето „{0}“ трябва да е по-голямо от 0',
       spendable: 'Недостатъчна наличност',
       exist: 'Акаунтът "{0}" вече съществува',
-      notexist: 'Акаунтът "{0}" не съществува'
-    }
+      notexist: 'Акаунтът "{0}" не съществува',
+      not_epic_node: 'Не е Epic възел: {0}',
+    },
+    node_problem: {
+      title_too_old: 'Версията на този възел не е съвместима с този портфейл.',
+      title_status_locked: 'Версията на този възел не е съвместима с този портфейл.',
+      title_unreachable: 'Този възел не отговаря.',
+      title_not_epic: 'Този адрес не е възел на Epic Cash.',
+      node: 'Възел',
+      epicbox_skipped: 'Epicbox не стартира. Можете да го стартирате от страницата Получаване.',
+      go_receive: 'Към Получаване',
+      fixes: 'Какво можете да направите',
+      fix_public: 'Използвайте публичен възел',
+      node_list: 'списък с възли',
+      fix_builtin: 'Използвайте вградения възел',
+      fix_other: 'Използвайте друг възел',
+      fix_upgrade: 'Обновете възела си',
+      opens_browser: '(отваря се в браузъра)',
+      switched: 'Превключено към вградения възел. Излезте и влезте отново, за да завършите.',
+      switch_failed: 'Не можа да се превключи към вградения възел',
+      hide: 'Скрий',
+      hide_label: 'Скрий това известие до следващото влизане',
+      address_changed_title: 'Адресът на възела Ви беше обновен',
+      address_changed: 'Сега се използва {1} вместо {0}.',
+      ok: 'OK',
+    },
+    modern,
+  },
+};
 
-  }
-}
 export default messages

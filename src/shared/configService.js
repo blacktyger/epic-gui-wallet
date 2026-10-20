@@ -75,7 +75,7 @@ class ConfigService {
     this.debug = d.debug;
     this.resourcePath = d.resourcePath;
 
-    this.langs = {'bg': 'България', 'cz': 'Česko', 'de': 'Deutsch', 'en': 'English', 'fa': 'فارسی', 'hi': 'हिन्दी'};
+    this.langs = {'bg': 'България', 'cz': 'Česko', 'de': 'Deutsch', 'en': 'English', 'fa': 'فارسی', 'hi': 'हिन्दी', 'pl': 'Polski'};
 
     this.platform = d.platform;
     if (this.platform == 'mac' && d.arch == 'arm64') {
