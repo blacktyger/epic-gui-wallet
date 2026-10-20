@@ -59,7 +59,10 @@ H.runCase('contacts', async (t) => {
   const shot = async (name) => { if (SHOTS) { await w.waitForTimeout(350); await t.screenshot(name); } };
   //a row sends; its details are the first item of its … menu
   const item = (name) => w.locator(m ? '.e-con-item' : '.cbook-item').filter({ has: w.locator('b', { hasText: name }) }).first();
+  //a narrow window shows the list or one contact: back to the list first
+  const listUp = async () => { const b = w.getByRole('button', { name: 'All contacts' }); if (await b.count() && await b.first().isVisible()) { await b.first().click(); await w.waitForTimeout(200); } };
   const menuPick = async (name, i) => {
+    await listUp();
     await item(name).locator('.rmenu-btn').click();
     const items = item(name).locator('[role=menuitem]');
     await (typeof i === 'number' ? items.nth(i) : items.filter({ hasText: i }).first()).click();
