@@ -486,8 +486,6 @@
       /* opts.stay: the caller (Add another wallet) goes on from its own page; opts.done: called once closed;
          opts.switching: Switch wallet, so the built-in node keeps running */
       async logoutApp(opts = {}){
-        //Menu › Lock wallet waits for this one instead of starting a second (Ctrl+L can reach both)
-        this.loggingOut = true;
         //done is called once, also when closing failed part way (the add flows wait for it)
         let doneCalled = false;
         const done = () => {
@@ -495,10 +493,11 @@
           doneCalled = true;
           if (typeof opts.done === 'function') opts.done();
         };
+        opts = { ...opts, done };
+        //Menu › Lock wallet waits for this one instead of starting a second (Ctrl+L can reach both)
+        this.loggingOut = true;
         try {
-          await this.closeSession({ ...opts, done });
-        } catch (e) {
-          console.log('[logout] failed: ' + (e && e.message ? e.message : e));
+          await this.closeSession(opts);
         } finally {
           this.loggingOut = false;
           done();
