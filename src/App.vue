@@ -798,7 +798,7 @@
             this.store.commit('nodeStatus', check.status);
           }else{
             this.nodeStatusFailed = true;
-            this.store.commit('nodeStatus', {error: true});
+            this.store.commit('nodeStatus', {error: true, reason: check.reason || ''});
           }
           //start the status check for the node
           //give the node some time before api status is called
@@ -862,7 +862,7 @@
           this.nodeStatusFailed = true;
           this.nodePollFailures = (this.nodePollFailures || 0) + 1;
           window.nodeSynced = false;
-          this.store.commit('nodeStatus', {error: true});
+          this.store.commit('nodeStatus', {error: true, reason: this.$nodeService.lastStatusReason || ''});
         }
 
       },

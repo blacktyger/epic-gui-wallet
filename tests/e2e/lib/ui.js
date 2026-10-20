@@ -20,9 +20,9 @@ const main = (w) => w.evaluate(() => {
   const el = document.querySelector('#e-main, .e-content, section.is-main-section') || document.body;
   return el.innerText.replace(/\s+/g, ' ').trim();
 });
-/** Modern: the sidebar's node icon says "Node online and synced" (its aria-label; no height in the main views). */
+/** Modern: the sidebar's node icon says "Node online and ready" (its aria-label; no height in the main views). */
 async function waitNodeOnline(w, timeout = 30000) {
-  return waitFor(async () => (await w.locator('button.e-svc[aria-label*="Node online and synced"]').count()) ? true : null, { timeout, interval: 300 });
+  return waitFor(async () => (await w.locator('button.e-svc[aria-label*="Node online and ready"]').count()) ? true : null, { timeout, interval: 300 });
 }
 
 async function waitText(w, re, timeout = 20000) {
@@ -237,7 +237,7 @@ async function typeNodeAddress(w, ui, url = NODE_URL) {
   return `typed ${url} key by key; field holds ${JSON.stringify(v)} (both slashes)`;
 }
 
-/** Save the settings page; the app then talks to the stub node: "Node online and synced" at the stub's height. */
+/** Save the settings page; the app then talks to the stub node: "Node online and ready" at the stub's height. */
 async function saveNode(w, ui, url = NODE_URL) {
   if (ui === 'modern') {
     const save = w.locator('.e-stg-savebar').getByRole('button', { name: 'Save', exact: true });
@@ -250,7 +250,7 @@ async function saveNode(w, ui, url = NODE_URL) {
   await openSettings(w, ui);
   const v = await nodeInput(w, ui).inputValue();
   if (v !== url) throw new Error('after saving, the node field shows ' + JSON.stringify(v));
-  return `saved; node field still ${JSON.stringify(v)}; ` + (ui === 'modern' ? 'sidebar: Node online and synced' : 'header: Node (' + url + ')');
+  return `saved; node field still ${JSON.stringify(v)}; ` + (ui === 'modern' ? 'sidebar: Node online and ready' : 'header: Node (' + url + ')');
 }
 
 /* ---------- Send ---------- */

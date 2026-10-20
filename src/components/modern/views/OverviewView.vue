@@ -155,7 +155,7 @@
             <div class="e-grow">
               <b>{{ isInternal ? $t('msg.modern.overview.node_builtin') : $t('msg.modern.overview.node_external') }}</b>
               <small role="status" class="e-sr-only" :data-node-state="badge.state">{{ badgeTip }}</small>
-              <small v-if="badge.behind && badge.state != 'not_epic' && badge.state != 'old'"><router-link to="/settings#node" class="e-link-btn">{{ $t('msg.modern.switch_node') }}</router-link></small>
+              <small v-if="badge.behind"><router-link to="/settings#node" class="e-link-btn">{{ $t('msg.modern.switch_node') }}</router-link></small>
               <small v-if="isInternal && !configService.config.nodesynced && (configService.defaultAccountNetwork || 'mainnet') == 'mainnet'" class="e-faint">{{ $t('msg.modern.overview.node_fallback', { addr: nodeFallBack }) }}</small>
             </div>
             <button
@@ -204,7 +204,7 @@
   //the fiat value last shown, for the balance it was computed for (see mounted)
   const lastFiat = { total: null, usd: 0 };
   import { nodeSyncPercent } from '@/components/modern/format';
-  import { nodeBadge } from '@/components/modern/nodeBadge';
+  import { nodeBadge, nodeBadgeText } from '@/components/modern/nodeBadge';
   import { epicboxStatus } from '@/shared/epicboxStatus';
   import { httpShown } from '@/shared/httpListener';
   import EIcon from '@/components/modern/ui/EIcon.vue';
@@ -231,7 +231,7 @@
         return nodeBadge(this.store.state.nodeStatus, this.store.state.nodeProblem);
       },
       badgeTip() {
-        return this.$t('msg.modern.' + this.badge.key, { n: this.fmt(this.badge.n) });
+        return nodeBadgeText(this.badge, this.$t);
       },
       tourSteps() {
         const s = (key, target) => ({ target, title: this.$t('msg.modern.tour_' + key + '_t'), text: this.$t('msg.modern.tour_' + key) });

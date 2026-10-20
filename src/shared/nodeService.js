@@ -214,6 +214,8 @@ class NodeService {
     if(!res.ok){
       this.logNodeLine(baseURL, 'no status: ' + res.reason);
     }
+    //why the last read failed ('' when it answered): the short reason in the node's tooltip
+    this.lastStatusReason = res.ok ? '' : res.reason || '';
     let response = res.ok ? res.status : false;
 
     /* check if node status is ok or need a restart because is stalled */

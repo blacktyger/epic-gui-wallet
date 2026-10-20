@@ -17,7 +17,7 @@
   import { useStore } from '@/store';
   import { useI18n } from 'vue-i18n';
   import EIcon from '@/components/modern/ui/EIcon.vue';
-  import { nodeBadge } from '@/components/modern/nodeBadge';
+  import { nodeBadge, nodeBadgeText } from '@/components/modern/nodeBadge';
 
   export default {
     name: 'CurrentNodeInfo',
@@ -27,7 +27,7 @@
       const { t, locale } = useI18n();
       const num = (n) => Number(n).toLocaleString(locale.value);
       const badge = computed(() => nodeBadge(store.state.nodeStatus, store.state.nodeProblem));
-      const tip = computed(() => t('msg.modern.' + badge.value.key, { n: num(badge.value.n) }));
+      const tip = computed(() => nodeBadgeText(badge.value, t));
       const rows = computed(() => {
         const s = store.state.nodeStatus || {};
         const out = [];

@@ -27,7 +27,7 @@
   import { useRouter } from 'vue-router';
   import { openSettingsSection } from '@/components/modern/settings/jump';
   import EIcon from '@/components/modern/ui/EIcon.vue';
-  import { nodeBadge } from '@/components/modern/nodeBadge';
+  import { nodeBadge, nodeBadgeText } from '@/components/modern/nodeBadge';
   import { epicboxStatus } from '@/shared/epicboxStatus';
   import { httpShown } from '@/shared/httpListener';
 
@@ -41,7 +41,7 @@
       //the node is one icon and a short tooltip; the details are in Settings › Node
       const node = computed(() => {
         const b = nodeBadge(store.state.nodeStatus, store.state.nodeProblem);
-        const tip = t('msg.modern.' + b.key, { n: Number(b.n).toLocaleString(locale.value) });
+        const tip = nodeBadgeText(b, t);
         return {
           key: 'node', icon: b.icon, name: t('msg.modern.svc_node'), to: { path: '/settings', hash: '#node' }, open: t('msg.modern.svc_open_node'),
           tone: b.tone, detail: '', tip, action: b.behind ? t('msg.modern.switch_node') : '',
