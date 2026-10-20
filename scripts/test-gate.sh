@@ -9,7 +9,7 @@
 #   contract    the preload/IPC allowlists, sender checks, window flags, CSP (preloadContract, ipcChannels, security)
 #   i18n        every English key in all languages, placeholders, plurals; every key the code names exists (i18n, i18nKeys)
 #   components  vitest + Vue Test Utils: the riskiest screens in both interfaces (tests/components)
-#   e2e         Playwright _electron smoke, both interfaces, in a network-less sandbox with a stub node (tests/e2e)
+#   e2e         Playwright _electron smoke, the Modern interface (Classic is frozen since 2026-10-20; its specs stay, --ui classic runs them), in a network-less sandbox with a stub node (tests/e2e)
 #
 # --quick skips e2e (for a quick look while working; it is not a gate pass). --fail-fast stops at the
 # first failing stage. Env: E2E_APPDIR=<linux-unpacked> tests that build instead of building one.

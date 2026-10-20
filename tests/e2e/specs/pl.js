@@ -25,7 +25,8 @@ const flat = (o, p = '', r = {}) => {
 };
 //words of English UI text that are not Polish words ("to", "on", "a", "i" and "import" are); whole
 //words only, Polish letters count as letters ("Hasło" has no "has")
-const STOP = /(?<!\p{L})(the|and|your|you|are|is|of|with|this|that|not|will|can|please|from|have|has|been|here|there|wallet|wallets|transaction|address|settings|node|balance|password|amount|send|receive|cancel|delete|save|close|open|copy|details|back|next|done|loading|error|failed|wrong|update|updates|log|out|thank|learn|more|about|connect|recheck|profile|finalize|dashboard|help|confirm|action|message|file|port|clipboard)(?!\p{L})/iu;
+//not 'node': the Polish strings say "node" (node'a, node'em), the user's choice in 6.1.5
+const STOP = /(?<!\p{L})(the|and|your|you|are|is|of|with|this|that|not|will|can|please|from|have|has|been|here|there|wallet|wallets|transaction|address|settings|balance|password|amount|send|receive|cancel|delete|save|close|open|copy|details|back|next|done|loading|error|failed|wrong|update|updates|log|out|thank|learn|more|about|connect|recheck|profile|finalize|dashboard|help|confirm|action|message|file|port|clipboard)(?!\p{L})/iu;
 //the same in every language: names, units, technical words, language names
 const SAME = /^(Epic( Cash)?|EPIC|Epicbox|HTTP|HTTPS|Tor|Dandelion\+\+|BT Labs|btlabs|Johannes Hahn|Cypher Stack|mainnet|floonet|usernet|Mainnet|Floonet|Usernet|GitHub|Polski|English|Deutsch|Čeština|Česko|България|Български|فارسی|हिन्दी|OK|QR|ID|URL|API|PID \d+|MW\/Epic [\d.]+)$/;
 
@@ -117,7 +118,7 @@ H.runCase('pl', async (t) => {
   }, { fatal: true, timeout: 60000, allowConsole: [E2E_1] });
 
   const found = {};
-  const SHOT = /^\/(about|account|httpReceive|settings)$/;
+  const SHOT = /^\/(about|account|httpReceive|settings|dashboard|help|recheckBalance)$/;
   for (const page of U.PAGES[ui]) {
     await t.step(`Polish ${page[1]}${page[3] && page[3] !== 'side' ? ' (' + page[0] + ')' : ''}`, async () => {
       //the labels of PAGES are English: open by route

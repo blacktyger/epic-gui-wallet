@@ -5,9 +5,9 @@ const messages = [
     <br/>
     Transakcję można wysłać od razu na adres Epicbox lub http(s) albo przeprowadzić ręcznie, wymieniając pliki.<br/>
     <br/>
-    Zanim zaczniesz nową transakcję, upewnij się, że Twój węzeł jest w pełni zsynchronizowany
+    Zanim zaczniesz nową transakcję, upewnij się, że Twój node jest w pełni zsynchronizowany
     z siecią Epic Cash.<br/></br>
-    Stan węzła powinien mieć wartość „zsynchronizowany”.<br/>
+    Stan node’a powinien mieć wartość „zsynchronizowany”.<br/>
     <br/>
     Adresem odbiorcy może być adres Epicbox albo dowolny zewnętrzny adres http(s).<br/>`,
   },
@@ -65,12 +65,12 @@ const messages = [
     text: `Tutaj zmienisz ustawienia wybrane w asystencie konfiguracji.<br/>`
   },
   {
-    title: 'Serwer węzła',
-    text: `To adres Twojego węzła.<br/>
+    title: 'Node',
+    text: `To adres Twojego node’a.<br/>
     <br/>
-    Portfel potrzebuje węzła, aby wysyłać i odbierać monety.<br/>
+    Portfel potrzebuje node’a, aby wysyłać i odbierać monety.<br/>
     <br/>
-    Możesz wybrać wbudowany węzeł albo węzeł zewnętrzny.<br/><br/>
+    Możesz wybrać wbudowany node albo node zewnętrzny.<br/><br/>
     Po zmianie tego ustawienia uruchom portfel ponownie.<br/>`
   },
   {
@@ -88,15 +88,15 @@ const messages = [
     za pomocą tych słów.<br/>`
   },
   {
-    title: 'Węzeł sieci',
-    text: `Węzeł sieci to serwer, który przechowuje dane blockchaina.<br/><br/>
-           Portfel ma wbudowany węzeł, z którego możesz korzystać. Możesz też wybrać zewnętrzny węzeł uruchomiony
-           na innym komputerze albo publiczny węzeł.<br/><br/>
-           Przy pierwszym uruchomieniu wbudowany węzeł potrzebuje około 2 godzin, aby zsynchronizować dane blockchaina.`
+    title: 'Node',
+    text: `Node to serwer, który przechowuje dane blockchaina.<br/><br/>
+           Portfel ma wbudowany node, z którego możesz korzystać. Możesz też wybrać zewnętrzny node uruchomiony
+           na innym komputerze albo publiczny node.<br/><br/>
+           Przy pierwszym uruchomieniu wbudowany node potrzebuje około 2 godzin, aby zsynchronizować dane blockchaina.`
   },
   {
     title: 'Peery',
-    text: `Peery to inne węzły sieci połączone z Twoim węzłem.<br/>`
+    text: `Peery to inne node’y w sieci połączone z Twoim node’em.<br/>`
   },
   {
     title: 'Wysokość blockchaina',
