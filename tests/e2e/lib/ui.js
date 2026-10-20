@@ -333,7 +333,11 @@ async function addContact(w, ui, { name = '', epicbox = '', http = '' } = {}) {
   if (http) await w.locator(`#${p}-f-ext`).fill(http);
   await w.locator(ui === 'modern' ? '.e-con-form-foot button[type=submit]' : '.cbook-foot button[type=submit]').click();
   const seen = new Set();
-  await waitFor(async () => { for (const x of await contactMessages(w)) seen.add(x); return seen.size ? 'message' : null; }, { timeout: 4000, interval: 150 });
+  //a message (refused), or the name in the list (saved)
+  await waitFor(async () => {
+    for (const x of await contactMessages(w)) seen.add(x);
+    return seen.size || (name && (await contactNames(w, ui)).includes(name)) ? 'done' : null;
+  }, { timeout: 4000, interval: 150 });
   return [...seen];
 }
 async function cancelContact(w, ui) {

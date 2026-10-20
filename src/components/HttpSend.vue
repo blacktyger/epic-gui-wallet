@@ -91,7 +91,7 @@ import AmountField from "@/components/form/amountField";
 import AddressField from "@/components/form/addressField";
 import useFormValidation from "@/modules/useFormValidation";
 import { clearSendForm, inputAfterSend, sendMethod, isOnionAddress } from "@/shared/sendForm";
-import { contactAddresses, sendQuery } from "@/shared/contacts.js";
+import { sendableAddresses, sendQuery } from "@/shared/contacts.js";
 import { contactAvatars } from "@/shared/contactAvatars.js";
 import ContactPickerModal from "@/components/ContactPickerModal.vue";
 
@@ -125,8 +125,14 @@ export default {
       console.error('contact not read', e);
     }
     //only a contact of this wallet
-    if(!row || row.user_id != this.store.state.user.id || !this.pickContact(row, q.field)){
+    if(!row || row.user_id != this.store.state.user.id){
       this.$toast.error(this.$t('msg.contacts.send_missing'));
+      return;
+    }
+    //something typed or picked meanwhile wins
+    if(this.addressField && String(this.addressField.input || '').trim()) return;
+    if(!this.pickContact(row, q.field)){
+      this.$toast.error(this.$t('msg.contacts.err_address'));
       return;
     }
     this.loadAvatars();
@@ -218,7 +224,8 @@ export default {
     /* the picker (or Contacts › Send) chose a contact: its address (field, or the first it has: Epicbox
        before HTTP) goes into the recipient field, with the contact's send method. false: nothing to use */
     pickContact(contact, field){
-      const use = field && contact && String(contact[field] || '').trim() ? field : (contactAddresses(contact)[0] || {}).field;
+      const ok = sendableAddresses(contact);
+      const use = (ok.find(a => a.field == field) || ok[0] || {}).field;
       if(!use || !this.addressField) return false;
       this.addressSelected = false;
       this.fillAddressField(contact, use);
@@ -284,6 +291,8 @@ export default {
         if(value != ''){
 
           let found = await this.$addressBookService.findAddress(this.store.state.user.id, value);
+          //a contact picked while the search was on its way: no list over it
+          if(this.addressSelected) return;
           //only entries with an address that can be sent to (Epicbox or HTTP)
           this.foundAddress = found.filter(a => a.externalOne || a.externalTwo);
         }else{

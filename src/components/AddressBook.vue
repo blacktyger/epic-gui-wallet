@@ -5,7 +5,7 @@
     <div class="columns">
       <!-- the list -->
       <div class="column is-5 cbook-side">
-        <nav class="panel cbook-panel" :aria-label="$t('msg.modern.settings.contacts_list')">
+        <section class="panel cbook-panel" :aria-label="$t('msg.modern.settings.contacts_list')">
           <div class="cbook-head">
             <span class="cbook-count" role="status">{{ $t('msg.modern.settings.contacts_count', addressList.length) }}</span>
             <button type="button" class="button is-primary is-small" @click="create()"><mdicon name="account-plus" size="18" /><span>{{ $t('msg.modern.settings.add_contact') }}</span></button>
@@ -47,7 +47,7 @@
             <p class="is-size-7">{{ $t('msg.modern.settings.empty_note') }}</p>
           </div>
           <p v-else-if="listReady" class="cbook-empty">{{ $t('msg.modern.settings.no_results') }}</p>
-        </nav>
+        </section>
       </div>
 
       <div class="column is-7 cbook-main">
@@ -109,7 +109,7 @@
         </form>
 
         <!-- one contact -->
-        <div v-else-if="addressLoaded" class="card cbook-card" aria-labelledby="cb-name">
+        <div v-else-if="addressLoaded" class="card cbook-card" role="region" aria-labelledby="cb-name">
           <div class="card-content">
             <div class="cbook-hero">
               <ContactAvatar :name="name" :image="avatarOf(selectedAddress)" size="xl" />
@@ -120,8 +120,8 @@
               </div>
             </div>
             <div class="buttons cbook-actions">
-              <button v-for="a in selectedAddresses" :key="a.field" type="button" class="button is-primary" @click="sendTo(a.field)">
-                <mdicon name="send" size="18" /><span>{{ selectedAddresses.length > 1 ? $t('msg.contacts.send_' + a.kind) : $t('msg.contacts.send') }}</span>
+              <button v-for="a in selectedSendable" :key="a.field" type="button" class="button is-primary" @click="sendTo(a.field)">
+                <mdicon name="send" size="18" /><span>{{ selectedSendable.length > 1 ? $t('msg.contacts.send_' + a.kind) : $t('msg.contacts.send') }}</span>
               </button>
               <button type="button" class="button" @click="edit()"><mdicon name="pencil" size="18" /><span>{{ $t('msg.edit') }}</span></button>
               <button type="button" class="button is-danger is-outlined cbook-del-btn" :aria-label="$t('msg.modern.settings.delete_contact')" :title="$t('msg.modern.settings.delete_contact')" @click="trashModalOpen(selectedAddress)"><mdicon name="delete-outline" size="18" /></button>
@@ -160,16 +160,16 @@
     </div>
 
     <!-- delete: a quiet confirmation -->
-    <div class="modal" :class="{ 'is-active': isModalActive }" role="alertdialog" aria-modal="true" aria-labelledby="cb-del-t" @keydown.esc="trashCancel">
+    <div class="modal" :class="{ 'is-active': isModalActive }" role="alertdialog" aria-modal="true" aria-labelledby="cb-del-t" aria-describedby="cb-del-d" @keydown.esc="trashCancel" @keydown.tab="trapDelete">
       <div class="modal-background" @click="trashCancel"></div>
       <div class="modal-card cbook-del">
         <section class="modal-card-body">
           <p id="cb-del-t" class="title is-5">{{ $t('msg.modern.settings.delete_title', { name: trashObject ? trashObject.name : '' }) }}</p>
-          <p>{{ $t('msg.modern.settings.delete_desc') }}</p>
+          <p id="cb-del-d">{{ $t('msg.modern.settings.delete_desc') }}</p>
         </section>
         <footer class="modal-card-foot">
           <button ref="keepBtn" type="button" class="button" @click="trashCancel">{{ $t('msg.modern.settings.keep_contact') }}</button>
-          <button type="button" class="button is-danger" @click="trashConfirm">{{ $t('msg.modern.settings.delete_contact') }}</button>
+          <button ref="delBtn" type="button" class="button is-danger" @click="trashConfirm">{{ $t('msg.modern.settings.delete_contact') }}</button>
         </footer>
       </div>
     </div>
@@ -182,7 +182,7 @@ import { useStore } from '@/store';
 import ContactAvatar from '@/components/ContactAvatar.vue';
 import {
   contactFields, contactProblems, searchContacts, sortContacts, contactActivity, contactTransactions,
-  contactAddresses, shortAddress, SORTS,
+  contactAddresses, sendableAddresses, shortAddress, SORTS,
 } from '@/shared/contacts.js';
 import { makeAvatar, ACCEPT } from '@/shared/avatarImage.js';
 import { contactAvatars } from '@/shared/contactAvatars.js';
@@ -321,6 +321,8 @@ export default {
       return p;
     },
     selectedAddresses(){ return contactAddresses(this.selectedAddress); },
+    /* the ones a Send button is offered for (not a Tor address) */
+    selectedSendable(){ return sendableAddresses(this.selectedAddress); },
     selectedTxs(){ return contactTransactions(this.store.state.txs, this.selectedAddress && this.selectedAddress.id).slice(0, 5); },
     selectedLast(){ return this.selectedAddress && this.selectedAddress.id ? this.lastOf(this.selectedAddress) : ''; },
   },
@@ -336,10 +338,11 @@ export default {
     },
     async loadAvatars(){
       const map = await this.avatarStore.forUser(this.store.state.user.id);
+      //merged: a picture saved while this read was on its way stays
       const out = {};
       for (const [k, v] of map) out[k] = v;
-      this.avatars = out;
-      if (this.selectedAddress && this.selectedAddress.id && !this.formImageChanged) this.formImage = out[this.selectedAddress.id] || '';
+      this.avatars = { ...out, ...this.avatars };
+      if (this.selectedAddress && this.selectedAddress.id && !this.formImageChanged) this.formImage = this.avatars[this.selectedAddress.id] || '';
     },
     avatarOf(c){ return (c && this.avatars[c.id]) || ''; },
     kindsOf(c){ return contactAddresses(c).map(a => a.kind); },
@@ -403,6 +406,14 @@ export default {
       this.$nextTick(() => { if (this.$refs.keepBtn) this.$refs.keepBtn.focus(); });
     },
 
+    /* Tab stays between the delete dialog's two buttons */
+    trapDelete(e){
+      const a = this.$refs.keepBtn, b = this.$refs.delBtn;
+      if (!a || !b) return;
+      e.preventDefault();
+      (document.activeElement === a ? b : a).focus();
+    },
+
     trashConfirm(){
       this.isModalActive = false
       this.deleteAddress(this.trashObject.id);
@@ -410,6 +421,11 @@ export default {
 
     trashCancel(){
       this.isModalActive = false
+      //Classic's modal: back to the contact's delete button (Modern's dialog does this itself)
+      this.$nextTick(() => {
+        const b = document.querySelector('.cbook-del-btn');
+        if (b && b.focus) b.focus();
+      });
     },
     copy(text, field){
       window.clipboard.writeText(text);
@@ -422,7 +438,8 @@ export default {
     sendTo(field){
       const c = this.selectedAddress;
       if (!c || !c.id) return;
-      const use = field || (contactAddresses(c)[0] || {}).field;
+      const use = field || (sendableAddresses(c)[0] || {}).field;
+      if (!use) return;
       this.$router.push({ name: 'httpSend', query: { contact: String(c.id), use } });
     },
     callAddress(addressItem){
@@ -448,6 +465,9 @@ export default {
 
     },
     resetForm(){
+      //a picture still being made belongs to the form it was picked in, not to the next one
+      this.formSeq = (this.formSeq || 0) + 1;
+      this.imageBusy = false;
       this.touched = {};
       this.tried = false;
       this.imageProblem = '';
@@ -494,7 +514,7 @@ export default {
     },
     focusName(){
       this.$nextTick(() => {
-        const el = this.$refs.nameInput || (this.$el && this.$el.querySelector && this.$el.querySelector('#con-f-name'));
+        const el = this.$refs.nameInput || document.getElementById('con-f-name');
         if (el && el.focus) el.focus();
       });
     },
@@ -505,10 +525,13 @@ export default {
       const file = input && input.files && input.files[0];
       if (input) input.value = '';
       if (!file) return;
+      const seq = this.formSeq;
       this.imageBusy = true;
       this.imageProblem = '';
       try{
         const r = await makeAvatar(file);
+        //another contact (or a new one) was opened meanwhile: this picture is not for it
+        if (seq !== this.formSeq) return;
         if (r.dataUrl) {
           this.formImage = r.dataUrl;
           this.formImageChanged = true;
@@ -517,9 +540,9 @@ export default {
         }
       }catch(e){
         console.error('contact picture not made', e);
-        this.imageProblem = 'decode';
+        if (seq === this.formSeq) this.imageProblem = 'decode';
       }finally{
-        this.imageBusy = false;
+        if (seq === this.formSeq) this.imageBusy = false;
       }
     },
     removeImage(){
@@ -531,8 +554,11 @@ export default {
       if (!this.formImageChanged || !contactId) return;
       const userId = this.store.state.user.id;
       try{
-        if (this.formImage) await this.avatarStore.set(userId, contactId, this.formImage);
-        else await this.avatarStore.remove(userId, contactId);
+        if (this.formImage) {
+          if (!await this.avatarStore.set(userId, contactId, this.formImage)) throw new Error('picture refused by the store');
+        } else {
+          await this.avatarStore.remove(userId, contactId);
+        }
         this.avatars = { ...this.avatars, [contactId]: this.formImage || undefined };
       }catch(e){
         console.error('contact picture not saved', e);
@@ -553,6 +579,11 @@ export default {
           this.isNewAddress = false;
           this.addressLoaded = false;
           this.id = 0;
+          //the focus was on the dialog's button: back to the list's search field
+          this.$nextTick(() => {
+            const q = document.getElementById('con-q') || document.getElementById('cb-q');
+            if (q && q.focus) q.focus();
+          });
         }else{
           this.$toast.error(this.$t("msg.addressbook.error_delete"), {duration:1000});
         }
@@ -567,7 +598,8 @@ export default {
       if(field){
         const ids = { name: ['cb-f-name', 'con-f-name'], externalOne: ['cb-f-box', 'con-f-box'], externalTwo: ['cb-f-ext', 'con-f-ext'] }[field];
         this.$nextTick(() => {
-          const el = this.$el && this.$el.querySelector && ids.map(i => this.$el.querySelector('#' + i)).find(Boolean);
+          //by id: the Modern view has two root nodes, so $el is not an element there
+          const el = ids.map(i => document.getElementById(i)).find(Boolean);
           if (el && el.focus) el.focus();
         });
         return false;
@@ -599,6 +631,7 @@ export default {
     /* after a save: the list again, and the saved contact shown */
     async showSaved(id){
       await this.reload();
+      this.keyword = '';
       this.searched = false;
       const row = this.addressList.find(c => c.id == id);
       if (row) this.callAddress(row);

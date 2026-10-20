@@ -209,6 +209,40 @@ describe.each(BOOKS)('Contacts ($name)', (ui) => {
     expect(w.findAll('.cbook-row b, .e-con-row b').map((b) => b.text())).toEqual(['Mara Okafor', 'Old Friend']);
   });
 
+  test('focus: Add contact and Edit go to the name, a refused Save to the first wrong field', async () => {
+    const { w } = await openBook(ui);
+    await w.vm.create();
+    await flushPromises();
+    expect(document.activeElement && document.activeElement.id).toMatch(/f-name$/);
+    await w.find('input[id$=f-name]').setValue('Bob');
+    await w.find('input[id$=f-box]').setValue('nope');
+    await w.find('form[novalidate]').trigger('submit');
+    await flushPromises();
+    expect(document.activeElement && document.activeElement.id).toMatch(/f-box$/);
+  });
+
+  test('a picture still being made when another contact is opened is not put on that contact', async () => {
+    const { makeAvatar } = await import('@/shared/avatarImage.js');
+    let finish;
+    makeAvatar.mockImplementationOnce(() => new Promise((r) => { finish = () => r({ dataUrl: WEBP }); }));
+    const { w, avatars, book } = await openBook(ui);
+    await pick(w, 'Mara');
+    await button(w, t('msg.edit'), { partial: true }).trigger('click');
+    const input = w.find('input[type=file]');
+    Object.defineProperty(input.element, 'files', { value: [new File([new Uint8Array([1])], 'a.png')], configurable: true });
+    await input.trigger('change');
+    //Café opened and edited while Mara's picture is still being made
+    await pick(w, 'Café');
+    await button(w, t('msg.edit'), { partial: true }).trigger('click');
+    finish();
+    await flushPromises();
+    expect(w.find('form[novalidate] .cav img').exists()).toBe(false);
+    await w.find('form[novalidate]').trigger('submit');
+    await flushPromises();
+    expect(book.updateAddressById).toHaveBeenCalledWith(5, expect.anything());
+    expect(avatars.set).not.toHaveBeenCalled();
+  });
+
   test('no contacts: the empty state, not an empty list', async () => {
     const { w } = await openBook(ui, { book: fakeBook([]) });
     expect(w.text()).toContain(t('msg.modern.settings.empty_title'));
@@ -296,10 +330,26 @@ describe.each(SENDS)('Send › choose a contact ($name)', (ui) => {
     expect(s.$toast.error).toHaveBeenCalledWith(t('msg.contacts.send_missing'));
   });
 
-  test('a picked address is still checked as a typed one: a Tor address is refused', async () => {
+  test('a Tor address an older version kept is never filled in: the wallet has no Tor', async () => {
     const book = fakeBook([{ id: 7, user_id: 1, name: 'Tor shop', country: '', city: '', onion: '', alwaysproof: false, proofaddr: '', externalOne: '', externalTwo: 'http://' + 'a'.repeat(56) + '.onion', notice: '' }]);
     const s = await openSend(ui, { book, route: { query: { contact: '7' } } });
     await flushPromises();
-    expect(s.w.text()).toContain(t('msg.validators.onion_address'));
+    expect(s.to.element.value).toBe('');
+    expect(s.$toast.error).toHaveBeenCalledWith(t('msg.contacts.err_address'));
+    //and the picker does not list it
+    await s.w.find('button[aria-label="' + t('msg.contacts.picker_open') + '"]').trigger('click');
+    await flushPromises();
+    expect(ui.dialog(s.w).text()).not.toContain('Tor shop');
+  });
+
+  test('a typed address is not overwritten by a late Contacts › Send prefill', async () => {
+    const book = fakeBook();
+    let release;
+    book.getAddressById = vi.fn(() => new Promise((r) => { release = () => r(book.list.filter((x) => x.id == 4)); }));
+    const s = await openSend(ui, { book, route: { query: { contact: '4' } } });
+    await s.to.setValue(HTTP);
+    release();
+    await flushPromises();
+    expect(s.to.element.value).toBe(HTTP);
   });
 });

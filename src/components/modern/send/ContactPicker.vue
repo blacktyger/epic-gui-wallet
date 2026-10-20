@@ -45,7 +45,7 @@
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import EDialog from '@/components/modern/ui/EDialog.vue';
   import ContactAvatar from '@/components/ContactAvatar.vue';
-  import { pickableContacts, contactAddresses, shortAddress, sortContacts } from '@/shared/contacts.js';
+  import { pickableContacts, sendableAddresses as contactAddresses, shortAddress, sortContacts } from '@/shared/contacts.js';
 
   export default {
     name: 'ContactPicker',

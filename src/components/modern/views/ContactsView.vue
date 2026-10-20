@@ -64,7 +64,7 @@
             </button>
           </li>
         </ul>
-        <div v-else class="e-con-none">
+        <div v-else-if="addressList.length" class="e-con-none">
           <p class="e-small e-dim">{{ $t('msg.modern.settings.no_results') }}</p>
           <button type="button" class="e-btn e-btn-ghost e-btn-sm" @click="clearup(false)">{{ $t('msg.modern.settings.help_search_clear') }}</button>
         </div>
@@ -141,8 +141,8 @@
           </div>
         </div>
         <div class="e-con-actions">
-          <button v-for="(a, i) in selectedAddresses" :key="a.field" type="button" class="e-btn" :class="i == 0 ? 'e-btn-primary' : ''" @click="sendTo(a.field)">
-            <EIcon name="send" />{{ selectedAddresses.length > 1 ? $t('msg.contacts.send_' + a.kind) : $t('msg.contacts.send') }}
+          <button v-for="(a, i) in selectedSendable" :key="a.field" type="button" class="e-btn" :class="i == 0 ? 'e-btn-primary' : ''" @click="sendTo(a.field)">
+            <EIcon name="send" />{{ selectedSendable.length > 1 ? $t('msg.contacts.send_' + a.kind) : $t('msg.contacts.send') }}
           </button>
           <button type="button" class="e-btn" @click="edit()"><EIcon name="pencil" />{{ $t('msg.edit') }}</button>
           <button type="button" class="e-icon-btn e-con-del" :aria-label="$t('msg.modern.settings.delete_contact')" :title="$t('msg.modern.settings.delete_contact')" @click="trashModalOpen(selectedAddress)"><EIcon name="trash" /></button>

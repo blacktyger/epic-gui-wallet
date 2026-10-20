@@ -18,7 +18,8 @@ test('initials skip punctuation and words without letters', () => {
 });
 
 test('initials of other scripts stay whole characters', () => {
-  assert.equal(avatarInitials('علی رضایی'), 'عر');
+  //Arabic-script letters stay two initials, not one joined shape (a zero-width non-joiner between)
+  assert.equal(avatarInitials('علی رضایی'), 'ع\u200cر');
   //a Devanagari letter with its vowel sign is one character on screen
   assert.equal(avatarInitials('राहुल शर्मा'), 'राश');
   //an emoji with a skin tone is not split in two halves

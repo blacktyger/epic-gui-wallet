@@ -17,7 +17,7 @@
 .e-con-list { list-style: none; margin: 0; padding: var(--sp-2); overflow-y: auto; flex: 1; min-height: 0; }
 .e-con-row {
   display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: 60px;
-  padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-2); border: 0; border-radius: var(--r-sm);
+  padding-block: var(--sp-2); padding-inline: var(--sp-2) var(--sp-3); border: 0; border-radius: var(--r-sm);
   background: none; color: var(--text); text-align: start; font: inherit;
   transition: background var(--dur-fast) var(--ease);
 }
@@ -36,7 +36,7 @@
 
 /* the pane: one contact, or the form */
 .e-con-main { padding: var(--sp-6); min-width: 0; }
-.e-con-back { display: none; margin: calc(var(--sp-2) * -1) 0 var(--sp-4) calc(var(--sp-2) * -1); }
+.e-con-back { display: none; margin-block: calc(var(--sp-2) * -1) var(--sp-4); margin-inline-start: calc(var(--sp-2) * -1); }
 [dir='rtl'] .e-con-back .e-icon { transform: scaleX(-1); }
 .e-con-head { display: flex; align-items: center; gap: var(--sp-5); }
 .e-con-head h2 { font-size: var(--fs-h2); overflow-wrap: anywhere; }
@@ -49,7 +49,7 @@
 .e-con-facts dt { display: flex; align-items: center; gap: 6px; color: var(--dim); font-size: var(--fs-sm); margin-bottom: 6px; }
 .e-con-facts dt .e-icon { color: var(--faint); }
 .e-con-facts dd { margin: 0; }
-.e-con-facts dd.e-addr { padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4); gap: var(--sp-3); }
+.e-con-facts dd.e-addr { padding-block: var(--sp-2); padding-inline: var(--sp-4) var(--sp-2); gap: var(--sp-3); }
 .e-con-facts dd.e-addr code { font-size: 0.8125rem; overflow-wrap: anywhere; }
 .e-con-copy { flex: none; min-width: 92px; justify-content: center; }
 .e-con-copy.e-is-copied, .e-con-copy.e-is-copied .e-icon { color: var(--ok); }

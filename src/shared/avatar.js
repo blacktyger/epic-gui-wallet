@@ -46,6 +46,7 @@ function graphemes(s) {
 }
 
 const LETTER = /[\p{L}\p{N}]/u;
+const ARABIC = /\p{Script=Arabic}/u;
 
 /* the first letter or digit of a word ("@bob" → "b", "(Café)" → "C"), or its first character */
 function firstOf(word) {
@@ -63,7 +64,10 @@ export function avatarInitials(name) {
   }
   //one word, one letter (as a messaging app shows "Juno")
   if (words.length == 1) return firstOf(words[0]).toLocaleUpperCase();
-  return (firstOf(words[0]) + firstOf(words[words.length - 1])).toLocaleUpperCase();
+  const a = firstOf(words[0]), b = firstOf(words[words.length - 1]);
+  //Arabic-script letters would join into one shape (a word, not two initials): a zero-width non-joiner keeps them apart
+  const join = ARABIC.test(a) && ARABIC.test(b) ? '\u200c' : '';
+  return (a + join + b).toLocaleUpperCase();
 }
 
 /* WCAG relative luminance contrast of two #rrggbb colours (for the palette test) */

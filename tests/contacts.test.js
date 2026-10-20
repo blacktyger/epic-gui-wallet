@@ -63,7 +63,7 @@ test('a contact needs a name and an address to send to; an Epicbox address must 
 /* ---- 6.1.6: the redesigned Contacts and the Send picker ---- */
 import {
   contactProblems, contactAddresses, shortAddress, contactActivity, contactTransactions, sortContacts,
-  pickableContacts, sendQuery,
+  pickableContacts, sendQuery, sendableAddresses,
 } from '../src/shared/contacts.js';
 
 const BOX = 'esWY5xrwwGme5Ca6Aje8joEvtqNLtUcKfkycNFDQSYQbHi14LyEM@epicbox.epiccash.com';
@@ -143,6 +143,13 @@ test('the Send picker lists only contacts with an address, matching the search',
   assert.deepEqual(pickableContacts(list, '').map((c) => c.id), [4, 6]);
   assert.deepEqual(pickableContacts(list, 'shop').map((c) => c.id), [6]);
   assert.deepEqual(pickableContacts(list, 'tor').map((c) => c.id), []);
+});
+
+test('a Tor address an older version kept in the HTTP field is shown but never offered for Send', () => {
+  const c = { id: 8, name: 'Tor shop', externalOne: BOX, externalTwo: 'http://' + 'a'.repeat(56) + '.onion' };
+  assert.equal(contactAddresses(c).length, 2);
+  assert.deepEqual(sendableAddresses(c).map((a) => a.field), ['externalOne']);
+  assert.deepEqual(pickableContacts([{ ...c, externalOne: '' }], ''), []);
 });
 
 test('Contacts › Send passes only a contact id and a field name', () => {

@@ -65,6 +65,12 @@ export function contactAddresses(c) {
     .filter((a) => a.address);
 }
 
+/* the addresses Send can use: a Tor address an older version kept in the HTTP field is left out
+   (Send refuses it: the wallet has no Tor) */
+export function sendableAddresses(c) {
+  return contactAddresses(c).filter((a) => !isOnionAddress(a.address));
+}
+
 /* "esM4kz…8tQz@epicbox.epiccash.com" for an Epicbox address (the key is what tells two apart: its
    start and end, as the review dialog highlights them); a long HTTP address keeps its start and end */
 export function shortAddress(address, { head = 6, tail = 4 } = {}) {
@@ -141,7 +147,7 @@ export function sortContacts(list, sort = 'name', activity = new Map(), locale) 
 
 /* the contacts the Send picker lists: those with an address to send to, matching the search */
 export function pickableContacts(list, keyword) {
-  return searchContacts(list, keyword).filter((c) => contactAddresses(c).length);
+  return searchContacts(list, keyword).filter((c) => sendableAddresses(c).length);
 }
 
 /* the Send screen opened from a contact (Contacts › Send): its route query → { id, field } or null.

@@ -16,7 +16,8 @@ const png = (w, h) => bytes([0x89], 'PNG', [0x0d, 0x0a, 0x1a, 0x0a], be32(13), '
 const exif = 'Exif\0\0GPS 52.2297N 21.0122E camera=Phone';
 const jpeg = (w, h) => bytes([0xff, 0xd8], [0xff, 0xe1], [0, exif.length + 2], exif,
   [0xff, 0xc0, 0, 17, 8], [(h >> 8) & 255, h & 255, (w >> 8) & 255, w & 255], [3, 1, 0x22, 0, 2, 0x11, 1, 3, 0x11, 1], [0xff, 0xd9]);
-const gif = (w, h) => bytes('GIF89a', le16(w), le16(h), [0, 0, 0]);
+//GIF: header, no colour table, a graphic-control extension, then the first frame's descriptor
+const gif = (w, h, fw = w, fh = h) => bytes('GIF89a', le16(w), le16(h), [0, 0, 0], [0x21, 0xf9, 4, 0, 0, 0, 0, 0], [0x2c], le16(0), le16(0), le16(fw), le16(fh), [0]);
 const webpX = (w, h) => bytes('RIFF', [30, 0, 0, 0], 'WEBP', 'VP8X', [10, 0, 0, 0], [0, 0, 0, 0], le24(w - 1), le24(h - 1), [0, 0]);
 const svg = bytes('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><script>alert(1)</script></svg>');
 const html = bytes('<!doctype html><img src=x onerror=alert(1)>');
@@ -38,6 +39,8 @@ test('the declared size is read from each header', () => {
   assert.deepEqual(imageDimensions(gif(320, 200)), { width: 320, height: 200 });
   assert.deepEqual(imageDimensions(webpX(1920, 1080)), { width: 1920, height: 1080 });
   assert.equal(imageDimensions(bytes([0xff, 0xd8, 0xff])), null);
+  //a GIF that declares 1 x 1 but whose first frame is 8000 x 8000 (the decoder would size it 8000 x 8000)
+  assert.deepEqual(imageDimensions(gif(1, 1, 8000, 8000)), { width: 8000, height: 8000 });
 });
 
 test('a picked file is refused for its type, its size or a huge declared image', () => {
@@ -49,6 +52,10 @@ test('a picked file is refused for its type, its size or a huge declared image',
   //a few bytes that would decode to 2.5 GB of pixels
   assert.equal(avatarFileProblem(png(25000, 25000)), 'dimensions');
   assert.equal(avatarFileProblem(png(0, 10)), 'dimensions');
+  assert.equal(avatarFileProblem(gif(1, 1, 8000, 8000)), 'dimensions');
+  //a size that can't be read (junk before the JPEG frame header, a GIF cut short) is refused before decoding
+  assert.equal(avatarFileProblem(bytes([0xff, 0xd8, 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77])), 'decode');
+  assert.equal(avatarFileProblem(bytes('GIF89a', le16(1), le16(1), [0, 0, 0])), 'decode');
 });
 
 test('the middle square is cropped', () => {
@@ -125,9 +132,14 @@ test('PNG when the page cannot encode WebP; a decoder failure or a huge image is
   assert.equal((await makeAvatar(file(png(300, 300), 'image/png'), env)).dataUrl, 'data:image/png;base64,iVBORw0KGgo=');
   ({ env } = fakeEnv({ decodeFails: true }));
   assert.deepEqual(await makeAvatar(file(png(300, 300), 'image/png'), env), { problem: 'decode' });
-  //a JPEG whose header hides its size: the decoded size is checked too
+  //a JPEG whose header hides its size never reaches the decoder
+  let calls;
+  ({ env, calls } = fakeEnv({ width: 20000, height: 20000 }));
+  assert.deepEqual(await makeAvatar(file(bytes([0xff, 0xd8, 0xff, 0xe0, 0, 4, 0, 0])), env), { problem: 'decode' });
+  assert.equal(calls.decoded.length, 0);
+  //the decoded size is checked too (a header that understates it)
   ({ env } = fakeEnv({ width: 20000, height: 20000 }));
-  assert.deepEqual(await makeAvatar(file(bytes([0xff, 0xd8, 0xff, 0xe0, 0, 4, 0, 0])), env), { problem: 'dimensions' });
+  assert.deepEqual(await makeAvatar(file(png(300, 300), 'image/png'), env), { problem: 'dimensions' });
   assert.deepEqual(await makeAvatar(file(new Uint8Array(0)), env), { problem: 'type' });
   assert.deepEqual(await makeAvatar({ size: MAX_FILE_BYTES + 1 }, env), { problem: 'size' });
 });

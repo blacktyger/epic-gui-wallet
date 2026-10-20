@@ -71,7 +71,13 @@ export function idbBackend(idb = typeof indexedDB != 'undefined' ? indexedDB : n
             s.createIndex('user_id', 'user_id');
           }
         };
-        req.onsuccess = () => resolve(req.result);
+        req.onsuccess = () => {
+          const db = req.result;
+          //closed by the browser (or another version opening it): open again next time
+          db.onversionchange = () => { db.close(); opening = null; };
+          db.onclose = () => { opening = null; };
+          resolve(db);
+        };
         req.onerror = () => reject(req.error);
       });
       //a failed open is tried again next time

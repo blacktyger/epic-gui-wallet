@@ -49,8 +49,25 @@ export function imageDimensions(bytes, type = sniffImageType(bytes)) {
     return { width: be32(16), height: be32(20) };
   }
   if (type == 'gif') {
-    if (b.length < 10) return null;
-    return { width: le16(6), height: le16(8) };
+    if (b.length < 13) return null;
+    //the decoder sizes the image by its first frame when that is larger than the declared screen
+    //(a 1 x 1 header with an 8000 x 8000 frame), so both count: walk to the first image descriptor
+    let width = le16(6), height = le16(8);
+    let i = 13 + (b[10] & 0x80 ? 3 * (2 << (b[10] & 7)) : 0);
+    while (i < b.length) {
+      if (b[i] == 0x2c) {
+        if (i + 9 > b.length) return null;
+        width = Math.max(width, le16(i + 1) + le16(i + 5));
+        height = Math.max(height, le16(i + 3) + le16(i + 7));
+        return { width, height };
+      }
+      if (b[i] != 0x21) return null;
+      //an extension: label, then sub-blocks until a zero length
+      i += 2;
+      while (i < b.length && b[i] != 0) i += b[i] + 1;
+      i++;
+    }
+    return null;
   }
   if (type == 'webp') {
     if (b.length < 30) return null;
@@ -85,15 +102,16 @@ export function imageDimensions(bytes, type = sniffImageType(bytes)) {
   return null;
 }
 
-/* why a picked file can't be a picture, or null: 'type' | 'size' | 'dimensions'.
-   bytes: the whole file (or at least its first 64 KB, where a JPEG's frame header normally is) */
+/* why a picked file can't be a picture, or null: 'type' | 'size' | 'dimensions' | 'decode' (its size
+   can't be read from its header). bytes: the whole file */
 export function avatarFileProblem(bytes, size = u8(bytes).length) {
   const type = sniffImageType(bytes);
   if (!type) return 'type';
   if (!(size > 0) || size > MAX_FILE_BYTES) return 'size';
   const d = imageDimensions(bytes, type);
-  //a JPEG whose frame header is not found: the decoder still has to succeed, and the size cap holds
-  if (d && (!d.width || !d.height || d.width * d.height > MAX_PIXELS)) return 'dimensions';
+  //a size that can't be read is refused before decoding (the decoder would allocate first)
+  if (!d) return 'decode';
+  if (!d.width || !d.height || d.width * d.height > MAX_PIXELS) return 'dimensions';
   return null;
 }
 

@@ -115,12 +115,12 @@ H.runCase('contacts', async (t) => {
     if (bytes.length > 16000) throw new Error('too big: ' + bytes.length + ' bytes');
     await shot('form-picture');
     await w.locator(m ? '.e-con-form-foot button[type=submit]' : '.cbook-foot button[type=submit]').click();
-    await w.waitForTimeout(500);
-    const stored = await w.evaluate(() => new Promise((resolve) => {
+    const read = () => w.evaluate(() => new Promise((resolve) => {
       const r = indexedDB.open('EpicwalletContactAvatars');
-      r.onsuccess = () => { const q = r.result.transaction('avatars').objectStore('avatars').getAll(); q.onsuccess = () => resolve(q.result.map((x) => ({ c: x.contact_id, u: x.user_id, k: x.image.slice(0, 23), n: x.image.length }))); };
+      r.onsuccess = () => { const q = r.result.transaction('avatars').objectStore('avatars').getAll(); q.onsuccess = () => { r.result.close(); resolve(q.result.map((x) => ({ c: x.contact_id, u: x.user_id, k: x.image.slice(0, 23), n: x.image.length }))); }; };
       r.onerror = () => resolve('no db');
     }));
+    const stored = await H.waitFor(async () => { const x = await read(); return Array.isArray(x) && x.length ? x : null; }, { timeout: 6000 }) || await read();
     if (!Array.isArray(stored) || stored.length !== 1 || stored[0].k !== 'data:image/webp;base64,') throw new Error('stored: ' + JSON.stringify(stored));
     //the original file is never referenced: removing it changes nothing
     fs.unlinkSync(photo);
@@ -156,7 +156,10 @@ H.runCase('contacts', async (t) => {
     if (m) await w.getByRole('button', { name: 'Recent' }).click();
     else await w.locator('#cb-sort').selectOption('recent');
     await w.waitForTimeout(200);
-    return 'search: ' + one.join(', ') + '; sorted by recent: ' + (await U.contactNames(w, ui)).join(', ');
+    //no transactions yet: by recent falls back to the names
+    const recent = await U.contactNames(w, ui);
+    if (recent.join() !== 'Café Lumen,Juno Reyes,Mara O. Okafor') throw new Error('recent: ' + recent.join(', '));
+    return 'search: ' + one.join(', ') + '; sorted by recent: ' + recent.join(', ');
   });
 
   if (SHOTS) {
