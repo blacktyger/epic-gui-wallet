@@ -11,6 +11,7 @@ import { parseListenerLine } from './shared/epicboxListener';
 import { createScopedFs, isInside } from './shared/security';
 import { checkSpawnArgs } from './shared/walletArgs';
 import { pickedReadDirs } from './shared/walletFolder';
+import { serverDefaultsFromEnv } from './shared/settingsStore';
 
 const crypto = require('crypto-browserify');
 const qr = require("qrcode");
@@ -700,6 +701,10 @@ contextBridge.exposeInMainWorld('config', {
   },
   getArch(){
     return os.arch();
+  },
+  /* the node and Epicbox server new wallets start with, when the test gate sets them (shared/settingsStore.js) */
+  serverDefaults(){
+    return serverDefaultsFromEnv(process.env);
   },
 
 });

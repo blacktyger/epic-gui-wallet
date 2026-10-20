@@ -145,14 +145,14 @@ without the gate is refused. Every stage runs, so one report shows every failure
 | contract | The preload/IPC contract: exactly the reviewed bridge APIs and channels. Every handler checks the sender (`fromAppWindow`) or is on a reviewed read-only list, and no handler is forgotten. Window flags: contextIsolation on, nodeIntegration off, webSecurity on, `sandbox: false` pinned as a decision. Navigation, webview and new-window guards, CSP, URL and fs allowlists. | `preloadContract`, `ipcChannels`, `security` | <1 s |
 | i18n | Every English key in all languages, with placeholders and plurals; every key the code names literally exists in English | `i18n`, `i18nKeys` | ~1 s |
 | components | vitest + Vue Test Utils + happy-dom, each screen in Classic and Modern: Send validation, Receive states (listener stopped, busy port), Unlock, the Settings node field (typed key by key), the removal dialog, recovery phrase reveal/copy (secret clipboard only) | `tests/components/*.spec.js` | ~3 s |
-| e2e | Playwright `_electron` on the packaged Linux app with the real `epic-wallet`, in `bwrap --unshare-net --unshare-pid` (loopback only, scratch HOME, its own Xvfb) with a Node stub node. Create a wallet; type the node address key by key; visit every page of both interfaces; Send validation (nothing sent); Receive with the listener stopped; wrong password; lock/unlock; busy port 3415; Contacts; Persian RTL; Menu › Quit with no process left. Any console error fails its step, and no output file may contain a secret. | `tests/e2e/` (README there) | ~60 s with the app build (~35 s), ~26 s with a reused build |
+| e2e | Playwright `_electron` on the packaged Linux app with the real `epic-wallet`, in `bwrap --unshare-net --unshare-pid` (loopback only, scratch HOME, its own Xvfb) with a Node stub node. Create a wallet; type the node address key by key; visit every page of the Modern interface (Classic is frozen since 2026-10-20: its specs stay, `--ui classic` or `E2E_UIS=modern,classic` runs them, the gate doesn't); Send validation (nothing sent); Receive with the listener stopped; wrong password; lock/unlock; busy port 3415; Contacts; Persian RTL; Menu › Quit with no process left. Any console error fails its step, and no output file may contain a secret. | `tests/e2e/` (README there) | ~60 s with the app build (~35 s), ~26 s with a reused build |
 
 Measured on 2026-10-20: the whole gate takes 75–85 s on this machine, on 6.1.4 and on 6.1.5.
 
 ```sh
 npm run test:gate            # the gate (exit 0 = PASS)
 npm run test:gate:quick      # everything but e2e, ~15 s, while working (not a gate pass)
-npm run test:e2e -- --spec smoke --ui classic    # one e2e case; E2E_APPDIR=<linux-unpacked> to test a build
+npm run test:e2e -- --spec smoke --ui modern     # one e2e case; E2E_APPDIR=<linux-unpacked> to test a build
 npm run test:gate:windows    # optional: the smoke on the Windows rig through epicrig (scripts/test-gate-windows.sh)
 ```
 
@@ -172,7 +172,8 @@ Policy:
 
 - Default target: HEAD, which must be pushed to the fork. It is built over plain ssh (session 0, nothing on the desktop) in `C:\EpicRig\gate-<sha>`: fresh clone pinned to the commit, `npm ci`, `vue-cli-service electron:build --win dir`. A commit already built there is reused (about 2 min to build).
 - Before anything runs it checks the host: nothing listens on 3413/3415/3420/13413 and no epic process runs from outside `C:\EpicRig` (the user's own wallet). If so it stops with exit 4 and touches nothing.
-- It queues one rig job (`scripts\queue-run.ps1`, specs `gate,core`). The rig runs it as the separate `epicrig` user in its own session, in a throwaway profile. Spec `gate` is this repo's `tests/e2e/specs/smoke.js` ported to the rig (Modern and Classic, a stub node on 127.0.0.1:13413); `core` is the rig's longer suite (public node, Epicbox, contacts, scale, theme, restore).
+- It queues one rig job (`scripts\queue-run.ps1`, specs `gate,core`). The rig runs it as the separate `epicrig` user in its own session, in a throwaway profile. Spec `gate` is this repo's `tests/e2e/specs/smoke.js` ported to the rig (Modern only, `WINTEST_UIS` for more; a stub node on 127.0.0.1:13413); `core` is the rig's longer suite (public node, Epicbox, contacts, scale, theme, restore).
+- Public servers: the rig (`suite/lib/servers.js`) picks, once per run, the first healthy public node (`/v1/status` at the tip) and Epicbox server from a list (official first, then node.epicnet.us / node.btlabs.uk and epicbox.epicnet.us / epicbox.stackwallet.com; `WINTEST_NODE`, `WINTEST_EPICBOX` force one) and passes them to the app as `EPIC_GUI_DEFAULT_NODE` / `EPIC_GUI_DEFAULT_EPICBOX`, the servers a new wallet starts with (6.1.5, `src/shared/settingsStore.js`). An outage of one server no longer fails the gate; the choice is in the run's `servers.json`.
 - It waits (default 40 min, `--wait-min`), copies `report.md`, `flows-*.json`, `real-locations.txt`, the Playwright log and the screenshot gallery to `tests/out/gate-windows/<run>/` (`latest` links the newest), and prints a summary.
 - Exit 0 only if every flow passed, the rig's real-location diff is clean (rig exit 3 = the real wallet folders changed: stop and investigate), and no text file in the job's profile names `C:\Users\BT`.
 

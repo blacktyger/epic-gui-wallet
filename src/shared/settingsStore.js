@@ -51,12 +51,37 @@ export const WALLET_DEFAULTS = Object.freeze({
   epicbox_check_pending: '',
 });
 
+/*
+ * The node and Epicbox server a NEW mainnet wallet starts with, instead of node.epiccash.com and
+ * epicbox.epiccash.com, from the environment: EPIC_GUI_DEFAULT_NODE (http(s)://host[:port]) and
+ * EPIC_GUI_DEFAULT_EPICBOX (a domain). For the test gate and the Windows rig, which pick a healthy
+ * public server first, so an outage of the official ones doesn't fail them. Unset: the defaults.
+ * Wallets that exist keep their own settings.
+ */
+const NODE_URL = /^https?:\/\/[A-Za-z0-9.-]+(:\d{1,5})?$/;
+const DOMAIN = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
+export function serverDefaultsFromEnv(env) {
+  const e = env && typeof env === 'object' ? env : {};
+  const out = {};
+  const node = String(e.EPIC_GUI_DEFAULT_NODE || '').trim().replace(/\/+$/, '');
+  const box = String(e.EPIC_GUI_DEFAULT_EPICBOX || '').trim().toLowerCase();
+  if (NODE_URL.test(node) && node.length <= 256) out.check_node_api_http_addr = node;
+  if (DOMAIN.test(box) && box.length <= 253) out.epicbox_domain = box;
+  return out;
+}
+let serverDefaults = {};
+/* configService, once at the start, with serverDefaultsFromEnv's answer (from the preload) */
+export function setServerDefaults(d) {
+  serverDefaults = serverDefaultsFromEnv({ EPIC_GUI_DEFAULT_NODE: d && d.check_node_api_http_addr, EPIC_GUI_DEFAULT_EPICBOX: d && d.epicbox_domain });
+}
+
 /* a new wallet's settings on its network: mainnet uses the public node; floonet and usernet have
    no public node, so their own local node (http://127.0.0.1:<the network's node API port>) */
 export function walletDefaults(network) {
   return network === 'mainnet' || !NETWORKS.includes(network)
-    ? { ...WALLET_DEFAULTS }
-    : { ...WALLET_DEFAULTS, check_node_api_http_addr: localNodeUrl(network) };
+    ? { ...WALLET_DEFAULTS, ...serverDefaults }
+    : { ...WALLET_DEFAULTS, ...(serverDefaults.epicbox_domain ? { epicbox_domain: serverDefaults.epicbox_domain } : {}),
+      check_node_api_http_addr: localNodeUrl(network) };
 }
 
 /* settings older drafts stored that 6.1 no longer has: dropped on load and on save

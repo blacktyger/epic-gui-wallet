@@ -10,7 +10,7 @@
  * <spec>-<ui>/ result.json, console.log, app.stdout.log, stub-node.log, logs/, shots/ (failures).
  * Exit 0 only when no step failed; known-bug steps are listed but don't fail the gate.
  *
- *   node tests/e2e/run.js [--spec smoke,errors] [--ui modern|classic] [--rebuild] [--quarantine] [--keep-home] [-j N]
+ *   node tests/e2e/run.js [--spec smoke,errors] [--ui modern|classic] (default Modern only, or E2E_UIS=modern,classic: Classic is frozen) [--rebuild] [--quarantine] [--keep-home] [-j N]
  */
 'use strict';
 const fs = require('fs');
@@ -25,7 +25,7 @@ const HOME = os.homedir();
 const CASE_TIMEOUT = Number(process.env.E2E_CASE_TIMEOUT || 300);
 
 function args() {
-  const a = process.argv.slice(2); const o = { spec: null, ui: ['modern', 'classic'], rebuild: false, quarantine: false, keepHome: false, jobs: Number(process.env.E2E_JOBS || 4) };
+  const a = process.argv.slice(2); const o = { spec: null, ui: (process.env.E2E_UIS || 'modern').split(','), rebuild: false, quarantine: false, keepHome: false, jobs: Number(process.env.E2E_JOBS || 4) };
   for (let i = 0; i < a.length; i++) {
     if (a[i] === '--spec') o.spec = a[++i].split(',');
     else if (a[i] === '--ui') o.ui = a[++i].split(',');

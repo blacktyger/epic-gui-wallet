@@ -14,7 +14,7 @@
  * app it comes from the preload (window.nodeFs, window.config.appPaths(), ...).
  */
 import { layout, netFromShort } from './appPaths.js';
-import { createSettingsStore, normalizeWallet, NETWORKS, WALLET_DEFAULTS } from './settingsStore.js';
+import { createSettingsStore, normalizeWallet, NETWORKS, WALLET_DEFAULTS, setServerDefaults, walletDefaults } from './settingsStore.js';
 import { planRemoval, removeFiles } from './walletRemoval.js';
 import { renderWalletToml, renderNodeToml, networkPorts, walletMarkerText, WALLET_MARKER, tomlNetwork, localNodeUrl, isLocalNodeUrl } from './walletToml.js';
 
@@ -41,6 +41,7 @@ function windowDeps() {
     nodeChildProcess: window.nodeChildProcess,
     folderLock: (kind, dir) => window.api.folderLock(kind, dir),
     debug: window.debug,
+    serverDefaults: window.config.serverDefaults ? window.config.serverDefaults() : {},
   };
 }
 
@@ -88,9 +89,11 @@ class ConfigService {
     this.epicPath = this.path.resolve(bin, this.platform === 'win' ? 'epic-wallet.exe' : 'epic-wallet');
     this.epicNodePath = this.path.resolve(bin, this.platform === 'win' ? 'epic.exe' : 'epic');
 
+    //the test gate's servers instead of the official ones, if it set them (settingsStore.serverDefaultsFromEnv)
+    if (d.serverDefaults) setServerDefaults(d.serverDefaults);
     //mainnet's public node: the wallet's node while the built-in mainnet node syncs
-    this.nodeFallBack = WALLET_DEFAULTS.check_node_api_http_addr;
-    this.epicboxDomain = WALLET_DEFAULTS.epicbox_domain;
+    this.nodeFallBack = walletDefaults('mainnet').check_node_api_http_addr || WALLET_DEFAULTS.check_node_api_http_addr;
+    this.epicboxDomain = walletDefaults('mainnet').epicbox_domain || WALLET_DEFAULTS.epicbox_domain;
 
     this.resetConfig();
   }
