@@ -29,13 +29,13 @@
         </div>
         <div class="e-set-row">
           <div class="e-stg-paths">
-            <b id="stg-data-l">{{ $t('msg.wallets.data_folder') }}</b>
-            <p>{{ importedDir ? $t('msg.wallets.data_folder_imported') : $t('msg.wallets.data_folder_hint') }}</p>
+            <b id="stg-data-l">{{ $t('msg.wallets.wallet_folder') }}</b>
+            <p>{{ importedDir ? $t('msg.wallets.wallet_folder_imported') : $t('msg.wallets.wallet_folder_hint') }}</p>
             <p class="e-mono e-stg-path" translate="no">{{ dataDir }}</p>
             <p v-if="importedDir && importedDir !== dataDir" class="e-stg-origin"><EIcon name="history" size="sm" /><span>{{ $t('msg.wallets.imported_from', [importedDir]) }}</span></p>
           </div>
           <div class="e-ctl e-stg-folder-btns">
-            <button type="button" class="e-btn e-sm" aria-describedby="stg-data-l" @click="openFolder(dataDir)"><EIcon name="open" />{{ $t('msg.modern.settings.open_folder') }}</button>
+            <button type="button" class="e-btn e-sm" data-open="wallet" @click="openFolder(dataDir)"><EIcon name="open" />{{ $t('msg.wallets.open_this_folder') }}</button>
             <button type="button" class="e-btn e-sm e-btn-ghost" aria-describedby="stg-data-l" @click="copyPath(dataDir)"><EIcon name="copy" />{{ $t('msg.wallets.copy_path') }}</button>
           </div>
         </div>
@@ -68,62 +68,7 @@
       </div>
     </section>
 
-    <section class="e-set-group" aria-labelledby="stg-ws-h">
-      <h2 id="stg-ws-h">{{ $t('msg.wallets.wallets') }}</h2>
-      <div class="e-set-list">
-        <div v-if="others.length" class="e-set-row e-stacked">
-          <div>
-            <b>{{ $t('msg.wallets.other_wallets') }}</b>
-            <p>{{ $t('msg.wallets.other_wallets_hint') }}</p>
-          </div>
-          <ul class="e-wlist">
-            <li v-for="w in others" :key="w.id">
-              <div class="e-glyph-sq" aria-hidden="true"><EIcon name="wallet" /></div>
-              <div class="e-wlist-info">
-                <b><span class="e-truncate">{{ nameOf(w) }}</span><span v-if="badge(w.network)" class="e-tag e-warn">{{ badge(w.network) }}</span></b>
-                <p class="e-mono" :title="w.dataDir" translate="no">{{ short(w.dataDir) }}</p>
-              </div>
-              <div class="e-wlist-acts">
-                <button type="button" class="e-btn e-btn-sm e-btn-ghost" :aria-label="$t('msg.wallets.show_in_folder_named', [nameOf(w)])" @click="showInFolder(w)"><EIcon name="open" />{{ $t('msg.wallets.show_in_folder') }}</button>
-                <button type="button" class="e-btn e-btn-sm e-btn-ghost" :aria-label="$t('msg.removal.open_named', [nameOf(w)])" @click="askRemove(w)"><EIcon name="trash" />{{ $t('msg.removal.open') }}</button>
-              </div>
-            </li>
-          </ul>
-        </div>
-        <div class="e-set-row e-stacked">
-          <div>
-            <b id="stg-add-l">{{ $t('msg.wallets.add_wallet') }}</b>
-            <p>{{ $t('msg.wallets.add_wallet_hint') }}</p>
-          </div>
-          <div class="e-add-wallet" role="group" aria-labelledby="stg-add-l">
-            <button type="button" class="e-btn" @click="addCreate"><EIcon name="plus" />{{ $t('msg.wallets.create') }}</button>
-            <button type="button" class="e-btn" @click="addRestore"><EIcon name="backup" />{{ $t('msg.wallets.restore') }}</button>
-            <button ref="folderButton" type="button" class="e-btn" :aria-busy="folderBusy ? 'true' : null" @click="pickWalletFolder">
-              <span v-if="folderBusy" class="e-spinner" aria-hidden="true"></span><EIcon v-else name="folderopen" />{{ $t('msg.wallets.open_wallet_folder') }}
-            </button>
-            <button type="button" class="e-btn" @click="addImport"><EIcon name="download" />{{ $t('msg.wallets.import_older') }}</button>
-          </div>
-          <div v-if="folderAsk" class="e-notice e-gold" role="group" aria-labelledby="stg-fnet-l">
-            <EIcon name="info" />
-            <div>
-              <p id="stg-fnet-l">{{ $t('msg.wallets.folder_network') }}</p>
-              <div class="e-row e-notice-actions">
-                <select class="e-select e-stg-ctl-w" v-model="folderNetwork" :aria-label="$t('msg.wallets.network')">
-                  <option value="mainnet">Mainnet</option>
-                  <option value="floonet">Floonet</option>
-                  <option value="usernet">Usernet</option>
-                </select>
-                <button type="button" class="e-btn e-btn-sm e-btn-primary" @click="folderWithNetwork">{{ $t('msg.wallets.open') }}</button>
-              </div>
-            </div>
-          </div>
-          <p v-if="folderError" class="e-error-msg" role="alert"><EIcon name="alertc" /><span>{{ folderError }}</span></p>
-          <WalletFolderPick v-if="folderPick" modern :pick="folderPick" :busy="folderBusy" @open="folderPicked" @again="pickWalletFolder" @cancel="folderPickCancel" />
-        </div>
-      </div>
-    </section>
-
-    <ERemoveWallet v-if="removing" :wallet="removing.wallet" :name="removing.name" @close="removing = null" @done="removed" />
+    <p class="e-stg-more"><span>{{ $t('msg.wallets.this_wallet_only') }}</span> <router-link :to="{ name: 'wallets' }">{{ $t('msg.wallets.all_wallets') }}</router-link></p>
   </SettingsFrame>
 </template>
 
@@ -131,10 +76,9 @@
   import Account from '@/components/Account.vue';
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
-  import ERemoveWallet from '@/components/modern/settings/RemoveWalletDialog.vue';
   import SettingsFrame from '@/components/modern/settings/SettingsFrame.vue';
 
   export default reskin(Account, {
-    components: { EIcon, ERemoveWallet, SettingsFrame },
+    components: { EIcon, SettingsFrame },
   });
 </script>

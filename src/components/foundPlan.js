@@ -46,7 +46,7 @@ export function foundPlan(action, { wallets = [], checked = {}, firstRun = false
 /* where Not now (and Continue with nothing imported) goes: back to Settings when it came from
    there, else Welcome when there is no wallet yet (or it came from Welcome), else Unlock */
 export function backRoute(from, hasWallets) {
-  if (from === 'settings') return 'account';
+  if (from === 'settings') return 'wallets';
   if (from === 'new' || !hasWallets) return 'new';
   return 'login';
 }

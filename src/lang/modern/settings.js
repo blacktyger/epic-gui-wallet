@@ -3,7 +3,7 @@ export default {
   //sub-navigation
   sections: 'Settings sections',
   nav_general: 'Node and receiving',
-  nav_wallet: 'Wallet',
+  nav_wallet: 'This wallet',
   nav_phrase: 'Recovery phrase',
   nav_rescan: 'Rescan',
   nav_about: 'About',

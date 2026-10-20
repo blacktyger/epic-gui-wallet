@@ -8,6 +8,7 @@ import BlankView from '@/components/modern/views/BlankView.vue';
 import UnlockView from '@/components/modern/views/UnlockView.vue';
 import WelcomeView from '@/components/modern/views/WelcomeView.vue';
 import FoundView from '@/components/modern/views/FoundView.vue';
+import AddExistingView from '@/components/modern/views/AddExistingView.vue';
 import SettingsErrorView from '@/components/modern/views/SettingsErrorView.vue';
 import CreateView from '@/components/modern/views/CreateView.vue';
 import RestoreView from '@/components/modern/views/RestoreView.vue';
@@ -21,6 +22,7 @@ import FinalizeView from '@/components/modern/views/FinalizeView.vue';
 import ContactsView from '@/components/modern/views/ContactsView.vue';
 import SettingsGeneral from '@/components/modern/views/settings/SettingsGeneral.vue';
 import SettingsAccount from '@/components/modern/views/settings/SettingsAccount.vue';
+import SettingsWallets from '@/components/modern/views/settings/SettingsWallets.vue';
 import SettingsPhrase from '@/components/modern/views/settings/SettingsPhrase.vue';
 import SettingsRescan from '@/components/modern/views/settings/SettingsRescan.vue';
 import SettingsAbout from '@/components/modern/views/settings/SettingsAbout.vue';
@@ -31,6 +33,7 @@ export const MODERN_VIEWS = {
   login: { component: UnlockView, layout: 'bare', titleKey: 'msg.modern.title_unlock' },
   new: { component: WelcomeView, layout: 'bare', titleKey: 'msg.modern.title_welcome' },
   found: { component: FoundView, layout: 'bare', titleKey: 'msg.wallets.title_found' },
+  addExisting: { component: AddExistingView, layout: 'bare', titleKey: 'msg.wallets.existing_title' },
   settingsError: { component: SettingsErrorView, layout: 'bare', titleKey: 'msg.wallets.error_title' },
   create: { component: CreateView, layout: 'bare', titleKey: 'msg.modern.title_create' },
   restore: { component: RestoreView, layout: 'bare', titleKey: 'msg.modern.title_restore' },
@@ -44,6 +47,7 @@ export const MODERN_VIEWS = {
   addressBook: { component: ContactsView, layout: 'app', titleKey: 'msg.modern.contacts' },
   settings: { component: SettingsGeneral, layout: 'app', titleKey: 'msg.menu.settings' },
   account: { component: SettingsAccount, layout: 'app', titleKey: 'msg.menu.settings' },
+  wallets: { component: SettingsWallets, layout: 'app', titleKey: 'msg.menu.settings' },
   mnemonic: { component: SettingsPhrase, layout: 'app', titleKey: 'msg.menu.settings' },
   recheckBalance: { component: SettingsRescan, layout: 'app', titleKey: 'msg.menu.settings' },
   about: { component: SettingsAbout, layout: 'app', titleKey: 'msg.menu.settings' },

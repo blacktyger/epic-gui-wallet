@@ -32,6 +32,17 @@ export function networkBadge(network) {
   return network && network !== 'mainnet' ? network.charAt(0).toUpperCase() + network.slice(1) : '';
 }
 
+/* a wallet's own folder, the one Open wallet folder and Show in folder open: where its seed is
+   (<root>/wallets/<id> for a wallet made here; the older app's folder for an imported or added one) */
+export function walletFolderOf(wallet) {
+  return (wallet && (wallet.dataDir || wallet.configDir)) || '';
+}
+
+/* where the add flows come back to: Settings › All wallets with a wallet open, else Welcome */
+export function addBackRoute(from, store) {
+  return from === 'settings' && isLoggedIn(store) ? { name: 'wallets' } : { name: 'new' };
+}
+
 /* a folder for a secondary line: its last segments, '…/' in front when shortened */
 export function folderTail(dir, segments = 3) {
   const parts = String(dir || '').split(/[\\/]+/).filter(Boolean);
@@ -241,16 +252,30 @@ export const walletOpen = {
       return false;
     },
 
-    /* a wallet is open (Settings › Add another wallet): close it the way Lock does, staying on this page */
+    /* a wallet is open (Settings › Add a wallet): close it the way Lock does, staying on this page */
     logoutCurrent() {
       if (!isLoggedIn(this.$store)) return Promise.resolve();
       return new Promise((resolve) => this.emitter.emit('app.logout', { stay: true, done: resolve }));
+    },
+
+    /* a wallet was added (Create, Restore, a wallet folder, an older Epic Wallet's wallet): the wallet
+       open now is locked first, as Lock does (its processes stopped), the new one becomes the default
+       and Unlock opens with it chosen. Every way of adding lists a new wallet next to the others:
+       nothing in the list is replaced (configService.registerWallet) */
+    async unlockAdded(walletId) {
+      await this.logoutCurrent();
+      try {
+        if (this.configService.settings.defaultWalletId() !== walletId) this.configService.settings.setDefaultWallet(walletId);
+      } catch (e) {
+        console.log('[wallets] ' + walletId + ' not made the default: ' + (e && e.message ? e.message : e));
+      }
+      this.$router.push({ name: 'login', query: { wallet: walletId, added: '1' } });
     },
   },
 };
 
 /*
- * Open a wallet folder (Welcome › Advanced, Settings › Add another wallet): pick a folder, which the
+ * Add an existing wallet › From a wallet folder (AddExisting.vue): pick a folder, which the
  * main process works out to the wallet folder(s) it means (shared/walletFolder.js); one wallet opens
  * at once (configService.openExistingWallet), several or none show WalletFolderPick (a choice, or
  * what a wallet folder is). When a wallet's network can't be told, ask for it and try again.
@@ -278,7 +303,7 @@ export const walletFolder = {
       this.folderPick = null;
       let r;
       try {
-        r = await window.api.pickWalletFolder(t('msg.chaindata.folder_dialog_title'));
+        r = await window.api.pickWalletFolder(t('msg.wallets.folder_dialog_title'));
       } catch (e) {
         this.folderError = e && e.message ? e.message : String(e);
         if (hadPick) this.focusFolderButton();
@@ -300,7 +325,7 @@ export const walletFolder = {
       this.folderPick = null;
       this.focusFolderButton();
     },
-    /* the screen's Open a wallet folder button (ref folderButton) */
+    /* the screen's From a wallet folder button (ref folderButton) */
     focusFolderButton() {
       this.$nextTick(() => {
         const b = this.$refs.folderButton;

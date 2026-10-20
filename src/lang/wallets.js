@@ -42,7 +42,7 @@ export default {
   found_contacts: 'no contacts | {n} contact | {n} contacts',
   found_app: 'Epic Wallet {0}',
   found_failed_title: '{n} wallet wasn’t imported | {n} wallets weren’t imported',
-  found_failed_lead: 'The older wallet is not changed. You can try again later from Welcome › Advanced.',
+  found_failed_lead: 'The older wallet is not changed. You can try again later: Add a wallet › Add an existing wallet.',
   found_some_imported: '{n} wallet was imported. | {n} wallets were imported.',
   found_none_title: 'Nothing found',
   found_none_text: 'No wallets from an older Epic Wallet are left to import on this computer.',
@@ -50,20 +50,44 @@ export default {
   found_scan_failed: 'The search failed: {0}',
 
   //welcome
-  create: 'Create a wallet',
-  restore: 'Restore from recovery phrase',
+  welcome_lead: 'Add your first wallet.',
   back_to_unlock: 'Back to unlock',
   advanced: 'Advanced',
-  //adds a wallet that is already on this computer (a picker), not the open wallet's own folder
-  open_wallet_folder: 'Add a wallet from a folder…',
-  open_wallet_folder_hint: 'Choose the wallet’s own folder: the one with wallet_data inside, for example .epic/main in your home folder. Not the blockchain folder (chain_data). The wallet stays where it is.',
   open: 'Open',
-  import_older: 'Import from an older Epic Wallet',
-  import_older_hint: 'Looks again for wallets that an older version of this app left on this computer.',
+
+  //Add a wallet: the same three ways on Welcome, Unlock › Add a wallet and Settings › All wallets.
+  //Each one adds a new wallet to the list; none replaces a wallet
+  add_title: 'Add a wallet',
+  add_lead: 'Each option adds a new wallet. Your other wallets stay as they are.',
+  add_lead_open: 'Each option adds a new wallet; this one stays as it is. Then this wallet locks and you unlock the new one.',
+  add_create: 'Create a new wallet',
+  add_create_hint: 'A new wallet with a new recovery phrase.',
+  add_existing: 'Add an existing wallet',
+  add_existing_hint: 'A wallet already on this computer: from an older Epic Wallet or from its folder.',
+  add_restore: 'Restore from recovery phrase',
+  add_restore_hint: 'Bring a wallet back with its recovery words.',
+  //Add an existing wallet
+  existing_title: 'Add an existing wallet',
+  existing_lead: 'The wallet stays in its folder and is added to the list. No wallet is replaced.',
+  existing_older: 'From an older Epic Wallet',
+  existing_older_hint: 'Looks for wallets an older Epic Wallet left on this computer.',
+  existing_older_go: 'Look for wallets',
+  existing_folder: 'From a wallet folder',
+  existing_folder_hint: 'Choose the folder with wallet_data inside, for example .epic/main in your home folder. A folder above it works too: the app finds the wallets in it.',
+  existing_folder_go: 'Choose a folder…',
+  folder_dialog_title: 'Choose the wallet folder to add',
+  //Unlock, right after a wallet was added
+  added_unlock: '{0} was added. Enter its password to unlock it.',
   network: 'Network',
   network_hint: 'Mainnet holds real EPIC. Floonet and Usernet are test networks.',
   network_chosen: 'New wallets are made on this test network.',
   network_wallet: 'A wallet on a test network, not for real EPIC',
+  //Welcome › Advanced: where the app keeps its data (only while no wallet is listed)
+  root_title: 'App data folder',
+  root_hint: 'Where the app keeps wallets, settings and the blockchain.',
+  root_more: 'More about this',
+  root_more_text: 'Choose a new, empty folder. The app restarts, makes its folders there and keeps using it. “Use the default folder” goes back to the usual place.',
+  root_locked: 'It can be changed only before the first wallet is added.',
   root_choose: 'Keep app data in another folder',
   root_default: 'Use the default folder',
   root_confirm: 'The app keeps its data in {0} from now on. It restarts to use the new folder.',
@@ -72,10 +96,8 @@ export default {
   root_wallet: 'That is a wallet folder. Choose a new, empty folder.',
   root_notempty: 'That folder isn’t empty. Choose a new, empty folder.',
   restart_now: 'Restart now',
-  app_folder: 'App data folder: {0}',
-  app_folder_label: 'App data folder:',
 
-  //opening a wallet folder
+  //adding a wallet from its folder
   folder_noseed: 'No wallet in {0}: it has no wallet_data/wallet.seed.',
   folder_inuse: 'Another Epic program is using this folder. Close it and try again.',
   folder_listed: 'This wallet is already in the list.',
@@ -89,12 +111,10 @@ export default {
   restore_failed: 'The wallet could not be restored.',
   restore_password: 'Set the password that unlocks this wallet on this computer.',
   stage_restore: 'Restoring the wallet',
-  open_my_wallet: 'Open my wallet',
-  written_open: 'I’ve written it down, open my wallet',
-  opening_title: 'Opening your wallet',
+  stage_lock: 'Locking the open wallet',
+  written_continue: 'I’ve written it down, continue',
 
   //unlock
-  create_or_add: 'Create or add a wallet',
   check_failed: 'The wallet’s files could not be prepared ({0}).',
   open_failed: 'The wallet did not open.',
   missing: 'This wallet’s folder is missing: {0}',
@@ -103,25 +123,27 @@ export default {
   remove_from_list: 'Remove from list',
   remove_named: 'Remove {0} from the list',
   remove_title: 'Remove {0} from the list?',
-  remove_text: 'Only the entry in this app’s list goes. The wallet’s files are not touched; open its folder again to add it back.',
+  remove_text: 'Only the entry in this app’s list goes. The wallet’s files are not touched; add it back with Add a wallet › Add an existing wallet.',
   removed: '{0} was removed from the list.',
 
   //switching: lock this wallet, then Unlock with the picker
   switch: 'Switch wallet',
 
-  //settings › wallet
-  data_folder: 'Data folder',
-  data_folder_hint: 'The wallet itself: its seed and database.',
-  data_folder_imported: 'The wallet itself, in the older app’s folder.',
+  //settings › wallet (the open wallet only)
+  wallet_folder: 'Wallet folder',
+  wallet_folder_hint: 'This wallet’s own folder: its seed and database.',
+  wallet_folder_imported: 'This wallet’s own folder, where the older app kept it.',
+  //opens the open wallet's own folder in the file manager
+  open_this_folder: 'Open wallet folder',
+  this_wallet_only: 'This page is about the open wallet. Other wallets, and adding one:',
   config_folder: 'Config folder',
   config_folder_hint: 'This app’s files for the wallet: epic-wallet.toml, API secrets, log.',
   imported_from: 'Imported from {0}.',
-  other_wallets: 'Other wallets',
+  //settings › all wallets
+  all_wallets: 'All wallets',
   other_wallets_hint: 'Lock this wallet to switch to another one.',
+  open_now: 'Open now',
   //that wallet's own folder in the file manager
   show_in_folder: 'Show in folder',
   show_in_folder_named: 'Show {0} in folder',
-  no_other_wallets: 'This is the only wallet in the list.',
-  add_wallet: 'Add another wallet',
-  add_wallet_hint: 'Create a new wallet, or restore one from its recovery phrase. This wallet is kept: pick either one when you unlock.',
 };

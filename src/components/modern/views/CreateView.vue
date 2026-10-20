@@ -57,16 +57,15 @@
       </div>
     </div>
 
-    <!-- 4. the phrase is written down: the new wallet opens (the unlock steps) -->
+    <!-- 4. the phrase is written down: a wallet open now locks, then Unlock with the new one chosen -->
     <div v-if="page === 'created' && opening" class="e-hero-screen">
       <div class="e-onb-progress">
         <BrandTile />
         <div class="e-auth-title">
-          <h1 ref="openingHeading" tabindex="-1">{{ $t('msg.wallets.opening_title') }}</h1>
-          <p>{{ $t('msg.modern.unlock.unlocking_lead') }}</p>
+          <h1 ref="openingHeading" tabindex="-1">{{ $t('msg.wallets.stage_lock') }}</h1>
         </div>
-        <div class="e-panel">
-          <StageList :stages="stages" :current="$store.state.loginStage" :label="$t('msg.modern.unlock.unlock_steps')" />
+        <div v-if="locking" class="e-panel">
+          <StageList :stages="[{ key: 'lock', label: $t('msg.wallets.stage_lock') }]" current="lock" :label="$t('msg.modern.unlock.progress')" />
         </div>
       </div>
     </div>
@@ -118,7 +117,7 @@
       <template #actions>
         <span class="e-grow"></span>
         <span class="e-hint">{{ revealed ? $t('msg.modern.unlock.phrase_written_q', { n: newseeds.length }) : $t('msg.modern.unlock.phrase_reveal_first') }}</span>
-        <button v-if="revealed" type="button" class="e-btn e-btn-primary" @click="openNewWallet"><EIcon name="lockopen" />{{ $t('msg.wallets.written_open') }}</button>
+        <button v-if="revealed" type="button" class="e-btn e-btn-primary" @click="openNewWallet"><EIcon name="check" />{{ $t('msg.wallets.written_continue') }}</button>
         <button v-else type="button" class="e-btn e-btn-primary" disabled :title="$t('msg.modern.unlock.phrase_reveal_first')"><EIcon name="check" />{{ $t('msg.modern.unlock.written_down') }}</button>
       </template>
     </OnboFrame>

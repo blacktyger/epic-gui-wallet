@@ -61,6 +61,10 @@
                 <span class="icon"><mdicon name="account" /></span>
                 <span>{{ $t("msg.menu.account") }} ({{accountName}})</span>
               </router-link>
+              <router-link class="navbar-item" to="/wallets">
+                <span class="icon"><mdicon name="wallet-plus-outline" /></span>
+                <span>{{ $t("msg.wallets.all_wallets") }}</span>
+              </router-link>
               <router-link class="navbar-item" to="/settings">
                 <span class="icon"><mdicon name="settings" /></span>
                 <span>{{ $t("msg.menu.settings") }}</span>

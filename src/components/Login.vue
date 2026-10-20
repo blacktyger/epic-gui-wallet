@@ -12,6 +12,7 @@
               <div class="card-content">
 
                 <form @submit.prevent novalidate>
+                  <p v-if="addedName" class="notification is-success is-light" role="status" data-added>{{ $t('msg.wallets.added_unlock', [addedName]) }}</p>
                   <div v-if="wallets.length > 1" class="field">
                     <label class="label" for="loginWallet">{{ $t("msg.wallets.wallet") }}</label>
                     <div class="control">
@@ -47,7 +48,7 @@
                     </div>
                     <div class="control" style="margin-top:12px;">
                       <router-link class="button is-outlined" to="/new">
-                        {{ $t("msg.wallets.create_or_add") }}
+                        {{ $t("msg.wallets.add_title") }}
                       </router-link>
                     </div>
                   </div>
@@ -125,6 +126,11 @@ export default {
     },
     selectedName() {
       return this.selected ? this.nameOf(this.selected) : '';
+    },
+    //just added (route query added=1, components/wallets.js unlockAdded): said while it is the one chosen
+    addedName() {
+      const q = this.$route.query || {};
+      return q.added === '1' && this.selected && this.selected.id === q.wallet ? this.selectedName : '';
     },
   },
   created() {

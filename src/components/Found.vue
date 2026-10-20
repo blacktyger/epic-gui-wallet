@@ -236,8 +236,7 @@
       async finish() {
         const imported = (this.result && this.result.imported) || [];
         if (imported.length) {
-          await this.logoutCurrent();
-          this.$router.push({ name: 'login', query: { wallet: imported[0].walletId } });
+          await this.unlockAdded(imported[0].walletId);
           return;
         }
         this.back();
