@@ -41,7 +41,7 @@
       chain: { type: String, default: 'mainnet' },
       disabled: { type: Boolean, default: false },
     },
-    emits: ['pick'],
+    emits: ['pick', 'loaded'],
     data() {
       return { uid: 'node-directory-' + (++seq), dir: null };
     },
@@ -71,7 +71,11 @@
         //shown only if it arrives soon after the field: a list that turns up seconds later would push the form
         //down under the user's pointer. The main process still caches a late answer for the next time.
         const dir = await loadDirectory(window.api, chain, 2500);
-        if (!this.gone && chain === this.chain) this.dir = dir;
+        if (!this.gone && chain === this.chain) {
+          this.dir = dir;
+          //the node field checks an address itself only when it is not one of these
+          this.$emit('loaded', dir);
+        }
       },
       pick(el) {
         const n = this.nodes.find((x) => x.endpoint === el.value);

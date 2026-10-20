@@ -10,6 +10,8 @@
  *   "legacy": { "<old wallet dir>": "imported" | "fresh" },  // what the user chose per found wallet
  *   "node": { "mainnet": { "chainDir": "<dir>" } },          // built-in node; absent = <root>/node/main/chain_data
  *           (and "chainOffer": {checkedAt, answer, dir}: Settings asked once about old chain data)
+ *   "myNodes": { "mainnet": [{ "address": "<url>", "label": "", "addedAt": "<ISO>" }] },  // shared/myNodes.js
+ *           (added in 6.1.6 without a schema change: older versions keep keys they don't know)
  *   "defaultWallet": "w1",
  *   "nextId": 2,                        // the next wallet id's number: only grows, so an id is never reused
  *   "wallets": [{
@@ -31,6 +33,7 @@
 
 import { localNodeUrl } from './walletToml.js';
 import { renameRetry } from './processOwnership.js';
+import { normalizeMyNodes, addMyNode, updateMyNode, removeMyNode } from './myNodes.js';
 
 export const SCHEMA = 1;
 export const NETWORKS = ['mainnet', 'floonet', 'usernet'];
@@ -138,6 +141,8 @@ function normalize(raw) {
   d.app = { ...APP_DEFAULTS, ...(isObj(raw.app) ? raw.app : {}) };
   d.legacy = isObj(raw.legacy) ? raw.legacy : {};
   d.node = isObj(raw.node) ? raw.node : {};
+  //absent until the first node is saved; a broken entry is dropped (a label and an address only)
+  if (raw.myNodes !== undefined) d.myNodes = normalizeMyNodes(raw.myNodes, NETWORKS);
   const wallets = [], invalid = [];
   for (const w of Array.isArray(raw.wallets) ? raw.wallets : []) {
     //a broken record is not listed, but written back as it was (a hand edit can still be fixed)
@@ -215,6 +220,20 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
     return false;
   }
 
+  /* a My nodes change (shared/myNodes.js result) saved; {ok: false, error: 'not_saved'} and nothing
+     changed, also in memory, when the save fails */
+  function saveMyNodes(network, res) {
+    if (!res.ok) return res;
+    const before = data.myNodes;
+    const next = { ...(isObj(data.myNodes) ? data.myNodes : {}) };
+    if (res.list.length) next[network] = res.list; else delete next[network];
+    data.myNodes = next;
+    if (save()) return { ...res, list: res.list.map(e => ({ ...e })) };
+    data.myNodes = before;
+    return { ok: false, error: 'not_saved' };
+  }
+  const myNodeList = (network) => (isObj(data.myNodes) && Array.isArray(data.myNodes[network]) ? data.myNodes[network] : []);
+
   function find(id) {
     const w = data.wallets.find(x => x.id === id);
     if (!w) throw new Error('no wallet ' + id);
@@ -262,6 +281,22 @@ export function createSettingsStore({ fs, pathMod, file, now = () => new Date().
       const before = data.node[network] || {};
       const dir = before.chainDir || (before.chainOffer && before.chainOffer.dir) || '';
       return saveNode(network, { chainDir: '', chainOffer: { checkedAt: now.toISOString(), answer: 'declined', dir } });
+    },
+
+    /* My nodes of a network (copies); add/update/remove return {ok, list, entry} or {ok: false,
+       error: 'invalid' | 'duplicate' | 'full' | 'missing' | 'not_saved'} (shared/myNodes.js) */
+    myNodes(network) { return NETWORKS.includes(network) ? myNodeList(network).map(e => ({ ...e })) : []; },
+    addMyNode(network, entry) {
+      if (!NETWORKS.includes(network)) return { ok: false, error: 'invalid' };
+      return saveMyNodes(network, addMyNode(myNodeList(network), entry, now));
+    },
+    updateMyNode(network, was, entry) {
+      if (!NETWORKS.includes(network)) return { ok: false, error: 'missing' };
+      return saveMyNodes(network, updateMyNode(myNodeList(network), was, entry));
+    },
+    removeMyNode(network, address) {
+      if (!NETWORKS.includes(network)) return { ok: false, error: 'missing' };
+      return saveMyNodes(network, removeMyNode(myNodeList(network), address));
     },
 
     wallets() { return data.wallets.map(w => ({ ...w, settings: { ...w.settings } })); },

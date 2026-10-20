@@ -12,20 +12,42 @@
     </div>
   </div>
   <div class="field" v-if="select == 'external'">
-    <label class="label">{{ $t("msg.node_server_address") }}<span class="required">*</span></label>
-    <div class="control">
-      <input
-        class="input"
-        type="nodeaddress"
-        required
-        v-model="input"
-        :disabled="checking"
-         />
-         <div style="color:red;" v-if="errors.nodeaddress">
-            {{ errors.nodeaddress }}
-         </div>
+    <label class="label" :for="fieldId">{{ $t("msg.node_server_address") }}<span class="required">*</span></label>
+    <div class="field has-addons node-address-row">
+      <div class="control is-expanded">
+        <input
+          :id="fieldId"
+          class="input"
+          type="nodeaddress"
+          required
+          v-model="input"
+          :disabled="checking"
+          @paste="pasted = true"
+           />
+      </div>
+      <div class="control" v-if="myNodesReady">
+        <button type="button" class="button" :class="{ 'is-static': inMyNodes }" :disabled="checking" :aria-disabled="inMyNodes ? 'true' : null" @click="openAddMyNode">
+          <mdicon :name="inMyNodes ? 'check' : 'plus'" size="16" aria-hidden="true" />&nbsp;{{ inMyNodes ? $t('msg.mynodes.in_list') : $t('msg.mynodes.add') }}
+        </button>
+      </div>
     </div>
+    <div style="color:red;" v-if="errors.nodeaddress">
+      {{ errors.nodeaddress }}
+    </div>
+    <NodeCheckStatus v-if="liveCheck" :state="check" @recheck="recheck" />
   </div>
+  <!-- My nodes: saved addresses with a label (shared/myNodes.js); only when there are some -->
+  <MyNodesList
+    v-if="select == 'external' && myNodesReady"
+    :nodes="myNodes"
+    :views="myNodeViews"
+    :checking="myNodesChecking"
+    :current="String(input || '')"
+    :disabled="checking"
+    @use="useMyNode"
+    @edit="openEditMyNode"
+    @remove="removeMyNode"
+  />
   <!-- live public nodes from status.btlabs.uk: picking one only fills the address; hidden when unavailable -->
   <NodeDirectory
     v-if="select == 'external' && !directoryFailed"
@@ -33,6 +55,20 @@
     :chain="directoryChain"
     :disabled="checking"
     @pick="pickPublicNode"
+    @loaded="directoryLoaded"
+  />
+  <MyNodeDialog
+    v-if="myNodeDialog"
+    :mode="myNodeDialog.mode"
+    :initial-address="myNodeDialog.address"
+    :initial-label="myNodeDialog.label"
+    :was="myNodeDialog.was"
+    :nodes="myNodes"
+    :error="myNodeDialog.error"
+    :probe="probe"
+    :cache="checkCache"
+    @save="saveMyNode"
+    @close="myNodeDialog = null"
   />
 
 
@@ -44,10 +80,15 @@
   import { ref, computed, getCurrentInstance } from "vue";
   import useFormValidation from "@/modules/useFormValidation";
   import NodeDirectory from "@/components/form/NodeDirectory.vue";
+  import NodeCheckStatus from "@/components/form/NodeCheckStatus.vue";
+  import MyNodesList from "@/components/form/MyNodesList.vue";
+  import MyNodeDialog from "@/components/form/MyNodeDialog.vue";
   import { nodeFieldAddress } from "@/shared/nodeAddress";
+  import { myNodesField } from "@/components/form/myNodesField";
 
   export default {
-    components: { NodeDirectory },
+    components: { NodeDirectory, NodeCheckStatus, MyNodesList, MyNodeDialog },
+    mixins: [myNodesField],
     setup() {
 
       let input = ref('');

@@ -1,0 +1,77 @@
+/* The node address field's live check, the Add to my nodes button and the My nodes list
+ * (modern/form/NodeserverField.vue, NodeCheckStatus.vue, MyNodesList.vue, MyNodeDialog.vue).
+ * The visual language of the public node list (_nodedir.scss): dots, "at tip" tags, ms. */
+
+/* the field and its button on one row; the button drops below on a narrow window */
+.e-nodeaddr-row { display: flex; align-items: stretch; gap: var(--sp-2); flex-wrap: wrap; }
+.e-nodeaddr-row .e-input-wrap { flex: 1 1 260px; min-width: 0; }
+.e-nodeaddr-add { flex: none; white-space: nowrap; }
+.e-nodeaddr-add[aria-disabled='true'] { cursor: default; color: var(--dim); }
+
+/* the status line under the field */
+.e-nodecheck { margin-top: var(--sp-2); font-size: var(--fs-sm); animation: e-fade var(--dur) var(--ease); }
+.e-nodecheck.e-is-idle { margin: 0; animation: none; }
+.e-nodecheck-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px var(--sp-2); margin: 0; min-height: 24px; }
+.e-nodecheck-spin { width: 12px; height: 12px; }
+.e-nodecheck-state { font-weight: 600; }
+.e-nodecheck-facts { display: flex; flex-wrap: wrap; gap: 0 var(--sp-2); margin: 2px 0 0; margin-inline-start: calc(8px + var(--sp-2)); color: var(--dim); font-variant-numeric: tabular-nums; }
+.e-nodecheck-facts > span + span::before { content: "·"; margin-inline-end: var(--sp-2); color: var(--faint); }
+.e-nodecheck-again { display: inline-flex; align-items: center; gap: 4px; margin-inline-start: auto; font-size: var(--fs-xs); min-height: 24px; }
+.e-nodecheck-note { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 0; margin-inline-start: calc(8px + var(--sp-2)); color: var(--dim); overflow-wrap: anywhere; }
+.e-nodecheck-hint { display: inline-flex; align-items: flex-start; gap: 6px; color: var(--faint); }
+.e-nodecheck-hint .e-icon { flex: none; margin-top: 2px; }
+.e-nodecheck.e-short .e-nodecheck-row { min-height: 20px; }
+
+/* a dot still waiting for its first check */
+.e-nodedir-dot.e-wait { background: var(--faint); animation: e-mynodes-pulse 1.2s ease-in-out infinite; }
+@keyframes e-mynodes-pulse { 50% { opacity: 0.35; } }
+
+/* My nodes: the public list's rows; the name line carries the state and ms, the address below,
+   the actions at the end. Laid out by the list's own width (the Settings column is narrow) */
+.e-mynodes { margin-top: var(--sp-5); container-type: inline-size; animation: e-fade var(--dur) var(--ease); }
+.e-mynodes-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--s1); overflow: hidden; }
+.e-mynodes-row {
+  display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: var(--sp-3); align-items: center;
+  min-height: 52px; padding: 6px var(--sp-2) 6px var(--sp-4); border-top: 1px solid var(--line);
+}
+.e-mynodes-row:first-child { border-top: 0; }
+.e-mynodes-row.e-is-on { background: var(--accent-faint); box-shadow: inset 2px 0 0 var(--accent); }
+[dir='rtl'] .e-mynodes-row.e-is-on { box-shadow: inset -2px 0 0 var(--accent); }
+.e-mynodes-row.e-is-asking { grid-template-columns: minmax(0, 1fr) auto; background: var(--risk-soft); }
+.e-mynodes-name { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.e-mynodes-line { display: flex; align-items: center; gap: 4px var(--sp-2); min-width: 0; }
+.e-mynodes-line b { min-width: 0; font-weight: 600; font-size: var(--fs-md); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e-mynodes-line b.e-mynodes-bare { font-weight: 500; font-size: 0.8125rem; }
+.e-mynodes-name small { color: var(--dim); font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e-mynodes-row.e-is-on .e-mynodes-line b { color: var(--accent-text); }
+.e-mynodes-meta { flex: none; display: inline-flex; align-items: center; gap: var(--sp-2); }
+.e-mynodes-meta .e-tag { white-space: nowrap; }
+.e-mynodes-meta .e-nodedir-lat { min-width: 0; text-align: start; font-variant-numeric: tabular-nums; }
+.e-mynodes-acts { display: flex; align-items: center; gap: 2px; }
+.e-mynodes-acts .e-btn { margin-inline-end: 4px; }
+.e-mynodes-sel { display: inline-flex; align-items: center; gap: 4px; margin-inline-end: 6px; color: var(--accent-text); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
+.e-mynodes-ask { display: flex; align-items: center; gap: var(--sp-2); margin: 0; font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.e-mynodes-ask .e-icon { flex: none; color: var(--risk); }
+.e-mynodes-note { margin: 6px 0 0; color: var(--faint); font-size: var(--fs-xs); }
+
+/* a very narrow list (a big UI scale): the actions go under the name */
+@container (max-width: 380px) {
+  .e-mynodes-row { grid-template-columns: 8px minmax(0, 1fr); row-gap: 4px; padding-inline-end: var(--sp-3); }
+  .e-mynodes-acts { grid-column: 2; }
+  .e-mynodes-row.e-is-asking { grid-template-columns: minmax(0, 1fr); }
+  .e-mynodes-line { flex-wrap: wrap; }
+}
+
+/* the dialog */
+.e-mynode-dialog { width: min(520px, calc(100vw - 32px)); }
+.e-mynode-form .e-field + .e-field { margin-top: var(--sp-4); }
+.e-mynode-form .e-error-msg { margin-top: 6px; }
+
+@media (max-width: 560px) {
+  .e-nodeaddr-add { flex: 1 1 100%; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .e-nodecheck, .e-mynodes { animation: none; }
+  .e-nodedir-dot.e-wait { animation: none; }
+}

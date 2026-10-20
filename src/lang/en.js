@@ -4,6 +4,7 @@ import epicboxdir from './epicboxdir.js';
 import wallets from './wallets.js';
 import removal from './removal.js';
 import chaindata from './chaindata.js';
+import mynodes from './mynodes.js';
 
 const messages = {
   msg: {
@@ -17,6 +18,8 @@ const messages = {
     removal,
     //existing blockchain data found for the built-in node, and opening an older wallet's folder, see lang/chaindata.js
     chaindata,
+    //the node address field's live check and My nodes, see lang/mynodes.js
+    mynodes,
 
     title: '',
     password: 'Password',
