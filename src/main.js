@@ -9,6 +9,7 @@ import configService from './shared/configService.js';
 import userService from './shared/userService.js';
 import addressbookService from './shared/addressbookService.js';
 import addressTransactionsService from './shared/addressTransactionService.js';
+import { contactAvatars } from './shared/contactAvatars.js';
 import { createImporter } from './shared/importer.js';
 import { cleanNodeAddress } from './shared/nodeAddress.js';
 import { supportedLocale } from './shared/setupDefaults.js';
@@ -72,6 +73,8 @@ app.config.globalProperties.$nodeService = new nodeService(emitter, config);
 app.config.globalProperties.$userService =  new userService();
 app.config.globalProperties.$addressBookService =  new addressbookService();
 app.config.globalProperties.$addressTransactionsService =  new addressTransactionsService();
+//contacts' own pictures, in an IndexedDB database of their own (shared/contactAvatars.js)
+app.config.globalProperties.$contactAvatars = contactAvatars();
 app.config.globalProperties.configService = config;
 //older GUIs' wallets: found on the first start, imported read only (docs/plans/fresh-start.md)
 app.config.globalProperties.$importer = createImporter({

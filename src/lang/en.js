@@ -4,6 +4,7 @@ import epicboxdir from './epicboxdir.js';
 import wallets from './wallets.js';
 import removal from './removal.js';
 import chaindata from './chaindata.js';
+import contacts from './contacts.js';
 
 const messages = {
   msg: {
@@ -17,6 +18,8 @@ const messages = {
     removal,
     //existing blockchain data found for the built-in node, and opening an older wallet's folder, see lang/chaindata.js
     chaindata,
+    //the redesigned Contacts and the Send screen's contact picker (6.1.6), see lang/contacts.js
+    contacts,
 
     title: '',
     password: 'Password',

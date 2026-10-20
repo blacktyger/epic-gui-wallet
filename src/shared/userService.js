@@ -1,5 +1,6 @@
 import { BaseService } from "./base_service";
 import { useStore } from '@/store';
+import { contactAvatars } from './contactAvatars.js';
 
 class UserService extends BaseService {
 
@@ -61,7 +62,7 @@ class UserService extends BaseService {
     }
 
     /* a removed wallet's rows: its contacts (Addressbook) and their transaction links
-       (AddressTransactions) by User.id, then the User row. Nothing to do when it has none.
+       (AddressTransactions) and pictures by User.id, then the User row. Nothing to do when it has none.
        → the number of rows removed per table */
     async removeUser(walletId){
         if(!walletId){
@@ -72,6 +73,12 @@ class UserService extends BaseService {
         for(const row of rows || []){
             for(const table of ['AddressTransactions', 'Addressbook']){
                 out[table] += await this.connection.remove({from: table, where: {user_id: row.id}}) || 0;
+            }
+            //the contacts' pictures (a database of their own); a failure there leaves the rest removed
+            try{
+                await contactAvatars().removeUser(row.id);
+            }catch(e){
+                console.error('contact pictures not removed', e);
             }
         }
         out.User = await this.connection.remove({from: this.tableName, where: {account: walletId}}) || 0;

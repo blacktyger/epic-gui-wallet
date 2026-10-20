@@ -1,13 +1,25 @@
 <template>
-  <header class="e-topbar"><h1>{{ $t('msg.modern.contacts') }}</h1></header>
-  <div class="e-content">
+  <header class="e-topbar">
+    <h1>{{ $t('msg.modern.contacts') }}</h1>
+    <div v-if="addressList.length || isNewAddress" class="e-topbar-actions">
+      <button type="button" class="e-btn e-btn-primary e-btn-sm" @click="create()"><EIcon name="userplus" />{{ $t('msg.modern.settings.add_contact') }}</button>
+    </div>
+  </header>
+  <div class="e-content e-con-wrap">
+
+    <!-- loading: nothing flashes until the first list is in -->
+    <div v-if="!listReady" class="e-panel e-con-loading" role="status"><span class="e-spinner" aria-hidden="true"></span>{{ $t('msg.contacts.loading') }}</div>
 
     <!-- empty: nothing saved yet (and not adding the first one) -->
-    <div v-if="showEmpty" class="e-panel">
+    <div v-else-if="showEmpty" class="e-panel">
       <div class="e-empty e-con-empty">
-        <div class="e-glyph"><EIcon name="contacts" /></div>
+        <div class="e-con-empty-art" aria-hidden="true">
+          <ContactAvatar name="Mara Okafor" size="lg" />
+          <ContactAvatar name="Juno Reyes" size="lg" />
+          <ContactAvatar name="Leo Hartmann" size="lg" />
+        </div>
         <h3>{{ $t('msg.modern.settings.empty_title') }}</h3>
-        <p>{{ $t('msg.modern.settings.empty_text') }}</p>
+        <p>{{ $t('msg.contacts.empty_text') }}</p>
         <p class="e-small e-faint">{{ $t('msg.modern.settings.empty_note') }}</p>
         <div class="e-row">
           <button type="button" class="e-btn e-btn-primary" @click="create()"><EIcon name="userplus" />{{ $t('msg.modern.settings.add_contact') }}</button>
@@ -16,117 +28,153 @@
       </div>
     </div>
 
-    <div v-else class="e-con-split">
-      <!-- list -->
+    <div v-else class="e-con-split" :class="{ 'e-con-has-sel': paneOpen }">
+      <!-- the list -->
       <section class="e-panel e-con-side" :aria-label="$t('msg.modern.settings.contacts_list')">
-        <div class="e-con-side-head">
-          <span class="e-small e-dim" role="status">{{ $t('msg.modern.settings.contacts_count', addressList.length) }}</span>
-          <button type="button" class="e-btn e-sm e-right" @click="create()"><EIcon name="userplus" />{{ $t('msg.modern.settings.add_contact') }}</button>
-        </div>
-        <form class="e-con-search" role="search" @submit.prevent="search">
-          <label class="e-sr-only" for="con-q">{{ $t('msg.modern.settings.search_contacts') }}</label>
-          <div class="e-input-wrap e-has-lead">
-            <span class="e-lead"><EIcon name="search" size="sm" /></span>
-            <input id="con-q" class="e-input" type="search" autocomplete="off" :placeholder="$t('msg.modern.settings.search_ph')" v-model="keyword" />
-            <div v-if="searched" class="e-trail">
-              <button type="button" class="e-icon-btn" :aria-label="$t('msg.modern.close')" @click.prevent="clearup(false)"><EIcon name="close" size="sm" /></button>
+        <div class="e-con-tools">
+          <form class="e-con-search" role="search" @submit.prevent="search">
+            <label class="e-sr-only" for="con-q">{{ $t('msg.modern.settings.search_contacts') }}</label>
+            <div class="e-input-wrap e-has-lead">
+              <span class="e-lead"><EIcon name="search" size="sm" /></span>
+              <input id="con-q" v-model="keyword" class="e-input" type="search" autocomplete="off" :placeholder="$t('msg.modern.settings.search_ph')" @keydown.esc="keyword && (keyword = '')" />
+            </div>
+          </form>
+          <div class="e-con-sortrow">
+            <span class="e-small e-dim" role="status" aria-live="polite">{{ searched ? $t('msg.contacts.found_count', shownList.length) : $t('msg.modern.settings.contacts_count', addressList.length) }}</span>
+            <div class="e-seg e-con-sort" role="group" :aria-label="$t('msg.contacts.sort_label')">
+              <button type="button" :aria-pressed="sort == 'name' ? 'true' : 'false'" @click="sort = 'name'">{{ $t('msg.contacts.sort_name') }}</button>
+              <button type="button" :aria-pressed="sort == 'recent' ? 'true' : 'false'" @click="sort = 'recent'">{{ $t('msg.contacts.sort_recent') }}</button>
             </div>
           </div>
-        </form>
-        <ul v-if="addressList.length" class="e-contact-list">
-          <li v-for="address in addressList" :key="address.id">
-            <button type="button" class="e-contact" :aria-current="isSelected(address) ? 'true' : null" @click="callAddress(address)">
-              <span class="e-avatar" aria-hidden="true">{{ initials(address.name) }}</span>
-              <span class="e-grow"><b>{{ address.name }}</b><small translate="no">{{ summary(address) }}</small></span>
+        </div>
+        <ul v-if="shownList.length" class="e-con-list">
+          <li v-for="c in shownList" :key="c.id">
+            <button type="button" class="e-con-row" :aria-current="isSelected(c) ? 'true' : null" @click="callAddress(c)">
+              <ContactAvatar :name="c.name" :image="avatarOf(c)" size="md" />
+              <span class="e-con-row-text">
+                <b>{{ c.name }}</b>
+                <small class="e-con-row-addr" translate="no">{{ shortOf(c) }}</small>
+              </span>
+              <span class="e-con-row-meta">
+                <span class="e-con-kinds">
+                  <span v-for="k in kindsOf(c)" :key="k" class="e-tag e-con-kind" :class="{ 'e-gold': k == 'epicbox' }">{{ $t('msg.contacts.kind_' + k) }}</span>
+                </span>
+                <small v-if="lastShort(c)">{{ lastShort(c) }}</small>
+              </span>
             </button>
           </li>
         </ul>
-        <p v-else class="e-small e-dim e-con-none">{{ $t('msg.modern.settings.no_results') }}</p>
+        <div v-else class="e-con-none">
+          <p class="e-small e-dim">{{ $t('msg.modern.settings.no_results') }}</p>
+          <button type="button" class="e-btn e-btn-ghost e-btn-sm" @click="clearup(false)">{{ $t('msg.modern.settings.help_search_clear') }}</button>
+        </div>
       </section>
 
-      <!-- edit / new, in the same pane -->
+      <!-- new / edit, in the same pane -->
       <section v-if="isEditAddress || isNewAddress" class="e-panel e-con-main" aria-labelledby="con-edit-t">
-        <form class="e-con-form" novalidate @submit.prevent="isNewAddress ? addAddress() : updateAddressById()">
-          <input type="hidden" v-model="id" />
+        <button type="button" class="e-btn e-btn-ghost e-btn-sm e-con-back" @click="cancel()"><EIcon name="chevl" size="sm" />{{ $t('msg.contacts.back') }}</button>
+        <form class="e-con-form" novalidate @submit.prevent="save()">
           <div class="e-con-head">
-            <span class="e-avatar e-lg" aria-hidden="true">{{ initials(name) }}</span>
+            <ContactAvatar :name="name" :image="formImage" size="xl" />
             <div class="e-grow">
               <h2 id="con-edit-t">{{ isNewAddress ? $t('msg.modern.settings.new_contact') : $t('msg.modern.settings.edit_contact') }}</h2>
-              <p class="e-small e-dim">{{ $t('msg.modern.settings.edit_contact_hint') }}</p>
+              <div class="e-con-pic">
+                <label class="e-btn e-btn-ghost e-btn-sm e-con-pic-btn" :class="{ 'e-is-busy': imageBusy }">
+                  <input ref="imageInput" class="e-sr-only" type="file" :accept="imageAccept" aria-describedby="con-pic-h" @change="pickImage" />
+                  <EIcon name="camera" size="sm" />{{ formImage ? $t('msg.contacts.picture_change') : $t('msg.contacts.picture_add') }}
+                </label>
+                <button v-if="formImage" type="button" class="e-btn e-btn-ghost e-btn-sm" @click="removeImage()">{{ $t('msg.contacts.picture_remove') }}</button>
+              </div>
+              <p v-if="imageProblem" id="con-pic-h" class="e-error-msg" role="alert"><EIcon name="alertc" />{{ $t('msg.contacts.picture_' + imageProblem) }}</p>
+              <p v-else id="con-pic-h" class="e-help">{{ $t('msg.contacts.picture_hint') }}</p>
             </div>
           </div>
 
           <div class="e-field">
             <label class="e-label" for="con-f-name">{{ $t('msg.addressbook.name') }}</label>
-            <input id="con-f-name" class="e-input" type="text" autocomplete="off" v-model="name" />
+            <input id="con-f-name" v-model="name" class="e-input" type="text" autocomplete="off" :aria-invalid="errorOf('name') ? 'true' : null" :aria-describedby="errorOf('name') ? 'con-f-name-e' : null" @blur="touch('name')" />
+            <p v-if="errorOf('name')" id="con-f-name-e" class="e-error-msg"><EIcon name="alertc" />{{ $t(errorOf('name')) }}</p>
           </div>
           <div class="e-field">
-            <label class="e-label" for="con-f-box">{{ $t('msg.addressbook.external_one') }}</label>
-            <input id="con-f-box" class="e-input e-mono" type="text" spellcheck="false" autocomplete="off" translate="no" v-model="externalOne" />
+            <label class="e-label" for="con-f-box">{{ $t('msg.contacts.epicbox_address') }}</label>
+            <input id="con-f-box" v-model="externalOne" class="e-input e-mono" type="text" spellcheck="false" autocomplete="off" translate="no" :aria-invalid="errorOf('externalOne') ? 'true' : null" :aria-describedby="(errorOf('externalOne') ? 'con-f-box-e ' : '') + 'con-f-box-h'" @blur="touch('externalOne')" />
+            <p v-if="errorOf('externalOne')" id="con-f-box-e" class="e-error-msg"><EIcon name="alertc" />{{ $t(errorOf('externalOne')) }}</p>
+            <p id="con-f-box-h" class="e-help">{{ $t('msg.contacts.hint_epicbox') }}</p>
           </div>
           <div class="e-field">
-            <label class="e-label" for="con-f-ext">{{ $t('msg.addressbook.external_two') }}</label>
-            <input id="con-f-ext" class="e-input e-mono" type="text" spellcheck="false" autocomplete="off" translate="no" v-model="externalTwo" />
+            <label class="e-label" for="con-f-ext">{{ $t('msg.contacts.http_address') }} <span class="e-opt">{{ $t('msg.contacts.optional') }}</span></label>
+            <input id="con-f-ext" v-model="externalTwo" class="e-input e-mono" type="text" spellcheck="false" autocomplete="off" translate="no" :aria-invalid="errorOf('externalTwo') ? 'true' : null" :aria-describedby="(errorOf('externalTwo') ? 'con-f-ext-e ' : '') + 'con-f-ext-h'" @blur="touch('externalTwo')" />
+            <p v-if="errorOf('externalTwo')" id="con-f-ext-e" class="e-error-msg"><EIcon name="alertc" />{{ $t(errorOf('externalTwo')) }}</p>
+            <p id="con-f-ext-h" class="e-help">{{ $t('msg.contacts.hint_http') }}</p>
           </div>
           <div class="e-con-grid2">
             <div class="e-field">
-              <label class="e-label" for="con-f-country">{{ $t('msg.addressbook.country') }}</label>
-              <input id="con-f-country" class="e-input" type="text" autocomplete="off" v-model="country" />
+              <label class="e-label" for="con-f-country">{{ $t('msg.addressbook.country') }} <span class="e-opt">{{ $t('msg.contacts.optional') }}</span></label>
+              <input id="con-f-country" v-model="country" class="e-input" type="text" autocomplete="off" />
             </div>
             <div class="e-field">
-              <label class="e-label" for="con-f-city">{{ $t('msg.addressbook.city') }}</label>
-              <input id="con-f-city" class="e-input" type="text" autocomplete="off" v-model="city" />
+              <label class="e-label" for="con-f-city">{{ $t('msg.addressbook.city') }} <span class="e-opt">{{ $t('msg.contacts.optional') }}</span></label>
+              <input id="con-f-city" v-model="city" class="e-input" type="text" autocomplete="off" />
             </div>
           </div>
           <div class="e-field">
-            <label class="e-label" for="con-f-note">{{ $t('msg.addressbook.notice') }} <span class="e-opt">{{ $t('msg.modern.settings.notice_optional') }}</span></label>
-            <textarea id="con-f-note" class="e-textarea" rows="3" v-model="notice"></textarea>
+            <label class="e-label" for="con-f-note">{{ $t('msg.contacts.note') }} <span class="e-opt">{{ $t('msg.modern.settings.notice_optional') }}</span></label>
+            <textarea id="con-f-note" v-model="notice" class="e-textarea" rows="3"></textarea>
           </div>
 
           <div class="e-con-form-foot">
-            <button type="submit" class="e-btn e-btn-primary"><EIcon name="check" />{{ $t('msg.save') }}</button>
+            <button type="submit" class="e-btn e-btn-primary" :class="{ 'e-is-busy': saving }" :aria-busy="saving ? 'true' : null" :disabled="imageBusy"><EIcon name="check" />{{ $t('msg.modern.settings.save_contact') }}</button>
             <button type="button" class="e-btn e-btn-ghost" @click="cancel()">{{ $t('msg.cancel') }}</button>
-            <button v-if="!isNewAddress" type="button" class="e-btn e-btn-danger e-right" @click="trashModalOpen(selectedAddress)"><EIcon name="trash" />{{ $t('msg.delete') }}</button>
           </div>
         </form>
       </section>
 
-      <!-- detail -->
+      <!-- one contact -->
       <section v-else-if="addressLoaded" class="e-panel e-con-main" aria-labelledby="con-name">
+        <button type="button" class="e-btn e-btn-ghost e-btn-sm e-con-back" @click="cancel()"><EIcon name="chevl" size="sm" />{{ $t('msg.contacts.back') }}</button>
         <div class="e-con-head">
-          <span class="e-avatar e-lg" aria-hidden="true">{{ initials(name) }}</span>
+          <ContactAvatar :name="name" :image="avatarOf(selectedAddress)" size="xl" />
           <div class="e-grow">
             <h2 id="con-name">{{ name }}</h2>
             <p v-if="place" class="e-small e-dim">{{ place }}</p>
+            <p v-if="selectedLast" class="e-small e-dim">{{ selectedLast }}</p>
           </div>
         </div>
         <div class="e-con-actions">
+          <button v-for="(a, i) in selectedAddresses" :key="a.field" type="button" class="e-btn" :class="i == 0 ? 'e-btn-primary' : ''" @click="sendTo(a.field)">
+            <EIcon name="send" />{{ selectedAddresses.length > 1 ? $t('msg.contacts.send_' + a.kind) : $t('msg.contacts.send') }}
+          </button>
           <button type="button" class="e-btn" @click="edit()"><EIcon name="pencil" />{{ $t('msg.edit') }}</button>
-          <button type="button" class="e-btn e-btn-danger e-right" @click="trashModalOpen(selectedAddress)"><EIcon name="trash" />{{ $t('msg.delete') }}</button>
+          <button type="button" class="e-btn e-btn-ghost e-con-del" @click="trashModalOpen(selectedAddress)"><EIcon name="trash" />{{ $t('msg.delete') }}</button>
         </div>
 
         <dl class="e-con-facts">
-          <div v-if="externalOne">
-            <dt>{{ $t('msg.addressbook.external_one') }}</dt>
-            <dd class="e-addr"><code translate="no">{{ externalOne }}</code><button type="button" class="e-icon-btn e-sm" :aria-label="$t('msg.modern.settings.copy_field', { what: $t('msg.addressbook.external_one') })" @click="copy(externalOne)"><EIcon name="copy" size="sm" /></button></dd>
-          </div>
-          <div v-if="externalTwo">
-            <dt>{{ $t('msg.addressbook.external_two') }}</dt>
-            <dd class="e-addr"><code translate="no">{{ externalTwo }}</code><button type="button" class="e-icon-btn e-sm" :aria-label="$t('msg.modern.settings.copy_field', { what: $t('msg.addressbook.external_two') })" @click="copy(externalTwo)"><EIcon name="copy" size="sm" /></button></dd>
+          <div v-for="a in selectedAddresses" :key="a.field">
+            <dt><EIcon :name="a.kind == 'epicbox' ? 'antenna' : 'web'" size="sm" />{{ $t('msg.contacts.' + a.kind + '_address') }}</dt>
+            <dd class="e-addr">
+              <code translate="no">{{ a.address }}</code>
+              <button type="button" class="e-btn e-btn-ghost e-btn-sm e-con-copy" :class="{ 'e-is-copied': copied == a.field }" :aria-label="$t('msg.modern.settings.copy_field', { what: $t('msg.contacts.' + a.kind + '_address') })" @click="copy(a.address, a.field)">
+                <EIcon :name="copied == a.field ? 'check' : 'copy'" size="sm" /><span aria-hidden="true">{{ copied == a.field ? $t('msg.contacts.copied') : $t('msg.contacts.copy') }}</span>
+              </button>
+            </dd>
           </div>
           <div v-if="notice">
-            <dt>{{ $t('msg.addressbook.notice') }}</dt>
+            <dt>{{ $t('msg.contacts.note') }}</dt>
             <dd class="e-con-note">{{ notice }}</dd>
           </div>
         </dl>
+        <p class="e-sr-only" role="status" aria-live="polite">{{ copied ? $t('msg.copy_to_clipboard') : '' }}</p>
+
+        <ContactTx :contact-id="Number(selectedAddress.id) || 0" :name="name" />
       </section>
 
-      <section v-else class="e-panel e-con-main">
+      <section v-else class="e-panel e-con-main e-con-idle">
+        <EIcon name="contacts" />
         <p class="e-dim">{{ $t('msg.modern.settings.pick_contact') }}</p>
       </section>
     </div>
 
-    <!-- delete confirmation (Classic: layout/ModalBox.vue) -->
+    <!-- delete confirmation (Classic: its own modal in AddressBook.vue) -->
     <EDialog
       :open="isModalActive"
       role="alertdialog"
@@ -137,7 +185,7 @@
       @close="trashCancel"
     >
       <template #foot>
-        <button type="button" class="e-btn e-btn-ghost" @click="trashCancel">{{ $t('msg.modern.settings.keep_contact') }}</button>
+        <button type="button" class="e-btn e-btn-ghost" autofocus @click="trashCancel">{{ $t('msg.modern.settings.keep_contact') }}</button>
         <button type="button" class="e-btn e-btn-danger" @click="trashConfirm"><EIcon name="trash" />{{ $t('msg.modern.settings.delete_contact') }}</button>
       </template>
     </EDialog>
@@ -149,36 +197,21 @@
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import EDialog from '@/components/modern/ui/EDialog.vue';
+  import ContactAvatar from '@/components/ContactAvatar.vue';
+  import ContactTx from '@/components/modern/activity/ContactTx.vue';
 
   export default reskin(AddressBook, {
-    components: { EIcon, EDialog },
-    data() {
-      //set once the first list has arrived, so the empty state does not flash while it loads
-      return { listReady: false };
-    },
+    components: { EIcon, EDialog, ContactAvatar, ContactTx },
     computed: {
       showEmpty() {
-        return this.listReady && !this.addressList.length && !this.isNewAddress && !this.searched;
+        return this.listReady && !this.addressList.length && !this.isNewAddress;
       },
-      place() {
-        return [this.city, this.country].filter(Boolean).join(', ');
-      },
-    },
-    watch: {
-      addressList() { this.listReady = true; },
     },
     methods: {
-      isSelected(address) {
-        return (this.addressLoaded || this.isEditAddress) && this.id == address.id;
-      },
-      initials(name) {
-        const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
-        if (!parts.length) return '·';
-        return ((parts[0][0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0][1] || ''))).toUpperCase();
-      },
-      //the line under the name in the list: the first address the contact has
-      summary(address) {
-        return address.externalOne || address.externalTwo || '';
+      /* the list's right column: "yesterday", "12 Oct" (the detail says "Last transaction: …") */
+      lastShort(c) {
+        const a = this.activity.get(Number(c && c.id));
+        return a && a.last ? this.whenText(a.last) : '';
       },
     },
   });

@@ -39,7 +39,7 @@
             <AddressField ref="addressField" @keyup="keyEvent" />
             <div class="e-send-trail">
               <button v-if="addressField && addressField.input" type="button" class="e-icon-btn e-sm" :aria-label="$t('msg.modern.send.clear_to')" @click="clearTo"><EIcon name="close" size="sm" /></button>
-              <router-link class="e-icon-btn e-sm" to="/addressBook" :aria-label="$t('msg.modern.send.add_contact')"><EIcon name="userplus" size="sm" /></router-link>
+              <button type="button" class="e-btn e-btn-ghost e-btn-sm e-send-pick" aria-haspopup="dialog" :aria-label="$t('msg.contacts.picker_open')" @click="openPicker"><EIcon name="contacts" size="sm" /><span class="e-send-pick-t">{{ $t('msg.contacts.picker_button') }}</span></button>
             </div>
           </div>
 
@@ -62,7 +62,7 @@
 
           <p v-if="recipientKind" class="e-resolved">
             <template v-if="contact">
-              <span class="e-avatar e-sm" aria-hidden="true">{{ contactInitials }}</span>
+              <ContactAvatar :name="contact.name" :image="pickerAvatars[contact.id] || ''" size="sm" />
               <span><b>{{ contact.name }}</b> {{ $t('msg.modern.send.from_contacts') }}</span>
             </template>
             <span class="e-tag" :class="{ 'e-gold': recipientKind == 'epicbox' }"><EIcon :name="kindIcon" />{{ $t('msg.modern.send.kind_' + recipientKind) }}</span>
@@ -181,6 +181,9 @@
       ><EIcon name="send" />{{ isLoadingSend || !rv ? $t('msg.modern.send.sending') : $t('msg.modern.send.send_amount', { n: rvAmountText }) }}</button>
     </template>
   </EDialog>
+
+  <!-- after the review dialog, which stays the first <dialog> on the page -->
+  <ContactPicker :open="pickerOpen" :contacts="pickerContacts" :avatars="pickerAvatars" :loading="pickerLoading" @pick="pickContact" @close="closePicker" />
 </template>
 
 <script>
@@ -191,6 +194,8 @@
   import MoneyText from '@/components/modern/ui/MoneyText.vue';
   import AmountField from '@/components/modern/form/AmountField.vue';
   import AddressField from '@/components/modern/form/AddressField.vue';
+  import ContactAvatar from '@/components/ContactAvatar.vue';
+  import ContactPicker from '@/components/modern/send/ContactPicker.vue';
   import { formatEpic, nodeSyncPercent } from '@/components/modern/format';
   import { epicToNano, nanoToEpic } from '@/shared/sendMath';
   import { isOnionAddress } from '@/shared/sendForm';
@@ -205,7 +210,7 @@
   const TAIL = 6;
 
   export default reskin(HttpSend, {
-    components: { EIcon, EDialog, MoneyText, AmountField, AddressField },
+    components: { EIcon, EDialog, MoneyText, AmountField, AddressField, ContactAvatar, ContactPicker },
     data() {
       return {
         //the "Privacy" disclosure
@@ -292,10 +297,6 @@
         const v = this.toValue;
         if (!this.addressSelected || !a || !a.name || !v) return null;
         return [a.externalOne, a.externalTwo].some(x => x && String(x).trim() === v) ? a : null;
-      },
-      contactInitials() {
-        const words = String((this.contact && this.contact.name) || '').trim().split(/\s+/).filter(Boolean);
-        return words.slice(0, 2).map(w => Array.from(w)[0]).join('').toUpperCase();
       },
       advState() {
         return this.$t('msg.modern.send.' + (this.dandelionOn ? 'adv_dandelion' : 'adv_none'));
