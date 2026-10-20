@@ -153,14 +153,14 @@ const messages = {
       language: 'Język',
       db_fatal: 'Błąd krytyczny bazy danych: nie można dodać wpisu do bazy',
       errors_save: 'Błąd zapisu ustawień użytkownika: {0}',
-      epicbox_domain: 'Adres internetowy Epicbox',
+      epicbox_domain: 'Serwer Epicbox',
       epicbox_off: 'wyłączony',
       epicbox_domain_hint: 'Zostaw pole puste, jeśli nie chcesz korzystać z tej usługi.',
       noninteractive_transactions: `Wprowadzenie do adresów EPIC<br/>
       <br/>
       Adresy EPIC pozwalają łatwo wysłać EPIC, gdy portfel odbiorcy jest offline.<br/>
       <br/>
-      Odbywa się to bezpiecznie i prywatnie dzięki zewnętrznemu serwerowi Epicbox.<br/>
+      Odbywa się to bezpiecznie i prywatnie przez serwer Epicbox.<br/>
       Serwery Epicbox, takie jak epicbox.epiccash.com i inne, które pojawią się później, udostępnia nasza społeczność.<br/>
       <br/>
       Jak to działa:<br/>
@@ -427,7 +427,7 @@ const messages = {
       http_failed: 'HTTP nie odbiera: nie udało się uruchomić nasłuchu.',
       http_failed_node: 'HTTP nie odbiera: node nie odpowiedział, więc nie udało się uruchomić nasłuchu. Spróbuj ponownie, gdy node będzie dostępny.',
       http_retry: 'Spróbuj ponownie',
-      epicbox_off: 'Twój Epicbox nie jest skonfigurowany. Zaktualizuj ustawienia i podaj domenę Epicbox',
+      epicbox_off: 'Epicbox nie jest skonfigurowany. Wybierz serwer Epicbox w Ustawieniach.',
       epicbox_listening_on: 'Nasłuch na serwerze {0}',
       epicbox_listening: 'Epicbox nasłuchuje',
       epicbox_connecting_to: 'Łączenie z {0}…',
@@ -465,8 +465,8 @@ const messages = {
       auto_start: 'automatycznie uruchamiaj nasłuch portfela i Epicbox po zalogowaniu',
       settings_saved: 'Ustawienia zapisane',
       error_save: 'Błąd zapisu ustawień',
-      epicbox_domain: 'Domena Epicbox',
-      epicbox_domain_hint: 'Domena serwera Epicbox, z którym łączy się Twój portfel. Zostaw pole puste, jeśli nie chcesz korzystać z tej usługi. Domyślnie: epicbox.epiccash.com',
+      epicbox_domain: 'Serwer Epicbox',
+      epicbox_domain_hint: 'Serwer Epicbox, z którym łączy się Twój portfel. Zostaw pole puste, jeśli nie chcesz korzystać z Epicbox. Domyślnie: epicbox.epiccash.com',
       node_background: 'synchronizacja w tle',
       node_background_hint: 'wbudowany node synchronizuje się w tle nawet po zamknięciu aplikacji. Przy następnym uruchomieniu portfela nie trzeba będzie czekać na synchronizację z blockchainem.',
       node_load_warning: 'Skanowanie mocno obciąża procesor i pamięć, dopóki się nie zakończy.',

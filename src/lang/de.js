@@ -153,15 +153,15 @@ const messages = {
       language: 'Sprache',
       db_fatal: 'Schwerwiegender Fehler: DB kann nicht eingefügt werden',
       errors_save: 'Fehler beim Speichern von Benutzereinstellungen: {0}',
-      epicbox_domain: 'Epicbox-Webadresse',
+      epicbox_domain: 'Epicbox-Server',
       epicbox_off: 'ausgeschaltet',
       epicbox_domain_hint: 'Lassen Sie das Feld leer, wenn Sie diesen Dienst nicht nutzen möchten.',
       noninteractive_transactions: `Einführung in EPIC-Adressen<br/>
       <br/>
       EPIC-Adressen bieten eine einfache Möglichkeit, EPIC zu senden, wenn die empfangende Wallet offline ist.<br/>
       <br/>
-      Das geschieht sicher und privat über einen externen Relay-Server namens „Epicbox“.<br/>
-      Relay-Server wie epicbox.epiccash.com und weitere, die später folgen, werden von unserer Community bereitgestellt.<br/>
+      Das geschieht sicher und privat über einen Epicbox-Server.<br/>
+      Epicbox-Server wie epicbox.epiccash.com und weitere, die später folgen, werden von unserer Community bereitgestellt.<br/>
       <br/>
       So funktioniert es:<br/>
       Transaktionen werden an den Epicbox-Server gesendet und dem Empfänger zugestellt, sobald dessen Wallet online ist.<br/>
@@ -427,7 +427,7 @@ const messages = {
       http_failed: 'HTTP ist nicht empfangsbereit: Der Wallet-Empfänger konnte nicht starten.',
       http_failed_node: 'HTTP ist nicht empfangsbereit: Der Netzwerkknoten hat nicht geantwortet, daher konnte der Wallet-Empfänger nicht starten. Versuchen Sie es erneut, sobald der Knoten erreichbar ist.',
       http_retry: 'Erneut versuchen',
-      epicbox_off: 'Ihre Epicbox ist nicht eingerichtet. Aktualisieren Sie Ihre Einstellungen und legen Sie eine Epicbox-Webadresse fest',
+      epicbox_off: 'Epicbox ist nicht eingerichtet. Wählen Sie in den Einstellungen einen Epicbox-Server.',
       epicbox_listening_on: 'Empfangsbereit über {0}',
       epicbox_listening: 'Epicbox empfangsbereit',
       epicbox_connecting_to: 'Verbindung mit {0} wird hergestellt …',
@@ -465,8 +465,8 @@ const messages = {
       auto_start: 'Wallet-Empfänger nach Anmeldung automatisch starten',
       settings_saved: 'Einstellungen gespeichert',
       error_save: 'Fehler beim Speichern der Einstellungen',
-      epicbox_domain: 'Epicbox-Domain',
-      epicbox_domain_hint: 'Die Domain des Relay-Servers, mit dem Ihre Epicbox verbunden ist. Lassen Sie das Feld leer, wenn Sie diesen Dienst nicht nutzen möchten. Standard: epicbox.epiccash.com',
+      epicbox_domain: 'Epicbox-Server',
+      epicbox_domain_hint: 'Der Epicbox-Server, mit dem sich Ihre Wallet verbindet. Lassen Sie das Feld leer, wenn Sie Epicbox nicht nutzen möchten. Standard: epicbox.epiccash.com',
       node_background: 'im Hintergrund synchronisieren',
       node_background_hint: 'Der integrierte Netzwerkknoten synchronisiert im Hintergrund weiter, auch wenn die App geschlossen ist. Beim nächsten Start der Wallet müssen Sie nicht auf die Synchronisierung mit der Blockchain warten.',
       node_load_warning: 'Der Scan beansprucht viel CPU und Arbeitsspeicher, bis er fertig ist.',

@@ -46,6 +46,9 @@ Epicbox can't connect here (no network): its "connecting" state is expected and 
   (Classic also walks the Setup Assistant), Send validation (empty / bad recipient, 0, negative, 9
   decimals, over the balance; nothing reaches the node), Receive address also with the listener
   stopped, lock / unlock, Menu › Quit, nothing left running after 10 s.
+- `specs/help.js` (Modern only): Settings › Help: topics in sections, the search as you type (marks, a match in the
+  detail opens it, Esc, "/"), the handshake diagram (and no motion with reduced motion), Polish and Persian (RTL).
+  `E2E_SHOTS=1` adds screenshots in dark and light and at the 150 % interface scale.
 - `specs/checks.js`: version in the title / sidebar and About, Contacts validation (QA T04), empty
   password, port 3415 held by another program (W01), Persian `dir=rtl` and back, quit.
 

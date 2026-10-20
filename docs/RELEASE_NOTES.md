@@ -38,6 +38,14 @@
 - After you create, add or restore a wallet, the open wallet is locked (its background programs are stopped) and the Unlock screen opens with the new wallet already chosen. It says "… was added. Enter its password to unlock it." After creating a wallet you now unlock it on that screen. It no longer opens straight from the recovery-phrase page.
 - Settings › This wallet (it was "Wallet") is about the open wallet only. Its "Open wallet folder" button opens that wallet's own folder in your file manager. The confusing "Add a wallet from a folder…" button is gone from this page. Your other wallets, each with "Show in folder" and "Remove…", and the three ways to add one are on the new Settings › All wallets page. In Classic it is in the gear menu.
 - Welcome › Advanced › App data folder: one short line saying what it is, with the rest under "More about this". It works as before: choose a new, empty folder, the app restarts and uses it, and "Use the default folder" goes back.
+## Unreleased (feat/help-rework)
+
+- One name for Epicbox: the setting and the setup review row say "Epicbox server" (they said "Epicbox Domain", "Epicbox Web Address" and "Relay"), and no screen calls it a relay any more, in every language (feedback #10). "Receiving" stays the name of the feature.
+- Settings › Help is new (BT Labs Theme): short topics for people new to Epic Cash ("Receive your first EPIC", "Send with a file", "Why does a transaction need both sides?", "Confirmations", "Your recovery phrase", "Fees", "Troubleshooting", …), each a one-line answer with the detail behind "Read more".
+  - Search as you type, in your language, with the words marked; "/" or Ctrl+F jumps to it, Esc clears it.
+  - A step-by-step picture of how a transaction travels between the two wallets, over Epicbox or with a file (no animation with reduced motion).
+  - Every fact checked against this version: 3 confirmations, the default node is a public one, a send is never cancelled by itself.
+  - In all seven languages. The Classic interface keeps its help as it was.
 
 ## 6.1.5
 
