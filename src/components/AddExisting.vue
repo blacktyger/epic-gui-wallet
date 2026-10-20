@@ -30,7 +30,7 @@
                       <div class="control"><div class="select is-small"><select v-model="folderNetwork" :aria-label="$t('msg.wallets.network')">
                         <option value="mainnet">Mainnet</option><option value="floonet">Floonet</option><option value="usernet">Usernet</option>
                       </select></div></div>
-                      <div class="control"><button type="button" class="button is-small is-primary" @click="folderWithNetwork">{{ $t('msg.wallets.open') }}</button></div>
+                      <div class="control"><button type="button" class="button is-small is-primary" @click="folderWithNetwork">{{ $t('msg.wallets.continue') }}</button></div>
                     </div>
                     <p v-if="folderError" class="help is-danger" role="alert">{{ folderError }}</p>
                     <WalletFolderPick v-if="folderPick" :pick="folderPick" :busy="folderBusy" @open="folderPicked" @again="pickWalletFolder" @cancel="folderPickCancel" />

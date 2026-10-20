@@ -28,14 +28,19 @@ async function waitText(w, re, timeout = 20000) {
 
 /* ---------- start, create ---------- */
 async function welcome(w) {
-  await clickable(w, 'Create a wallet').first().waitFor({ timeout: 60000 });
+  await clickable(w, 'Create a new wallet').first().waitFor({ timeout: 60000 });
+  await clickable(w, 'Add an existing wallet').first().waitFor({ timeout: 5000 });
   await clickable(w, 'Restore from recovery phrase').first().waitFor({ timeout: 5000 });
-  return 'Welcome: Create a wallet / Restore from recovery phrase';
+  return 'Welcome: Create a new wallet / Add an existing wallet / Restore from recovery phrase';
 }
 
-/** Welcome › Create: password twice, create, reveal the 24 words (kept as secrets), open the wallet. */
-async function createWallet(w, ui, password) {
-  await clickable(w, 'Create a wallet').first().click();
+/**
+ * Add a wallet › Create a new wallet (Welcome, or Settings › All wallets): password twice, create,
+ * reveal the 24 words (kept as secrets), "I've written it down, continue". Ends on Unlock with the new
+ * wallet chosen (said to be added); returns {words, id} (id: the wallet chosen there).
+ */
+async function createOnly(w, password) {
+  await clickable(w, 'Create a new wallet').first().click();
   await w.locator('input[name=password]').first().fill(password, { timeout: 15000 });
   await w.locator('input[name=password2]').first().fill(password);
   await w.getByRole('button', { name: /^(Create wallet|Create new wallet|Create)\b/ }).first().click();
@@ -44,17 +49,35 @@ async function createWallet(w, ui, password) {
     .map((x) => x.trim().replace(/^\d+[.)]?[\s\u00a0]*/, '').trim()).filter(Boolean);
   addSecrets({ words });
   if (words.length !== 24) throw new Error('expected 24 recovery words, saw ' + words.length);
-  //Modern: "I've written it down, open my wallet"; Classic: "Open my wallet"; a confirmation may follow
-  await clickable(w, /written it down|Open my wallet/).first().click();
-  const where = await waitFor(async () => {
-    const r = await route(w);
-    if (/dashboard/.test(r)) return r;
-    const again = w.locator('dialog[open], .modal.is-active').getByRole('button', { name: /written it down|Yes|Continue/ });
-    if (await again.count()) await again.first().click().catch(() => {});
-    return null;
-  }, { timeout: 90000, interval: 400 });
+  await clickable(w, /written it down/).first().click();
+  const id = await unlockChosen(w);
+  return { words, id };
+}
+
+/** On Unlock right after adding: the wallet chosen (route query wallet = the chosen one), and the
+    "was added" line naming it. Returns its id. */
+async function unlockChosen(w) {
+  await w.waitForURL(/login/, { timeout: 90000 });
+  await w.locator('[data-added]').first().waitFor({ timeout: 15000 });
+  const said = (await w.locator('[data-added]').first().innerText()).trim();
+  if (!/was added\. Enter its password to unlock it\./.test(said)) throw new Error('Unlock says: ' + said);
+  const r = await w.evaluate(() => {
+    const q = new URLSearchParams(location.search || location.hash.split('?')[1] || '');
+    const sel = document.querySelector('#loginWallet');
+    const radio = document.querySelector('input[name=unlock-wallet]:checked');
+    return { want: q.get('wallet'), chosen: sel ? sel.value : radio ? radio.value : q.get('wallet') };
+  });
+  if (!r.want || r.chosen !== r.want) throw new Error(`Unlock chose ${r.chosen}, the new wallet is ${r.want}`);
+  return r.want;
+}
+
+/** Welcome › Create: then Unlock (the new wallet chosen) with the password just set. */
+async function createWallet(w, ui, password) {
+  const { words } = await createOnly(w, password);
+  await submitPassword(w, password);
+  const where = await waitFor(async () => { const r = await route(w); return /dashboard/.test(r) ? r : null; }, { timeout: 90000, interval: 400 });
   if (!where) throw new Error('the wallet did not open after create: ' + (await route(w)) + ' :: ' + (await text(w)).slice(0, 200));
-  return '24 words shown (not logged); wallet opened on ' + where;
+  return words.length + ' words shown (not logged); Unlock chose the new wallet; unlocked on ' + where;
 }
 
 /** Modern's first-unlock tour (absent in Classic). */
@@ -77,7 +100,7 @@ const PAGES = {
     ['Overview', '/dashboard', 'Overview'], ['Activity', '/activity', 'Activity'], ['Send', '/httpSend', 'Send'],
     ['Receive', '/httpReceive', 'Receive'], ['Contacts', '/addressBook', 'Contacts'],
     ['Settings', '/settings', 'Settings', 'side'],
-    ['Wallet', '/account', 'Settings', 'stg'], ['Recovery phrase', '/mnemonic', 'Settings', 'stg'],
+    ['This wallet', '/account', 'Settings', 'stg'], ['All wallets', '/wallets', 'Settings', 'stg'], ['Recovery phrase', '/mnemonic', 'Settings', 'stg'],
     ['Rescan', '/recheckBalance', 'Settings', 'stg'], ['About', '/about', 'Settings', 'stg'], ['Help', '/help', 'Settings', 'stg'],
     ['Node and receiving', '/settings', 'Settings', 'stg'],
     //Receive › Transaction files
@@ -87,7 +110,7 @@ const PAGES = {
     ['Dashboard', '/dashboard', 'Dashboard'], ['Address Book', '/addressBook', 'Address Book'], ['Send', '/httpSend', 'Send'],
     ['Finalize offline transaction', '/finalizeTransaction', 'Finalize offline transaction'], ['Receive', '/httpReceive', 'Receive'],
     ['Import offline transaction', '/importTransaction', 'Import offline transaction'], ['About', '/about', 'About'], ['Help', '/help', 'Help'],
-    ['Profile', '/account', 'Profile', 'gear'], ['Settings', '/settings', 'Settings', 'gear'], ['Recheck Balance', '/recheckBalance', 'Recheck Balance', 'gear'],
+    ['Profile', '/account', 'Profile', 'gear'], ['All wallets', '/wallets', 'All wallets', 'gear'], ['Settings', '/settings', 'Settings', 'gear'], ['Recheck Balance', '/recheckBalance', 'Recheck Balance', 'gear'],
     ['Mnemonic Words', '/mnemonic', 'Recovery phrase', 'gear'],
   ],
 };
@@ -104,7 +127,7 @@ async function nav(w, ui, [label, path, , where]) {
     await openGear(w);
     await w.locator(`.navbar-dropdown a[href="${path}"]`).first().click();
   } else if (ui === 'modern' && where === 'stg') {
-    if (!/^\/(settings|account|mnemonic|recheckBalance|about|help)$/.test(await route(w))) await w.locator('aside a[href="/settings"], nav a[href="/settings"]').first().click();
+    if (!/^\/(settings|account|wallets|mnemonic|recheckBalance|about|help)$/.test(await route(w))) await w.locator('aside a[href="/settings"], nav a[href="/settings"]').first().click();
     await w.locator(`nav.e-stg-nav a[href="${path}"]`).first().click();
   } else if (ui === 'modern' && /^rcv-/.test(where || '')) {
     if (await route(w) !== '/httpReceive') await w.locator('a[href="/httpReceive"]').first().click();
@@ -355,6 +378,6 @@ async function setLanguage(w, ui, code) {
   return a;
 }
 
-module.exports = { ADDR_RE, toasts, contactNames, addContact, cancelContact, htmlAttrs, setLanguage, NODE_URL, PAGES, clickable, text, route, main, waitText, welcome, createWallet, skipTour, nav, heading, visit,
+module.exports = { ADDR_RE, toasts, contactNames, addContact, cancelContact, htmlAttrs, setLanguage, NODE_URL, PAGES, clickable, text, route, main, waitText, welcome, createWallet, createOnly, unlockChosen, submitPassword, skipTour, nav, heading, visit,
   openSettings, typeNodeAddress, saveNode, sendTo, sendAmt, sendBtn, sendErrors, trySend, epicAddress, receiveAddress, stopListener,
   lock, unlock, wrongPassword, openGear, setupAssistant };

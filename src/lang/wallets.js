@@ -53,7 +53,6 @@ export default {
   welcome_lead: 'Add your first wallet.',
   back_to_unlock: 'Back to unlock',
   advanced: 'Advanced',
-  open: 'Open',
 
   //Add a wallet: the same three ways on Welcome, Unlock › Add a wallet and Settings › All wallets.
   //Each one adds a new wallet to the list; none replaces a wallet

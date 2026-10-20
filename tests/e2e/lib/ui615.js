@@ -12,28 +12,31 @@ const { spawn } = require('child_process');
 const { waitFor, redact, addSecrets } = require('./harness');
 const U = require('./ui');
 
-const WALLET_PAGE = { modern: ['Wallet', '/account', null, 'stg'], classic: ['Profile', '/account', null, 'gear'] };
+const WALLET_PAGE = { modern: ['This wallet', '/account', null, 'stg'], classic: ['Profile', '/account', null, 'gear'] };
+const WALLETS_PAGE = { modern: ['All wallets', '/wallets', null, 'stg'], classic: ['All wallets', '/wallets', null, 'gear'] };
 const openWalletSettings = (w, ui) => U.nav(w, ui, WALLET_PAGE[ui]);
+const openAllWallets = (w, ui) => U.nav(w, ui, WALLETS_PAGE[ui]);
 
-/** Settings › Wallet › Create a wallet: a second wallet, which then is the open one. */
+/** Settings › All wallets › Create a new wallet: a second wallet; Unlock chooses it, it is unlocked
+    with the password just set, so it is the open one. */
 async function addWallet(w, ui, password) {
-  await openWalletSettings(w, ui);
-  await w.getByRole('button', { name: 'Create a wallet', exact: true }).first().click({ timeout: 10000 });
-  await w.locator('input[name=password]').first().fill(password, { timeout: 15000 });
-  await w.locator('input[name=password2]').first().fill(password);
-  await w.getByRole('button', { name: /^(Create wallet|Create new wallet|Create)\b/ }).first().click();
-  await w.getByRole('button', { name: 'Reveal phrase' }).first().click({ timeout: 90000 });
-  const words = (await w.locator('ol.e-seed li, .e-seed li, li.mnemonic-word').allInnerTexts())
-    .map((x) => x.trim().replace(/^\d+[.)]?[\s\u00a0]*/, '').trim()).filter(Boolean);
-  addSecrets({ words });
-  await U.clickable(w, /written it down|Open my wallet/).first().click();
+  await openAllWallets(w, ui);
+  const { words } = await U.createOnly(w, password);
+  await U.submitPassword(w, password);
   await w.waitForURL(/dashboard/, { timeout: 90000 });
   return words.length + ' words (not logged); second wallet open';
 }
 
-/** Remove… on another wallet's row (Settings › Wallet): the open dialog, its checks done. */
+/** Settings › All wallets › Add an existing wallet › Choose a folder… (the picker answered by the spec). */
+async function addFromFolder(w, ui) {
+  await openAllWallets(w, ui);
+  await U.clickable(w, 'Add an existing wallet').first().click({ timeout: 10000 });
+  await w.getByRole('button', { name: 'Choose a folder…' }).first().click({ timeout: 10000 });
+}
+
+/** Remove… on another wallet's row (Settings › All wallets): the open dialog, its checks done. */
 async function openRemoval(w, ui, name) {
-  await openWalletSettings(w, ui);
+  await openAllWallets(w, ui);
   await w.getByRole('button', { name: `Remove ${name}…` }).first().click({ timeout: 10000 });
   const dlg = w.locator('dialog[open]').last();
   await dlg.waitFor({ state: 'visible', timeout: 10000 });
@@ -251,4 +254,4 @@ const clippedText = (w) => w.evaluate(() => {
 });
 
 module.exports = { WALLET_PAGE, openWalletSettings, addWallet, openRemoval, removalChoices, closeRemoval, ptyRun, cliInit, holdWallet, startNode, hashTree, hashDiff,
-  realKey, menuLock, leafTexts, englishLeft, clippedText };
+  realKey, menuLock, leafTexts, englishLeft, clippedText , openAllWallets, addFromFolder };

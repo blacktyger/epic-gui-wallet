@@ -94,8 +94,8 @@
 
   /*
    * Wallets an older Epic Wallet left on this computer (importer.scan): tick the ones to use here
-   * (all are ticked), or Not now. Shown once on the first start, and again from Welcome › Advanced
-   * and Settings › Add another wallet (route query from: 'new' | 'settings'). The older app's
+   * (all are ticked), or Not now. Shown once on the first start, and again from
+   * Add a wallet › Add an existing wallet (route query from: 'new' | 'settings'). The older app's
    * files are not changed. Imported wallets are stored as such; unticked ones and Not now are not
    * stored, so Import from an older Epic Wallet lists them again (foundPlan.js).
    */

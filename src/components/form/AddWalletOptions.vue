@@ -5,7 +5,7 @@
   <ul :class="modern ? 'e-add-opts' : 'add-opts'" :aria-label="label || null">
     <li v-for="o in options" :key="o.key">
       <!-- named by its title, the one-line explanation as its description -->
-      <router-link :to="o.to" :class="modern ? ['e-add-opt', { 'e-primary': o.primary }] : ['add-opt', 'box', { 'is-primary': o.primary }]" :data-add="o.key"
+      <router-link :to="o.to" :class="modern ? ['e-add-opt', { 'e-primary': o.primary }] : ['add-opt', { 'is-primary': o.primary }]" :data-add="o.key"
         :aria-labelledby="uid + '-' + o.key + '-t'" :aria-describedby="uid + '-' + o.key">
         <EIcon v-if="modern" :name="o.icon" />
         <mdicon v-else :name="o.mdi" size="22" aria-hidden="true" />
@@ -58,9 +58,12 @@
 </script>
 
 <style scoped>
+  /* Classic: drawn in the page's own colours (light and dark theme), not as a Bulma box (white in dark) */
   .add-opts { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
-  .add-opt { display: flex; align-items: center; gap: 0.75rem; margin: 0; padding: 0.75rem 1rem; text-align: left; color: inherit; }
-  .add-opt.is-primary { border: 1px solid currentColor; }
+  .add-opt { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; text-align: left; color: inherit;
+    border: 1px solid rgba(128, 128, 128, 0.45); border-radius: 6px; background: transparent; }
+  .add-opt:hover { background: rgba(128, 128, 128, 0.12); color: inherit; }
+  .add-opt.is-primary { border-color: currentColor; }
   .add-opt:focus-visible { outline: 2px solid #3e8ed0; outline-offset: 2px; }
   .add-opt-text { display: flex; flex-direction: column; min-width: 0; }
   .add-opt-text span { font-size: 0.85rem; opacity: 0.8; }

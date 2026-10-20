@@ -3,13 +3,19 @@
  * Built from the existing tokens and components (e-panel, e-notice, e-seg, e-onb-check). */
 
 /* ---------------------------------------------------------------- hero screens that scroll */
-/* the found screen and Welcome with Advanced open can be taller than the 768 px window */
+/* the found screen, Welcome with Advanced open, Add an existing wallet and Unlock with several wallets
+   (and the "was added" line) can be taller than the 768 px window: the version line then follows the
+   content instead of covering its last link */
 .e-oldw-screen,
+.e-tall-screen,
 .e-welcome-screen { height: 100vh; min-height: 0; overflow-y: auto; place-items: start center; padding-block: var(--sp-10) var(--sp-6); }
 /* centred while it fits, top-aligned and scrollable when it doesn't (auto margins never go negative) */
 .e-welcome-screen > .e-onb-hero,
+.e-tall-screen > .e-onb-hero,
+.e-tall-screen > .e-auth-card,
 .e-oldw-screen > .e-oldw { margin-block: auto; }
 .e-oldw-screen .e-auth-foot,
+.e-tall-screen .e-auth-foot,
 .e-welcome-screen .e-auth-foot { position: static; margin-top: var(--sp-6); }
 
 /* ---------------------------------------------------------------- found screen */

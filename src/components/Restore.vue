@@ -193,7 +193,7 @@
     },
     data() {
       return {
-        //Settings › Add another wallet: an optional label, prefilled "Wallet 2", "Wallet 3"…
+        //Settings › All wallets › Add a wallet: an optional label, prefilled "Wallet 2", "Wallet 3"…
         label: this.$route.query.add === '1' ? this.$t('msg.wallets.wallet_n', [walletList(this.configService).length + 1]) : '',
         //recovering, then opening the wallet
         restoring: false,

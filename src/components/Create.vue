@@ -123,10 +123,11 @@ import { walletOpen, walletList, networkBadge, isLoggedIn, clearStaleUser } from
 const NETWORKS = ['mainnet', 'floonet', 'usernet'];
 
 /*
- * A new wallet: a password (twice), then its recovery phrase, then it opens with that password.
+ * A new wallet: a password (twice), then its recovery phrase, then Unlock with it chosen (the
+ * password is asked there, once the phrase has left the screen; components/wallets.js unlockAdded).
  * No name and no folder: walletService.new makes it in the app's folder and adds it to the list.
- * Route query: network (from Welcome › Advanced), add=1 (Settings › Add another wallet: an
- * optional label, and the wallet that is open is closed before the new one opens).
+ * Route query: network (from Welcome › Advanced), add=1 (Settings › All wallets › Add a wallet: an
+ * optional label, and the wallet that is open is locked before Unlock).
  */
 export default {
   name: "create",
@@ -176,7 +177,7 @@ export default {
   },
   data() {
     return {
-      //Settings › Add another wallet: an optional label, prefilled "Wallet 2", "Wallet 3"…
+      //Settings › All wallets › Add a wallet: an optional label, prefilled "Wallet 2", "Wallet 3"…
       label: this.$route.query.add === '1' ? this.$t('msg.wallets.wallet_n', [walletList(this.configService).length + 1]) : '',
       //the wallet just made (settings record)
       wallet: null,

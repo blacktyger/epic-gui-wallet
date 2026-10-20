@@ -1,5 +1,5 @@
 <template>
-  <div class="e-hero-screen">
+  <div class="e-hero-screen e-tall-screen">
     <div class="e-auth-card">
       <BrandTile grid />
 

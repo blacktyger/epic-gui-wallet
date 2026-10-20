@@ -1,5 +1,5 @@
 <template>
-  <div class="e-hero-screen">
+  <div class="e-hero-screen e-tall-screen">
     <div class="e-onb-hero e-existing">
       <BrandTile />
       <h1>{{ $t('msg.wallets.existing_title') }}</h1>
@@ -28,7 +28,7 @@
                   <option value="floonet">Floonet</option>
                   <option value="usernet">Usernet</option>
                 </select>
-                <button type="button" class="e-btn e-btn-sm e-btn-primary" @click="folderWithNetwork">{{ $t('msg.wallets.open') }}</button>
+                <button type="button" class="e-btn e-btn-sm e-btn-primary" @click="folderWithNetwork">{{ $t('msg.wallets.continue') }}</button>
               </div>
             </div>
           </div>

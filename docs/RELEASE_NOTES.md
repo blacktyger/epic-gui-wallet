@@ -1,5 +1,17 @@
 # Release notes
 
+## Next (branch feat/add-wallet-flow)
+
+- Adding a wallet, made clear (feedback #34). There are three ways, the same everywhere: on the Welcome screen, behind "Add a wallet" on the Unlock screen, and in Settings › All wallets:
+  - **Create a new wallet**: a new wallet with a new recovery phrase.
+  - **Add an existing wallet**: a wallet already on this computer, either one an older Epic Wallet left (the app looks for them) or any wallet folder you choose. The picker still finds the wallet when you choose a folder above it. The wallet stays where it is.
+  - **Restore from recovery phrase**.
+
+  Each one adds a new wallet to the list. Nothing replaces or overwrites a wallet you already have, and tests check this for every way of adding.
+- After you create, add or restore a wallet, the open wallet is locked (its background programs are stopped) and the Unlock screen opens with the new wallet already chosen. It says "… was added. Enter its password to unlock it." After creating a wallet you now unlock it on that screen. It no longer opens straight from the recovery-phrase page.
+- Settings › This wallet (it was "Wallet") is about the open wallet only. Its "Open wallet folder" button opens that wallet's own folder in your file manager. The confusing "Add a wallet from a folder…" button is gone from this page. Your other wallets, each with "Show in folder" and "Remove…", and the three ways to add one are on the new Settings › All wallets page. In Classic it is in the gear menu.
+- Welcome › Advanced › App data folder: one short line saying what it is, with the rest under "More about this". It works as before: choose a new, empty folder, the app restarts and uses it, and "Use the default folder" goes back.
+
 ## 6.1.5
 
 - Removing a wallet: "Remove everything, including the recovery phrase" is now "Remove everything, including the wallet seed". The app never stores your recovery phrase; this option deletes the wallet's seed file, and the wallet can then be restored only with the recovery phrase you wrote down. The confirmation says the same (feedback #29).
