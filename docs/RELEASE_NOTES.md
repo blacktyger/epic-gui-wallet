@@ -14,6 +14,7 @@
   - "Import offline transaction": the file comes from the sender (the help said the receiver).
   - The help pages in Bulgarian, Czech, German, Persian and Hindi now cover the same topics as the English (old Ngrok topics removed, mixed-in English translated), with "recovery phrase" instead of "mnemonic words".
   - Classic: page titles (e.g. "Dashboard") and the node's status ("synced", "downloading blocks"…) are translated; the Modern overview shows the node's sync state in your language too.
+- Classic, dark mode: the remove-wallet dialog is dark like the rest; its Cancel button was white on white and a disabled Delete button red on red.
 - A proposal for an optional blockchain download ("head start") from the Epic project's server is in docs/plans/bootstrap.md, for testers to comment on. Nothing of it is in this version (feedback #30).
 
 ## 6.1.4
