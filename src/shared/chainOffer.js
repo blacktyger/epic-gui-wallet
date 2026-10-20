@@ -29,8 +29,11 @@ export const ANSWERS = ['used', 'declined', 'none'];
  *   stopped right after it started isn't offered. Floonet and usernet: any headers.
  *   lmdb/data.mdb is not a measure: on Windows LMDB sizes the file to its map size, empty or not.
  *   An empty txhashset (headers only) is still offered: the headers alone save most of the sync.
- * - chain_data/epic.lock stays on disk after the node exits, so it says nothing; a node still
- *   running on the folder is refused by the node itself ("epic server already running?").
+ * - chain_data/epic.lock stays on disk after the node exits, so its presence says nothing. What
+ *   tells is its lock: the scan tries it (shared/folderLock.js) and marks each chain inUse
+ *   'free' | 'locked' | 'unknown'. A chain another node is running on is not offered for use (see
+ *   pickOffer); 'unknown' is offered, since the node itself refuses a folder another node holds
+ *   ("epic server already running?") and nothing is deleted.
  * Not verified: a full txhashset written by an old node, and old chains on Windows or macOS.
  */
 export const MIN_MAINNET_HEADERS = 64 * 1000;
@@ -55,14 +58,19 @@ export function shouldCheck(settings, network, ownChainExists) {
 
 /*
  * The chain data to offer for a network, or null: the most recently written usable one, the larger
- * one when two were written at the same time. others: how many more usable ones there are.
- * → { chain: {dir, network, bytes, modified}, others } | null
+ * one when two were written at the same time, among those no other program is running on
+ * (inUse !== 'locked'). others: how many more of those there are.
+ * Only chains in use: the newest of them with inUse true, shown without "Use this data" (the
+ * answer is not kept when the prompt is closed, so it comes again once the other program stopped).
+ * → { chain: {dir, network, bytes, modified, inUse}, others, inUse } | null
  */
 export function pickOffer(chains, network) {
-  const list = (Array.isArray(chains) ? chains : []).filter(c => usableChain(c, network));
-  if (!list.length) return null;
-  list.sort((a, b) => ((Number(b.modified) || 0) - (Number(a.modified) || 0)) || ((Number(b.bytes) || 0) - (Number(a.bytes) || 0)));
-  return { chain: list[0], others: list.length - 1 };
+  const usable = (Array.isArray(chains) ? chains : []).filter(c => usableChain(c, network));
+  if (!usable.length) return null;
+  usable.sort((a, b) => ((Number(b.modified) || 0) - (Number(a.modified) || 0)) || ((Number(b.bytes) || 0) - (Number(a.bytes) || 0)));
+  const free = usable.filter(c => c.inUse !== 'locked');
+  if (!free.length) return { chain: usable[0], others: usable.length - 1, inUse: true };
+  return { chain: free[0], others: free.length - 1, inUse: false };
 }
 
 /* what settings.json keeps: answer 'used' | 'declined' | 'none'; dir: the chain data shown */

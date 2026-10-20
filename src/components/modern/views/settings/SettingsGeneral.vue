@@ -178,12 +178,15 @@
           <template v-if="chainOfferDate"><dt>{{ $t('msg.chaindata.offer_modified') }}</dt><dd>{{ chainOfferDate }}</dd></template>
         </dl>
         <p v-if="chainOffer.others" class="e-chain-p e-dim">{{ $t('msg.chaindata.offer_others', [chainOffer.others]) }}</p>
-        <p class="e-chain-p"><b>{{ $t('msg.chaindata.offer_question') }}</b></p>
+        <!-- another node is running on it (shared/folderLock.js): not usable now, asked again later -->
+        <p v-if="chainOffer.inUse" class="e-chain-p" role="status"><b>{{ $t('msg.chaindata.offer_in_use') }}</b></p>
+        <p v-else class="e-chain-p"><b>{{ $t('msg.chaindata.offer_question') }}</b></p>
         <p class="e-chain-p e-small e-dim">{{ $t('msg.chaindata.offer_older_app') }}</p>
       </template>
       <template #foot>
         <button type="button" class="e-btn e-btn-ghost" @click="answerChainOffer('declined')">{{ $t('msg.chaindata.offer_fresh') }}</button>
-        <button ref="chainOfferUse" type="button" class="e-btn e-btn-primary" @click="answerChainOffer('used')"><EIcon name="check" />{{ $t('msg.chaindata.offer_use') }}</button>
+        <button v-if="chainOffer && chainOffer.inUse" ref="chainOfferClose" type="button" class="e-btn e-btn-ghost" @click="answerChainOffer('cancel')">{{ $t('msg.close') }}</button>
+        <button ref="chainOfferUse" type="button" class="e-btn e-btn-primary" :disabled="!!(chainOffer && chainOffer.inUse)" @click="answerChainOffer('used')"><EIcon name="check" />{{ $t('msg.chaindata.offer_use') }}</button>
       </template>
     </EDialog>
   </SettingsFrame>

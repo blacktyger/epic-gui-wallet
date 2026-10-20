@@ -10,6 +10,7 @@ import { createReleaseLink } from './shared/releaseLink'
 import { createProcessRegistry, createPidCheck } from './shared/processOwnership'
 import { resolveRoot, layout, legacyPaths } from './shared/appPaths'
 import { scanLegacy, scanChains, resolveWalletFolder } from './shared/legacyScan'
+import { createFolderLock, KINDS as LOCK_KINDS } from './shared/folderLock'
 import { readLegacyProfiles } from './legacyProfile'
 import { cleanLeftoverImport, cleanImportNow, importCopyNames, spawnAfterExitCleaner } from './shared/tmpCleanup.js'
 import { createPtyHost } from './shared/ptyHost'
@@ -534,7 +535,11 @@ async function legacyScan({ known, chainsOnly } = {}){
   await leftoverImportCleanup;
   const legacy = legacyPaths({ platform: process.platform, env: process.env, home: os.homedir(), appData: app.getPath('appData'), pathMod: path });
   //Settings, the built-in node switched on: only the chain data, no wallets and no profile copy
-  if (chainsOnly) return { chains: scanChains({ fs, pathMod: path, legacy }) };
+  //each with inUse: another Epic program holds its lock ('locked'), or it couldn't be checked ('unknown')
+  if (chainsOnly) {
+    const chains = scanChains({ fs, pathMod: path, legacy });
+    return { chains: await Promise.all(chains.map(async c => ({ ...c, inUse: (await folderLock.check('chain', c.dir)).state }))) };
+  }
   const scan = scanLegacy({ fs, pathMod: path, legacy, known: Array.isArray(known) ? known.filter(k => typeof k === 'string') : [] });
   //the old IndexedDB is read (from a copy) only when there is something to import
   const profiles = scan.wallets.length ? await readLegacyProfiles({ session, BrowserWindow, fs, path, root: appLayout.root,
@@ -555,6 +560,22 @@ ipcMain.handle('pick-wallet-folder', async (event, title) => {
   });
   if (res.canceled || !res.filePaths || !res.filePaths[0]) return { canceled: true, picked: '', wallets: [], chainOnly: false };
   return resolveWalletFolder({ fs, pathMod: path, picked: res.filePaths[0] });
+});
+
+//Is another program using a folder (shared/folderLock.js: tries the lock the epic node and epic-wallet
+//hold while they run)? kind 'wallet' (holds wallet_data) | 'chain' (a chain_data folder). Nothing is
+//created, written or kept locked. → {state: 'free' | 'locked' | 'unknown', files: [{file, state}], via}
+const folderLock = createFolderLock({ fs, pathMod: path, platform: process.platform, env: process.env,
+  log: (m) => log.warn(m),
+  run: (file, args, opts) => new Promise((resolve, reject) => {
+    execFile(file, args, { ...opts, windowsHide: true, maxBuffer: 64 * 1024 }, (err, stdout) => err ? reject(err) : resolve({ stdout }));
+  }) });
+ipcMain.handle('folder-lock', async (event, kind, dir) => {
+  if (!fromAppWindow(event) || !LOCK_KINDS.includes(kind)) return { state: 'unknown', files: [], via: 'none' };
+  if (typeof dir !== 'string' || !dir || dir.length > 4096 || dir.includes('\0') || !path.isAbsolute(dir)) return { state: 'unknown', files: [], via: 'none' };
+  const r = await folderLock.check(kind, dir);
+  if (r.state !== 'free') log.info('folder-lock ' + kind + ' ' + r.state + ' (' + r.via + '): ' + r.files.filter(f => f.state !== 'free').map(f => f.file).join(', '));
+  return r;
 });
 
 //Quit from the renderer (the settings-error screen, which has no wallet and no menu of its own): the

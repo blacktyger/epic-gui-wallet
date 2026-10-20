@@ -755,6 +755,9 @@ contextBridge.exposeInMainWorld('api', {
         }
         return r;
     },
+    //is another Epic program using this folder (background.js 'folder-lock')? kind 'wallet' | 'chain'
+    //→ {state: 'free' | 'locked' | 'unknown', files, via}
+    folderLock: (kind, dir) => ipcRenderer.invoke('folder-lock', String(kind || ''), String(dir || '')),
     quit: () => {
       ipcRenderer.invoke('quit');
     },

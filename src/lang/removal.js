@@ -23,6 +23,9 @@ export default {
 
   //why a choice can't be used
   reason_open: 'This wallet is open. Lock it or switch to another wallet first.',
+  //another program (an older wallet app, the command line wallet, a node) holds its database (shared/folderLock.js)
+  reason_inuse: 'Another Epic program is using this folder. Close it and try again.',
+  reason_lockunknown: 'This app couldn’t check whether another Epic program is using this folder, so its files stay where they are.',
   reason_running: 'This wallet is still running in the background (wallet service, listener or scan). Lock it or wait until it stops, then try again.',
   reason_notours: 'This wallet’s files are in a folder this app didn’t create: {0}. They stay where they are.',
   reason_shared: 'Another wallet in the list uses this folder: {0}. Its files stay where they are.',

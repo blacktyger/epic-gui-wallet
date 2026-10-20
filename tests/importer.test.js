@@ -58,7 +58,7 @@ const user = (id, account, extra = {}) => ({ id, account, name: '', email: '', k
 const contact = (id, user_id, name, onion, extra = {}) => ({ id, user_id, name, onion, country: 'PL', city: '', proofaddr: '', externalOne: '', externalTwo: '', notice: '', keybase: '', gender: 'male', alwaysproof: false, ...extra });
 
 /* a home with three old wallets (alpha mainnet + chain, beta floonet, gamma mainnet) */
-function setup(t, { profiles, failUserFor = '', cleanNodeAddress, supportedLocale } = {}) {
+function setup(t, { profiles, failUserFor = '', cleanNodeAddress, supportedLocale, folderInUse } = {}) {
   const home = realFs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), 'importer-'));
   t.after(() => realFs.rmSync(home, { recursive: true, force: true }));
   const e = (...p) => path.join(home, '.epic', ...p);
@@ -91,6 +91,7 @@ function setup(t, { profiles, failUserFor = '', cleanNodeAddress, supportedLocal
     },
     //the real one: only known file names, never a folder holding wallet_data
     discardWalletDirs(dirs) { return ConfigService.prototype.discardWalletDirs.call({ fs, path }, dirs); },
+    ...(folderInUse ? { folderInUse } : {}),
   };
   const users = [], book = [], links = [];
   const userService = {
@@ -237,6 +238,23 @@ test('importWallets: one failure does not stop the others and leaves no half ent
   assert.deepEqual(b.settings.wallets().map(w => [w.id, w.importedFrom.account]), [['w1', 'alpha'], ['w3', 'gamma']]);
   assert.ok(!(path.join(b.home, 'My Wallets', 'beta', 'floo') in b.settings.legacyDecisions()));
   assert.equal(b.settings.nodeChainDir('mainnet'), '');
+  assert.ok(b.unchanged());
+});
+
+test('importWallets: a wallet another Epic program is using is not imported (reason inuse); unknown imports', async (t) => {
+  const asked = [];
+  let locked = '';
+  const b = setup(t, { profiles: PROFILES(''), folderInUse: async (kind, dir) => { asked.push([kind, dir]); return dir === locked ? 'locked' : 'unknown'; } });
+  const r = await b.importer.scan();
+  const keys = ['alpha', 'beta'].map(acc => r.wallets.find(w => w.account === acc).key);
+  locked = keys[0];
+  const res = await b.importer.importWallets(keys);
+  assert.deepEqual(res.failed, [{ key: keys[0], reason: 'inuse' }]);
+  assert.deepEqual(res.imported.map(i => i.key), [keys[1]]);
+  assert.deepEqual(asked, keys.map(k => ['wallet', k]));
+  //nothing of the refused one: no entry, no config folder, no decision (so it is offered again)
+  assert.deepEqual(b.settings.wallets().map(w => w.dataDir), [keys[1]]);
+  assert.deepEqual(Object.values(b.settings.legacyDecisions()), ['imported']);
   assert.ok(b.unchanged());
 });
 

@@ -39,6 +39,7 @@ function windowDeps() {
     arch: window.config.getArch(),
     isPortReachable: (host, port) => window.config.isPortReachable(host, port),
     nodeChildProcess: window.nodeChildProcess,
+    folderLock: (kind, dir) => window.api.folderLock(kind, dir),
     debug: window.debug,
   };
 }
@@ -72,6 +73,7 @@ class ConfigService {
     this.settings = d.settings || (deps ? createSettingsStore({ fs: d.fs, pathMod: d.pathMod, file: this.paths.settingsFile }).load() : sharedSettings());
     this.isPortReachable = d.isPortReachable;
     this.nodeChildProcess = d.nodeChildProcess;
+    this.folderLock = d.folderLock;
     this.debug = d.debug;
     this.resourcePath = d.resourcePath;
 
@@ -241,15 +243,31 @@ class ConfigService {
     }
   }
 
+  /* Is another program (an older GUI, the CLI, a node) using this folder: 'free' | 'locked' | 'unknown'
+     (shared/folderLock.js, run by the main process). kind 'wallet' | 'chain'. Never throws: no
+     check available, or it failed, is 'unknown' and each caller says what that means */
+  async folderInUse(kind, dir) {
+    try {
+      const r = this.folderLock ? await this.folderLock(kind, dir) : null;
+      return r && ['free', 'locked', 'unknown'].includes(r.state) ? r.state : 'unknown';
+    } catch (e) {
+      console.log('configService.folderInUse: ' + (e && e.message ? e.message : e));
+      return 'unknown';
+    }
+  }
+
   /* what may be removed for a wallet (walletRemoval.planRemoval). opts: {openId: the wallet open in
-     this window, folderMissing: its data folder is gone (Unlock), processes: false skips the scan} */
+     this window, folderMissing: its data folder is gone (Unlock), processes: false skips the process
+     scan and the lock check (the 'list' removal, which deletes no file)} */
   async removalPlan(id, opts = {}) {
     const wallet = this.settings.wallet(id);
-    const running = opts.processes === false ? [] : await this.walletProcesses(wallet);
+    const check = opts.processes !== false;
+    const running = check ? await this.walletProcesses(wallet) : [];
+    const lock = check ? { state: await this.folderInUse('wallet', wallet.dataDir || wallet.configDir) } : null;
     return planRemoval({
       wallet, wallets: this.settings.wallets(), invalidWallets: this.settings.invalidWallets(),
       paths: this.paths, chainDirs: NETWORKS.map(n => this.settings.nodeChainDir(n)).filter(Boolean),
-      openId: opts.openId || '', running, folderMissing: !!opts.folderMissing, fs: this.fs, pathMod: this.path,
+      openId: opts.openId || '', running, lock, folderMissing: !!opts.folderMissing, fs: this.fs, pathMod: this.path,
     });
   }
 
@@ -325,7 +343,7 @@ class ConfigService {
    *   'noseed' no wallet_data/wallet.seed in it; 'listed' already in the list;
    *   'network' unknown network: ask, then call again with it; 'readonly' the settings file is broken
    */
-  openExistingWallet(dir, network) {
+  async openExistingWallet(dir, network) {
     if (this.settings.readOnly) return { ok: false, reason: 'readonly' };
     if (!dir || !this.path.isAbsolute(dir)) return { ok: false, reason: 'noseed' };
     const dataDir = this.path.resolve(dir);
@@ -334,6 +352,11 @@ class ConfigService {
     if (this.settings.wallets().some(w => this.comparablePath(w.dataDir) === this.comparablePath(dataDir))) return { ok: false, reason: 'listed' };
     const net = NETWORKS.includes(network) ? network : this.networkOfDir(dataDir);
     if (!net) return { ok: false, reason: 'network' };
+    //another Epic program has it open: two programs spending from one wallet go wrong. 'unknown'
+    //(the check couldn't run) opens it: refusing would lock the user out of their own wallet
+    const inUse = await this.folderInUse('wallet', dataDir);
+    if (inUse === 'locked') return { ok: false, reason: 'inuse' };
+    if (inUse !== 'free') console.log('configService.openExistingWallet: could not check whether ' + dataDir + ' is in use');
     const dirs = this.newWalletDirs(net);
     try {
       const wallet = this.registerWallet({ id: dirs.id, network: net, configDir: dirs.configDir, dataDir, origin: 'opened' });

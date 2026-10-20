@@ -60,7 +60,8 @@ function contactRow(c, userId) {
 }
 
 /*
- * configService: {settings (settingsStore), newWalletDirs(network), registerWallet(rec)}
+ * configService: {settings (settingsStore), newWalletDirs(network), registerWallet(rec),
+ *   folderInUse('wallet', dir) → 'free' | 'locked' | 'unknown' (optional)}
  * userService.ensureUser(walletId, cols) → User row; userService.removeUser(walletId): rows an earlier
  * wallet of that id left (settings.json lost while <root>/app survived); addressbookService: {getAddress(userId), addAddress(row)}
  * legacyBridge.scan({known}) → {wallets, chains, profiles} (main: scanLegacy + readLegacyProfiles);
@@ -158,6 +159,11 @@ export function createImporter({ configService, userService, addressbookService,
       s.setLegacyDecision(row.dir, 'imported');
       return existing.id;
     }
+    //another Epic program (the older GUI itself, the CLI) has it open: not now. 'unknown' (the check
+    //couldn't run) imports it, as Open a wallet folder does (configService.openExistingWallet)
+    if (configService.folderInUse && await configService.folderInUse('wallet', row.key) === 'locked') {
+      throw Object.assign(new Error('inuse'), { code: 'inuse' });
+    }
     const { id, configDir } = configService.newWalletDirs(row.network);
     await configService.registerWallet({
       id, network: row.network, configDir, dataDir: row.key, origin: 'imported', label: row.label,
@@ -211,7 +217,8 @@ export function createImporter({ configService, userService, addressbookService,
         if (setLocale) localeOpen = false;
         imported.push({ key, walletId });
       } catch (e) {
-        failed.push({ key, reason: String(e && e.message || e) });
+        //reason 'inuse': another Epic program is using the wallet (the screen says so in words)
+        failed.push({ key, reason: e && e.code === 'inuse' ? 'inuse' : String(e && e.message || e) });
       }
     }
     if (!hadDefault && imported.length) s.setDefaultWallet(imported[0].walletId);

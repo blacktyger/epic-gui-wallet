@@ -232,6 +232,23 @@ test('the open wallet and a running process: nothing but the list, and not even 
   assert.equal(p.canEverything, true);
 });
 
+test('another program holds the folder (shared/folderLock.js): the list only; unknown refuses too', () => {
+  const w = world();
+  for (const [state, key] of [['locked', 'inuse'], ['unknown', 'lockunknown'], ['', 'lockunknown']]) {
+    const p = plan(w, w.w1, { lock: { state } });
+    assert.equal(p.canList, true, state);
+    assert.equal(p.canAppFiles, false, state);
+    assert.equal(p.canEverything, false, state);
+    assert.equal(p.reasons.appFiles.key, key);
+    assert.equal(p.reasons.everything.key, key);
+    assert.deepEqual(p.appFiles, []);
+    assert.equal(p.seedFile, '');
+  }
+  assert.equal(plan(w, w.w1, { lock: { state: 'free' } }).canEverything, true);
+  //our own process is said first: it is the one the user can stop here
+  assert.equal(plan(w, w.w1, { lock: { state: 'locked' }, running: [{ pid: 1, role: 'listen' }] }).reasons.appFiles.key, 'running');
+});
+
 test('folder missing (Unlock): list and this app\'s files only', () => {
   const w = world();
   const gone = { ...w.w1, id: 'w9', configDir: w.l.walletDir('w9'), dataDir: w.l.walletDir('w9') };
@@ -373,8 +390,10 @@ function realWorld(t, fsUsed = realFs) {
   const l = layout(root, path);
   const legacy = legacyPaths({ platform: 'linux', home, appData: path.join(home, '.config'), pathMod: path });
   const paths = { root, source: 'env', settingsFile: l.settingsFile, walletsDir: l.walletsDir, userData: l.userData, logsDir: l.logsDir, processesFile: l.processesFile, legacy };
+  const folderLock = { state: 'free', calls: [] };
   const nodeChildProcess = { owned: [], ownedProcesses: async (roles, opts) => { nodeChildProcess.last = { roles, opts }; if (nodeChildProcess.throws) throw new Error('ps failed'); return nodeChildProcess.owned; } };
-  const cs = new ConfigService({ emit() {} }, { fs: fsUsed, pathMod: path, paths, resourcePath: RESOURCES, platform: 'linux', arch: 'x64', nodeChildProcess, isPortReachable: async () => false });
+  const cs = new ConfigService({ emit() {} }, { fs: fsUsed, pathMod: path, paths, resourcePath: RESOURCES, platform: 'linux', arch: 'x64', nodeChildProcess, isPortReachable: async () => false,
+    folderLock: async (kind, dir) => { folderLock.calls.push([kind, dir]); return { state: folderLock.state }; } });
   /* what Create does: folders, epic-wallet init (the seed), registerWallet */
   const create = (origin = 'created', label = 'Savings') => {
     const dirs = cs.newWalletDirs('mainnet');
@@ -385,7 +404,7 @@ function realWorld(t, fsUsed = realFs) {
     realFs.writeFileSync(path.join(dirs.configDir, 'epic-wallet.log'), 'log');
     return cs.registerWallet({ ...dirs, network: 'mainnet', origin, label });
   };
-  return { home, root, l, cs, nodeChildProcess, create, legacy };
+  return { home, root, l, cs, nodeChildProcess, folderLock, create, legacy };
 }
 
 test('real fs: a symlink inside wallet_data is unlinked, its target untouched', async (t) => {
@@ -431,7 +450,7 @@ test('configService.removeWallet: create → remove (everything / app / list) �
   assert.equal(w3.id, 'w3');
   assert.equal(cs.startCheck('w3'), 'login');
   //the kept folder opens again as a wallet
-  const again = cs.openExistingWallet(l.walletDir('w2'), 'mainnet');
+  const again = await cs.openExistingWallet(l.walletDir('w2'), 'mainnet');
   assert.equal(again.ok, true);
   assert.equal(again.wallet.id, 'w4');
 
@@ -466,6 +485,35 @@ test('configService.removeWallet refuses while a process of ours uses the wallet
   r = await cs.removeWallet(w2.id, 'list', { openId: w2.id });
   assert.equal(r.reason, 'open');
   assert.equal(cs.settings.wallets().length, 1);
+});
+
+test('configService.removeWallet refuses while another program holds the folder, or when that can\'t be checked', async (t) => {
+  const { cs, create, folderLock } = realWorld(t);
+  const w = create();
+  const seed = path.join(w.dataDir, 'wallet_data', 'wallet.seed');
+  for (const [state, reason] of [['locked', 'inuse'], ['unknown', 'lockunknown'], ['bogus', 'lockunknown']]) {
+    folderLock.state = state;
+    for (const mode of ['app', 'everything']) {
+      const r = await cs.removeWallet(w.id, mode);
+      assert.equal(r.ok, false, state + ' ' + mode);
+      assert.equal(r.reason, reason);
+      assert.ok(realFs.existsSync(seed));
+      assert.ok(realFs.existsSync(path.join(w.configDir, 'epic-wallet.toml')));
+      assert.equal(cs.settings.wallets().length, 1);
+    }
+  }
+  assert.deepEqual(folderLock.calls.at(-1), ['wallet', w.dataDir]);
+  //the check itself fails (IPC error): refused
+  cs.folderLock = async () => { throw new Error('no handler'); };
+  assert.equal((await cs.removeWallet(w.id, 'everything')).reason, 'lockunknown');
+  //no check at all in this build: refused
+  cs.folderLock = undefined;
+  assert.equal((await cs.removeWallet(w.id, 'app')).reason, 'lockunknown');
+  //the list only deletes no file: no check
+  const calls = folderLock.calls.length;
+  assert.equal((await cs.removeWallet(w.id, 'list')).ok, true);
+  assert.equal(folderLock.calls.length, calls);
+  assert.ok(realFs.existsSync(seed));
 });
 
 test('settingsStore.removeWallet: drops the imported decision and moves defaultWallet; nextId stays; a failed save changes nothing', () => {
@@ -548,7 +596,7 @@ test('import → remove (list or app) → the old folder is listed by the scan a
     assert.deepEqual(cs.settings.legacyDecisions(), {});
   }
   //the same old folder through Open a wallet folder works too
-  const opened = cs.openExistingWallet(oldDir, 'mainnet');
+  const opened = await cs.openExistingWallet(oldDir, 'mainnet');
   assert.equal(opened.ok, true);
   assert.equal(opened.wallet.id, 'w3');
 });

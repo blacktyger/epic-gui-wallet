@@ -106,7 +106,7 @@ export const removalDialog = {
     },
     removeReason(r) {
       const key = r && r.key || 'unknown';
-      const known = ['open', 'running', 'notours', 'shared', 'legacy', 'imported', 'separate', 'chain', 'missing', 'gone', 'readonly'];
+      const known = ['open', 'running', 'inuse', 'lockunknown', 'notours', 'shared', 'legacy', 'imported', 'separate', 'chain', 'missing', 'gone', 'readonly'];
       return this.$t('msg.removal.reason_' + (known.includes(key) ? key : 'unknown'), [r && r.path || '']);
     },
     async confirmRemoval() {
