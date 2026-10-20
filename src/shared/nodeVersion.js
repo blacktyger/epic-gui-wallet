@@ -242,7 +242,9 @@ async function readNodeStatus(address, opts){
           ? {ok: true, status, via: 'v1', locked: false}
           : {ok: false, reason: 'no node status in the reply', locked: false};
       }
-      if(res.status != 401){
+      //401: a 4.1.0 node's default; 403: a node (or its proxy) that keeps the status API private.
+      //Both still answer the public foreign API, which is all epic-wallet needs.
+      if(res.status != 401 && res.status != 403){
         return {ok: false, reason: 'HTTP ' + res.status, locked: false};
       }
     }

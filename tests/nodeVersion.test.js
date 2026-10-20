@@ -247,6 +247,28 @@ const lockedNode = (height, extra = {}) => rpcNode({
   ...extra,
 });
 
+test('403 on /v1/status and owner (status API kept private): the status from /v2/foreign get_tip, the node is usable', async () => {
+  const n = lockedNode(3762557, {
+    'GET /v1/status': reply(403, null),
+    'POST /v2/owner get_status': reply(403, null),
+  });
+  const c = await classifyNode('https://epic-node.example.net:443', { fetch: n.fetch, referenceHeight: 3762558 });
+  assert.equal(c.kind, 'ok');
+  assert.equal(c.statusVia, 'foreign');
+  assert.equal(c.status.tip.height, 3762557);
+  assert.equal(c.status.sync_status, 'no_sync');
+  //get_tip has no peer count: unknown, not 0
+  assert.equal(c.status.connections, null);
+  //no network tip to compare with: the height alone, still usable
+  const u = await classifyNode('https://epic-node.example.net:443', { fetch: n.fetch });
+  assert.equal(u.kind, 'ok');
+  assert.equal(u.status.tip.height, 3762557);
+  //a refusal elsewhere is still an error
+  const other = await fetchNodeStatus('https://epic-node.example.net:443', { fetch: lockedNode(1, { 'GET /v1/status': reply(500, null) }).fetch });
+  assert.equal(other.ok, false);
+  assert.equal(other.reason, 'HTTP 500');
+});
+
 test('401 on /v1/status and owner: the status from /v2/foreign get_tip, the node is usable', async () => {
   const n = lockedNode(3760613);
   const c = await classifyNode('https://node.example.net:3413', { fetch: n.fetch, referenceHeight: 3760614 });

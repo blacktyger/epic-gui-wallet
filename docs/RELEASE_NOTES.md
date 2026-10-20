@@ -31,6 +31,7 @@ Everything since 6.1.2. The new features are in the BT Labs Theme interface; Cla
 **Fixed**
 
 - Windows: the receiving programs sometimes kept running after Lock, a wallet switch or Quit.
+- Nodes that keep their status API private now work.
 - Windows: a node address like `http://192.168.0.1:3413` lost a slash on screen.
 - "Send all" no longer stays "Waiting for confirmations" forever.
 - The app checks that no other Epic program is using a folder before it opens, adds or deletes a wallet there or uses its blockchain data.
