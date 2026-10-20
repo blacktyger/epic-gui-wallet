@@ -80,7 +80,9 @@ export function logFiles({ fs, path, logsDir, root, wallets = [], now = Date.now
  * user saw. deps:
  *   fs, path, logsDir, root, wallets(): [{id, configDir}], app(): {version, …},
  *   sanitize(text, {ids, description}) → {text, counts} (ids: the report's pseudonyms; description:
- *   the user's own text, cleaned without the session-password step), publicKey, post(bytes, description) → {ok, id} | {ok:false, error},
+ *   the user's own text, cleaned without the session-password step), publicKey,
+ *   post(bytes) → {ok, id} | {ok:false, error} (only the sealed bytes leave: description, contact and
+ *   logs are all inside),
  *   now(), randomToken()
  */
 export function createSupport(deps) {
@@ -91,8 +93,8 @@ export function createSupport(deps) {
     for (const [k, v] of tokens) if (now() > v.expires) tokens.delete(k);
   };
 
-  //the description is posted readable to the testers' group: cleaned like the logs (a pasted path or
-  //IP), and the review shows it as it will go
+  //the description is sealed with the logs; it is cleaned like them too (a pasted path or IP), and the
+  //preview shows it as it will go
   const cleanDescription = (d) => deps.sanitize(String(d == null ? '' : d).trim().slice(0, MAX_DESCRIPTION), { ids: new Map(), description: true }).text;
 
   function preview({ attachLogs, description } = {}) {
@@ -130,7 +132,7 @@ export function createSupport(deps) {
     const t = tokens.get(String(token));
     if (!t) return { error: 'expired' };
     if (!String(description == null ? '' : description).trim()) return { error: 'empty' };
-    //the description is posted readable: what looks like a recovery phrase is never sent
+    //what looks like a recovery phrase is never sent, not even sealed
     if (looksLikePhrase(description)) return { error: 'phrase' };
     const d = cleanDescription(description);
     const r = buildBundle({ description: d, contact: String(contact == null ? '' : contact).slice(0, MAX_CONTACT),
@@ -143,7 +145,7 @@ export function createSupport(deps) {
     const s = seal(token, description, contact);
     if (s.error) return { ok: false, error: s.error };
     try {
-      const r = await deps.post(s.bundle, s.description);
+      const r = await deps.post(s.bundle);
       return r && r.ok ? { ok: true, id: String(r.id || ''), dropped: s.dropped } : { ok: false, error: (r && r.error) || 'server' };
     } catch (e) {
       return { ok: false, error: 'offline' };

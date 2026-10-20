@@ -30,7 +30,7 @@ function startIntake() {
       let body = {};
       try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch (e) { body = {}; }
       got.push({ method: req.method, url: req.url, type: req.headers['content-type'], body });
-      const ok = req.method === 'POST' && req.url === '/v1/report' && body.v === 1 && typeof body.bundle === 'string';
+      const ok = req.method === 'POST' && req.url === '/v1/report' && body.v === 2 && typeof body.bundle === 'string';
       res.writeHead(ok ? 200 : 400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(ok ? { ok: true, id: 'e2etest1' } : { ok: false, error: 'bad-request' }));
     });
@@ -47,14 +47,20 @@ async function shot(w, name) {
   const dir = path.join(CASE_DIR, 'support-shots');
   fs.mkdirSync(dir, { recursive: true });
   await w.waitForTimeout(300);
-  await w.screenshot({ path: path.join(dir, process.env.E2E_UI + '-' + name + '.png') }).catch(() => {});
+  await w.screenshot({ path: path.join(dir, process.env.E2E_UI + (process.env.E2E_THEME ? '-' + process.env.E2E_THEME : '') + '-' + name + '.png') }).catch(() => {});
 }
 
 H.runCase('support', async (t) => {
   const ui = t.ui;
   const password = H.newPassword();
   const intake = await startIntake();
-  const w = await t.launch({ env: { EPIC_SUPPORT_URL: 'http://127.0.0.1:' + INTAKE_PORT + '/v1/report' } });
+  //E2E_THEME=light|dark: the Modern theme for the screenshots (Classic has its dark skin only)
+  const theme = process.env.E2E_THEME || '';
+  if (theme) {
+    fs.mkdirSync(ROOT, { recursive: true });
+    fs.writeFileSync(path.join(ROOT, 'settings.json'), JSON.stringify({ schema: 1, app: { ui, theme: ui === 'modern' ? theme : 'dark', scale: 100, locale: '' } }, null, 2));
+  }
+  const w = await t.launch({ fresh: !theme, env: { EPIC_SUPPORT_URL: 'http://127.0.0.1:' + INTAKE_PORT + '/v1/report' } });
 
   await t.step('first start: Welcome', () => U.welcome(w), { fatal: true });
   await t.step('create a wallet', () => U.createWallet(w, ui, password), { fatal: true, timeout: 150000 });
@@ -68,7 +74,7 @@ H.runCase('support', async (t) => {
         await w.locator('.e-tour-foot .e-btn-primary').click();
         await w.waitForTimeout(250);
       }
-      if (!seen.some((s) => s.endsWith('Help is here'))) throw new Error('tour steps: ' + seen.join(' | '));
+      if (!seen.some((s) => s.endsWith('Need help?'))) throw new Error('tour steps: ' + seen.join(' | '));
       return seen.length + ' steps: ' + seen.join(' | ');
     });
   }
@@ -105,15 +111,16 @@ H.runCase('support', async (t) => {
     return ids[0] + '/epic-wallet.log ' + log.length + ' bytes';
   });
 
-  /* ---- the report ---- */
+  /* ---- the report: one short screen ---- */
+  const desc = () => w.locator('textarea:visible');
   await t.step('Help page: the Report a problem entry', async () => {
     await U.nav(w, ui, U.PAGES[ui].find((p) => p[1] === '/help'));
     await shot(w, '1-help-page');
     await w.getByRole('button', { name: 'Report a problem' }).first().click();
-    await w.getByText('Tell us what happened.').first().waitFor({ state: 'visible', timeout: 5000 });
+    await desc().waitFor({ state: 'visible', timeout: 5000 });
     //Esc closes it in both interfaces
     await w.keyboard.press('Escape');
-    await w.getByText('Tell us what happened.').first().waitFor({ state: 'hidden', timeout: 5000 });
+    await w.locator('textarea[placeholder="What happened?"]').first().waitFor({ state: 'hidden', timeout: 5000 });
     return 'opens, Esc closes';
   });
   await t.step('Help menu › Get help / Report a problem… opens the dialog', async () => {
@@ -124,68 +131,73 @@ H.runCase('support', async (t) => {
       return help ? help.submenu.items.map((i) => i.label) : [];
     });
     if (!items.includes('Get help / Report a problem…')) throw new Error('Help menu: ' + JSON.stringify(items));
-    await w.getByText('Tell us what happened.').first().waitFor({ state: 'visible', timeout: 5000 });
+    await desc().waitFor({ state: 'visible', timeout: 5000 });
     return items.join(', ');
   });
   const DESC = 'e2e: the wallet does not connect. Path ' + ROOT + ' and IP 85.214.12.7';
-const CLEAN_DESC = 'e2e: the wallet does not connect. Path ~/.epic-gui and IP <ip-1>';
-  await t.step('write and review: the cleaned logs, no home path, what goes where', async () => {
-    await w.locator('textarea:visible').fill(DESC);
-    await w.locator('input[type=text]:visible').last().fill('@e2e_tester');
+  const CLEAN_DESC = 'e2e: the wallet does not connect. Path ~/.epic-gui and IP <ip-1>';
+  await t.step('the screen: short, the privacy line once, no channel named anywhere', async () => {
+    await desc().fill(DESC);
+    await w.locator('input[type=text]:visible').last().fill('e2e@example.org');
     await shot(w, '2-write');
-    await w.getByRole('button', { name: 'Review what will be sent' }).click();
-    await w.getByText('Encrypted: only the developer can read it').first().waitFor({ state: 'visible', timeout: 15000 });
-    await shot(w, '3-review');
+    const text = await w.locator('dialog[open], .modal.is-active').first().innerText();
+    if (text.split('Encrypted. Only the developer can read them.').length - 1 !== 1) throw new Error('the privacy line is not said exactly once');
+    const bad = text.match(/telegram|tester|group|\bbot\b/i);
+    if (bad) throw new Error('the dialog names "' + bad[0] + '"');
+    return text.replace(/\s+/g, ' ').slice(0, 300);
+  });
+  await t.step('Show what’s sent: the cleaned description and logs, no home path', async () => {
+    await w.getByText('Show what’s sent').first().click();
+    await w.locator('pre').first().waitFor({ state: 'attached', timeout: 15000 });
+    await w.waitForTimeout(600);
+    await shot(w, '3-show');
     if (process.env.E2E_SHOTS) {
-      await w.locator('details summary').first().click();
-      await shot(w, '4-review-log-open');
-      await w.locator('details summary').first().click();
+      await w.locator('details details summary').first().click();
+      await shot(w, '4-show-log-open');
+      await w.locator('details details summary').first().click();
     }
     const pres = await w.locator('pre').allTextContents();
     const all = pres.join('\n');
     if (pres.length < 2) throw new Error('only ' + pres.length + ' log(s) in the preview');
     if (all.includes(HOME + '/')) throw new Error('the home path is in the preview');
     if (!/~\/\.epic-gui/.test(all)) throw new Error('no ~/.epic-gui in the cleaned logs');
-    if (!(await w.getByText(CLEAN_DESC).first().isVisible())) throw new Error('the review does not show the cleaned description');
-    const names = await w.locator('details summary').allTextContents();
+    if (!(await w.getByText(CLEAN_DESC).first().isVisible())) throw new Error('the preview does not show the cleaned description');
+    const names = await w.locator('details details summary').allTextContents();
     return names.map((n) => n.replace(/\s+/g, ' ').trim()).join(' | ');
   });
-  await t.step('Save encrypted report to a file', async () => {
+  await t.step('Save to file: the whole report sealed', async () => {
     const target = path.join(HOME, 'report.epicsupport');
     await t.app.evaluate(({ dialog }, file) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath: file }); }, target);
-    await w.getByRole('button', { name: 'Save encrypted report to a file' }).click();
-    await w.getByText('Saved as ' + target).first().waitFor({ state: 'visible', timeout: 15000 });
+    await w.getByRole('button', { name: 'Save to file' }).click();
+    await w.getByText('Saved: ' + target).first().waitFor({ state: 'visible', timeout: 15000 });
     await shot(w, '5-saved');
     const b = fs.readFileSync(target);
     if (b.subarray(0, 8).toString() !== 'EPICSUP1' || b.subarray(8, 16).toString('hex') !== KEY_ID) throw new Error('not a sealed bundle for ' + KEY_ID);
-    if (b.includes(Buffer.from('e2e_tester')) || b.includes(Buffer.from('does not connect'))) throw new Error('plaintext in the bundle');
+    if (b.includes(Buffer.from('e2e@example.org')) || b.includes(Buffer.from('does not connect'))) throw new Error('plaintext in the bundle');
     fs.copyFileSync(target, path.join(CASE_DIR, 'support-saved.epicsupport'));
     return b.length + ' bytes, sealed';
   });
-  await t.step('Send: the intake gets the description and the sealed bundle only', async () => {
-    //a new report: the menu again, the same text
+  await t.step('Send: the intake gets the sealed bundle and nothing else', async () => {
+    //a new report: the menu again
     await w.getByRole('button', { name: 'Close' }).last().click();
     await t.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('open-support'));
-    await w.locator('textarea:visible').fill(DESC);
-    await w.getByRole('button', { name: 'Review what will be sent' }).click();
-    await w.getByRole('button', { name: 'Send report' }).click();
-    await w.getByText('Report e2etest1 has reached the developer').first().waitFor({ state: 'visible', timeout: 20000 });
+    await desc().fill(DESC);
+    await w.getByRole('button', { name: 'Send', exact: true }).click();
+    await w.getByText('Sent. Thank you.').first().waitFor({ state: 'visible', timeout: 20000 });
     await shot(w, '6-sent');
     const r = intake.got[intake.got.length - 1];
-    if (!r || r.type !== 'application/json' || r.body.v !== 1) throw new Error('intake got ' + JSON.stringify(r && { type: r.type, v: r.body.v }));
-    if (Object.keys(r.body).sort().join() !== 'bundle,description,v') throw new Error('extra fields: ' + Object.keys(r.body));
-    //the description is posted readable, so it is cleaned like the logs
-    if (r.body.description !== CLEAN_DESC) throw new Error('description not cleaned as expected: ' + r.body.description);
+    if (!r || r.type !== 'application/json' || r.body.v !== 2) throw new Error('intake got ' + JSON.stringify(r && { type: r.type, v: r.body.v }));
+    if (Object.keys(r.body).sort().join() !== 'bundle,v') throw new Error('fields besides the bundle: ' + Object.keys(r.body));
     const b = Buffer.from(r.body.bundle, 'base64');
     if (b.subarray(0, 8).toString() !== 'EPICSUP1') throw new Error('not sealed');
-    fs.copyFileSync(path.join(HOME, 'report.epicsupport'), path.join(CASE_DIR, 'support-saved.epicsupport'));
+    if (b.includes(Buffer.from('does not connect'))) throw new Error('plaintext in the bundle');
     fs.writeFileSync(path.join(CASE_DIR, 'support-sent.epicsupport'), b);
-    return intake.got.length + ' request(s), ' + b.length + ' bytes sealed';
+    return intake.got.length + ' request(s), ' + b.length + ' bytes sealed, nothing else';
   });
   await t.step('the support steps are logged without content', async () => {
     const main = read(path.join(ROOT, 'logs', 'main.log'));
     if (!/support: send ok, report e2etest1/.test(main) || !/support: save ok/.test(main)) throw new Error('no support lines in main.log');
-    if (main.includes('e2e_tester') || main.includes('does not connect')) throw new Error('report content in main.log');
+    if (main.includes('e2e@example.org') || main.includes('does not connect')) throw new Error('report content in main.log');
     return 'ok';
   });
   //the logs as the developer will see them, for the decrypt check outside the sandbox

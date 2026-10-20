@@ -3,7 +3,6 @@
     <section class="e-set-group" aria-labelledby="stg-sup-h">
       <h2 id="stg-sup-h">{{ $t('msg.support.entry_title') }}</h2>
       <div class="e-stg-support">
-        <p>{{ $t('msg.support.entry_text') }}</p>
         <button type="button" class="e-btn" @click="openSupport"><EIcon name="bug" />{{ $t('msg.support.open') }}</button>
       </div>
     </section>

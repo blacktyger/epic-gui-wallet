@@ -62,7 +62,7 @@
     <div class="hero-foot has-text-centered">
       <div class="logo"></div>
       <!-- connection problems often come before unlock: the report dialog from here too -->
-      <p class="mb-3"><a href="#" class="is-size-7" @click.prevent="emitter.emit('open-support')">{{ $t('msg.support.unlock_link') }}</a></p>
+      <p class="mb-3"><a href="#" class="is-size-7" @click.prevent="emitter.emit('open-support')">{{ $t('msg.support.open') }}</a></p>
     </div>
 
     <RemoveWalletDialog v-if="removing" :wallet="removing.wallet" :name="removing.name" folder-missing @close="removing = null" @done="removed" />

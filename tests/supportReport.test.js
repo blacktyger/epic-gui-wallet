@@ -64,7 +64,7 @@ function service(s, extra = {}) {
     app: () => ({ version: '6.1.6', platform: 'linux' }),
     sanitize: (t) => ({ text: t.replace(/\/home\/jan/g, '~'), counts: { paths: (t.match(/\/home\/jan/g) || []).length } }),
     publicKey: dev.publicKey,
-    post: async (bytes, description) => { posted.push({ bytes, description }); return { ok: true, id: '51' }; },
+    post: async (bytes, ...rest) => { posted.push({ bytes, rest }); return { ok: true, id: '51' }; },
     now: () => clock,
     randomToken: () => 'tok' + (++n),
   }, extra));
@@ -83,7 +83,8 @@ test('preview → send: the sealed report holds exactly the previewed, cleaned l
     assert.equal(p.counts.paths, 1);
     const r = await svc.send({ token: p.token, description: '  No connection  ', contact: '@jan' });
     assert.deepEqual(r, { ok: true, id: '51', dropped: [] });
-    assert.equal(posted[0].description, 'No connection');
+    //only the sealed bytes are handed to the transport
+    assert.deepEqual(posted[0].rest, []);
     const report = openBundle(posted[0].bytes, dev.privatePem);
     assert.equal(report.description, 'No connection');
     assert.equal(report.contact, '@jan');
@@ -94,7 +95,6 @@ test('preview → send: the sealed report holds exactly the previewed, cleaned l
     const q = svc.preview({ description: ' logs in /home/jan/.epic-gui ' });
     assert.equal(q.description, 'logs in ~/.epic-gui');
     await svc.send({ token: q.token, description: ' logs in /home/jan/.epic-gui ' });
-    assert.equal(posted[1].description, 'logs in ~/.epic-gui');
     assert.equal(openBundle(posted[1].bytes, dev.privatePem).description, 'logs in ~/.epic-gui');
   } finally { s.done(); }
 });
