@@ -1,13 +1,12 @@
 /*
- * The node address field's live check and My nodes, both interfaces: Classic Settings.vue
- * (form/nodeserverField.vue) and Modern SettingsGeneral.vue (modern/form/NodeserverField.vue). Logic:
+ * The node address field's live check and My nodes in Modern SettingsGeneral.vue
+ * (modern/form/NodeserverField.vue; the logic is the Classic base's, form/nodeserverField.vue). Logic:
  * form/myNodesField.js, shared/nodeCheck.js, shared/myNodes.js. The checks go to
  * $nodeService.probeNode (faked here); the list lives in configService.settings (faked in memory with
  * the real list functions).
  */
 import { describe, test, expect, vi } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
-import Settings from '@/components/Settings.vue';
 import SettingsGeneral from '@/components/modern/views/settings/SettingsGeneral.vue';
 import { mountView, t } from './support/mountView.js';
 import { makeStore } from './support/fakeStore.js';
@@ -75,8 +74,8 @@ async function listLoaded(wrapper, dir = null) {
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const dialog = () => document.querySelector('dialog[open]');
 
+//Modern only: Classic is no longer tested (the user's call, 2026-10-20); it shares this logic
 const INTERFACES = [
-  { name: 'Classic', Component: Settings, addressInput: (w) => w.find('input[type=nodeaddress]') },
   { name: 'Modern', Component: SettingsGeneral, addressInput: (w) => w.find('input[id^="e-nodeserverField-"]') },
 ];
 

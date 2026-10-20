@@ -1,6 +1,8 @@
+// e2e-ui: modern
 /*
  * Settings › Node: the live check of a typed address and My nodes, once per interface, in the no-network
- * sandbox (form/myNodesField.js, shared/nodeCheck.js, shared/myNodes.js):
+ * sandbox (form/myNodesField.js, shared/nodeCheck.js, shared/myNodes.js). Modern only: Classic is no longer
+ * tested (the user's call, 2026-10-20); it shares the logic.
  *   live check   the stub node typed key by key: Online, at tip (no public list offline: no tip), version, ms;
  *                an address nothing listens on: Offline with the port tip; a web server that is not a node:
  *                Not an Epic node; a paste
