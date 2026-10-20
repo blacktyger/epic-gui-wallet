@@ -34,26 +34,9 @@
                 &nbsp;<mdicon class="is-clickable" @click="copy(localAddress)" name="content-copy" size=16 />
                 &nbsp;<mdicon class="is-clickable" @click="qrcode(localAddress, 'local')" name="qrcode-scan" size=16 />
               </p>
-              <p>&nbsp;</p>
-
-              <p v-if="store.state.torService">
-                {{ $t("msg.httpReceive.tor_onion_address") }}:<br/>
-                <code>{{ onionAddress }}</code>&nbsp;<mdicon @click="copy(onionAddress)" name="content-copy" size=16 />&nbsp;<mdicon class="is-clickable" @click="qrcode(onionAddress, 'TOR')" name="qrcode-scan" size=16 />
-              </p>
-              <p v-else>
-                {{ $t("msg.httpReceive.tor_onion_address") }}:<br/>
-                <code>{{ $t("msg.httpReceive.tor_not_available") }}</code>
-              </p>
 
             </div>
 
-          </div>
-
-          <div class="message is-info">
-            <div class="message-header"><p>{{ $t("msg.httpReceive.proof_address") }}</p></div>
-            <div class="message-body">
-              <code>{{ proofAddress }}</code>&nbsp;<mdicon @click="copy(proofAddress)" name="content-copy" size=16 />&nbsp;<mdicon class="is-clickable" @click="qrcode(proofAddress, 'proof')" name="qrcode-scan" size=16 />
-            </div>
           </div>
 
 
@@ -133,31 +116,30 @@ export default {
     const store = useStore();
 
     const localAddress = ref('');
-    const onionAddress = ref('');
     const epicboxAddress = ref('');
     //the public key of the Epicbox address; the domain is the listener's (see epicboxDomainNow)
     const epicboxKey = ref('');
-    const proofAddress = ref('');
     const { resetFormErrors } = useFormValidation();
     const isLoading = ref(false);
     const vueCanvas = ref(null);
     const addressTypeHeader = ref('');
     const publicIp = ref('');
     const portIsForwarded = ref(false);
+    //the check when the page opens is done (Modern shows "checking" until then)
+    const portCheckedOnce = ref(false);
 
     return {
       store,
       localAddress,
 
-      onionAddress,
       epicboxAddress,
       epicboxKey,
-      proofAddress,
       resetFormErrors,
       isLoading,
       addressTypeHeader,
       publicIp,
-      portIsForwarded
+      portIsForwarded,
+      portCheckedOnce
 
     }
   },
@@ -191,8 +173,8 @@ export default {
     this.publicIp = await window.config.getPublicIp() || {};
     this.localAddress = this.publicIp.ip ? 'http://' + this.publicIp.ip + ':' + this.configService.walletListenerPort : '';
     this.portIsForwarded = this.publicIp.ip ? await window.config.isPortReachable(this.publicIp.ip, this.configService.walletListenerPort) : false;
+    this.portCheckedOnce = true;
 
-    this.onionAddress = await this.getOnionAndProofAddress();
     this.epicboxAddress = await this.getEpicboxAddress();
 
 
@@ -234,22 +216,6 @@ export default {
       }
       return this.configService.config['epicbox_domain'] != '' ? this.configService.config['epicbox_domain'] : this.configService.epicboxDomain;
     },
-    async getOnionAndProofAddress(){
-      let addressRes = await this.$walletService.getPubliProofAddress();
-
-
-
-      if(addressRes && addressRes.result && addressRes.result.Ok){
-
-        this.proofAddress = addressRes.result.Ok;
-
-        if(this.proofAddress != ''){
-          return await window.config.getOnionV3(this.proofAddress);
-        }
-      }
-      return '';
-    },
-
     copy(text){
       window.clipboard.writeText(text);
       this.$toast.show(this.$t("msg.copy_to_clipboard"), {duration:1000});
@@ -263,12 +229,11 @@ export default {
       {
 
         this.isLoading = true;
-        const isListen = await this.$walletService.startListen(true, 'http');
+        const isListen = await this.$walletService.startListen('http');
         const isEpicbox = await this.$walletService.startEpicbox();
         this.isLoading = false;
         if(isListen && isListen.success){
 
-          this.onionAddress = await this.getOnionAndProofAddress();
           this.$toast.success(this.$t("msg.login.listener_started"));
           this.store.commit('walletListenerService', true);
 
@@ -276,14 +241,6 @@ export default {
 
           this.$toast.error(isListen.portInUse ? this.$t("msg.login.port_in_use", [isListen.portInUse]) : this.$t("msg.login.error_listener_started"));
           this.store.commit('walletListenerService', false);
-        }
-
-        if(isListen && isListen.tor){
-          this.$toast.success(this.$t("msg.login.tor_started"));
-          this.store.commit('torService', true);
-        }else{
-          this.$toast.error(this.$t("msg.login.error_tor_started"));
-          this.store.commit('torService', false);
         }
 
         if(isEpicbox && isEpicbox.success){

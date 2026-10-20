@@ -132,13 +132,6 @@ app.config.globalProperties.$filters = {
            separator +
            fullStr.substr(fullStr.length - backChars);
   },
-  paymentProof(data, field){
-    if(data && data[field]){
-      return data[field];
-    }else{
-      return ''
-    }
-  }
 
 }
 

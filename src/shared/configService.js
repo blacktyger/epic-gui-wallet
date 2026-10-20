@@ -227,8 +227,9 @@ class ConfigService {
 
   /* --- removing a wallet (shared/walletRemoval.js) --- */
 
-  /* our epic processes using a wallet: its owner API, listeners, scan (by its config dir) and Tor
-     (torrc in its data dir). A failed scan counts as running: nothing is deleted unchecked */
+  /* our epic processes using a wallet: its owner API, listeners, scan (by its config dir) and an
+     older version's leftover Tor (torrc in its data dir). A failed scan counts as running: nothing
+     is deleted unchecked */
   async walletProcesses(wallet) {
     try {
       const found = await this.nodeChildProcess.ownedProcesses(['owner_api', 'listen', 'scan', 'epicbox'],
@@ -542,9 +543,9 @@ class ConfigService {
   /* --- processes --- */
 
   /*
-   * find epic-wallet, node and Tor processes this app started earlier (a crash, an old session,
-   * a background node, a listener of an earlier session) and close them. This wallet's listeners
-   * (http, Epicbox) and Tor are closed without asking: a new one is started on the pseudo-terminal
+   * find epic-wallet and node processes this app started earlier (a crash, an old session, a
+   * background node, a listener of an earlier session) and close them. This wallet's listeners
+   * (http, Epicbox) and an older version's Tor are closed without asking: a new listener is started on the pseudo-terminal
    * after the unlock. The others only if the user confirms via prompt.
    * Processes the app did not start (e.g. the user's own CLI wallet or node, or an older GUI's)
    * are never listed.
@@ -560,14 +561,15 @@ class ConfigService {
     //one process scan for wallet, node and Tor: each scan spawns ps (powershell on Windows, ~1 s there).
     //This wallet's processes (its config dir); the owner API and http listener of any of our wallets
     //too, since they hold the ports this wallet needs (3420, the listener port); another wallet's
-    //Epicbox listener or scan is left alone. Tor of a listener lives in the wallet's data dir (wallet_tor)
+    //Epicbox listener or scan is left alone. 6.1.3 starts no Tor; a leftover one of an older version's
+    //listener (a crash before the upgrade) lives in the wallet's data dir (wallet_tor) and is stopped
     let killPids = await this.nodeChildProcess.ownedProcesses(roles, {dir: this.walletConfigDir, anyDirRoles: ['owner_api', 'listen'],
       tor: true, torDirs: [this.walletDataDir].filter(Boolean)});
     this.allKilled = true;
     this.killedPorts = [];
 
     //our listeners of this wallet from before (e.g. an Epicbox listener kept running by an older
-    //version), and Tor: stopped. Those of another wallet (a second window) are asked about below
+    //version), and an older version's Tor: stopped. Those of another wallet (a second window) are asked about below
     const isListener = (p) => p.role == 'tor'
       || ((p.role == 'listen' || p.role == 'epicbox') && p.dir == this.walletConfigDir);
     const listeners = killPids.filter(isListener);

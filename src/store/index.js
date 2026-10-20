@@ -60,7 +60,6 @@ export const store = createStore({
        checked after a server change; address: the address it listens for */
     epicbox: {state: '', server: '', address: '', checking: '', pid: 0},
     //a server change needs the password to restart the listener: the config before the save, else null
-    torService: false,
     nodeType: '',
     nodeStatus: {
 
@@ -120,15 +119,11 @@ export const store = createStore({
     },
     walletListenerService(state, payload){
       state.walletListenerService = payload;
-      state.torService = payload;
     },
 
 
 
 
-    torService(state, payload){
-      state.torService = payload;
-    },
     nodeStatus(state, payload){
 
 

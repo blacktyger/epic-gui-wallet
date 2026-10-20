@@ -155,17 +155,7 @@
           </template>
         </dl>
 
-        <h3 class="e-act-sub">{{ $t('msg.modern.overview.d_proof') }}</h3>
-        <ul v-if="selected.payment_proof" class="e-act-proof">
-          <li v-for="field in proofFields" :key="field.key">
-            <span class="e-small e-dim">{{ field.label }}</span>
-            <span class="e-act-pv">
-              <code class="e-mono e-hide" translate="no" :title="field.value">{{ field.short }}</code>
-              <button v-if="field.copy" type="button" class="e-icon-btn e-sm" :aria-label="$t('msg.modern.overview.copy_field', { what: field.label })" @click="copy(field.value)"><EIcon name="copy" size="sm" /></button>
-            </span>
-          </li>
-        </ul>
-        <p v-else class="e-small e-dim">{{ $t('msg.modern.overview.d_no_proof') }}</p>
+        <TxProof :proof="selected.payment_proof" @copy="copy" />
 
         <details class="e-tech e-act-tech">
           <summary><EIcon name="chevr" size="sm" />{{ $t('msg.modern.overview.d_tech') }}</summary>
@@ -197,12 +187,13 @@
   import Transaction from '@/components/Transaction.vue';
   import { reskin } from '@/components/modern/reskin';
   import { MIN_CONFIRMATIONS } from '@/shared/confirmations';
-  import { formatDateTime, truncateMid } from '@/components/modern/format';
+  import { formatDateTime } from '@/components/modern/format';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import EDialog from '@/components/modern/ui/EDialog.vue';
   import MoneyText from '@/components/modern/ui/MoneyText.vue';
   import TxRing from '@/components/modern/activity/TxRing.vue';
   import Pager from '@/components/modern/activity/Pager.vue';
+  import TxProof from '@/components/modern/activity/TxProof.vue';
   import txDisplay from '@/components/modern/activity/txDisplay';
 
   const RECEIVED = ['TxReceived', 'TxReceivedCancelled'];
@@ -213,7 +204,7 @@
      cancel, in the Modern look; a row opens a drawer with what Classic's expanded row shows. */
   export default reskin(Transaction, {
     name: 'TxList',
-    components: { EIcon, EDialog, MoneyText, TxRing, Pager },
+    components: { EIcon, EDialog, MoneyText, TxRing, Pager, TxProof },
     mixins: [txDisplay],
     props: {
       //the tab is showing: only then does its search sit in the page header
@@ -254,23 +245,6 @@
       },
       selected() {
         return this.selectedId === null ? null : (this.total_txs.find(tx => tx.id === this.selectedId) || null);
-      },
-      proofFields() {
-        const p = (this.selected && this.selected.payment_proof) || {};
-        const field = (key, label, copy) => ({
-          key,
-          label,
-          value: p[key] === undefined || p[key] === null ? '' : String(p[key]),
-          short: truncateMid(p[key] === undefined || p[key] === null ? '' : String(p[key]), 12),
-          copy,
-        });
-        return [
-          field('receiver_address', this.$t('msg.transaction.receiver_address'), true),
-          field('receiver_signature', this.$t('msg.transaction.receiver_signature'), true),
-          field('sender_address', this.$t('msg.transaction.sender_address'), true),
-          field('sender_signature', this.$t('msg.transaction.sender_signature'), true),
-          field('sender_address_path', this.$t('msg.transaction.sender_address_path'), false),
-        ];
       },
       /* where the selected tx is on its way: derived from the same state as the ring */
       drawerSteps() {

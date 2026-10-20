@@ -2,6 +2,7 @@ import { reactive } from "vue";
 import { i18n } from '../i18n';
 import useValidators from '@/modules/Validators';
 import { epicToNano, amountProblem } from '@/shared/sendMath';
+import { isOnionAddress } from '@/shared/sendForm';
 
 const errors = reactive({});
 
@@ -71,20 +72,14 @@ export default function useFormValidation() {
         }
         return true;
     }
-    const validateProofAddressField = (fieldName, fieldValue) => {
-
-        let message = minLength(fieldName, fieldValue, 64);
-        if(message !== null){
-          errors[fieldName] = message;
-          return false;
-        }
-        return true;
-    }
 
     const validateAddressField = (fieldName, fieldValue, forceHttp) => {
 
         let message = null;
-        if(fieldValue.includes('http') || fieldValue.includes('https') || forceHttp){
+        //no Tor in this wallet: an .onion address is refused, never sent to
+        if(isOnionAddress(fieldValue)){
+          message = i18n.global.t("msg.validators.onion_address");
+        }else if(fieldValue.includes('http') || fieldValue.includes('https') || forceHttp){
           message = !fieldValue ? isEmpty(fieldName, fieldValue) : isHttpAddress(fieldName, fieldValue);
         }else if(fieldValue.includes('@') || fieldValue.startsWith('es') || fieldValue.startsWith('epicbox')) { 
           message = !fieldValue ? isEmpty(fieldName, fieldValue) : isEpicboxAddress(fieldName, fieldValue);
@@ -121,7 +116,6 @@ export default function useFormValidation() {
       resetFormErrors,
       validatePasswordField,
       validateAmountField,
-      validateProofAddressField,
       validateAddressField,
       validateDirField,
       validateTextField

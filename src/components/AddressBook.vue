@@ -72,12 +72,6 @@
               </div>
             </div>
 
-            <div class="field">
-              <div class="control">
-                <label>{{ $t("msg.addressbook.tor_onion_address") }}</label>
-                <input class="input" type="text" v-model="onion" >
-              </div>
-            </div>
 
             <div class="field">
               <div class="control">
@@ -90,23 +84,6 @@
               <div class="control">
                 <label>{{ $t("msg.addressbook.external_two") }}</label>
                 <input class="input" type="text" v-model="externalTwo" >
-              </div>
-            </div>
-
-            <div class="field">
-              <div class="control">
-
-                <label>{{ $t("msg.addressbook.proof_address") }}</label>
-                <input class="input" type="text" v-model="proofaddr" >
-              </div>
-            </div>
-
-            <div class="field">
-              <div class="control">
-                <label class="checkbox">
-                  <input class="switch is-success" id="alwaysProofSwitch" type="checkbox" v-model="alwaysproof">
-                  <label for="alwaysProofSwitch">{{ $t("msg.addressbook.send_always") }}</label>
-                </label>
               </div>
             </div>
 
@@ -144,13 +121,10 @@
 
             <p class="block" v-if="country"><label class="label">{{ $t("msg.addressbook.country") }}</label>{{country}}</p>
             <p class="block" v-if="city"><label class="label">{{ $t("msg.addressbook.city") }}</label> {{city}}</p>
-            <p class="block" v-if="onion"><label class="label">{{ $t("msg.addressbook.tor_onion_address") }}</label><span>{{onion}}</span>&nbsp;<mdicon @click="copy(onion)" name="content-copy" size=16 /></p>
             <p class="block" v-if="externalOne"><label class="label">{{ $t("msg.addressbook.external_one") }}</label> {{externalOne}}&nbsp;<mdicon @click="copy(externalOne)" name="content-copy" size=16 /></p>
             <p class="block" v-if="externalTwo"><label class="label">{{ $t("msg.addressbook.external_two") }}</label> {{externalTwo}}&nbsp;<mdicon @click="copy(externalTwo)" name="content-copy" size=16 /></p>
 
 
-            <p class="block" v-if="proofaddr"><label class="label">{{ $t("msg.addressbook.proof_address") }}</label> {{proofaddr}}&nbsp;<mdicon @click="copy(proofaddr)" name="content-copy" size=16 /></p>
-            <p class="block" v-if="proofaddr"><label class="label">{{ $t("msg.addressbook.send_always") }}</label> {{alwaysproof == true ? 'yes' : 'no'}}</p>
 
             <p class="block" v-if="notice"><label class="label">{{ $t("msg.addressbook.notice") }}</label></p> 
             <pre>{{notice}}</pre>
@@ -196,6 +170,8 @@ export default {
     const country = ref('');
     const city = ref('');
 
+    //a Tor address, a payment proof address and "always ask for a proof" an older version stored:
+    //no longer shown or edited, but kept on save
     const onion = ref('');
     const alwaysproof = ref(false);
     const proofaddr = ref('');

@@ -1,5 +1,5 @@
 /*
- * Stopping the app's own epic processes (owner API, listeners, scan, pty children, Tor) once, on
+ * Stopping the app's own epic processes (owner API, listeners, scan, pty children) once, on
  * every way out: a quit (menu, window close, app.quit, before-quit, will-quit) and SIGTERM, SIGINT
  * and SIGHUP. `stop` is background.js's stopOwnProcesses (only processes in the process record,
  * by pid: see processOwnership.js). The first call starts it, every later one waits for the same run.

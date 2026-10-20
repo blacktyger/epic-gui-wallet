@@ -22,7 +22,6 @@ const messages = {
     received_mempool: '... waiting for confirmation',
     locked: 'Заключено',
     send: 'Изпрати ',
-    send_proof: 'send proof',
     dandelion: 'Dandelion++',
     dandelion_hint: 'Broadcasting transactions via Dandelion++',
     createofflinetx: 'Create offline transaction',
@@ -44,7 +43,6 @@ const messages = {
     node_server_builtin: 'Вграден Възлов Сървър',
     node_server_external: 'Външен Възлов Сървър',
     node_server_address: 'Адрес на Сървъра',
-    recipient_proof_address: 'Доказателствен адрес на получателя',
     copy_to_clipboard: 'Копирано!',
     placeholder_search: 'Търси...',
     refresh: 'Обнови',
@@ -204,12 +202,9 @@ const messages = {
       name: 'Име',
       country: 'Държава',
       city: 'Град',
-      tor_onion_address: 'Tor-Onion Адрес',
       external_one: 'Външен Адрес 1',
       external_two: 'Външен Адрес 2',
-      proof_address: 'Доказателствен Адрес',
       notice: 'Бележка',
-      send_always: 'Винаги изпращай доказателство',
       deleted: 'Адреса е изтрит!',
       error_delete: 'Грешка при изтриване!',
     },
@@ -223,8 +218,6 @@ const messages = {
     login: {
       listener_started: 'Портфейлния слушател е стартиран',
       error_listener_started: 'Грешка при стартиране на портфейлния слушател',
-      tor_started: 'Tor е стартиран',
-      error_tor_started: 'Tor не е стартиран'
     },
     seed:{
       errorGetMnemonic: 'Грешка при показване на мнемоничните думи. Вярна ли е паролата?',
@@ -311,7 +304,6 @@ const messages = {
       NotEnough: 'Недостатъчна наличност',
       saveMsg: 'Запазване на създаденият файл за транзакция',
       CreateFailed: 'Неуспешно създаване на файл за транзакция',
-      proof_address_recipient: 'Грешна дължина на доказателствен адрес',
     },
 
     httpSend:{
@@ -371,12 +363,9 @@ const messages = {
       current_ngrok_address: 'текущ Ngrok адрес',
       local_address: 'Локален адрес',
       session_end: 'Използвате Ngrok без акаунт. Сесията Ви ще приключи след {0} hour, {1} minutes',
-      tor_onion_address: 'Tor onion адрес',
-      proof_address: 'Доказателствен адрес',
       epicbox_address: 'Your public Epic address',
       your_qrcode: 'QR код за вашият "{0}" адрес',
       click_qrcode_icon: 'Кликнете иконката на QR кода',
-      tor_not_available: 'Tor не е достъпен. Опитайте да рестартирате слушателя на портфейла',
       epicbox_not_available: 'Epicbox not available. Wait for the Node to be synced or try to restart the wallet listener',
       epicbox_off: 'Your epicbox is not configured. Update your settings and define a epicbox domain',
       check_port_open_done: 'Recheck done!',

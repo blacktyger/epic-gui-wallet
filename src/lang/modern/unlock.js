@@ -43,7 +43,6 @@ export default {
   pid: 'PID {pid}',
   role_wallet: 'wallet service',
   role_node: 'node',
-  role_tor: 'Tor',
 
   //welcome
   welcome_title: 'Epic Cash wallet',

@@ -8,9 +8,11 @@
  * that crashed, is still known after a restart; a recorded pid only counts while its command line is
  * still the one the app started (same executable, same dir, same role), so a reused pid is never touched.
  *
- * Tor is started by the http listener, not by the app: a Tor process counts as ours when its torrc
- * is in the top level dir (-t, the wallet's data dir) of one of our listeners, or in torDirs, and its
- * parent is ours or no epic-wallet at all (orphaned).
+ * Tor: 6.1.3 has none (every listener runs with --no_tor). An older version's http listener started
+ * one, which can outlive it (a crash) and keep publishing the wallet's onion service. opts.tor finds
+ * such a leftover, at the start, on wallet removal and on quit: a Tor process counts as ours when its
+ * torrc is in the top level dir (-t, the wallet's data dir) of one of our listeners, or in torDirs,
+ * and its parent is ours or no epic-wallet at all (orphaned).
  *
  * Also: redaction of passwords in command lines, for anything that is logged.
  *
@@ -20,7 +22,8 @@
 
 export const ROLES = ['owner_api', 'listen', 'epicbox', 'scan', 'node'];
 
-//one scan for everything we may own: wallet and node binaries (and cmd.exe wrappers of them) and Tor
+//one scan for everything we may own: wallet and node binaries (and cmd.exe wrappers of them) and an
+//older version's Tor
 export const SCAN_PATTERN = /epic|torrc/i;
 
 const PASS_FLAGS = ['--pass', '--password', '-p'];
@@ -36,7 +39,7 @@ export function isEpicboxCheckDir(dir) {
 }
 
 //the only executables a record may name
-const BIN_NAME = /^(epic|epic-wallet|tor)(\.exe)?$/i;
+const BIN_NAME = /^(epic|epic-wallet)(\.exe)?$/i;
 
 /* `--pass X` / `-p X` / `--pass=X` → `--pass <redacted>`, for any command line that is logged */
 export function redactCmd(cmd) {
@@ -111,7 +114,7 @@ export function describeSpawn(cmd, args) {
   //without a dir there is nothing that tells our process from another one
   if (!dir) return null;
   const desc = { role, bin: unquote(cmd), dir, network: networkOf(plain) };
-  //the wallet's data dir, when it is not the config dir (an imported wallet): Tor's files are there
+  //the wallet's data dir, when it is not the config dir (an imported wallet): an older Tor's files are there
   const top = role === 'node' ? '' : argAfter(a, '-t');
   if (top && top !== dir) desc.topDir = top;
   return desc;
@@ -204,8 +207,8 @@ export function cmdMatchesEntry(entry, cmd, win) {
   return c != null && dirMatches(c, entry, win) && ROLE_TEST[entry.role](c);
 }
 
-/* where Tor's torrc of a wallet dir is: epic-wallet 4.1 uses <dir>/wallet_tor/torrc, older ones
-   <dir>/tor/listener/torrc */
+/* where an older version's Tor kept the torrc of a wallet dir: epic-wallet 4.x <dir>/wallet_tor/torrc,
+   3.x <dir>/tor/listener/torrc */
 export function torrcPaths(dir, win) {
   const sep = win ? '\\' : '/';
   const top = unquote(dir).replace(/[\\/]+$/, '');
@@ -219,8 +222,8 @@ export function torrcPaths(dir, win) {
  *            wallet of its network, so it is never filtered by dir. anyDirRoles: roles taken from any
  *            wallet even with dir (a port every wallet needs: the owner API, the http listener)
  *   network: only nodes of this network
- *   tor:     also return our Tor processes (torrc in the data dir of a recorded http listener that
- *            passes the dir filter, or in torDirs)
+ *   tor:     also return an older version's leftover Tor (torrc in the data dir of a recorded http
+ *            listener that passes the dir filter, or in torDirs)
  * A recorded pid matches the process with that pid. The app starts the binaries without a shell, so
  * that is epic-wallet.exe / epic.exe itself; only a cmd.exe wrapper (6.0.0 spawned with shell: true)
  * also matches its direct epic child.
@@ -453,7 +456,7 @@ export function createProcessRegistry({ fs, file, findProcess, kill, win = false
     const procs = Array.isArray(owned) ? owned : [];
     const pids = new Set(procs.map(p => p.pid));
     const results = new Map();
-    //Windows: taskkill /t takes the children along (cmd.exe → epic-wallet.exe → tor.exe)
+    //Windows: taskkill /t takes the children along (cmd.exe → epic-wallet.exe, an older version's tor.exe)
     const top = win ? procs.filter(p => !pids.has(p.ppid)) : procs;
     await Promise.all(top.map(async p => results.set(p.pid, await kill(p.pid).catch(() => false))));
     const resultOf = p => {

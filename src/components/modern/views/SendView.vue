@@ -45,12 +45,6 @@
 
           <ul v-if="foundAddress.length" class="e-found" :aria-label="$t('msg.modern.send.found_label')">
             <template v-for="found in foundAddress" :key="found.id">
-              <li v-if="found.onion">
-                <button type="button" class="e-found-item" @click="fillAddressField(found, 'onion')">
-                  <b>{{ found.name }}</b><span class="e-tag"><EIcon name="tor" />{{ $t('msg.modern.send.kind_tor') }}</span>
-                  <span class="e-mono e-dim e-truncate" translate="no">{{ found.onion }}</span>
-                </button>
-              </li>
               <li v-if="found.externalOne">
                 <button type="button" class="e-found-item" @click="fillAddressField(found, 'externalOne')">
                   <b>{{ found.name }}</b><span class="e-tag e-gold"><EIcon name="antenna" />{{ $t('msg.modern.send.kind_epicbox') }}</span>
@@ -96,21 +90,6 @@
             <span class="e-faint e-small e-send-adv-state">{{ advState }}</span>
           </summary>
           <div class="e-tech-body">
-            <div class="e-set-row e-flat">
-              <div>
-                <b id="e-send-proof-l">{{ $t('msg.modern.send.proof_title') }}</b>
-                <p id="e-send-proof-d">{{ $t('msg.modern.send.proof_hint') }}</p>
-                <p v-if="!proofAllowed" id="e-send-proof-n" class="e-help">{{ $t('msg.modern.send.proof_epicbox') }}</p>
-              </div>
-              <label class="e-switch">
-                <input id="sendProofSwitch" v-model="withproof" type="checkbox" :disabled="!proofAllowed" aria-labelledby="e-send-proof-l" :aria-describedby="proofAllowed ? 'e-send-proof-d' : 'e-send-proof-d e-send-proof-n'" @click="addProof" />
-                <span class="e-track"></span>
-              </label>
-            </div>
-            <div v-show="withproof && proofAllowed" class="e-field e-send-proof">
-              <label class="e-label" for="e-send-proof">{{ $t('msg.modern.send.proof_address') }}</label>
-              <div ref="proofBox"><ProofAddressField ref="proofAddressField" /></div>
-            </div>
             <div class="e-set-row e-flat">
               <div>
                 <b id="e-send-dand-l">{{ $t('msg.dandelion') }}</b>
@@ -187,10 +166,6 @@
           <dt>{{ $t('msg.modern.send.message') }}</dt>
           <dd>{{ rv.message }}</dd>
         </template>
-        <template v-if="rv.proof">
-          <dt>{{ $t('msg.modern.send.proof_row') }}</dt>
-          <dd>{{ $t('msg.modern.send.proof_requested') }}</dd>
-        </template>
       </dl>
       <p v-if="isLoadingSend" class="e-help e-send-sending" role="status"><span class="e-spinner" aria-hidden="true"></span>{{ $t('msg.modern.send.sending_status') }}</p>
     </template>
@@ -216,9 +191,9 @@
   import MoneyText from '@/components/modern/ui/MoneyText.vue';
   import AmountField from '@/components/modern/form/AmountField.vue';
   import AddressField from '@/components/modern/form/AddressField.vue';
-  import ProofAddressField from '@/components/modern/form/ProofAddressField.vue';
   import { formatEpic, nodeSyncPercent } from '@/components/modern/format';
   import { epicToNano, nanoToEpic } from '@/shared/sendMath';
+  import { isOnionAddress } from '@/shared/sendForm';
 
   const HEAD = 6;
   /* how many decimals a typed amount or a number has, 4 to 8 */
@@ -230,10 +205,10 @@
   const TAIL = 6;
 
   export default reskin(HttpSend, {
-    components: { EIcon, EDialog, MoneyText, AmountField, AddressField, ProofAddressField },
+    components: { EIcon, EDialog, MoneyText, AmountField, AddressField },
     data() {
       return {
-        //the "Payment proof and privacy" disclosure
+        //the "Privacy" disclosure
         advOpen: false,
         //mirrors the Dandelion++ checkbox (the Classic code reads the checkbox itself via ref="dandelion")
         dandelionOn: true,
@@ -248,14 +223,12 @@
       //the Modern fields render a bare input: give the labels something to point at
       const to = this.$refs.toBox && this.$refs.toBox.querySelector('input');
       if (to) to.id = 'e-send-to';
-      const proof = this.$refs.proofBox && this.$refs.proofBox.querySelector('input');
-      if (proof) proof.id = 'e-send-proof';
     },
     watch: {
       //a message about a field goes away when the field changes (Classic keeps it until the next send)
-      'addressField.input'() { this.clearError(this.addressField, 'address'); },
+      //(the Tor address message stays while the field holds one: HttpSend's watcher sets it)
+      'addressField.input'(v) { if (!isOnionAddress(v)) this.clearError(this.addressField, 'address'); },
       'amountField.input'() { this.clearError(this.amountField, 'amount'); },
-      'proofAddressField.input'() { this.clearError(this.proofAddressField, 'proof_address'); },
     },
     computed: {
       locale() { return this.$i18n ? this.$i18n.locale : 'en'; },
@@ -288,8 +261,7 @@
       formHasErrors() {
         const a = this.amountField && this.amountField.errors && this.amountField.errors.amount;
         const t = this.addressField && this.addressField.errors && this.addressField.errors.address;
-        const p = this.withproof && this.proofAddressField && this.proofAddressField.errors && this.proofAddressField.errors.proof_address;
-        return !!(a || t || p);
+        return !!(a || t);
       },
       canSend() { return this.nodeSynced && !(this.epicboxSelected && !this.epicboxConnected) && !this.sent },
       hint() {
@@ -304,31 +276,29 @@
         return !!(s && !s.error && s.sync_status && s.sync_status !== 'synced');
       },
       syncPercent() { return nodeSyncPercent(this.store.state.nodeStatus, this.locale); },
-      /* epicbox | tor | http, or '' while the field says nothing yet */
+      /* epicbox | http, or '' while the field says nothing yet (or holds a Tor address, which the
+         field's error refuses) */
       recipientKind() {
         const v = this.toValue;
-        if (!v) return '';
+        if (!v || isOnionAddress(v)) return '';
         if (this.epicboxSelected) return 'epicbox';
-        if (/\.onion/i.test(v)) return 'tor';
         if (/^https?:/i.test(v)) return 'http';
         return '';
       },
-      kindIcon() { return { epicbox: 'antenna', tor: 'tor', http: 'web' }[this.recipientKind] || 'web'; },
+      kindIcon() { return { epicbox: 'antenna', http: 'web' }[this.recipientKind] || 'web'; },
       /* the address book entry the field still holds the address of */
       contact() {
         const a = this.address;
         const v = this.toValue;
         if (!this.addressSelected || !a || !a.name || !v) return null;
-        return [a.onion, a.externalOne, a.externalTwo].some(x => x && String(x).trim() === v) ? a : null;
+        return [a.externalOne, a.externalTwo].some(x => x && String(x).trim() === v) ? a : null;
       },
       contactInitials() {
         const words = String((this.contact && this.contact.name) || '').trim().split(/\s+/).filter(Boolean);
         return words.slice(0, 2).map(w => Array.from(w)[0]).join('').toUpperCase();
       },
       advState() {
-        const p = this.withproof;
-        const d = this.dandelionOn;
-        return this.$t('msg.modern.send.' + (p && d ? 'adv_both' : p ? 'adv_proof' : d ? 'adv_dandelion' : 'adv_none'));
+        return this.$t('msg.modern.send.' + (this.dandelionOn ? 'adv_dandelion' : 'adv_none'));
       },
       rvAmountText() { return this.rv ? formatEpic(this.rv.amount, { locale: this.locale, decimals: this.rv.dec }) : ''; },
       /* decimals to show: as many as the amount or the fee has (EPIC has 8), at least 4 */
@@ -356,14 +326,10 @@
         } finally {
           this.reviewing = false;
         }
-        this.withproof && this.proofAllowed ? valid.push(this.proofAddressField.validInput()) : null;
         valid.push(this.addressField.validInput());
-        if (valid.includes(false)) {
-          if (this.withproof && this.proofAddressField.errors && this.proofAddressField.errors.proof_address) this.advOpen = true;
-          return;
-        }
+        if (valid.includes(false)) return;
         const to = this.addressField.defaultValue;
-        const kind = (this.epicboxSelected) ? 'epicbox' : /\.onion/i.test(to) ? 'tor' : 'http';
+        const kind = (this.epicboxSelected) ? 'epicbox' : 'http';
         const amountNano = this.amountField.amountNano;
         const feeNano = this.amountField.feeNano > 0 ? this.amountField.feeNano : 0;
         const amount = nanoToEpic(amountNano);
@@ -385,8 +351,6 @@
           total: nanoToEpic(amountNano + feeNano),
           dec: Math.max(decimalsOf(this.amountField.defaultValue), decimalsOf(fee)),
           message: this.message,
-          //never "proof requested" for an Epicbox send (it carries none)
-          proof: this.withproof && kind != 'epicbox',
         };
         this.reviewOpen = true;
       },

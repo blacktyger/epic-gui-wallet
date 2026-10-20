@@ -12,10 +12,8 @@ import { createScopedFs, isInside } from './shared/security';
 import { checkSpawnArgs } from './shared/walletArgs';
 
 const moment = require('moment');
-const base32 = require('rfc-3548-b32');
 const crypto = require('crypto-browserify');
 const qr = require("qrcode");
-const sha3_256 = require('js-sha3').sha3_256;
 const ps = require('ps-node');
 const fs = require('fs');
 const log = require('electron-log');
@@ -69,8 +67,8 @@ function parseRecoveryPhrase(stdout){
 function killPid(pid){
   return new Promise(function(resolve) {
     if (process.platform === 'win32') {
-      //the tree: epic-wallet.exe and its tor.exe (and a cmd.exe wrapper started by 6.0.0); no
-      //cmd.exe, no console window. Processes on a pseudo-terminal are stopped this way too
+      //the tree: epic-wallet.exe (and a cmd.exe wrapper started by 6.0.0, an older version's tor.exe);
+      //no cmd.exe, no console window. Processes on a pseudo-terminal are stopped this way too
       execFile('taskkill', ['/pid', String(Number(pid)), '/f', '/t'], {windowsHide: true}, function( err ) {
         resolve(!err);
       });
@@ -218,7 +216,7 @@ async function startEpicboxListener(cmd, args, meta = {}){
           }
 
           if(data.includes('Failed to check node sync status')){
-            done({success: false, msg: 'node not synced', tor: false});
+            done({success: false, msg: 'node not synced'});
           }
 
           //a wrong password, or another error that ends it
@@ -469,37 +467,29 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
           });
       });
     },
-    /* start wallet listen; the main process answers its password prompt with the session's */
+    /* start wallet listen (--no_tor); the main process answers its password prompt with the session's */
     async execListen(cmd, args, platform){
 
       const listenProcess = await spawnPty(cmd, args, 'listen');
       if(!listenProcess.pid){
-        return {success: false, msg: listenProcess.error || 'not started', noSession: !!listenProcess.noSession, tor: false};
+        return {success: false, msg: listenProcess.error || 'not started', noSession: !!listenProcess.noSession};
       }
       track(listenProcess, cmd, args);
 
       return new Promise(function(resolve) {
 
-          let isTorBooted = false;
           let errors = [];
           listenProcess.stdout.on('data', (data) => {
 
               debug ? console.log('execListen.stdout', data) : null;
 
-              /* todo check why tor is not Bootstrapped on Linux */
-              if(data.includes('[notice] Bootstrapped 100% (done): Done')){
-                isTorBooted = true;
-              }
-              if(data.includes('Unable to start TOR listener') || data.includes('Tor Error: Tor Process Error: Timeout')){
-                isTorBooted = false;
-              }
               if(data.includes('HTTP Foreign listener started.')){
 
-                resolve({success: true, msg: listenProcess.pid, tor: isTorBooted});
+                resolve({success: true, msg: listenProcess.pid});
               }
               if(data.includes('Failed to check node sync status')){
 
-                resolve({success: false, msg: 'node not synced', tor: isTorBooted});
+                resolve({success: false, msg: 'node not synced'});
               }
               const err = errorLines(data);
               if(err){
@@ -507,13 +497,13 @@ contextBridge.exposeInMainWorld('nodeChildProcess', {
               }
               //a wrong password: the same plain message epic-wallet gives
               if(data.includes('Wallet command failed') || data.includes('Error opening wallet')){
-                resolve({success: false, msg: err || data, tor: isTorBooted});
+                resolve({success: false, msg: err || data});
               }
 
           });
 
           listenProcess.on('exit', (code) => {
-            resolve({success: false, msg: errors.join('\n') || 'listener exited (' + code + ')', tor: isTorBooted});
+            resolve({success: false, msg: errors.join('\n') || 'listener exited (' + code + ')'});
           });
 
       });
@@ -707,17 +697,6 @@ contextBridge.exposeInMainWorld('config', {
   },
   getArch(){
     return os.arch();
-  },
-  getOnionV3(address){
-
-    const chekcsumstr = Buffer.from(".onion checksum","utf8");
-    const onion_version = Buffer.from("03","hex");
-
-    let pubKey = Buffer.from(address, 'hex');
-
-    let checksum = Buffer.from(sha3_256.create().update(Buffer.concat([chekcsumstr, pubKey, onion_version])).digest()).slice(0,2);
-    return base32.encode(Buffer.concat([pubKey, checksum, onion_version])).toLowerCase();
-
   },
 
 });

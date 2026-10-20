@@ -57,12 +57,14 @@ keybase_notify_ttl = 1440
 
 
 #########################################
-### TOR CONFIGURATION (Experimental)  ###
+### TOR CONFIGURATION                 ###
 #########################################
+### Off: the GUI has no Tor. epic-wallet reads this section, so it stays, with the
+### Tor listener and the onion transaction posting off.
 [tor]
 
 ### Whether to start tor listener on listener startup (default true)
-use_tor_listener = true
+use_tor_listener = false
 
 ### TOR (SOCKS) proxy server address
 socks_proxy_addr = "127.0.0.1:9050"

@@ -24,8 +24,21 @@ test('search ignores case, also for non-ASCII letters', () => {
 test('search takes the text literally: regex characters and backslashes neither throw nor match everything', () => {
   assert.deepEqual(searchContacts([zoe, bob], 'C:\\path').map(c => c.id), [1]);
   assert.deepEqual(searchContacts([zoe, bob], '(').map(c => c.id), []);
-  assert.deepEqual(searchContacts([zoe, bob], '.').map(c => c.id), [1, 2]);
+  assert.deepEqual(searchContacts([zoe, bob], '.').map(c => c.id), [1]);
   assert.deepEqual(searchContacts([zoe, bob], 'a.o').map(c => c.id), []);
+});
+
+test('a Tor address an older version stored: kept on save, not searched (it is not shown any more)', () => {
+  assert.equal(contactFields(bob).onion, 'abc.onion');
+  assert.deepEqual(searchContacts([zoe, bob], 'abc.onion').map(c => c.id), []);
+  assert.deepEqual(searchContacts([zoe, bob], 'bob').map(c => c.id), [2]);
+});
+
+test('proof fields an older version stored: kept on save, not searched (they are not shown any more)', () => {
+  const old = { ...bob, proofaddr: 'b4e2a7c6d1f0e9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4', alwaysproof: true };
+  assert.equal(contactFields(old).proofaddr, old.proofaddr);
+  assert.equal(contactFields(old).alwaysproof, true);
+  assert.deepEqual(searchContacts([zoe, old], 'b4e2a7c6').map(c => c.id), []);
 });
 
 test('an empty or blank search shows all contacts; no match shows none', () => {

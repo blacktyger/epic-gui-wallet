@@ -114,7 +114,7 @@ export function setTomlKeys(text, section, values) {
 
 /*
  * The wallet's epic-wallet.toml.
- *   configDir: 6.1's folder of this wallet (secrets, log, Tor send config)
+ *   configDir: 6.1's folder of this wallet (secrets, log)
  *   dataDir: the folder holding wallet_data (== configDir for wallets made in 6.1)
  *   nodeUrl: check_node_api_http_addr; nodeApiSecretPath: the built-in node's .api_secret, or
  *   empty for none (no node_api_secret_path in the toml)
@@ -136,7 +136,9 @@ export function renderWalletToml({ template, network, configDir, dataDir, nodeUr
   //as None and sends no Authorization header (a path is sent as Basic auth on every node call)
   if (nodeApiSecretPath) t = setTomlKeys(t, 'wallet', { node_api_secret_path: nodeApiSecretPath });
   else t = t.replace(/^[ \t]*node_api_secret_path[ \t]*=.*(\r?\n|$)/gm, '');
-  t = setTomlKeys(t, 'tor', { send_config_dir: configDir });
+  //no Tor: the listener and epic-wallet's onion transaction posting stay off, in every toml written
+  //(an older wallet's toml is written whole again when it is opened)
+  t = setTomlKeys(t, 'tor', { use_tor_listener: false, send_config_dir: configDir });
   t = setTomlKeys(t, 'epicbox', { epicbox_domain: epicboxDomain || 'epicbox.epiccash.com', epicbox_port: 443 });
   //the GUI reads the wallet's stdout (start, listener and Epicbox messages)
   t = setTomlKeys(t, 'logging', { stdout_log_level: 'Debug', log_file_path: joinPath(configDir, 'epic-wallet.log') });

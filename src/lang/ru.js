@@ -19,7 +19,6 @@ const messages = {
     received_mempool: '... waiting for confirmation',
     locked: 'Заблокировано',
     send: 'Отправить',
-    send_proof: 'send proof',
     dandelion: 'Dandelion++',
     dandelion_hint: 'Broadcasting transactions via Dandelion++',
     createofflinetx: 'Create offline transaction',

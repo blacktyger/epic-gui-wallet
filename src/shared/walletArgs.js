@@ -5,8 +5,8 @@
  * Every wallet has two folders (shared/settingsStore.js): configDir, 6.1's own (epic-wallet.toml,
  * secrets, log), and dataDir, the folder holding wallet_data (the same folder for wallets made in
  * 6.1, an older GUI's folder for imported ones). -c is always configDir, so the toml 6.1 rendered
- * is read and the secrets are made there; -t (the top level dir) is dataDir. Tor's files go to
- * <dataDir>/wallet_tor (checked with 4.1.0). The process record names the wallet by its -c dir.
+ * is read and the secrets are made there; -t (the top level dir) is dataDir. The process record
+ * names the wallet by its -c dir. Every listener runs with --no_tor (6.1.3 has no Tor).
  *
  * The owner API gets no password: it starts with -t a dir that holds no wallet (inside configDir,
  * never in an imported dataDir; epic-wallet does not create it), so it does not open (or ask for)
@@ -40,10 +40,9 @@ export function ownerApiArgs({ network, configDir, dataDir, startDir }) {
 }
 
 /* http listener (method is always http: Epicbox has epicboxArgs); asks for the password */
-export function listenArgs({ network, configDir, dataDir, tor }) {
+export function listenArgs({ network, configDir, dataDir }) {
   need({ configDir, dataDir }, 'configDir', 'dataDir');
-  return [...networkArgs(network), '-t', dataDir, '-c', configDir, 'listen', '--method', 'http',
-    ...(tor === false ? ['--no_tor'] : [])];
+  return [...networkArgs(network), '-t', dataDir, '-c', configDir, 'listen', '--method', 'http', '--no_tor'];
 }
 
 /* Epicbox listener; asks for the password */
@@ -80,7 +79,7 @@ export function hasPassArg(args) {
 
 //each kind's command after the global options, exactly as the builders above make it
 const PTY_COMMANDS = {
-  listen: [['listen', '--method', 'http'], ['listen', '--method', 'http', '--no_tor']],
+  listen: [['listen', '--method', 'http', '--no_tor']],
   epicbox: [['listen', '--method', 'epicbox', '--no_tor']],
   init: [['init']],
   recover: [['init', '-r']],

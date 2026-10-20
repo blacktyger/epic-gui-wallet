@@ -165,8 +165,8 @@ const ptyHost = createPtyHost({
 });
 
 /* on quit: stop the wallet, listener (and the short-lived one that checks an old Epicbox server),
-   scan, node and Tor processes the app started, except the node when it runs in the background.
-   Nothing the app did not start. */
+   scan and node processes the app started, except the node when it runs in the background, and a
+   Tor an older version's listener left. Nothing the app did not start. */
 async function stopOwnProcesses(){
   sessionSecret.wipe();
   const roles = ['owner_api', 'listen', 'scan', 'epicbox',
@@ -281,7 +281,7 @@ async function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       /* not sandboxed: the preload is the app's process layer. It starts and stops epic, epic-wallet
-         and Tor and keeps the record of them (shared/processOwnership.js), reads and writes the
+         and keeps the record of them (shared/processOwnership.js), reads and writes the
          settings and the wallets' tomls for configService (sync calls, all through the renderer),
          checks ports and writes the log file: a sandboxed preload has no Node.js modules for any of
          that. Turning the sandbox on means moving all of it into this process behind IPC.
