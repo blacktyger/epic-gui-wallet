@@ -138,7 +138,8 @@ export function renderWalletToml({ template, network, configDir, dataDir, nodeUr
     chain_type: n.walletChain,
     api_listen_port: ports.walletListener,
     api_secret_path: joinPath(configDir, '.owner_api_secret'),
-    check_node_api_http_addr: nodeUrl || 'http://127.0.0.1:' + ports.nodeApi,
+    //epic-wallet appends "/v2/foreign" as is: "https://node/" would ask the node for "//v2/foreign"
+    check_node_api_http_addr: String(nodeUrl || '').trim().replace(/\/+$/, '') || 'http://127.0.0.1:' + ports.nodeApi,
     //the GUI reaches the foreign API (receive_tx) through the owner API's port
     owner_api_include_foreign: true,
     data_file_dir: joinPath(dataDir, 'wallet_data'),

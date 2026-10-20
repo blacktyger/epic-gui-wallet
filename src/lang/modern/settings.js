@@ -16,6 +16,15 @@ export default {
   node_bg_text: 'The built-in node keeps syncing in the background even when the app is closed, so the next time you open the wallet you don’t wait for the blockchain.',
   node_bg_only: 'Only for the built-in node. A remote node syncs on its own.',
   receiving: 'Receiving',
+  epicbox_auto_l: 'Start Epicbox with the wallet',
+  epicbox_auto_text: 'Payments sent to your Epic address arrive as soon as you unlock.',
+  //the HTTP listener on demand: on/off now, and whether it starts with the wallet (default off)
+  http_l: 'HTTP listener',
+  http_text: 'Receives payments sent to your HTTP address. Turn it on only when you expect one.',
+  http_on: 'Listening on port {port}, on this computer only.',
+  http_off: 'Off',
+  http_auto_l: 'Start the HTTP listener with the wallet',
+  http_auto_text: 'Turns it on every time you unlock this wallet.',
   appearance: 'Appearance',
   interface_label: 'Look of the wallet',
   //About: credits (BT Labs Theme)

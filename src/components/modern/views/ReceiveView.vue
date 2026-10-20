@@ -69,19 +69,19 @@
             <div class="e-set-row e-rcv-row">
               <div>
                 <b>{{ $t('msg.modern.send.rcv_http') }}</b>
-                <div class="e-rcv-line"><code class="e-mono" :class="{ 'e-faint': !listening || httpFailed }" translate="no">{{ localAddress || '…' }}</code></div>
-                <p v-if="!listening" class="e-rcv-check"><EIcon name="minusc" size="sm" class="e-faint" /><span>{{ $t('msg.modern.send.rcv_http_off') }}</span></p>
+                <div class="e-rcv-line"><code class="e-mono" :class="{ 'e-faint': !httpOn }" translate="no">{{ localAddress || '…' }}</code></div>
                 <!-- the HTTP listener didn't start: say why; Epicbox goes on (QA W01) -->
-                <p v-else-if="httpFailed" class="e-rcv-check" role="status"><EIcon name="alert" size="sm" class="e-warn" /><span><b>{{ $t('msg.modern.send.rcv_http_failed') }}</b>{{ httpFailed.reason == 'port_in_use' ? $t('msg.modern.send.rcv_http_failed_port', { port: httpFailed.port }) : $t(httpFailed.reason == 'node' ? 'msg.modern.send.rcv_http_failed_node' : 'msg.modern.send.rcv_http_failed_error') }}</span></p>
-                <p v-else-if="portState == 'checking'" class="e-rcv-check" role="status"><EIcon name="sync" size="sm" class="e-faint" /><span>{{ $t('msg.modern.send.rcv_http_checking', { port }) }}</span></p>
-                <p v-else-if="portState == 'open'" class="e-rcv-check" role="status"><EIcon name="okc" size="sm" class="e-ok" /><span><b>{{ $t('msg.modern.send.rcv_http_open', { port }) }}</b>{{ $t('msg.modern.send.rcv_http_open_text') }}</span></p>
-                <p v-else class="e-rcv-check" role="status"><EIcon name="alert" size="sm" class="e-warn" /><span><b>{{ $t('msg.modern.send.rcv_http_closed', { port }) }}</b>{{ $t('msg.modern.send.rcv_http_closed_text', { port }) }}</span></p>
+                <p v-if="httpFailed" class="e-rcv-check" role="status"><EIcon name="alert" size="sm" class="e-warn" /><span><b>{{ $t('msg.modern.send.rcv_http_failed') }}</b>{{ httpFailed.reason == 'port_in_use' ? $t('msg.modern.send.rcv_http_failed_port', { port: httpFailed.port }) : $t(httpFailed.reason == 'node' ? 'msg.modern.send.rcv_http_failed_node' : 'msg.modern.send.rcv_http_failed_error') }}</span></p>
+                <!-- the wallet's toml listens on 127.0.0.1 only: no port check, no "forward the port" (it would not help) -->
+                <p v-else-if="httpOn" class="e-rcv-check" role="status"><EIcon name="okc" size="sm" class="e-ok" /><span>{{ $t('msg.modern.send.rcv_http_local_only', { port }) }}</span></p>
+                <p v-else class="e-rcv-check"><EIcon name="minusc" size="sm" class="e-faint" /><span>{{ $t('msg.modern.send.rcv_http_on_demand') }}</span></p>
               </div>
               <div class="e-ctl">
-                <button v-if="listening && httpFailed" type="button" class="e-btn e-btn-sm" :class="{ 'e-is-busy': httpRetrying }" :aria-busy="httpRetrying ? 'true' : null" @click="httpRetrying || retryHttp()"><EIcon name="refresh" />{{ $t('msg.httpReceive.http_retry') }}</button>
-                <button v-else-if="listening" type="button" class="e-btn e-btn-sm" :class="{ 'e-is-busy': portChecking }" :aria-busy="portChecking ? 'true' : null" @click="portChecking || recheckPort()"><EIcon name="refresh" />{{ $t('msg.modern.send.rcv_check_again') }}</button>
-                <button type="button" class="e-icon-btn" :disabled="!listening || !!httpFailed || !localAddress" :aria-label="listening ? $t('msg.modern.send.rcv_copy_http') : $t('msg.modern.send.rcv_copy_http_off')" @click="copy(localAddress)"><EIcon name="copy" size="sm" /></button>
-                <button type="button" class="e-icon-btn" :disabled="!listening || !!httpFailed || !localAddress" :aria-label="$t('msg.modern.send.rcv_qr_http')" @click="showQr(localAddress, 'local')"><EIcon name="qr" size="sm" /></button>
+                <button v-if="httpFailed" type="button" class="e-btn e-btn-sm" :class="{ 'e-is-busy': httpRetrying }" :aria-busy="httpRetrying ? 'true' : null" @click="httpRetrying || retryHttp()"><EIcon name="refresh" />{{ $t('msg.httpReceive.http_retry') }}</button>
+                <button v-if="httpOn || httpFailed" type="button" class="e-btn e-btn-sm" :class="{ 'e-is-busy': httpSwitching }" :aria-busy="httpSwitching ? 'true' : null" @click="httpSwitching || httpTurnOff()"><EIcon name="stop" />{{ $t('msg.modern.send.rcv_http_turn_off') }}</button>
+                <button v-else type="button" class="e-btn e-btn-sm" :class="{ 'e-is-busy': httpSwitching }" :aria-busy="httpSwitching ? 'true' : null" @click="httpSwitching || httpTurnOn()"><EIcon name="antenna" />{{ $t('msg.modern.send.rcv_http_turn_on') }}</button>
+                <button type="button" class="e-icon-btn" :disabled="!httpOn || !localAddress" :aria-label="httpOn ? $t('msg.modern.send.rcv_copy_http') : $t('msg.modern.send.rcv_copy_http_off')" @click="copy(localAddress)"><EIcon name="copy" size="sm" /></button>
+                <button type="button" class="e-icon-btn" :disabled="!httpOn || !localAddress" :aria-label="$t('msg.modern.send.rcv_qr_http')" @click="showQr(localAddress, 'local')"><EIcon name="qr" size="sm" /></button>
               </div>
             </div>
 
@@ -113,7 +113,7 @@
               <div class="e-set-row">
                 <div>
                   <b>{{ $t('msg.modern.send.rcv_on') }}</b>
-                  <p>{{ $t('msg.modern.send.rcv_listener_on_text') }}</p>
+                  <p>{{ $t(httpOn ? 'msg.modern.send.rcv_listener_on_text' : 'msg.modern.send.rcv_listener_on_epicbox') }}</p>
                 </div>
                 <div class="e-ctl"><button type="button" class="e-btn e-btn-sm" :class="{ 'e-is-busy': isLoading }" :aria-busy="isLoading ? 'true' : null" @click="isLoading || stop()"><EIcon name="stop" />{{ $t('msg.modern.send.rcv_stop') }}</button></div>
               </div>
@@ -129,14 +129,13 @@
   import HttpReceive from '@/components/HttpReceive.vue';
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
+  import httpListenerSwitch from '@/components/modern/httpListenerSwitch';
 
   export default reskin(HttpReceive, {
     components: { EIcon },
+    mixins: [httpListenerSwitch],
     data() {
       return {
-        //the port check finished at least once (Classic checks when the page opens)
-        portChecked: false,
-        portChecking: false,
         //the user picked a QR code; until then the Epic address is shown
         qrChosen: false,
       };
@@ -159,25 +158,17 @@
       epicHead() { return this.epicKey.slice(0, 5); },
       epicTail() { return this.epicKey.length > 9 ? this.epicKey.slice(-4) : ''; },
       epicMid() { return this.epicKey.length > 9 ? this.epicKey.slice(5, -4) : this.epicKey.slice(5); },
-      portState() {
-        if (this.portChecking) return 'checking';
-        //Classic checks once when the page opens
-        if (!this.portChecked && !this.portCheckedOnce) return 'checking';
-        return this.portIsForwarded ? 'open' : 'closed';
-      },
     },
     methods: {
       showQr(text, type) {
         this.qrChosen = true;
         this.qrcode(text, type);
       },
-      async recheckPort() {
-        this.portChecking = true;
-        try {
-          await this.checkPortOpen();
-        } finally {
-          this.portChecking = false;
-          this.portChecked = true;
+      /* HTTP receiving turned off here: its QR code, if shown, gives way to the Epic address's */
+      httpTurnedOff() {
+        if (this.addressTypeHeader == 'local') {
+          if (this.epicShown) this.qrcode(this.epicboxAddress, 'epicbox');
+          else this.addressTypeHeader = '';
         }
       },
     },

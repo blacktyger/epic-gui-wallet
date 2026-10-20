@@ -49,6 +49,10 @@ export const WALLET_DEFAULTS = Object.freeze({
   nodesynced: false,
   epicbox_domain: 'epicbox.epiccash.com',
   walletlisten_on_startup: true,
+  //the HTTP listener (port 3415) starts at unlock only if the user chose so (Modern: Settings › Node
+  //and receiving › Start with wallet); else only when turned on. Every epic-wallet process asks the
+  //node every 10 s, and most people receive with Epicbox (shared/httpListener.js httpAutostart)
+  http_listener_autostart: false,
   node_background: false,
   //an old Epicbox server still to be checked once (wss:// url; walletService.pendingEpicboxCheck)
   epicbox_check_pending: '',

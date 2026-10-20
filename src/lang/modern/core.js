@@ -97,6 +97,13 @@ export default {
   tour_send: 'Send to an Epic address, an http(s) address or a contact. You check everything in a review before anything leaves the wallet.',
   tour_receive_t: 'Receive',
   tour_receive: 'Your Epic address and QR code, the listener, and transaction files to sign or finalize.',
+  //one step per way to send and receive
+  tour_epicbox_t: 'Epicbox',
+  tour_epicbox: 'Starts by itself when you unlock. The most popular way: payments to your Epic address wait for you while you are offline.',
+  tour_http_t: 'HTTP(S)',
+  tour_http: 'Straight from wallet to wallet. Turn the HTTP listener on only when you expect a payment.',
+  tour_files_t: 'Transaction files',
+  tour_files: 'The most private way: you and the other person swap files directly, with no server in between.',
   tour_activity_t: 'Activity',
   tour_activity: 'Every transaction and output, with its progress. A number here means something waits for you.',
   tour_settings_t: 'Settings',

@@ -24,7 +24,7 @@ const INVOKED = ['app-relaunch', 'clipboard-copy-secret', 'clipboard-wipe-secret
   'show-open-dialog', 'show-save-dialog', 'support-preview', 'support-save', 'support-send', 'version'];
 
 //ipcRenderer.on with a fixed channel (besides the validChannels listener)
-const LISTENED = ['menu-lock', 'open-support', 'pty-data', 'pty-exit'];
+const LISTENED = ['menu-lock', 'open-support', 'pty-data', 'pty-exit', 'window-hidden'];
 
 //handlers that do not check the sender, and why that is fine
 const UNCHECKED = {

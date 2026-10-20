@@ -304,3 +304,45 @@ test('fetchTipHeight: a node\'s tip from the public foreign API, 0 when it has n
   assert.equal(await fetchTipHeight('https://fastepic.eu:3413', { fetch: recorded('https://fastepic.eu:3413').fetch }), 0);
   assert.equal(await fetchTipHeight('https://x.example', { fetch: rpcNode({}).fetch }), 0);
 });
+
+test('regression: a locked node is asked the way that worked last time, not with 401s first on every poll', async () => {
+  //6.1.5 sent GET /v1/status (401) and POST /v2/owner (401) before get_tip on every 10 s poll
+  const n = lockedNode(500);
+  const first = await fetchNodeStatus('https://n.example', { fetch: n.fetch });
+  assert.equal(first.via, 'foreign');
+  n.calls.length = 0;
+  const again = await fetchNodeStatus('https://n.example', { fetch: n.fetch, via: first.via });
+  assert.equal(again.ok, true);
+  assert.equal(again.via, 'foreign');
+  assert.equal(again.locked, true);
+  assert.deepEqual(n.calls.map(c => c.key), ['POST /v2/foreign get_tip']);
+
+  const o = rpcNode({
+    'GET /v1/status': reply(401, null),
+    'POST /v2/owner get_status': reply(200, { id: 1, jsonrpc: '2.0', result: { Ok: { chain: 'main', protocol_version: 2, user_agent: 'MW/Epic 4.1.0', connections: 8, tip: { height: 9, last_block_pushed: 'a', prev_block_to_last: 'b', total_difficulty: 1 }, sync_status: 'no_sync', sync_info: null } } }),
+  });
+  const viaOwner = await fetchNodeStatus('https://n.example', { fetch: o.fetch, via: 'owner' });
+  assert.equal(viaOwner.via, 'owner');
+  assert.deepEqual(o.calls.map(c => c.key), ['POST /v2/owner get_status']);
+});
+
+test('the hinted way fails: the whole chain again (the node changed or was unlocked)', async () => {
+  const opened = rpcNode({ 'GET /v1/status': reply(200, { tip: { height: 7 }, sync_status: 'no_sync', connections: 3 }) });
+  const r = await fetchNodeStatus('https://n.example', { fetch: opened.fetch, via: 'foreign' });
+  assert.equal(r.via, 'v1');
+  assert.deepEqual(opened.calls.map(c => c.key), ['POST /v2/foreign get_tip', 'GET /v1/status']);
+  const gone = rpcNode({});
+  const g = await fetchNodeStatus('https://n.example', { fetch: gone.fetch, via: 'owner' });
+  assert.equal(g.ok, false);
+  assert.deepEqual(gone.calls.map(c => c.key), ['POST /v2/owner get_status', 'POST /v2/foreign get_tip', 'GET /v1/status']);
+});
+
+test('regression: a saved address with a trailing slash never asks for //v1/status', async () => {
+  const urls = [];
+  const fetch = async (url) => { urls.push(String(url)); return reply(200, { tip: { height: 1 }, sync_status: 'no_sync' }); };
+  await fetchNodeStatus('https://node.example.org:3413//', { fetch });
+  await fetchTipHeight('https://node.example.org:3413/', { fetch });
+  await fetchNodeVersion('https://node.example.org:3413/', { fetch });
+  assert.ok(urls.length >= 3);
+  for (const u of urls) assert.doesNotMatch(u.replace(/^https?:\/\//, ''), /\/\//, u);
+});

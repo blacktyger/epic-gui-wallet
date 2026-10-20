@@ -19,6 +19,14 @@ const NODE_FAILED = /^node not synced$|failed to check node sync status/i;
 
 export const HTTP_OFF = Object.freeze({ state: 'off', port: 0, reason: '' });
 
+/* does the HTTP listener start with the wallet (unlock, Receive › Start listener)? Modern: only with
+   the wallet's http_listener_autostart on (default off; turned on by hand otherwise). Classic is
+   frozen and starts it as it always did. config: the wallet's config; ui: 'modern' | 'classic' */
+export function httpAutostart(config, ui) {
+  if (ui === 'classic') return true;
+  return !!(config && config.http_listener_autostart === true);
+}
+
 /* startListen's answer -> store.state.httpListener: {state: 'on'|'failed'|'off', port, reason: ''|'port_in_use'|'node'|'error'}
    ('node': the node did not answer the listener at its start; Try again works once it does) */
 export function httpListenerState(res, port) {

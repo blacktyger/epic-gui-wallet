@@ -23,21 +23,24 @@ function fakeWallet(overrides = {}) {
     startListen: vi.fn(async () => ({ success: true, pid: 11 })),
     startEpicbox: vi.fn(async () => ({ success: true })),
     stopListen: vi.fn(async () => true),
+    stopHttpListen: vi.fn(async () => true),
     ...overrides,
   };
 }
 
-async function setup(Component, { listening = false, epicbox = listening, http, domain = DOMAIN, wallet = fakeWallet() } = {}) {
+async function setup(Component, { listening = false, epicbox = listening, http, domain = DOMAIN, wallet = fakeWallet(), config = {} } = {}) {
   const store = makeStore({
+    //Modern's own rules (HTTP on demand) need its interface; the fake store's default is Classic
+    ui: Component === ReceiveView ? 'modern' : 'classic',
     walletListenerService: listening,
     walletEpicboxService: epicbox,
     httpListener: http || (listening ? { state: 'on', port: 3415, reason: '' } : { state: 'off', port: 0, reason: '' }),
     epicbox: epicbox ? { state: 'listening', server: 'wss://' + DOMAIN, address: ADDRESS, checking: '', pid: 5 } : { state: '', server: '', address: '', checking: '', pid: 0 },
   });
-  const configService = { config: { epicbox_domain: domain }, epicboxDomain: DOMAIN, walletListenerPort: 3415 };
+  const configService = { config: { epicbox_domain: domain, ...config }, epicboxDomain: DOMAIN, walletListenerPort: 3415, updateConfig: vi.fn(() => true) };
   const m = mountView(Component, { store, services: { $walletService: wallet, configService } });
   await flushPromises();
-  return { ...m, wallet };
+  return { ...m, wallet, configService };
 }
 
 /* Classic keeps both panels in the page and shows one (v-show): the running one, else the stopped one */
@@ -130,20 +133,66 @@ describe('Receive (Classic)', () => {
 });
 
 describe('Receive (Modern)', () => {
-  test('listening: Receiving is on, the Epic address, HTTP port reachable', async () => {
+  test('listening: Receiving is on, the Epic address, HTTP on this computer only (127.0.0.1)', async () => {
     const { wrapper } = await setup(ReceiveView, { listening: true });
     const text = wrapper.text();
     expect(text).toContain(t('msg.modern.send.rcv_on'));
     expect(text.replace(/\s+/g, '')).toContain(ADDRESS);
     expect(text).toContain(HTTP_ADDRESS);
-    expect(text).toContain(t('msg.modern.send.rcv_http_open', { port: 3415 }));
+    expect(text).toContain(t('msg.modern.send.rcv_http_local_only', { port: 3415 }));
     expect(text).toContain(t('msg.modern.send.rcv_listening_via', { domain: DOMAIN }));
   });
 
-  test('port 3415 not reachable from the internet: says how to forward it', async () => {
-    window.config.isPortReachable.mockResolvedValue(false);
-    const { wrapper } = await setup(ReceiveView, { listening: true });
-    expect(wrapper.text()).toContain(t('msg.modern.send.rcv_http_closed', { port: 3415 }));
+  test('regression: no "port reachable" or "forward the port" claim (the listener binds 127.0.0.1 only)', async () => {
+    for (const reachable of [true, false]) {
+      window.config.isPortReachable.mockResolvedValue(reachable);
+      const { wrapper } = await setup(ReceiveView, { listening: true });
+      expect(wrapper.text()).not.toContain(t('msg.modern.send.rcv_http_open', { port: 3415 }));
+      expect(wrapper.text()).not.toContain(t('msg.modern.send.rcv_http_closed', { port: 3415 }));
+    }
+  });
+
+  test('Epicbox on, HTTP off (the default): the HTTP address dimmed, when to use it, Turn on', async () => {
+    const { wrapper } = await setup(ReceiveView, { listening: true, epicbox: true, http: { state: 'off', port: 0, reason: '' } });
+    const text = wrapper.text();
+    expect(text).toContain(t('msg.modern.send.rcv_on'));
+    expect(text).toContain(t('msg.modern.send.rcv_http_on_demand'));
+    expect(text).toContain(t('msg.modern.send.rcv_listener_on_epicbox'));
+    expect(wrapper.find('code.e-faint').text()).toBe(HTTP_ADDRESS);
+    expect(wrapper.find('button[aria-label="' + t('msg.modern.send.rcv_copy_http_off') + '"]').element.disabled).toBe(true);
+    expect(button(wrapper, t('msg.modern.send.rcv_http_turn_on')).exists()).toBe(true);
+  });
+
+  test('Turn on starts only the HTTP listener and does not change Start with wallet; Turn off stops only it', async () => {
+    const wallet = fakeWallet();
+    const { wrapper, store, configService } = await setup(ReceiveView, { listening: true, epicbox: true, http: { state: 'off', port: 0, reason: '' }, wallet });
+    await button(wrapper, t('msg.modern.send.rcv_http_turn_on')).trigger('click');
+    await flushPromises();
+    expect(wallet.startListen).toHaveBeenCalledWith('http');
+    expect(wallet.startEpicbox).not.toHaveBeenCalled();
+    expect(store.state.httpListener.state).toBe('on');
+    expect(wrapper.text()).toContain(t('msg.modern.send.rcv_http_local_only', { port: 3415 }));
+    await button(wrapper, t('msg.modern.send.rcv_http_turn_off')).trigger('click');
+    await flushPromises();
+    expect(wallet.stopHttpListen).toHaveBeenCalledTimes(1);
+    expect(wallet.stopListen).not.toHaveBeenCalled();
+    expect(store.state.httpListener).toBe(null);
+    //Epicbox still receives
+    expect(store.state.walletListenerService).toBe(true);
+    expect(configService.updateConfig).not.toHaveBeenCalled();
+  });
+
+  test('Start listener: Epicbox only, unless Start with wallet is on for HTTP', async () => {
+    const off = await setup(ReceiveView, { listening: false });
+    await button(off.wrapper, t('msg.modern.send.rcv_start')).trigger('click');
+    await flushPromises();
+    expect(off.wallet.startEpicbox).toHaveBeenCalledTimes(1);
+    expect(off.wallet.startListen).not.toHaveBeenCalled();
+    expect(off.store.state.walletListenerService).toBe(true);
+    const on = await setup(ReceiveView, { listening: false, config: { http_listener_autostart: true } });
+    await button(on.wrapper, t('msg.modern.send.rcv_start')).trigger('click');
+    await flushPromises();
+    expect(on.wallet.startListen).toHaveBeenCalledWith('http');
   });
 
   test('stopped: the Epic address is still shown with Copy, and the notice that receiving is off (QA T09)', async () => {
@@ -159,9 +208,9 @@ describe('Receive (Modern)', () => {
     expect(window.clipboard.writeText).toHaveBeenCalledWith(ADDRESS);
   });
 
-  test('stopped: the HTTP address cannot be copied and says it is not listening', async () => {
+  test('stopped: the HTTP address cannot be copied and says when to turn it on', async () => {
     const { wrapper } = await setup(ReceiveView, { listening: false });
-    expect(wrapper.text()).toContain(t('msg.modern.send.rcv_http_off'));
+    expect(wrapper.text()).toContain(t('msg.modern.send.rcv_http_on_demand'));
     const copyHttp = wrapper.find('button[aria-label="' + t('msg.modern.send.rcv_copy_http_off') + '"]');
     expect(copyHttp.element.disabled).toBe(true);
   });
@@ -190,7 +239,7 @@ describe('Receive (Modern)', () => {
     expect(wrapper.text()).toContain(t('msg.modern.send.rcv_http_failed'));
     expect(wrapper.text()).toContain(t('msg.modern.send.rcv_http_failed_port', { port: 3415 }).trim());
     expect(wrapper.text()).toContain(t('msg.modern.send.rcv_on'));
-    expect(wrapper.find('button[aria-label="' + t('msg.modern.send.rcv_copy_http') + '"]').element.disabled).toBe(true);
+    expect(wrapper.find('button[aria-label="' + t('msg.modern.send.rcv_copy_http_off') + '"]').element.disabled).toBe(true);
     await button(wrapper, t('msg.httpReceive.http_retry')).trigger('click');
     await flushPromises();
     expect(wallet.startListen).toHaveBeenCalledWith('http');
@@ -198,9 +247,9 @@ describe('Receive (Modern)', () => {
     expect(wrapper.text()).not.toContain(t('msg.modern.send.rcv_http_failed'));
   });
 
-  test('Start listener with port 3415 busy: HTTP failed shown, receiving on via Epicbox', async () => {
+  test('Start listener with port 3415 busy (HTTP starts with the wallet): HTTP failed shown, receiving on via Epicbox', async () => {
     const wallet = fakeWallet({ startListen: vi.fn(async () => ({ success: false, portInUse: 3415 })) });
-    const { wrapper, store } = await setup(ReceiveView, { listening: false, wallet });
+    const { wrapper, store } = await setup(ReceiveView, { listening: false, wallet, config: { http_listener_autostart: true } });
     await button(wrapper, t('msg.modern.send.rcv_start')).trigger('click');
     await flushPromises();
     expect(wallet.startListen).toHaveBeenCalledTimes(1);

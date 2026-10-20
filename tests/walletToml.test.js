@@ -228,3 +228,15 @@ test('log files on by default and bounded: wallet at Debug, node at Info, a few 
   assert.equal(r.log_max_size, 5 * 1024 * 1024);
   assert.equal(r.log_to_file, true);
 });
+
+test('regression: a node address with a trailing slash never reaches epic-wallet (it would ask for //v2/foreign)', () => {
+  for (const nodeUrl of ['https://node.example.org:3413/', 'https://node.example.org:3413//', '  https://node.example.org:3413/ ']) {
+    const r = readToml(renderWalletToml({ template: WALLET_TEMPLATE, network: 'mainnet', configDir: '/a', dataDir: '/a', nodeUrl }));
+    assert.equal(r.wallet.check_node_api_http_addr, 'https://node.example.org:3413');
+  }
+  //a path is kept (a node behind a reverse proxy), only its trailing slash goes
+  const p = readToml(renderWalletToml({ template: WALLET_TEMPLATE, network: 'mainnet', configDir: '/a', dataDir: '/a', nodeUrl: 'https://host.example/epic/' }));
+  assert.equal(p.wallet.check_node_api_http_addr, 'https://host.example/epic');
+  const none = readToml(renderWalletToml({ template: WALLET_TEMPLATE, network: 'mainnet', configDir: '/a', dataDir: '/a', nodeUrl: '/' }));
+  assert.equal(none.wallet.check_node_api_http_addr, 'http://127.0.0.1:3413');
+});

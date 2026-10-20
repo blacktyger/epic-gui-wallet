@@ -316,6 +316,14 @@ async function createWindow() {
   //a reload (the interface switch) or a crashed renderer: that session is over
   wipeWithWindow(win.webContents, sessionSecret);
 
+  //minimized or hidden: the page polls the node less (shared/nodePoll.js). The window's own events,
+  //because the page's document.hidden does not change on every desktop (Linux: QA lanes, some WMs)
+  const sendHidden = (hidden) => { if (win && !win.isDestroyed()) win.webContents.send('window-hidden', hidden); };
+  win.on('minimize', () => sendHidden(true));
+  win.on('hide', () => sendHidden(true));
+  win.on('restore', () => sendHidden(false));
+  win.on('show', () => sendHidden(win.isMinimized()));
+
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
