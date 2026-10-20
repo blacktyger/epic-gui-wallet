@@ -13,6 +13,7 @@
     "test": "node --test --no-warnings=MODULE_TYPELESS_PACKAGE_JSON \"tests/**/*.test.js\"",
     "test:gate": "bash scripts/test-gate.sh",
     "test:gate:quick": "bash scripts/test-gate.sh --quick",
+    "test:gate:windows": "bash scripts/test-gate-windows.sh",
     "test:components": "vitest run --config tests/components/vitest.config.mjs",
     "test:e2e": "timeout -k 15 600 node tests/e2e/run.js",
     "test:e2e:build": "timeout -k 15 900 node tests/e2e/build-app.js --force",
