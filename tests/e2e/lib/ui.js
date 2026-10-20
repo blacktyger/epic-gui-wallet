@@ -20,6 +20,11 @@ const main = (w) => w.evaluate(() => {
   const el = document.querySelector('#e-main, .e-content, section.is-main-section') || document.body;
   return el.innerText.replace(/\s+/g, ' ').trim();
 });
+/** Modern: the sidebar's node icon says "Node online and synced" (its aria-label; no height in the main views). */
+async function waitNodeOnline(w, timeout = 30000) {
+  return waitFor(async () => (await w.locator('button.e-svc[aria-label*="Node online and synced"]').count()) ? true : null, { timeout, interval: 300 });
+}
+
 async function waitText(w, re, timeout = 20000) {
   const t = await waitFor(async () => { const s = await text(w); return re.test(s) ? s : null; }, { timeout, interval: 300 });
   if (!t) throw new Error(`no ${re} on the page after ${timeout} ms: ${(await text(w)).slice(0, 300)}`);
@@ -232,12 +237,12 @@ async function typeNodeAddress(w, ui, url = NODE_URL) {
   return `typed ${url} key by key; field holds ${JSON.stringify(v)} (both slashes)`;
 }
 
-/** Save the settings page; the app then talks to the stub node: "Synced" at the stub's height. */
+/** Save the settings page; the app then talks to the stub node: "Node online and synced" at the stub's height. */
 async function saveNode(w, ui, url = NODE_URL) {
   if (ui === 'modern') {
     const save = w.locator('.e-stg-savebar').getByRole('button', { name: 'Save', exact: true });
     await save.click({ timeout: 8000 });
-    await waitText(w, /Synced · block 3,100,000/, 45000);
+    await waitNodeOnline(w, 45000);
   } else {
     await w.locator('section.is-main-section button.is-primary').filter({ hasText: /^\s*Save\s*$/ }).first().click({ timeout: 8000 });
     await waitText(w, /Node \(http:\/\/127\.0\.0\.1:13413\)/, 45000);
@@ -245,7 +250,7 @@ async function saveNode(w, ui, url = NODE_URL) {
   await openSettings(w, ui);
   const v = await nodeInput(w, ui).inputValue();
   if (v !== url) throw new Error('after saving, the node field shows ' + JSON.stringify(v));
-  return `saved; node field still ${JSON.stringify(v)}; ` + (ui === 'modern' ? 'sidebar: Synced · block 3,100,000' : 'header: Node (' + url + ')');
+  return `saved; node field still ${JSON.stringify(v)}; ` + (ui === 'modern' ? 'sidebar: Node online and synced' : 'header: Node (' + url + ')');
 }
 
 /* ---------- Send ---------- */
@@ -394,6 +399,6 @@ async function setLanguage(w, ui, code) {
   return a;
 }
 
-module.exports = { startHttpListener, ADDR_RE, toasts, contactNames, contactMessages, addContact, cancelContact, htmlAttrs, setLanguage, NODE_URL, PAGES, clickable, text, route, main, waitText, welcome, createWallet, createOnly, unlockChosen, submitPassword, skipTour, nav, heading, visit,
+module.exports = { startHttpListener, ADDR_RE, toasts, contactNames, contactMessages, addContact, cancelContact, htmlAttrs, setLanguage, NODE_URL, PAGES, clickable, text, route, main, waitText, waitNodeOnline, welcome, createWallet, createOnly, unlockChosen, submitPassword, skipTour, nav, heading, visit,
   openSettings, typeNodeAddress, saveNode, sendTo, sendAmt, sendBtn, sendErrors, trySend, epicAddress, receiveAddress, stopListener,
   lock, unlock, wrongPassword, openGear, setupAssistant };

@@ -61,7 +61,6 @@
         const out = [];
         if (v.version) out.push(t('version') + ' ' + v.version);
         if (v.height !== null) out.push(t('height') + ' ' + number(v.height, this.locale));
-        if (v.peers !== null) out.push(t('peers_n', { n: number(v.peers, this.locale) }));
         if (v.ms !== null) out.push(this.$t('msg.mynodes.response', { ms: t('latency_ms', { n: number(v.ms, this.locale) }) }));
         return out;
       },

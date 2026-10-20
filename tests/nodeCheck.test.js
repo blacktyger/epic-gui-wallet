@@ -12,7 +12,7 @@ const STATUS = { protocol_version: 1000, user_agent: 'MW/Epic 4.1.0', connection
 function node(routes, { delay = 0 } = {}) {
   const calls = [];
   const fetch = async (url, opts = {}) => {
-    const key = (opts.method || 'GET') + ' ' + new URL(url).pathname;
+    const key = (opts.method || 'GET') + ' ' + new URL(url).pathname + (opts.body ? ' ' + JSON.parse(opts.body).method : '');
     calls.push({ key, url, headers: opts.headers || {} });
     if (delay) await new Promise((resolve, reject) => {
       const t = setTimeout(resolve, delay);
@@ -24,14 +24,22 @@ function node(routes, { delay = 0 } = {}) {
   };
   return { fetch, calls };
 }
-const healthy = (status = STATUS) => node({ 'GET /v1/version': reply(200, { node_version: '4.1.0' }), 'GET /v1/status': reply(200, status) });
-
-test('view: an online node at the tip, with version, height, peers and the response time', () => {
-  const v = nodeCheckView({ kind: 'ok', address: 'https://n.example.com', version: '4.1.0', status: STATUS }, { ms: 123.4, tipHeight: 2500001 });
-  assert.deepEqual(v, { address: 'https://n.example.com', state: 'online', tone: 'ok', version: '4.1.0', height: 2500000, behind: 0, peers: 8, ms: 123, problem: '', hint: '' });
+//a node as the GUI reads it: the version, then the public foreign API (get_tip + ready_for_txs); /v1/status is closed
+const foreignReply = (result) => reply(200, { id: 1, jsonrpc: '2.0', result: { Ok: result } });
+const healthy = (status = STATUS, { ready = status.sync_status == 'no_sync' } = {}) => node({
+  'GET /v1/version': reply(200, { node_version: '4.1.0' }),
+  'GET /v1/status': reply(401, null),
+  'POST /v2/owner': reply(403, null),
+  'POST /v2/foreign get_tip': foreignReply({ height: status.tip.height }),
+  'POST /v2/foreign ready_for_txs': foreignReply({ ready_for_txs: ready }),
 });
 
-test('view: blocks behind, syncing, an unknown tip, a status without peers (get_tip)', () => {
+test('view: an online node at the tip, with version, height and the response time', () => {
+  const v = nodeCheckView({ kind: 'ok', address: 'https://n.example.com', version: '4.1.0', status: STATUS }, { ms: 123.4, tipHeight: 2500001 });
+  assert.deepEqual(v, { address: 'https://n.example.com', state: 'online', tone: 'ok', version: '4.1.0', height: 2500000, behind: 0, ms: 123, problem: '', hint: '' });
+});
+
+test('view: blocks behind, syncing, an unknown tip, a status from get_tip', () => {
   const ok = (status, tipHeight) => nodeCheckView({ kind: 'ok', address: 'https://n.example.com', version: '4.1.0', status }, { tipHeight });
   assert.equal(ok(STATUS, 2500002).behind, 0, 'two blocks below a list up to a minute old still counts as at tip');
   const lagging = ok(STATUS, 2500004);
@@ -41,7 +49,7 @@ test('view: blocks behind, syncing, an unknown tip, a status without peers (get_
   assert.deepEqual([far.state, far.tone, far.behind], ['syncing', 'warn', 100]);
   const syncing = ok({ ...STATUS, sync_status: 'body_sync' }, 0);
   assert.deepEqual([syncing.state, syncing.behind], ['syncing', null]);
-  assert.equal(ok({ ...STATUS, connections: null }, 0).peers, null);
+  assert.equal('peers' in ok(STATUS, 0), false, 'no peer count any more');
   assert.equal(ok(STATUS, 2400000).behind, 0, 'a node ahead of an old list is at tip');
 });
 
@@ -57,7 +65,6 @@ test('view: plain-language problems and hints for what fails', () => {
     'a proxy answering 502: the node behind it is down, not "not an Epic node"');
   assert.deepEqual(pick(v({ kind: 'too_old', address: 'https://n.example.com:3413', code: 'auth' })), ['old', 'warn', 'needs_secret', '']);
   assert.deepEqual(pick(v({ kind: 'too_old', address: 'https://n.example.com:3413', version: '3.0.0' })), ['old', 'warn', 'too_old', '']);
-  assert.deepEqual(pick(v({ kind: 'status_locked', address: 'https://n.example.com:3413', version: '4.1.0' })), ['locked', 'warn', 'locked', '']);
   assert.deepEqual(pick(v({ kind: 'unreachable', address: 'https://n.example.com:8080', version: '4.1.0', reason: 'status: HTTP 500' })), ['offline', 'risk', 'unreachable', ''],
     'an Epic node whose status fails: no port hint');
   assert.equal(nodeCheckView({ kind: 'unreachable', code: 'cancelled' }), null);
@@ -72,8 +79,16 @@ test('probe: a healthy node, its response time, and never an api secret, not eve
   assert.equal(v.state, 'online');
   assert.equal(v.ms, 40, 'the time to the first reply');
   assert.equal(v.address, 'http://127.0.0.1:3413');
-  assert.deepEqual(n.calls.map(c => c.key), ['GET /v1/version', 'GET /v1/status']);
+  assert.deepEqual(n.calls.map(c => c.key).sort(), ['GET /v1/version', 'POST /v2/foreign get_tip', 'POST /v2/foreign ready_for_txs'],
+    'the version and the public foreign API: no /v1/status, no /v2/owner');
   for (const c of n.calls) assert.equal('Authorization' in c.headers, false);
+});
+
+test('probe: not ready_for_txs is syncing, however close the height is; a node closing /v1/status is normal', async () => {
+  const v = await probeNode('https://n.example.com:3413', { fetch: healthy(STATUS, { ready: false }).fetch, tipHeight: 2500001 });
+  assert.deepEqual([v.state, v.tone], ['syncing', 'warn']);
+  const ok = await probeNode('https://n.example.com:3413', { fetch: healthy().fetch, tipHeight: 2500001 });
+  assert.deepEqual([ok.state, ok.problem], ['online', '']);
 });
 
 test('probe: the tip is asked lazily (a function) and used for "behind"', async () => {

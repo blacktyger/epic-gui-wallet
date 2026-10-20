@@ -24,7 +24,7 @@ export default {
 
   //node notices
   node_syncing: 'Your node is syncing: {p}',
-  node_syncing_detail: '{status}, {cur} of {high}.',
+  node_syncing_detail: '{status}.',
   node_syncing_balance: 'Balances are what the wallet knew at block {h}.',
   node_syncing_send: 'Sending opens when the node has caught up.',
   node_sync_progress: 'Node sync',

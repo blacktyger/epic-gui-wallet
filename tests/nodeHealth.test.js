@@ -147,3 +147,11 @@ test('at the tip with 0 peers: as it says (it relays nothing); peers unknown (ge
   assert.equal(assessNodeStatus(s, { referenceHeight: 1000 }), s);
   assert.equal(assessNodeStatus(status(1000, 'awaiting_peers', null), { referenceHeight: 1000 }).sync_status, 'no_sync');
 });
+
+test('ready_for_txs false (foreign API): syncing even at the tip; the blocks to the tip are what is behind', () => {
+  const s = { ...status(1000, 'body_sync', null), ready_for_txs: false };
+  assert.equal(assessNodeStatus(s, { referenceHeight: 1001 }).sync_status, 'body_sync');
+  assert.equal(assessNodeStatus(s, { referenceHeight: 1001 }).behind_blocks, 1);
+  assert.equal(assessNodeStatus(s, { referenceHeight: 900 }).behind_blocks, undefined);
+  assert.equal(assessNodeStatus(s).sync_status, 'body_sync');
+});

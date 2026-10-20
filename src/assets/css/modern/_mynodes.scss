@@ -75,3 +75,10 @@
   .e-nodecheck, .e-mynodes { animation: none; }
   .e-nodedir-dot.e-wait { animation: none; }
 }
+
+/* Settings › Node: the saved node's details (form/CurrentNodeInfo.vue) */
+.e-nodeinfo { margin-top: var(--sp-3); }
+.e-nodeinfo-state { display: flex; align-items: center; gap: var(--sp-2); margin: 0; font-weight: 600; }
+.e-nodeinfo-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--sp-2) var(--sp-4); margin: var(--sp-2) 0 0; }
+.e-nodeinfo-rows dt { color: var(--dim); font-size: 0.8125rem; }
+.e-nodeinfo-rows dd { margin: 0; overflow-wrap: anywhere; }

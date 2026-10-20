@@ -97,8 +97,8 @@ export const store = createStore({
     //the step of opening the wallet running now (see StartupProgress), '' when idle
     loginStage: '',
     //the external node can't be used as it should (NodeProblemNotice): null, or
-    //{kind: 'too_old' | 'status_locked' | 'unreachable' | 'not_epic', address, version, reason, local,
-    // statusReadable, statusVia, network, epicboxSkipped, hidden} (kinds: shared/nodeVersion.js classifyNode)
+    //{kind: 'too_old' | 'unreachable' | 'not_epic', address, version, reason, local,
+    // statusReadable, network, epicboxSkipped, hidden} (kinds: shared/nodeVersion.js classifyNode)
     nodeProblem: null,
     //the saved node address was cleaned up at login (shared/nodeAddressMigration.js): null or {from, to, reason, network}
     nodeAddressChange: null,

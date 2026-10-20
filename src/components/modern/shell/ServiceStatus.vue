@@ -8,13 +8,13 @@
       type="button"
       class="e-svc"
       :class="'e-is-' + line.tone"
-      :title="line.name + ': ' + line.detail + (line.action ? ' · ' + line.action : '')"
-      :aria-label="line.open + ': ' + line.detail"
+      :title="line.name + ': ' + (line.tip || line.detail) + (line.action ? ' · ' + line.action : '')"
+      :aria-label="line.open + ': ' + (line.tip || line.detail)"
       @click="go(line.to)"
     >
       <EIcon :name="line.tone == 'busy' ? 'sync' : line.icon" />
       <span><b>{{ line.name }}</b></span>
-      <small>{{ line.detail }}</small>
+      <small v-if="line.detail">{{ line.detail }}</small>
       <small v-if="line.action" class="e-svc-act">{{ line.action }}</small>
     </button>
   </div>
@@ -27,7 +27,7 @@
   import { useRouter } from 'vue-router';
   import { openSettingsSection } from '@/components/modern/settings/jump';
   import EIcon from '@/components/modern/ui/EIcon.vue';
-  import { nodeSyncPercent } from '@/components/modern/format';
+  import { nodeBadge } from '@/components/modern/nodeBadge';
   import { epicboxStatus } from '@/shared/epicboxStatus';
   import { httpShown } from '@/shared/httpListener';
 
@@ -38,20 +38,14 @@
       const store = useStore();
       const { t, locale } = useI18n();
 
+      //the node is one icon and a short tooltip; the details are in Settings › Node
       const node = computed(() => {
-        const s = store.state.nodeStatus || {};
-        const base = { key: 'node', icon: 'server', name: t('msg.modern.svc_node'), to: { path: '/settings', hash: '#node' }, open: t('msg.modern.svc_open_node') };
-        if (s.error) return { ...base, tone: 'risk', detail: t('msg.modern.svc_node_down') };
-        if (!s.user_agent) return { ...base, tone: 'busy', detail: t('msg.modern.svc_connecting') };
-        //behind the network tip (nodeService.assessStatus): the line opens Settings, node first, to switch
-        if (s.node_behind > 0) {
-          return { ...base, tone: 'warn', detail: t('msg.modern.svc_behind', { n: Number(s.node_behind).toLocaleString(locale.value) }), action: t('msg.modern.switch_node') };
-        }
-        if (s.sync_status != 'synced') {
-          return { ...base, tone: 'warn', detail: t('msg.modern.svc_syncing', { p: nodeSyncPercent(s, locale.value) }) };
-        }
-        const h = s.tip && s.tip.height ? Number(s.tip.height).toLocaleString(locale.value) : '';
-        return { ...base, tone: 'ok', detail: t('msg.modern.svc_synced', { h }) };
+        const b = nodeBadge(store.state.nodeStatus, store.state.nodeProblem);
+        const tip = t('msg.modern.' + b.key, { n: Number(b.n).toLocaleString(locale.value) });
+        return {
+          key: 'node', icon: b.icon, name: t('msg.modern.svc_node'), to: { path: '/settings', hash: '#node' }, open: t('msg.modern.svc_open_node'),
+          tone: b.tone, detail: '', tip, action: b.behind ? t('msg.modern.switch_node') : '',
+        };
       });
 
       const receiving = computed(() => {

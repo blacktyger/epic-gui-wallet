@@ -53,5 +53,4 @@ a.e-tx-link { color: inherit; text-decoration: none; }
 .e-ov-row small { overflow-wrap: anywhere; }
 
 /* Status card: the node's host gets its own line and may wrap; the height sits under the label */
-.e-ov-status .e-ov-host { color: var(--dim); overflow-wrap: anywhere; word-break: break-word; }
-.e-ov-status .e-ov-height .e-mono { color: var(--dim); }
+.e-ov-status .e-ov-nodeicon { display: inline-flex; }

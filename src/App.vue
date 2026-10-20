@@ -678,22 +678,22 @@
       /* the classification of the external node (shared/nodeVersion.js) -> the store's nodeProblem */
       setNodeProblem(check){
         if(!check || check.kind == 'ok'){
-          //usable, maybe an older node or one with a locked /v1/status: no notice, a line in the log
+          //usable, maybe an older node no notice, a line in the log
           if(check && check.reason){
             console.log('[node] ' + withoutUserinfo(check.address) + ': usable, ' + check.reason + ', version ' + (check.version || 'unknown'));
           }
           this.store.commit('nodeProblem', null);
           return;
         }
-        const {kind, address, version, reason, local, statusReadable, statusVia} = check;
+        const {kind, address, version, reason, local, statusReadable} = check;
         //the user hid the notice, or Epicbox was skipped, in this session: a new check keeps that
         //(same node only: another address gets its own notice)
         const before = this.store.state.nodeProblem && this.store.state.nodeProblem.address == address ? this.store.state.nodeProblem : {};
         //the notice says it in plain words; the details are for the log
         console.log('[node] ' + withoutUserinfo(address) + ': ' + kind + ', version ' + (version || 'unknown') + ', ' + (reason || '-')
-          + ', status ' + (statusReadable ? 'readable via ' + statusVia : 'not readable'));
+          + ', status ' + (statusReadable ? 'readable' : 'not readable'));
         this.store.commit('nodeProblem', {
-          kind, address, version, reason, local, statusReadable, statusVia,
+          kind, address, version, reason, local, statusReadable,
           network: this.configService.defaultAccountNetwork || 'mainnet',
           epicboxSkipped: !!before.epicboxSkipped,
           hidden: !!before.hidden,

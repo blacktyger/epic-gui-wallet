@@ -47,12 +47,12 @@ function hintFor(address, c){
  * classified: classifyNode's result; ms: the time to the first reply (null when none);
  * tipHeight: the network tip (the public node list), 0 when unknown.
  *
- * returns {address, state, tone, version, height, behind, peers, ms, problem, hint}, or null for a
+ * returns {address, state, tone, version, height, behind, ms, problem, hint}, or null for a
  * check that was cancelled
- *   state    'online' | 'syncing' | 'old' | 'locked' | 'offline' | 'not_epic'
+ *   state    'online' | 'syncing' | 'old' | 'offline' | 'not_epic'
  *   tone     'ok' | 'warn' | 'risk' (the dot)
  *   behind   blocks below the tip (0 = at tip), null when the tip or the height is unknown
- *   problem  '' | 'timeout' | 'unreachable' | 'server_error' | 'not_epic' | 'redirect' | 'too_old' | 'needs_secret' | 'locked'
+ *   problem  '' | 'timeout' | 'unreachable' | 'server_error' | 'not_epic' | 'redirect' | 'too_old' | 'needs_secret'
  *   hint     '' | 'try_https' | 'try_http' | 'port' (only with offline / not_epic)
  */
 export function nodeCheckView(classified, {ms = null, tipHeight = 0} = {}){
@@ -62,7 +62,7 @@ export function nodeCheckView(classified, {ms = null, tipHeight = 0} = {}){
   }
   const base = {
     address: c.address || '', state: 'offline', tone: 'risk', version: c.version || null, height: null, behind: null,
-    peers: null, ms: Number.isFinite(ms) && ms >= 0 ? Math.round(ms) : null, problem: '', hint: '',
+    ms: Number.isFinite(ms) && ms >= 0 ? Math.round(ms) : null, problem: '', hint: '',
   };
 
   if(c.kind == 'ok'){
@@ -78,14 +78,10 @@ export function nodeCheckView(classified, {ms = null, tipHeight = 0} = {}){
       tone: syncing ? 'warn' : 'ok',
       height,
       behind: shownBehind,
-      peers: count(status.connections),
     };
   }
   if(c.kind == 'too_old'){
     return {...base, state: 'old', tone: 'warn', problem: c.code == 'auth' ? 'needs_secret' : 'too_old'};
-  }
-  if(c.kind == 'status_locked'){
-    return {...base, state: 'locked', tone: 'warn', problem: 'locked'};
   }
   if(c.kind == 'not_epic'){
     //a web server (often a proxy in front of the node) answers with an error: the node behind it is down
@@ -126,7 +122,7 @@ export async function probeNode(text, {fetch: fetchFn, signal, tipHeight = 0, ti
     return tip;
   };
   //never an api secret here: the user may have typed anything
-  const classified = await classifyNode(address, {fetch: timed, apiSecret: '', timeoutMs, signal, referenceHeight});
+  const classified = await classifyNode(address, {fetch: timed, timeoutMs, signal, referenceHeight});
   if(signal && signal.aborted){
     return null;
   }

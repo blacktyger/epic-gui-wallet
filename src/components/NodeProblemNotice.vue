@@ -80,7 +80,7 @@
       const problem = computed(() => store.state.nodeProblem && !store.state.nodeProblem.hidden ? store.state.nodeProblem : null);
       //the status can't be read: the node panel shows unreachable, Epicbox doesn't start by itself
       const severe = computed(() => !!problem.value && !problem.value.statusReadable);
-      const showsVersion = computed(() => !!problem.value && ['too_old', 'status_locked'].includes(problem.value.kind));
+      const showsVersion = computed(() => !!problem.value && ['too_old'].includes(problem.value.kind));
       const showsUpgrade = showsVersion;
       const mainnet = computed(() => !problem.value || !problem.value.network || problem.value.network == 'mainnet');
 

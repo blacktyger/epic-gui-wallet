@@ -7,6 +7,7 @@
         <div class="e-set-row e-stacked">
           <p class="e-stg-lede">{{ $t('msg.modern.settings.node_hint') }}</p>
           <NodeserverField ref="nodeserverField" />
+          <CurrentNodeInfo />
         </div>
         <!-- the built-in node uses chain data of an older app (Settings.vue resetChainData) -->
         <div v-if="chainDirInUse" class="e-set-row e-stacked">
@@ -228,6 +229,7 @@
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import EDialog from '@/components/modern/ui/EDialog.vue';
   import NodeserverField from '@/components/modern/form/NodeserverField.vue';
+  import CurrentNodeInfo from '@/components/modern/form/CurrentNodeInfo.vue';
   import EpicboxServers from '@/components/modern/form/EpicboxServers.vue';
   import SettingsFrame from '@/components/modern/settings/SettingsFrame.vue';
   import { resetNotice } from '@/shared/theme';
@@ -236,7 +238,7 @@
   import { toastLift } from '@/components/modern/ui/toastLift';
   import httpListenerSwitch from '@/components/modern/httpListenerSwitch';
   export default reskin(Settings, {
-    components: { EIcon, EDialog, NodeserverField, EpicboxServers, SettingsFrame },
+    components: { CurrentNodeInfo, EIcon, EDialog, NodeserverField, EpicboxServers, SettingsFrame },
     mixins: [httpListenerSwitch],
     //toasts (Settings saved, the node check) appear above the bar, never over its Save button
     directives: { toastLift },

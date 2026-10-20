@@ -1,5 +1,5 @@
 require('promise.prototype.finally').shim();
-import { fetchNodeVersion, fetchNodeStatus, classifyNode } from './nodeVersion.js';
+import { fetchNodeVersion, fetchNodeStatus, fetchLocalStatus, classifyNode } from './nodeVersion.js';
 import { loadDirectory, CHAINS } from './nodeDirectory.js';
 import { assessNodeStatus, directoryReferenceHeight, createBehindTracker } from './nodeHealth.js';
 import { probeNode, createCheckCache } from './nodeCheck.js';
@@ -9,8 +9,6 @@ import { probeNode, createCheckCache } from './nodeCheck.js';
 //network tip older than DIRECTORY_MAX_AGE_MS is not used
 const DIRECTORY_EVERY_MS = 10 * 60 * 1000;
 const DIRECTORY_MAX_AGE_MS = 15 * 60 * 1000;
-//a node whose /v1/status is locked is asked the whole way again this often (it may have changed)
-const STATUS_VIA_RECHECK_MS = 10 * 60 * 1000;
 
 const log = window.log;
 console.log = log.log;
@@ -124,9 +122,9 @@ class NodeService {
     return Math.max(this.networkTipHeight(), this.highestSeenHeight || 0);
   }
 
-  /* ok | too_old | status_locked | unreachable | not_epic for the saved node (shared/nodeVersion.js) */
+  /* ok | too_old | unreachable | not_epic for the saved node (shared/nodeVersion.js) */
   async classifyNode(address){
-    const check = await classifyNode(address, {apiSecret: this.configService.apisecret, referenceHeight: () => this.referenceHeight()});
+    const check = await classifyNode(address, {referenceHeight: () => this.referenceHeight()});
     //for the status polls: a status read via get_tip has no user agent, the panel shows this version
     this.nodeVersion = check.version || '';
     if(check.status){
@@ -201,16 +199,14 @@ class NodeService {
 
     let baseURL = this.configService.config['check_node_api_http_addr'] ? this.configService.config['check_node_api_http_addr'] : this.configService.defaultEpicNode;
 
-    //GET /v1/status; on a 401 (plain node 4.1.0) the same status from POST /v2/owner get_status,
-    //else the tip from POST /v2/foreign get_tip. The node secret is sent to the local node only.
-    //A node read via owner or foreign is asked that way at once (no 401s first), from the start again
-    //every STATUS_VIA_RECHECK_MS. Reads at the same time (the poll, the Epicbox wait) share one request
-    const now = Date.now();
-    const recheck = baseURL !== this.statusViaBase || now - (this.statusViaAt || 0) >= STATUS_VIA_RECHECK_MS;
-    const via = !recheck && (this.statusVia == 'owner' || this.statusVia == 'foreign') ? this.statusVia : '';
-    const key = baseURL + ' ' + via;
+    //every node is read the same way, from the public foreign API: get_tip + ready_for_txs (no secret).
+    //Reads at the same time (the poll, the Epicbox wait) share one request
+    const key = baseURL;
     if(!this.statusRead || this.statusRead.key !== key){
-      const read = fetchNodeStatus(baseURL, {apiSecret: this.configService.apisecret, timeoutMs: 10000, referenceHeight: () => this.referenceHeight(), version: this.nodeVersion || '', via});
+      //checked_at / response_ms: for Settings › Node (last checked, response time)
+      const started = Date.now();
+      const read = fetchNodeStatus(baseURL, {timeoutMs: 10000, referenceHeight: () => this.referenceHeight(), version: this.nodeVersion || ''})
+        .then((r) => r.ok ? {...r, status: {...r.status, checked_at: Date.now(), response_ms: Date.now() - started}} : r);
       this.statusRead = {key, read};
       read.finally(() => { if(this.statusRead && this.statusRead.read === read) this.statusRead = null; });
     }
@@ -218,16 +214,7 @@ class NodeService {
     if(!res.ok){
       this.logNodeLine(baseURL, 'no status: ' + res.reason);
     }
-    //how the status was read last: 'v1', 'owner', 'foreign' or null
-    this.statusVia = res.ok ? res.via : null;
-    if(!via){
-      this.statusViaBase = baseURL;
-      this.statusViaAt = now;
-    }
     let response = res.ok ? res.status : false;
-    if(response && res.via != 'foreign'){
-      this.noteHeight(response);
-    }
 
     /* check if node status is ok or need a restart because is stalled */
     if(internal){
@@ -237,58 +224,67 @@ class NodeService {
         if(this.restartSuccess) console.log('[node] built-in node does not answer, restarting');
         await this.restartNode();
       }else{
-        //check some other indicators that node is not stalled
+        //check some other indicators that node is not stalled. Only the watchdog reads the built-in
+        //node's own GET /v1/status (localhost, api secret), on its own interval and never for the UI:
+        //the foreign API can't tell a long txhashset download from a stall
         if((this.syncStatusCheckedTime+this.sysnStatusStalltime) < Math.floor(Date.now() / 1000)){
           this.syncStatusCheckedTime = Math.floor(Date.now() / 1000);
-
-          //never restart at this stages
-          if(!this.safeSyncStates.includes(response.sync_status)){
-            let restart = false;
-
-
-            //no peers
-            if(response.connections == 0 && response.sync_status !== 'awaiting_peers'){
-              console.log('[node] built-in node stalled (no peers, ' + response.sync_status + '), restarting');
-              restart = true;
-            }
-            //if node is synced but has no tip height
-            if(response.tip && response.tip.height == 0 && response.sync_status === 'no_sync'){
-              console.log('[node] built-in node stalled (synced but no tip height, ' + response.sync_status + '), restarting');
-              restart = true;
-            }
-
-            if(response.sync_info && response.sync_info.highest_height == 0 && response.sync_status !== 'awaiting_peers'){
-              console.log('[node] built-in node stalled (no highest height, ' + response.sync_status + '), restarting');
-              restart = true;
-            }
-            // body_sync has latest block height but do not switch to no_sync
-            if(response.sync_status === 'body_sync' && response.tip.height == response.sync_info.current_height && response.sync_info.highest_height == response.sync_info.current_height){
-              console.log('[node] built-in node stalled (body sync at the tip but not done, ' + response.sync_status + '), restarting');
-              restart = true;
-            }
-
-            if(restart){
-              await this.restartNode();
-            }
-
-          }
+          const own = await fetchLocalStatus(baseURL, {apiSecret: this.configService.apisecret});
+          await this.watchdog(own);
         }
       }
     }
 
-    //the restart checks above read the status as the node gave it
+    //the node's tip is the reference when there is no public node
+    if(response){
+      this.noteHeight(response);
+    }
     response = this.assessStatus(response, {count: poll && epoch === this.healthEpoch});
     if(response){
       const tip = response.tip && response.tip.height;
-      this.logNodeLine(baseURL, (internal ? 'built-in' : 'remote') + ', ' + response.sync_status + (response.connections == 0 ? ', no peers' : ''),
-        'height ' + tip + ', ' + response.connections + ' peers' + (response.node_behind ? ', ' + response.node_behind + ' behind' : ''));
+      this.logNodeLine(baseURL, (internal ? 'built-in' : 'remote') + ', ' + response.sync_status,
+        'height ' + tip + (response.node_behind ? ', ' + response.node_behind + ' behind' : ''));
     }
     return response;
 
   }
 
+  /* the built-in node's stall checks on its own status (null: it gave none, nothing to judge) */
+  async watchdog(response){
+    if(!response || this.safeSyncStates.includes(response.sync_status)){
+      //never restart at these stages
+      return;
+    }
+    let restart = false;
+
+    //no peers
+    if(response.connections == 0 && response.sync_status !== 'awaiting_peers'){
+      console.log('[node] built-in node stalled (no peers, ' + response.sync_status + '), restarting');
+      restart = true;
+    }
+    //if node is synced but has no tip height
+    if(response.tip && response.tip.height == 0 && response.sync_status === 'no_sync'){
+      console.log('[node] built-in node stalled (synced but no tip height, ' + response.sync_status + '), restarting');
+      restart = true;
+    }
+
+    if(response.sync_info && response.sync_info.highest_height == 0 && response.sync_status !== 'awaiting_peers'){
+      console.log('[node] built-in node stalled (no highest height, ' + response.sync_status + '), restarting');
+      restart = true;
+    }
+    // body_sync has latest block height but do not switch to no_sync
+    if(response.sync_status === 'body_sync' && response.tip.height == response.sync_info.current_height && response.sync_info.highest_height == response.sync_info.current_height){
+      console.log('[node] built-in node stalled (body sync at the tip but not done, ' + response.sync_status + '), restarting');
+      restart = true;
+    }
+
+    if(restart){
+      await this.restartNode();
+    }
+  }
+
   /* one log line when the node's state changes (not every 10 s poll): the state, and details that
-     change all the time (height, peers) only with it. The address without user:password@ */
+     change all the time (height) only with it. The address without user:password@ */
   logNodeLine(url, state, detail = ''){
     let addr = String(url || '');
     try{ const u = new URL(addr); u.username = ''; u.password = ''; addr = u.origin; }catch(e){ /* as it is */ }

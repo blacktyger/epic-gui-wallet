@@ -20,6 +20,7 @@ Everything since 6.1.2. The new features are in the BT Labs Theme interface; Cla
 **Changed**
 
 - Less load on the node: the wallet asks the node for its status less often, much less often while the window is minimized or hidden, and backs off when the node doesn't answer.
+- The node's status is one icon in the sidebar and on Overview; the details (version, height, response time) are in Settings › Node. It is read the same way for every node, so a node that keeps its status page private is no longer shown as not responding.
 - Receiving over HTTP is off until you turn it on (Receive, or Settings with "Start with the wallet"). Epicbox and files work as before. The Receive page says plainly that HTTP is reachable only from this computer unless you set it up yourself.
 - One name, "Epicbox server", everywhere (it was also called "relay" or "domain").
 - Removing a wallet: "Remove everything, including the wallet seed" (the app never stores your recovery phrase).

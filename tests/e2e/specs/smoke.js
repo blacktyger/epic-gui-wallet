@@ -29,7 +29,7 @@ H.runCase('smoke', async (t) => {
   const outputCalls = () => Object.entries(t.node.counts).filter(([k]) => /get_unspent_outputs|get_outputs|get_pmmr_indices/.test(k)).reduce((n, [, v]) => n + v, 0);
   const callsBefore = outputCalls();
   await t.step('unlock with the right password', () => U.unlock(w, ui, password), { fatal: true, timeout: 120000 });
-  await t.step('after unlock: the stub node, synced', () => U.waitText(w, ui === 'modern' ? /Synced · block 3,100,000/ : /Node \(http:\/\/127\.0\.0\.1:13413\)/, 30000));
+  await t.step('after unlock: the stub node, synced', () => ui === 'modern' ? U.waitNodeOnline(w, 30000) : U.waitText(w, /Node \(http:\/\/127\.0\.0\.1:13413\)/, 30000));
   //Modern: the HTTP listener is off until Start with wallet or Receive › Turn on (node-load); Classic starts it
   await t.step(ui === 'modern' ? 'after unlock: the HTTP listener stays off (Start with wallet is off)' : 'after unlock: the HTTP listener starts',
     () => t.waitLog(ui === 'modern' ? /\[login\] http listener not started \(Start with wallet is off\)/ : /\[login\] http listener started/, { from: mark, timeout: 30000 }));

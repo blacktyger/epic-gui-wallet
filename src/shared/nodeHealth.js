@@ -42,7 +42,7 @@ export function directoryReferenceHeight(dir){
 }
 
 /*
- * A node status (GET /v1/status shape) checked against the network tip referenceHeight (0: unknown).
+ * A node status (GET /v1/status shape, built from the foreign API: nodeVersion.js) checked against the network tip referenceHeight (0: unknown).
  *  - at the tip (at most NODE_TIP_TOLERANCE below) with peers (or a peer count unknown), whatever
  *    it says: sync_status 'no_sync', the reported one kept in reported_sync_status;
  *  - clearly below it while it says no_sync or awaiting_peers: behind_blocks = how far. sync_status
@@ -59,6 +59,11 @@ export function assessNodeStatus(status, {referenceHeight = 0} = {}){
   const tip = status.tip ? Number(status.tip.height) || 0 : 0;
   const peers = Number(status.connections) || 0;
   const reference = Number(referenceHeight) || 0;
+  //ready_for_txs (the foreign API, nodeVersion.js) is the node's own word: false is syncing, however
+  //close the height is; the blocks to the network tip are what is left to do
+  if(status.ready_for_txs === false){
+    return reference > tip && tip > 0 ? {...status, behind_blocks: reference - tip} : status;
+  }
   const synced = (s) => (s.sync_status === 'no_sync' ? s : {...s, sync_status: 'no_sync', reported_sync_status: s.sync_status});
 
   if(reference > 0 && tip > 0){

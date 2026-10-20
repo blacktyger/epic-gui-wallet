@@ -72,7 +72,7 @@
       <div>
         <b>{{ $t('msg.modern.overview.node_syncing', { p: syncPercent }) }}</b>
         <p>
-          {{ $t('msg.modern.overview.node_syncing_detail', { status: nodeState(store.state.nodeStatus.sync_status), cur: fmt(currentHeight), high: fmt(highestHeight) }) }}
+          {{ $t('msg.modern.overview.node_syncing_detail', { status: nodeState(store.state.nodeStatus.sync_status) }) }}
           <template v-if="store.state.walletTip">{{ $t('msg.modern.overview.node_syncing_balance', { h: fmt(store.state.walletTip) }) }}</template>
           {{ $t('msg.modern.overview.node_syncing_send') }}
         </p>
@@ -148,19 +148,15 @@
         <div class="e-section-head"><h2 id="ov-status-h">{{ $t('msg.modern.overview.status') }}</h2></div>
         <div class="e-panel e-ov-status">
           <div class="e-ov-row">
-            <span v-if="nodeConnecting" class="e-spinner" aria-hidden="true"></span>
-            <EIcon v-else name="server" :class="nodeDown ? 'e-risk' : (nodeSyncing || nodeBehind ? 'e-warn' : 'e-ok')" />
+            <span class="e-ov-nodeicon" :title="badgeTip">
+              <span v-if="badge.state == 'connecting'" class="e-spinner" aria-hidden="true"></span>
+              <EIcon v-else :name="badge.icon" :class="'e-' + badge.tone" />
+            </span>
             <div class="e-grow">
               <b>{{ isInternal ? $t('msg.modern.overview.node_builtin') : $t('msg.modern.overview.node_external') }}</b>
-              <small v-if="nodeConnecting" role="status">{{ $t('msg.modern.overview.node_connecting') }}</small>
-              <small v-else-if="nodeDown" class="e-risk">{{ $t('msg.modern.overview.node_not_responding') }}</small>
-              <small v-else-if="nodeBehind" role="status">{{ $t('msg.modern.node_behind', { n: fmt(nodeBehind) }) }} <router-link to="/settings" class="e-link-btn">{{ $t('msg.modern.switch_node') }}</router-link></small>
-              <small v-else-if="nodeSyncing">{{ $t('msg.modern.overview.node_progress', { status: nodeState(store.state.nodeStatus.sync_status), p: syncPercent }) }}<template v-if="node.connections != null"> · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</template></small>
-              <small v-else>{{ $t('msg.modern.overview.node_synced') }}<template v-if="node.connections != null"> · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</template></small>
-              <small v-if="nodeSynced" class="e-ov-height" translate="no" :title="$t('msg.modern.overview.node_block')">{{ $t('msg.modern.overview.node_block') }} <span class="e-mono">{{ fmt(blockHeight) }}</span></small>
-              <small v-if="!isInternal && nodeHost" class="e-mono e-ov-host" translate="no" :title="store.state.nodeType">{{ nodeHost }}</small>
+              <small role="status" class="e-sr-only" :data-node-state="badge.state">{{ badgeTip }}</small>
+              <small v-if="badge.behind && badge.state != 'not_epic' && badge.state != 'old'"><router-link to="/settings#node" class="e-link-btn">{{ $t('msg.modern.switch_node') }}</router-link></small>
               <small v-if="isInternal && !configService.config.nodesynced && (configService.defaultAccountNetwork || 'mainnet') == 'mainnet'" class="e-faint">{{ $t('msg.modern.overview.node_fallback', { addr: nodeFallBack }) }}</small>
-              <small v-if="store.state.nodeStatus.user_agent" class="e-faint" translate="no" :title="store.state.nodeStatus.user_agent">{{ nodeVersion }}</small>
             </div>
             <button
               v-if="isInternal && !nodeDown"
@@ -208,6 +204,7 @@
   //the fiat value last shown, for the balance it was computed for (see mounted)
   const lastFiat = { total: null, usd: 0 };
   import { nodeSyncPercent } from '@/components/modern/format';
+  import { nodeBadge } from '@/components/modern/nodeBadge';
   import { epicboxStatus } from '@/shared/epicboxStatus';
   import { httpShown } from '@/shared/httpListener';
   import EIcon from '@/components/modern/ui/EIcon.vue';
@@ -229,23 +226,12 @@
       };
     },
     computed: {
-      /* the node's address as people read it: no scheme, no trailing slash, the port only when it
-         isn't the usual one (80/443, or 3413, the node API's default); the full URL is the title */
-      nodeHost() {
-        const raw = String(this.store.state.nodeType || '').trim();
-        if (!raw || raw == 'external' || raw == 'internal') return '';
-        const m = raw.match(/^(?:[a-z][a-z0-9+.-]*:\/\/)?([^/?#]+)/i);
-        if (!m) return raw;
-        const hp = m[1];
-        const pm = hp.match(/^(.*):(\d+)$/);
-        if (pm && ['80', '443', '3413'].includes(pm[2])) return pm[1];
-        return hp;
+      /* the node as one icon and a short tooltip (components/modern/nodeBadge.js) */
+      badge() {
+        return nodeBadge(this.store.state.nodeStatus, this.store.state.nodeProblem);
       },
-      /* "MW/Epic 4.1.0-1" -> "v4.1.0-1" */
-      nodeVersion() {
-        const ua = String(this.store.state.nodeStatus.user_agent || '');
-        const m = ua.match(/(\d+\.\d+\.\d+[^\s]*)/);
-        return m ? 'v' + m[1] : ua;
+      badgeTip() {
+        return this.$t('msg.modern.' + this.badge.key, { n: this.fmt(this.badge.n) });
       },
       tourSteps() {
         const s = (key, target) => ({ target, title: this.$t('msg.modern.tour_' + key + '_t'), text: this.$t('msg.modern.tour_' + key) });
@@ -278,7 +264,7 @@
         return !!(p && !p.hidden);
       },
       nodeConnecting() {
-        return !this.node.error && !this.node.user_agent;
+        return !this.node.error && !this.node.user_agent && !(this.node.tip && this.node.tip.height > 0);
       },
       /* blocks below the network tip, once seen twice in a row (nodeService.assessStatus), else 0 */
       nodeBehind() {
@@ -295,12 +281,6 @@
       },
       isInternal() {
         return this.store.state.nodeType == 'internal';
-      },
-      peers() {
-        return this.node.connections || 0;
-      },
-      blockHeight() {
-        return this.node.tip && this.node.tip.height ? this.node.tip.height : 0;
       },
       syncPercent() {
         return nodeSyncPercent(this.node, this.locale);

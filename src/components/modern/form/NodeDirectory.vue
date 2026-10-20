@@ -28,7 +28,6 @@
           <dd><span class="e-num">{{ fmt(selected.height) }}</span><small v-if="selected.tipLag !== null" :class="selected.tipLag === 0 ? 'e-ok' : 'e-warn'">{{ lagText(selected) }}</small></dd>
         </div>
         <div v-if="selected.version"><dt>{{ $t('msg.nodedir.version') }}</dt><dd class="e-num">{{ selected.version }}</dd></div>
-        <div v-if="selected.peers !== null"><dt>{{ $t('msg.nodedir.peers') }}</dt><dd class="e-num">{{ fmt(selected.peers) }}</dd></div>
         <div v-if="selected.latencyMs !== null"><dt>{{ $t('msg.nodedir.latency') }}</dt><dd class="e-num">{{ $t('msg.nodedir.latency_ms', { n: selected.latencyMs }) }}</dd></div>
         <div v-if="selected.country"><dt>{{ $t('msg.nodedir.location') }}</dt><dd class="e-nodedir-loc"><span class="e-nodedir-flag" aria-hidden="true">{{ flagOf(selected.country) }}</span><span>{{ countryOf(selected.country) }}</span></dd></div>
         <div v-if="selected.uptime24h !== null || selected.uptime30d !== null">

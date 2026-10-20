@@ -106,7 +106,6 @@
         const out = [];
         if (n.height !== null) out.push(t('height') + ' ' + number(n.height, this.locale));
         if (n.version) out.push(t('version') + ' ' + n.version);
-        if (n.peers !== null) out.push(t('peers_n', { n: number(n.peers, this.locale) }));
         if (n.latencyMs !== null) out.push(t('latency') + ' ' + t('latency_ms', { n: n.latencyMs }));
         if (n.country) out.push((flag(n.country) + ' ' + countryName(n.country, this.locale)).trim());
         const up = [];
