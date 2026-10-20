@@ -273,7 +273,7 @@ export default {
     problem_timeout: 'Der Knoten hat nicht rechtzeitig geantwortet. Er ist vielleicht ausgefallen oder sehr langsam.',
     problem_unreachable: 'Diese Adresse ist nicht erreichbar. Prüfen Sie, ob sie Tippfehler enthält und ob der Knoten läuft.',
     problem_not_epic: 'Unter dieser Adresse antwortet etwas, aber es ist kein Epic-Knoten.',
-    problem_redirect: 'Diese Adresse leitet woandershin weiter, und die Wallet folgt Weiterleitungen nicht. Verwenden Sie stattdessen die Zieladresse.',
+    problem_redirect: 'Diese Adresse verweist auf eine andere Adresse, und die Wallet folgt solchen Umleitungen nicht. Verwenden Sie stattdessen die Zieladresse.',
     problem_too_old: 'Dieser Epic-Knoten ist älter als 4.1.0 und funktioniert mit dieser Wallet womöglich nicht richtig.',
     problem_needs_secret: 'Dieser Epic-Knoten antwortet nur, wenn sein API-Secret angegeben wird, daher funktioniert die Wallet womöglich nicht mit ihm.',
     problem_locked: 'Dieser Epic-Knoten verbirgt seinen Status, daher kann die Wallet nicht erkennen, ob er auf dem neuesten Stand ist.',

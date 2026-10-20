@@ -2,10 +2,11 @@
 
 ## Next version (after 6.1.5)
 
-- Settings › Node › External node: the address is checked while you type it (from a tester's request for a "test the connection" button). A short moment after you stop typing, or at once when you paste, a line under the field says whether an Epic node answers there: Online or Syncing, its version, its block height against the network ("at tip" or "N behind"), its peers and how fast it replied; or, in plain words, why not: it doesn't answer, it's slow, something answers but it isn't an Epic node, or it redirects. Tips cover the usual mistakes: https:// instead of http:// (and the other way round for a node on your own network) and the port (Epic nodes use 3413). The check never blocks typing or Save, and Save still checks the address itself, as before. Nodes from the public list keep their own status from status.btlabs.uk and aren't asked again.
+- Settings › Node › External node: the address is checked while you type it (you asked for a "test the connection" button). A short moment after you stop typing, or at once when you paste, a line under the field says whether an Epic node answers there: Online or Syncing, its version, its block height against the network ("at tip" or "N behind"), its peers and how fast it replied; or, in plain words, why not: it doesn't answer, it's slow, something answers but it isn't an Epic node, or it redirects. Tips cover the usual mistakes: https:// instead of http:// (and the other way round for a node on your own network) and the port (Epic nodes use 3413). The check never blocks typing or Save, and Save still checks the address itself, as before. Nodes from the public list keep their own status from the status page and aren't asked again.
 - My nodes: "Add to my nodes" next to the address field saves the address with a label of your own (optional). The dialog checks the address too, but you can save a node that is offline right now. The same node can't be added twice, however it's written (a trailing "/", capital letters, the default port). Saved nodes are listed under the field with their live status (state, at tip, ms), checked when you open the page and every few minutes while it stays open. Each one has Use (puts the address in the field; Save applies it), Edit and Remove (asks first, in the row).
   - The list is kept in the app's settings (settings.json, "myNodes"), one list per network, for all your wallets: a node serves every wallet on its network. Older 6.1 versions keep the list untouched if you go back.
   - Privacy: only addresses you typed or saved are asked, through the same path as the app's other node checks, with a timeout, over http(s) only. The node's API secret is never sent by these checks.
+
 ## Next version (branch feat/contacts)
 
 - Contacts, redesigned (feedback #38; the BT Labs Theme interface — Classic keeps its contacts as in 6.1.5, with the Send picker):
@@ -19,6 +20,7 @@
   - Pictures: the initials sit on a colour taken from the name, the same every time, readable in both themes. You can also pick a photo (PNG, JPEG, WebP or GIF, up to 10 MB): the app makes a small 128-pixel copy, which drops the photo's hidden details (location, camera, date), and keeps only that copy, separately from your contacts. SVG files and pictures from the internet are not accepted.
   - On a narrow window or with large text, the list and the contact take turns, with an "All contacts" button to go back.
   - Nothing changes in how contacts are stored: older versions still open them, and the hidden fields of very old contacts (a Tor address, payment proof settings, country and city) are kept.
+
 ## Next (feat/support-logs)
 
 - Report a problem: in Settings › Help (Classic: Help), the Help menu and on the unlock screen, so it works before a wallet is open too. Describe what happened, add a contact if you like, and keep "Attach logs (recommended)" ticked. The whole report is encrypted on your computer and goes to the Epic GUI Wallet developer: only the developer can read it. "Show what's sent" shows its content first. Send it, or save it to a file and send that yourself. Nothing is sent without your click, and a description that looks like a recovery phrase is refused (feedback #40).
@@ -27,6 +29,7 @@
 - Logs are on by default, at debug level, and bounded: the app's own logs (`logs/main.log`, `logs/renderer.log`, 2 MiB each plus one older file), each wallet's `epic-wallet.log` (5 MiB × 4 files) and the built-in node's `epic-server.log` (Info level, 5 MiB × 3 files). Existing wallets get it the next time they are opened. The page log used to be a new file every day that started empty on every start.
 - The logs hold what is needed to find a problem, with less noise: versions and system at start, every process the app starts (passwords redacted), node state changes (not every 10 seconds), send and receive steps with their transaction ids, wallet errors once instead of on every refresh. They never contain passwords, recovery phrases, seeds, API secrets, slates or the clipboard.
 - The first-unlock tour (BT Labs Theme) has one more step: "Need help? Settings › Help › Report a problem."
+
 ## Next (branch feat/add-wallet-flow)
 
 - Adding a wallet, made clear (feedback #34). There are three ways, the same everywhere: on the Welcome screen, behind "Add a wallet" on the Unlock screen, and in Settings › All wallets:
@@ -38,6 +41,7 @@
 - After you create, add or restore a wallet, the open wallet is locked (its background programs are stopped) and the Unlock screen opens with the new wallet already chosen. It says "… was added. Enter its password to unlock it." After creating a wallet you now unlock it on that screen. It no longer opens straight from the recovery-phrase page.
 - Settings › This wallet (it was "Wallet") is about the open wallet only. Its "Open wallet folder" button opens that wallet's own folder in your file manager. The confusing "Add a wallet from a folder…" button is gone from this page. Your other wallets, each with "Show in folder" and "Remove…", and the three ways to add one are on the new Settings › All wallets page. In Classic it is in the gear menu.
 - Welcome › Advanced › App data folder: one short line saying what it is, with the rest under "More about this". It works as before: choose a new, empty folder, the app restarts and uses it, and "Use the default folder" goes back.
+
 ## Unreleased (feat/help-rework)
 
 - One name for Epicbox: the setting and the setup review row say "Epicbox server" (they said "Epicbox Domain", "Epicbox Web Address" and "Relay"), and no screen calls it a relay any more, in every language (feedback #10). "Receiving" stays the name of the feature.

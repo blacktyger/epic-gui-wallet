@@ -112,12 +112,8 @@ describe('Settings › Help', () => {
       wrapper.unmount();
     });
 
-  test('Report a problem: hidden without the support flow; with it, the card and Getting help open it', async () => {
-    const before = setup();
-    expect(before.wrapper.find('#stg-sup-h').exists()).toBe(false);
-    before.wrapper.unmount();
-    //the strings of the support flow (feat/support-logs) as they arrive with it
-    i18n.global.mergeLocaleMessage('en', { msg: { support: { entry_title: 'Something not working?', open: 'Report a problem' } } });
+  test('Report a problem: the card and Getting help open the support report', async () => {
+    //msg.support.* arrives with feat/support-logs (merged in 6.1.6)
     const { wrapper, emitter } = setup();
     expect(wrapper.find('#stg-sup-h').text()).toBe('Something not working?');
     await wrapper.find('#stg-sup-h + button').trigger('click');
