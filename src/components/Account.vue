@@ -37,7 +37,8 @@
         <p v-if="importedDir && importedDir !== dataDir" class="help">{{ $t('msg.wallets.imported_from', [importedDir]) }}</p>
 
         <hr>
-        <p class="help">{{ $t('msg.wallets.this_wallet_only') }} <router-link :to="{ name: 'wallets' }">{{ $t('msg.wallets.all_wallets') }}</router-link></p>
+        <p class="help">{{ $t('msg.wallets.this_wallet_only') }}</p>
+        <router-link class="button is-small is-outlined" :to="{ name: 'wallets' }">{{ $t('msg.wallets.all_wallets') }}</router-link>
 
       </div>
     </div>

@@ -4,7 +4,7 @@
     <div class="columns">
       <div class="column is-two-thirds">
 
-        <h2 class="title is-5">{{ $t('msg.wallets.all_wallets') }}</h2>
+        <!-- the title bar names the page (All wallets) -->
         <p class="help" style="margin-bottom: 0.75rem;">{{ $t('msg.wallets.other_wallets_hint') }}</p>
         <div v-for="w in wallets" :key="w.id" class="level" :data-wallet="w.id">
           <div class="level-left"><div>
