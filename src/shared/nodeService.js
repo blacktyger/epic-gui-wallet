@@ -2,6 +2,7 @@ require('promise.prototype.finally').shim();
 import { fetchNodeVersion, fetchNodeStatus, classifyNode } from './nodeVersion.js';
 import { loadDirectory, CHAINS } from './nodeDirectory.js';
 import { assessNodeStatus, directoryReferenceHeight, createBehindTracker } from './nodeHealth.js';
+import { probeNode, createCheckCache } from './nodeCheck.js';
 
 //the node list is asked for once at the first status and then at most every 10 minutes (the main
 //process caches it for a minute, so the Settings node list may have fetched it already), and a
@@ -35,6 +36,7 @@ class NodeService {
       this.networkTip = null;
       this.directoryAskedAt = 0;
       this.behindTracker = createBehindTracker();
+      this.checkCache = createCheckCache({ttlMs: 60 * 1000});
   }
 
   async restartNode(){
@@ -97,6 +99,27 @@ class NodeService {
      (shared/nodeVersion.js). returns {ok: true, version} or {ok: false, reason} */
   async checkNodeVersion(address){
     return fetchNodeVersion(address);
+  }
+
+  /* a live check of an address the user typed or saved (Settings › Node, My nodes): a view for the
+     screens (shared/nodeCheck.js nodeCheckView), null when there is nothing to ask or it was cancelled.
+     Never with the api secret. The results are kept a minute (checkCache), for the field and the list */
+  async probeNode(address, {signal} = {}){
+    return probeNode(address, {signal, tipHeight: () => this.liveTipHeight()});
+  }
+
+  /* the network tip for a live check: the public node list (the main process keeps it a minute),
+     else the last tip known */
+  async liveTipHeight(){
+    const chain = this.configService.defaultAccountNetwork || 'mainnet';
+    if(CHAINS.includes(chain)){
+      const height = directoryReferenceHeight(await loadDirectory(window.api, chain, 2500));
+      if(height > 0){
+        this.networkTip = {chain, height, at: Date.now()};
+        return height;
+      }
+    }
+    return Math.max(this.networkTipHeight(), this.highestSeenHeight || 0);
   }
 
   /* ok | too_old | status_locked | unreachable | not_epic for the saved node (shared/nodeVersion.js) */

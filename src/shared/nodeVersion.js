@@ -53,13 +53,22 @@ const failReason = (e, timeoutMs) => e && (e.name === 'AbortError' || e.name ===
 const authHeaders = (base, apiSecret) => apiSecret && isLocal(base)
   ? {'Authorization': 'Basic ' + btoa('epic:' + apiSecret)} : {};
 const rpc = (method) => JSON.stringify({jsonrpc: '2.0', id: 1, method, params: []});
+/* an outer signal (a check that is no longer wanted) aborts the request as its timeout would */
+const follow = (signal, controller) => {
+  if(!signal) return () => {};
+  if(signal.aborted){ controller.abort(); return () => {}; }
+  const onAbort = () => controller.abort();
+  signal.addEventListener('abort', onAbort, {once: true});
+  return () => signal.removeEventListener('abort', onAbort);
+};
 
 /* fetchNodeVersion plus a machine-readable code: 'network' | 'timeout' | 'http' | 'no_version' | 'auth' */
-async function probeVersion(address, {fetch: fetchFn = defaultNodeFetch(), timeoutMs = 5000, redirect} = {}){
+async function probeVersion(address, {fetch: fetchFn = defaultNodeFetch(), timeoutMs = 5000, redirect, signal} = {}){
 
   const base = baseOf(address);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const unfollow = follow(signal, controller);
   const extra = redirect ? {redirect} : {};
 
   try{
@@ -91,10 +100,14 @@ async function probeVersion(address, {fetch: fetchFn = defaultNodeFetch(), timeo
     return version ? {ok: true, version} : {ok: false, reason: 'HTTP 401', code: 'auth'};
 
   }catch(e){
+    if(signal && signal.aborted){
+      return {ok: false, reason: 'cancelled', code: 'cancelled'};
+    }
     const reason = failReason(e, timeoutMs);
     return {ok: false, reason, code: reason == 'not reachable' ? 'network' : 'timeout'};
   }finally{
     clearTimeout(timeoutId);
+    unfollow();
   }
 }
 
@@ -200,11 +213,12 @@ export async function fetchTipHeight(address, {fetch: fetchFn = defaultNodeFetch
  * returns {ok: true, status, via: 'v1' | 'owner' | 'foreign', locked} or {ok: false, reason, locked}
  *   locked: /v1/status answered 401
  */
-export async function fetchNodeStatus(address, {fetch: fetchFn = defaultNodeFetch(), apiSecret = '', timeoutMs = 10000, redirect = 'manual', referenceHeight = 0, version = ''} = {}){
+export async function fetchNodeStatus(address, {fetch: fetchFn = defaultNodeFetch(), apiSecret = '', timeoutMs = 10000, redirect = 'manual', referenceHeight = 0, version = '', signal} = {}){
 
   const base = baseOf(address);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const unfollow = follow(signal, controller);
   const headers = {'Content-Type': 'application/json', ...authHeaders(base, apiSecret)};
 
   try{
@@ -240,9 +254,10 @@ export async function fetchNodeStatus(address, {fetch: fetchFn = defaultNodeFetc
     return {ok: false, reason: 'HTTP 401', locked: true};
 
   }catch(e){
-    return {ok: false, reason: failReason(e, timeoutMs), locked: false};
+    return {ok: false, reason: signal && signal.aborted ? 'cancelled' : failReason(e, timeoutMs), locked: false};
   }finally{
     clearTimeout(timeoutId);
+    unfollow();
   }
 }
 
@@ -256,32 +271,35 @@ export async function fetchNodeStatus(address, {fetch: fetchFn = defaultNodeFetc
  *   unreachable    no reply, or a node whose status can't be read for another reason
  *   not_epic       something answers, but not an Epic node
  *
- * returns {kind, address, version, reason, local, statusReadable, statusVia, status}
+ * signal: aborts the check (kind 'unreachable', reason 'cancelled')
+ * returns {kind, address, version, reason, code, local, statusReadable, statusVia, status}
+ *   code: why the version check failed ('network' | 'timeout' | 'http' | 'no_version' | 'auth' |
+ *   'cancelled'), '' when it answered
  *   statusReadable: the GUI can read the status (statusVia 'v1', 'owner' or 'foreign'); then the node
  *   panel, sending and the Epicbox autostart work. status: that status, or null
  */
-export async function classifyNode(address, {fetch: fetchFn, apiSecret = '', timeoutMs = 5000, referenceHeight = 0} = {}){
+export async function classifyNode(address, {fetch: fetchFn, apiSecret = '', timeoutMs = 5000, referenceHeight = 0, signal} = {}){
 
   const base = baseOf(address);
   const local = isLocal(base);
   const opts = fetchFn ? {fetch: fetchFn} : {};
   const result = (kind, extra) => ({
-    kind, address: base, version: null, reason: '', local, statusReadable: false, statusVia: null, status: null, ...extra,
+    kind, address: base, version: null, reason: '', code: '', local, statusReadable: false, statusVia: null, status: null, ...extra,
   });
 
   //redirects not followed: epic-wallet wouldn't follow them either (http://host -> https://host)
-  const v = await probeVersion(base, {...opts, timeoutMs, redirect: 'manual'});
+  const v = await probeVersion(base, {...opts, timeoutMs, redirect: 'manual', signal});
   if(!v.ok){
     if(v.code == 'auth'){
-      return result('too_old', {reason: 'needs api secret'});
+      return result('too_old', {reason: 'needs api secret', code: v.code});
     }
-    if(v.code == 'network' || v.code == 'timeout'){
-      return result('unreachable', {reason: v.reason});
+    if(v.code == 'network' || v.code == 'timeout' || v.code == 'cancelled'){
+      return result('unreachable', {reason: v.reason, code: v.code});
     }
-    return result('not_epic', {reason: v.reason});
+    return result('not_epic', {reason: v.reason, code: v.code});
   }
 
-  const st = await fetchNodeStatus(base, {...opts, apiSecret, timeoutMs, referenceHeight, version: v.version});
+  const st = await fetchNodeStatus(base, {...opts, apiSecret, timeoutMs, referenceHeight, version: v.version, signal});
   const status = {
     version: v.version,
     statusReadable: st.ok,
