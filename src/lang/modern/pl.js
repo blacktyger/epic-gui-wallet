@@ -26,7 +26,7 @@ export default {
   refresh: 'Odśwież',
   svc_node: 'Node',
   svc_connecting: 'Łączenie…',
-  node_tip_ok: 'Node online i zsynchronizowany',
+  node_tip_ok: 'Node jest online i zsynchronizowany',
   node_tip_syncing: 'Node się synchronizuje',
   node_tip_behind: 'Node się synchronizuje. Bloki do nadrobienia: {n}',
   node_tip_down: 'Node nie odpowiada',
