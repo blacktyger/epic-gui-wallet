@@ -1,7 +1,7 @@
 <template>
   <section class="section is-main-section" id="aboutPage">
 
-      <h1 class="is-size-5">{{ $t('msg.about.title', ['v6.1.6']) }}</h1>
+      <h1 class="is-size-5">{{ $t('msg.about.title', ['v6.1.5']) }}</h1>
       <p>
 
         <br/>
