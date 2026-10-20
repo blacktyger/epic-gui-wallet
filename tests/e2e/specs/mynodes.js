@@ -96,7 +96,9 @@ H.runCase('mynodes', async (t) => {
   await t.step('the button says the field\'s address is in My nodes', async () => {
     const b = w.getByRole('button', { name: 'In my nodes' }).first();
     if ((await b.getAttribute('aria-disabled')) !== 'true') throw new Error('not aria-disabled');
-    await b.click();
+    //Playwright won't click an aria-disabled button: send the click event itself
+    await b.dispatchEvent('click');
+    await w.waitForTimeout(300);
     if (await w.locator('dialog[open]').count()) throw new Error('a click opened the dialog');
     return 'In my nodes (aria-disabled, a click does nothing)';
   });
