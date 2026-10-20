@@ -23,6 +23,23 @@ html.is-dark-mode-active {
     }
   }
 
+  //the Classic removal dialog is a native <dialog> (layout/RemoveWalletDialog.vue), not a .modal: its
+  //buttons took the dark-mode colours on a white card, and Cancel was white on white
+  .rm-dialog {
+    color: $grey-lighter;
+    .modal-card-title, .rm-choice b {
+      color: $dark-mode-color;
+    }
+    //Bulma fills a disabled is-danger button red, and dark mode makes its text red too
+    .button.is-danger[disabled] {
+      background-color: transparent;
+    }
+    .modal-card-head, .modal-card-body, .modal-card-foot {
+      background-color: $dark-mode-background-color;
+      border-color: $dark-mode-light-border-color;
+    }
+  }
+
   .modal-close {
     &:before, &:after {
       background-color: $dark-mode-color;
