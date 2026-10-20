@@ -15,7 +15,7 @@ import { addMyNode, updateMyNode, removeMyNode } from '@/shared/myNodes';
 import { createCheckCache } from '@/shared/nodeCheck';
 
 const SAVED_NODE = 'https://node.epiccash.com:3413';
-const ONLINE = (address) => ({ address, state: 'online', tone: 'ok', version: '4.1.0', height: 2500000, behind: 0, peers: 8, ms: 85, problem: '', hint: '' });
+const ONLINE = (address) => ({ address, state: 'online', tone: 'ok', version: '4.1.0', versionOld: false, height: 2500000, behind: 0, peers: 8, ms: 85, problem: '', hint: '' });
 const NOT_EPIC = (address) => ({ address, state: 'not_epic', tone: 'risk', version: null, height: null, behind: null, peers: null, ms: 40, problem: 'not_epic', hint: 'port' });
 
 /* settings.json's My nodes, in memory */
@@ -116,9 +116,11 @@ describe.each(INTERFACES)('Node address live check ($name)', (ui) => {
     expect($nodeService.probeNode.mock.calls.map(c => c[0])).toEqual(['https://my.node.example.com']);
     const text = wrapper.text();
     expect(text).toContain(t('msg.mynodes.state_online'));
-    expect(text).toContain(t('msg.nodedir.at_tip'));
-    expect(text).toContain(t('msg.mynodes.response', { ms: '85 ms' }));
-    expect(text).toContain('4.1.0');
+    //the height with its meter (level: the gap only in the tooltip); no "at tip", no ms, no version when it is fine
+    expect(text).toContain('2,500,000');
+    expect(wrapper.find('.e-nodecheck .e-hmeter').attributes('aria-label')).toBe(t('msg.mynodes.height_level'));
+    expect(wrapper.find('.e-nodecheck .e-hmeter').attributes('role')).toBe('img');
+    expect(wrapper.find('.e-nodecheck').text()).not.toMatch(/ms|at tip|replied|4\.1\.0/);
     wrapper.unmount();
   });
 
@@ -204,7 +206,10 @@ describe.each(INTERFACES)('Node address live check ($name)', (ui) => {
     const asked = $nodeService.probeNode.mock.calls.map(c => c[0]);
     expect(asked).toEqual(expect.arrayContaining(['https://a.example.com:3413', 'http://10.0.0.2:3413']));
     expect(wrapper.text()).toContain('Alpha');
-    expect(wrapper.text()).toContain('85 ms');
+    expect(wrapper.find('.e-mynodes').text()).not.toMatch(/\d+ ms|Online/);
+    const dots = wrapper.findAll('.e-mynodes .e-nodedir-dot');
+    expect(dots[0].attributes('aria-label')).toBe(t('msg.mynodes.state_online') + ', ' + t('msg.mynodes.height_level'));
+    expect(dots[0].attributes('title')).toBe(dots[0].attributes('aria-label'));
 
     await button(wrapper, t('msg.mynodes.use'), { partial: false }).trigger('click');
     expect(ui.addressInput(wrapper).element.value).toBe('https://a.example.com:3413');

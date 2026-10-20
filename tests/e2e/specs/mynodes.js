@@ -3,8 +3,9 @@
  * Settings › Node: the live check of a typed address and My nodes, once per interface, in the no-network
  * sandbox (form/myNodesField.js, shared/nodeCheck.js, shared/myNodes.js). Modern only: Classic is no longer
  * tested (the user's call, 2026-10-20); it shares the logic.
- *   live check   the stub node typed key by key: Online, at tip (no public list offline: no tip), version, ms;
- *                an address nothing listens on: Offline with the port tip; a web server that is not a node:
+ *   live check   the stub node typed key by key: Online, the height with its meter (no public list offline: tip unknown,
+ *                neutral), no version or ms text;
+ *                an address nothing listens on: Not responding with the port tip; a web server that is not a node:
  *                Not an Epic node; a paste
  *   My nodes     Add (prefilled, a label, the dialog's own check), an offline one too; the duplicate note;
  *                Edit; Use; Remove (Keep first); kept in settings.json and still there after a restart
@@ -53,13 +54,17 @@ H.runCase('mynodes', async (t) => {
   if (modern) await t.step('skip the tour', () => U.skipTour(w, ui));
 
   /* ---- live check ---- */
-  await t.step('typed key by key: the stub node is Online, with version and response time', async () => {
+  await t.step('typed key by key: the stub node is Online, with its height and a neutral meter (no tip offline), no ms', async () => {
     await U.typeNodeAddress(w, ui, U.NODE_URL);
-    return statusSays(/Online.*4\.1\.0.*replied in \d+ ms/);
+    const says = await statusSays(/Online 3,100,000/);
+    if (/\bms\b|replied|4\.1\.0|at tip/.test(says)) throw new Error('old texts: ' + says);
+    const m = await status().locator(modern ? '.e-hmeter' : '.nothing').first().getAttribute('aria-label');
+    if (modern && m !== 'Network height unknown') throw new Error('meter: ' + m);
+    return says + ' [' + m + ']';
   }, { fatal: true, timeout: 60000, shot: true });
-  await t.step('nothing listens there: Offline, a plain explanation and the port tip', async () => {
+  await t.step('nothing listens there: Not responding, a plain explanation and the port tip', async () => {
     await setAddress(DEAD);
-    return statusSays(/Offline.*(reach|reply).*port 3413/);
+    return statusSays(/Not responding.*(reach|reply).*port 3413/);
   }, { shot: true });
   await t.step('a web server that is not a node: Not an Epic node', async () => {
     await setAddress(WEB);
@@ -76,6 +81,16 @@ H.runCase('mynodes', async (t) => {
     return U.saveNode(w, ui);
   }, { timeout: 90000 });
 
+  if (modern) {
+    await t.step('Current node: status, version, height with a meter and the last block time, nothing else', async () => {
+      const info = w.locator('.e-nodeinfo').first();
+      const got = await H.waitFor(async () => { const x = (await info.innerText()).replace(/\s+/g, ' '); return /Last block \d+ sec\. ago|Last block \d+ min\. ago/.test(x) ? x : null; }, { timeout: 40000 });
+      if (!got) throw new Error('info: ' + (await info.innerText()).replace(/\s+/g, ' '));
+      if (!/^Online Version 4\.1\.0 Block height 3,100,000 Last block/.test(got) || /\bms\b|checked|Address|at tip|behind/i.test(got)) throw new Error('info: ' + got);
+      return got;
+    }, { timeout: 60000, shot: true });
+  }
+
   /* ---- My nodes ---- */
   await t.step('no My nodes list before a node is saved', async () => {
     if (await rows().count()) throw new Error('rows: ' + (await rowTexts()).join(' | '));
@@ -91,9 +106,11 @@ H.runCase('mynodes', async (t) => {
     await t.screenshot('add-dialog');
     await dlg().getByRole('button', { name: 'Save' }).click();
     await dlg().waitFor({ state: 'detached', timeout: 8000 }).catch(() => {});
-    const r = await H.waitFor(async () => { const x = await rowTexts(); return x.length === 1 && /Stub node/.test(x[0]) && /\d+ ms/.test(x[0]) ? x : null; }, { timeout: 10000 });
+    const r = await H.waitFor(async () => { const x = await rowTexts(); return x.length === 1 && /Stub node/.test(x[0]) && !/\d+ ms/.test(x[0]) ? x : null; }, { timeout: 10000 });
     if (!r) throw new Error('rows: ' + (await rowTexts()).join(' | '));
-    return r[0];
+    const dot = await rows().first().locator('.e-nodedir-dot').getAttribute('title');
+    if (modern && !/^Online, /.test(dot || '')) throw new Error('dot: ' + dot);
+    return r[0] + ' [' + dot + ']';
   }, { fatal: true, timeout: 40000, shot: true });
   await t.step('the button says the field\'s address is in My nodes', async () => {
     const b = w.getByRole('button', { name: 'In my nodes' }).first();
@@ -108,10 +125,10 @@ H.runCase('mynodes', async (t) => {
     await setAddress(DEAD);
     await w.getByRole('button', { name: 'Add to my nodes' }).first().click({ timeout: 8000 });
     await dlg().waitFor({ timeout: 8000 });
-    await H.waitFor(async () => /Offline/.test(await dlg().innerText()), { timeout: 15000 });
+    await H.waitFor(async () => /Not responding/.test(await dlg().innerText()), { timeout: 15000 });
     await dlg().getByRole('button', { name: 'Save' }).click();
     const r = await H.waitFor(async () => { const x = await rowTexts(); return x.length === 2 ? x : null; }, { timeout: 10000 });
-    if (!r || !/127\.0\.0\.1:9/.test(r[1]) || !/Offline/.test(r[1])) throw new Error('rows: ' + (await rowTexts()).join(' | '));
+    if (!r || !/127\.0\.0\.1:9/.test(r[1]) || (modern && !/^Not responding/.test(await rows().nth(1).locator('.e-nodedir-dot').getAttribute('title')))) throw new Error('rows: ' + (await rowTexts()).join(' | '));
     return r[1];
   }, { timeout: 40000 });
   await t.step('Edit to an address already in the list: a short note, Save off; Cancel', async () => {
@@ -152,7 +169,9 @@ H.runCase('mynodes', async (t) => {
     await w.getByRole('button', { name: 'Remove', exact: true }).click();
     const r = await H.waitFor(async () => { const x = await rowTexts(); return x.length === 1 ? x : null; }, { timeout: 5000 });
     if (!r) throw new Error('rows: ' + (await rowTexts()).join(' | '));
-    return r[0];
+    const dot = await rows().first().locator('.e-nodedir-dot').getAttribute('title');
+    if (modern && !/^Online, /.test(dot || '')) throw new Error('dot: ' + dot);
+    return r[0] + ' [' + dot + ']';
   }, { timeout: 30000 });
   await t.step('settings.json holds the list (schema 1)', async () => {
     const s = JSON.parse(fs.readFileSync(path.join(process.env.HOME, '.epic-gui', 'settings.json'), 'utf8'));
@@ -164,7 +183,7 @@ H.runCase('mynodes', async (t) => {
   /* ---- layout ---- */
   await t.step('the smallest window at 150 % zoom (the narrowest the app gets): field, button, status and list stay tidy', async () => {
     await setAddress(DEAD);
-    await statusSays(/Offline/);
+    await statusSays(/Not responding/);
     await t.app.evaluate(({ BrowserWindow }) => { const b = BrowserWindow.getAllWindows()[0]; b.setSize(1044, 860); b.webContents.setZoomFactor(1.5); });
     await w.waitForTimeout(800);
     await input().scrollIntoViewIfNeeded();
@@ -185,7 +204,7 @@ H.runCase('mynodes', async (t) => {
     if (a.dir !== 'rtl') throw new Error(JSON.stringify(a));
     await U.openSettings(w, ui);
     await setAddress(DEAD);
-    await H.waitFor(async () => !/Offline/.test(await status().innerText()) && (await status().innerText()).trim().length > 0, { timeout: 15000 });
+    await H.waitFor(async () => !/Not responding/.test(await status().innerText()) && (await status().innerText()).trim().length > 0, { timeout: 15000 });
     if (/My nodes|Add to my nodes/.test(await w.locator('body').innerText())) throw new Error('English left');
     await t.screenshot('persian-offline');
     await setAddress(U.NODE_URL);

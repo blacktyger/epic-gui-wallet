@@ -126,6 +126,18 @@ test('nodeRequest: get_kernel takes a kernel excess and a min height only (send-
   assert.ok(nodeRequest({ url: 'https://n:3413/v2/owner', method: 'POST', body: kernel([excess, 1, null]) }).error);
 });
 
+test('nodeRequest: get_header takes [a height, null, null] only (Settings > Node, last block time)', () => {
+  const header = (params) => JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'get_header', params });
+  const url = 'https://n:3413/v2/foreign';
+  assert.equal(nodeRequest({ url, method: 'POST', body: header([3100000, null, null]) }).body, header([3100000, null, null]));
+  assert.equal(nodeRequest({ url, method: 'POST', body: header([0, null, null]) }).body, header([0, null, null]));
+  for (const params of [[], [3100000], [3100000, null], [-1, null, null], [1.5, null, null], ['3100000', null, null], [null, null, null],
+    [3100000, 5, null], [3100000, null, 5], [3100000, null, null, null], ['0'.repeat(64), null, null], [{ hash: 'x' }, null, null]]) {
+    assert.ok(nodeRequest({ url, method: 'POST', body: header(params) }).error, JSON.stringify(params));
+  }
+  assert.ok(nodeRequest({ url: 'https://n:3413/v2/owner', method: 'POST', body: header([1, null, null]) }).error);
+});
+
 test('CSP: the app only, the wallet API on this machine, no eval outside development', () => {
   const p = contentSecurityPolicy();
   assert.match(p, /script-src 'self'(;|$)/);

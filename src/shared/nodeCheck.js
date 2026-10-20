@@ -14,7 +14,7 @@
  * process (shared/nodeFetch.js, shared/security.js nodeRequest: http(s), node API paths, a timeout).
  * No api secret is ever sent from here, not even to a local node.
  */
-import { classifyNode, SYNC_TOLERANCE } from './nodeVersion.js';
+import { classifyNode, compareVersions, MIN_NODE_VERSION, SYNC_TOLERANCE } from './nodeVersion.js';
 import { nodeCheckAddress, isPrivateHost } from './nodeAddress.js';
 import { defaultNodeFetch } from './nodeFetch.js';
 
@@ -47,10 +47,11 @@ function hintFor(address, c){
  * classified: classifyNode's result; ms: the time to the first reply (null when none);
  * tipHeight: the network tip (the public node list), 0 when unknown.
  *
- * returns {address, state, tone, version, height, behind, ms, problem, hint}, or null for a
+ * returns {address, state, tone, version, versionOld, height, behind, ms, problem, hint}, or null for a
  * check that was cancelled
  *   state    'online' | 'syncing' | 'old' | 'offline' | 'not_epic'
  *   tone     'ok' | 'warn' | 'risk' (the dot)
+ *   versionOld  the version is below MIN_NODE_VERSION (the only version notice shown)
  *   behind   blocks below the tip (0 = at tip), null when the tip or the height is unknown
  *   problem  '' | 'timeout' | 'unreachable' | 'server_error' | 'not_epic' | 'redirect' | 'too_old' | 'needs_secret'
  *   hint     '' | 'try_https' | 'try_http' | 'port' (only with offline / not_epic)
@@ -61,7 +62,7 @@ export function nodeCheckView(classified, {ms = null, tipHeight = 0} = {}){
     return null;
   }
   const base = {
-    address: c.address || '', state: 'offline', tone: 'risk', version: c.version || null, height: null, behind: null,
+    address: c.address || '', state: 'offline', tone: 'risk', version: c.version || null, versionOld: false, height: null, behind: null,
     ms: Number.isFinite(ms) && ms >= 0 ? Math.round(ms) : null, problem: '', hint: '',
   };
 
@@ -76,12 +77,13 @@ export function nodeCheckView(classified, {ms = null, tipHeight = 0} = {}){
       ...base,
       state: syncing ? 'syncing' : 'online',
       tone: syncing ? 'warn' : 'ok',
+      versionOld: !!c.version && compareVersions(c.version, MIN_NODE_VERSION) < 0,
       height,
       behind: shownBehind,
     };
   }
   if(c.kind == 'too_old'){
-    return {...base, state: 'old', tone: 'warn', problem: c.code == 'auth' ? 'needs_secret' : 'too_old'};
+    return {...base, state: 'old', tone: 'risk', versionOld: !!c.version, problem: c.code == 'auth' ? 'needs_secret' : 'too_old'};
   }
   if(c.kind == 'not_epic'){
     //a web server (often a proxy in front of the node) answers with an error: the node behind it is down

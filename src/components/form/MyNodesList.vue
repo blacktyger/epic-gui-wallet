@@ -43,6 +43,7 @@
 <script>
   import { number } from '@/shared/nodeDirectory';
   import { nodeAddressKey } from '@/shared/nodeAddress';
+  import { MIN_NODE_VERSION } from '@/shared/nodeVersion';
 
   let seq = 0;
 
@@ -104,6 +105,18 @@
         const parts = [this.$t('msg.mynodes.state_' + v.state)];
         if (v.behind !== null) parts.push(this.lagText(v));
         if (v.ms !== null) parts.push(this.$t('msg.nodedir.latency_ms', { n: v.ms }));
+        return parts.join(', ');
+      },
+      /* Modern: the dot's name and tooltip: the state, the gap to the network, a version warning only if too old */
+      dotLabel(n) {
+        const v = this.viewOf(n);
+        if (!v) return this.checking.includes(n.address) ? this.$t('msg.mynodes.checking') : '';
+        const parts = [this.$t('msg.mynodes.state_' + v.state)];
+        if (v.state === 'online' || v.state === 'syncing') {
+          parts.push(v.behind === null ? this.$t('msg.mynodes.height_unknown')
+            : (v.behind === 0 ? this.$t('msg.mynodes.height_level') : this.$t('msg.mynodes.height_behind', { n: number(v.behind, this.locale) })));
+        }
+        if (v.versionOld) parts.push(this.$t('msg.mynodes.version_old', { min: MIN_NODE_VERSION }));
         return parts.join(', ');
       },
       askRemove(n) {

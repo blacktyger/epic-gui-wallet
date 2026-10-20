@@ -3,6 +3,7 @@ import { fetchNodeVersion, fetchNodeStatus, fetchLocalStatus, classifyNode } fro
 import { loadDirectory, CHAINS } from './nodeDirectory.js';
 import { assessNodeStatus, directoryReferenceHeight, createBehindTracker } from './nodeHealth.js';
 import { probeNode, createCheckCache } from './nodeCheck.js';
+import { fetchBlockTime, createBlockTimeCache } from './nodeTip.js';
 
 //the node list is asked for once at the first status and then at most every 10 minutes (the main
 //process caches it for a minute, so the Settings node list may have fetched it already), and a
@@ -37,6 +38,7 @@ class NodeService {
       this.directoryAskedAt = 0;
       this.behindTracker = createBehindTracker();
       this.checkCache = createCheckCache({ttlMs: 60 * 1000});
+      this.blockTimes = createBlockTimeCache();
   }
 
   async restartNode(){
@@ -122,6 +124,13 @@ class NodeService {
     return Math.max(this.networkTipHeight(), this.highestSeenHeight || 0);
   }
 
+  /* the time of the current node's block at `height` (ms), for Settings > Node. Asked only by that
+     screen while it shows the details, and once per new tip (cached); never by the status poll */
+  async lastBlockTime(height){
+    const address = this.configService.config['check_node_api_http_addr'] ? this.configService.config['check_node_api_http_addr'] : this.configService.defaultEpicNode;
+    return fetchBlockTime(address, height, {cache: this.blockTimes});
+  }
+
   /* ok | too_old | unreachable | not_epic for the saved node (shared/nodeVersion.js) */
   async classifyNode(address){
     const check = await classifyNode(address, {apiSecret: this.configService.apisecret, referenceHeight: () => this.referenceHeight()});
@@ -188,7 +197,8 @@ class NodeService {
     const assessed = assessNodeStatus(status, {referenceHeight: this.networkTipHeight()});
     const ok = assessed && typeof assessed === 'object' && !assessed.error;
     const behind = count ? this.behindTracker.update(ok && assessed.behind_blocks) : this.behindTracker.current();
-    return ok ? {...assessed, node_behind: behind} : assessed;
+    //network_height: the public list's tip (0: unknown), for the height meter in Settings › Node
+    return ok ? {...assessed, node_behind: behind, network_height: this.networkTipHeight()} : assessed;
   }
 
   /* the node's status (assessStatus); poll: the regular 10 s status poll, the only read counted for
@@ -203,10 +213,7 @@ class NodeService {
     //only without ready_for_txs (before 4.1.0) /v1/status, then owner get_status, for the sync state. Reads at the same time share one request
     const key = baseURL;
     if(!this.statusRead || this.statusRead.key !== key){
-      //checked_at / response_ms: for Settings › Node (last checked, response time)
-      const started = Date.now();
-      const read = fetchNodeStatus(baseURL, {apiSecret: this.configService.apisecret, timeoutMs: 10000, referenceHeight: () => this.referenceHeight(), version: this.nodeVersion || ''})
-        .then((r) => r.ok ? {...r, status: {...r.status, checked_at: Date.now(), response_ms: Date.now() - started}} : r);
+      const read = fetchNodeStatus(baseURL, {apiSecret: this.configService.apisecret, timeoutMs: 10000, referenceHeight: () => this.referenceHeight(), version: this.nodeVersion || ''});
       this.statusRead = {key, read};
       read.finally(() => { if(this.statusRead && this.statusRead.read === read) this.statusRead = null; });
     }

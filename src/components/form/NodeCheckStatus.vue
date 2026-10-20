@@ -22,6 +22,7 @@
 
 <script>
   import { number } from '@/shared/nodeDirectory';
+  import { MIN_NODE_VERSION } from '@/shared/nodeVersion';
 
   /*
    * state: a nodeCheck.js checker state {phase, address, view}; short: the dialog's one line (state,
@@ -49,6 +50,10 @@
       },
       toneClass() {
         return { ok: 'is-success', warn: 'is-warning', risk: 'is-danger' }[this.view && this.view.tone] || '';
+      },
+      /* Modern: the version warning, only when too old */
+      versionOldText() {
+        return this.view && this.view.versionOld && this.view.version ? this.$t('msg.mynodes.version_old', { min: MIN_NODE_VERSION }) : '';
       },
       lagText() {
         const v = this.view;

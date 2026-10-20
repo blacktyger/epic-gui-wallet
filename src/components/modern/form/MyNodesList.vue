@@ -14,18 +14,12 @@
           </div>
         </template>
         <template v-else>
-          <span class="e-nodedir-dot" :class="viewOf(n) ? 'e-' + viewOf(n).tone : (checking.includes(n.address) ? 'e-wait' : '')" aria-hidden="true"></span>
+          <span class="e-nodedir-dot" :class="viewOf(n) ? 'e-' + viewOf(n).tone : (checking.includes(n.address) ? 'e-wait' : '')" :role="dotLabel(n) ? 'img' : null" :aria-label="dotLabel(n) || null" :title="dotLabel(n) || null" :aria-hidden="dotLabel(n) ? null : 'true'"></span>
           <span class="e-mynodes-name">
             <span class="e-mynodes-line">
               <b v-if="n.label">{{ n.label }}</b>
               <b v-else class="e-mono e-mynodes-bare" translate="no">{{ n.address }}</b>
-              <span class="e-mynodes-meta" :aria-label="statusLabel(n)" :role="statusLabel(n) ? 'group' : null">
-                <template v-if="viewOf(n)">
-                  <span class="e-tag" :class="'e-' + tagTone(viewOf(n))">{{ shortState(viewOf(n)) }}</span>
-                  <span v-if="viewOf(n).ms !== null" class="e-nodedir-lat">{{ $t('msg.nodedir.latency_ms', { n: viewOf(n).ms }) }}</span>
-                </template>
-                <span v-else-if="checking.includes(n.address)" class="e-faint">{{ $t('msg.mynodes.checking') }}</span>
-              </span>
+              <span v-if="!viewOf(n) && checking.includes(n.address)" class="e-mynodes-meta e-faint">{{ $t('msg.mynodes.checking') }}</span>
             </span>
             <small v-if="n.label" class="e-mono" translate="no">{{ n.address }}</small>
           </span>

@@ -36,7 +36,7 @@ const healthy = (status = STATUS, { ready = status.sync_status == 'no_sync' } = 
 
 test('view: an online node at the tip, with version, height and the response time', () => {
   const v = nodeCheckView({ kind: 'ok', address: 'https://n.example.com', version: '4.1.0', status: STATUS }, { ms: 123.4, tipHeight: 2500001 });
-  assert.deepEqual(v, { address: 'https://n.example.com', state: 'online', tone: 'ok', version: '4.1.0', height: 2500000, behind: 0, ms: 123, problem: '', hint: '' });
+  assert.deepEqual(v, { address: 'https://n.example.com', state: 'online', tone: 'ok', version: '4.1.0', versionOld: false, height: 2500000, behind: 0, ms: 123, problem: '', hint: '' });
 });
 
 test('view: blocks behind, syncing, an unknown tip, a status from get_tip', () => {
@@ -53,6 +53,15 @@ test('view: blocks behind, syncing, an unknown tip, a status from get_tip', () =
   assert.equal(ok(STATUS, 2400000).behind, 0, 'a node ahead of an old list is at tip');
 });
 
+test('view: versionOld only for a version below 4.1.0 (the one version notice shown)', () => {
+  const ok = (version) => nodeCheckView({ kind: 'ok', address: 'https://n.example.com', version, status: STATUS }, { tipHeight: 2500000 });
+  assert.equal(ok('4.1.0').versionOld, false);
+  assert.equal(ok('4.1.0-1').versionOld, false);
+  assert.equal(ok('4.0.3').versionOld, true);
+  assert.equal(ok('3.0.0').state, 'online', 'it works with the wallet, so the state stays online');
+  assert.equal(nodeCheckView({ kind: 'too_old', address: 'https://n.example.com', version: '3.0.0' }).versionOld, true);
+});
+
 test('view: plain-language problems and hints for what fails', () => {
   const v = (c) => nodeCheckView({ version: null, ...c });
   assert.deepEqual(pick(v({ kind: 'unreachable', address: 'https://n.example.com:3413', code: 'timeout' })), ['offline', 'risk', 'timeout', '']);
@@ -63,8 +72,8 @@ test('view: plain-language problems and hints for what fails', () => {
   assert.deepEqual(pick(v({ kind: 'not_epic', address: 'http://n.example.com:3413', reason: 'redirects elsewhere', code: 'http' })), ['not_epic', 'risk', 'redirect', '']);
   assert.deepEqual(pick(v({ kind: 'not_epic', address: 'https://n.example.com:3413', reason: 'HTTP 502', code: 'http' })), ['offline', 'risk', 'server_error', ''],
     'a proxy answering 502: the node behind it is down, not "not an Epic node"');
-  assert.deepEqual(pick(v({ kind: 'too_old', address: 'https://n.example.com:3413', code: 'auth' })), ['old', 'warn', 'needs_secret', '']);
-  assert.deepEqual(pick(v({ kind: 'too_old', address: 'https://n.example.com:3413', version: '3.0.0' })), ['old', 'warn', 'too_old', '']);
+  assert.deepEqual(pick(v({ kind: 'too_old', address: 'https://n.example.com:3413', code: 'auth' })), ['old', 'risk', 'needs_secret', '']);
+  assert.deepEqual(pick(v({ kind: 'too_old', address: 'https://n.example.com:3413', version: '3.0.0' })), ['old', 'risk', 'too_old', '']);
   assert.deepEqual(pick(v({ kind: 'unreachable', address: 'https://n.example.com:8080', version: '4.1.0', reason: 'status: HTTP 500' })), ['offline', 'risk', 'unreachable', ''],
     'an Epic node whose status fails: no port hint');
   assert.equal(nodeCheckView({ kind: 'unreachable', code: 'cancelled' }), null);
