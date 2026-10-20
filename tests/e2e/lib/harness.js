@@ -106,7 +106,8 @@ function createCase(spec) {
   }
 
   /** The stub node, then the app on an empty HOME (Classic: only settings.json app.ui set). */
-  t.launch = async ({ fresh = true } = {}) => {
+  /** env: more environment for the app (e.g. PATH with a fake program first) */
+  t.launch = async ({ fresh = true, env: more = {} } = {}) => {
     if (!t.node) {
       const nlog = path.join(CASE_DIR, 'stub-node.log');
       t.node = await startStubNode({ port: NODE_PORT, log: (l) => fs.appendFileSync(nlog, `${new Date().toISOString().slice(11, 23)} ${l}\n`) });
@@ -120,7 +121,7 @@ function createCase(spec) {
       fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({ schema: 1, app: { ui: 'classic', theme: 'dark', scale: 100, locale: '' } }, null, 2));
     }
     const env = { HOME, PATH: process.env.PATH, DISPLAY: process.env.DISPLAY, LANG: 'en_US.UTF-8', LC_ALL: 'en_US.UTF-8',
-      TMPDIR: '/tmp', ELECTRON_DISABLE_SANDBOX: '1', XDG_CONFIG_HOME: path.join(HOME, '.config') };
+      TMPDIR: '/tmp', ELECTRON_DISABLE_SANDBOX: '1', XDG_CONFIG_HOME: path.join(HOME, '.config'), ...more };
     t.app = await _electron.launch({ executablePath: path.join(APPDIR, 'EpicWallet'), args: ['--no-sandbox', '--disable-gpu'], env, timeout: 60000 });
     const out = path.join(CASE_DIR, 'app.stdout.log');
     t.app.process().stdout.on('data', (d) => fs.appendFileSync(out, redact(d)));
@@ -198,7 +199,7 @@ function createCase(spec) {
     const proc = app.process();
     const exited = new Promise((r) => { if (proc.exitCode !== null) r(); else proc.once('exit', () => r()); });
     const how = await app.evaluate(({ Menu }) => {
-      const find = (items) => { for (const i of items) { if (i.label === 'Quit') return i; if (i.submenu) { const f = find(i.submenu.items); if (f) return f; } } return null; };
+      const find = (items) => { for (const i of items) { if (i.id === 'quit' || i.label === 'Quit') return i; if (i.submenu) { const f = find(i.submenu.items); if (f) return f; } } return null; };
       const m = Menu.getApplicationMenu(); const q = m && find(m.items);
       if (!q) return 'no Quit menu item';
       setTimeout(() => q.click(), 20);

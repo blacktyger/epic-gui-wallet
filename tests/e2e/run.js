@@ -47,10 +47,13 @@ function specs(o) {
     for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.js')).sort()) {
       const name = (q ? 'quarantine/' : '') + f.replace(/\.js$/, '');
       if (o.spec && !o.spec.includes(f.replace(/\.js$/, '')) && !o.spec.includes(name)) continue;
-      //a spec may run in one interface only: `// e2e-ui: modern` in its first lines
-      const head = fs.readFileSync(path.join(dir, f), 'utf8').slice(0, 600);
+      //in its first lines a spec may say `// e2e-ui: modern` (one interface only), `// e2e-gate: off`
+      //(not in the default run, only when --spec names it) and `// e2e-timeout: 600` (seconds per case)
+      const head = fs.readFileSync(path.join(dir, f), 'utf8').slice(0, 800);
+      if (/e2e-gate:\s*off/.test(head) && !o.spec) continue;
       const only = (head.match(/e2e-ui:\s*(\w+)/) || [])[1];
-      for (const ui of o.ui) if (!only || only === ui) list.push({ name, file: path.join(dir, f), ui });
+      const timeout = Number((head.match(/e2e-timeout:\s*(\d+)/) || [])[1]) || CASE_TIMEOUT;
+      for (const ui of o.ui) if (!only || only === ui) list.push({ name, file: path.join(dir, f), ui, timeout });
     }
   }
   return list;
@@ -67,7 +70,7 @@ function runCase(c, appDir, runDir, o) {
   const binds = ['--ro-bind', ROOT, ROOT, '--bind', OUT, OUT];
   if (underHome(nodeRoot())) binds.push('--ro-bind', nodeRoot(), nodeRoot());
   if (!appDir.startsWith(ROOT + path.sep) && underHome(appDir)) binds.push('--ro-bind', appDir, appDir);
-  const bw = ['-k', '10', String(CASE_TIMEOUT), 'bwrap', '--unshare-net', '--unshare-pid', '--die-with-parent',
+  const bw = ['-k', '10', String(c.timeout), 'bwrap', '--unshare-net', '--unshare-pid', '--die-with-parent',
     '--dev-bind', '/', '/', '--proc', '/proc', '--tmpfs', '/tmp', '--bind', home, HOME, ...binds,
     '--unsetenv', 'DBUS_SESSION_BUS_ADDRESS', '--unsetenv', 'XDG_RUNTIME_DIR', '--unsetenv', 'WAYLAND_DISPLAY', '--unsetenv', 'DISPLAY',
     '--unsetenv', 'SSH_AUTH_SOCK', '--unsetenv', 'ELECTRON_RUN_AS_NODE', '--unsetenv', 'NODE_OPTIONS',
@@ -87,7 +90,7 @@ function runCase(c, appDir, runDir, o) {
       if (!r) {
         const tail = (fs.readFileSync(path.join(caseDir, 'driver.log'), 'utf8').trim().split('\n').slice(-6)).join(' | ');
         r = { spec: c.name, ui: c.ui, status: 'fail', pass: 0, fail: 1, 'known-bug': 0, steps: [{ name: 'case', status: 'fail',
-          error: (code === 124 || code === 137 || Date.now() - t0 >= CASE_TIMEOUT * 1000 ? `timed out after ${CASE_TIMEOUT} s` : `exit ${code}, no result.json`) + ' :: ' + tail, ms: Date.now() - t0 }] };
+          error: (code === 124 || code === 137 || Date.now() - t0 >= c.timeout * 1000 ? `timed out after ${c.timeout} s` : `exit ${code}, no result.json`) + ' :: ' + tail, ms: Date.now() - t0 }] };
       }
       r.exitCode = code; r.wallMs = Date.now() - t0; r.dir = path.relative(ROOT, caseDir);
       //the scratch HOME holds a throwaway wallet and Chromium's profile: kept only when the case failed
