@@ -54,6 +54,8 @@ export const store = createStore({
     /* which service are running */
     walletListenerService: false,
     walletEpicboxService: false,
+    /* the HTTP listener on its own (shared/httpListener.js, QA W01): {state: 'off'|'on'|'failed', port, reason} */
+    httpListener: {state: 'off', port: 0, reason: ''},
     /* our Epicbox listener, from its own output (App.onEpicboxEvent) and walletService:
        state: '' | starting | connecting | listening | paused | switching | checking_old | off;
        server: the wss:// url it connected to (or is starting on); checking: the old server being
@@ -119,6 +121,10 @@ export const store = createStore({
     },
     walletListenerService(state, payload){
       state.walletListenerService = payload;
+    },
+    /* null resets it (logout, stopped) */
+    httpListener(state, payload){
+      state.httpListener = payload ? Object.assign({state: 'off', port: 0, reason: ''}, payload) : {state: 'off', port: 0, reason: ''};
     },
 
 

@@ -52,9 +52,11 @@
   import { walletSyncAfterSummary, needsNodeRefresh, nextRefreshDelay } from '@/shared/walletSync';
   import { wantsRefresh } from '@/shared/epicboxListener';
   import { serverLabel } from '@/shared/epicboxConfig';
+  import { httpListenerState } from '@/shared/httpListener';
   import { useI18n } from 'vue-i18n';
   import { withoutUserinfo } from '@/shared/nodeVersion';
-  import { ref, onUnmounted } from 'vue';
+  import { ref, watch, onUnmounted } from 'vue';
+  import { applyLocale } from '@/shared/locale';
   import { useStore } from '@/store';
   import { useRouter } from '@/router';
   import { reloadUi, getUi, markRestart, takeRestart } from '@/shared/theme';
@@ -93,6 +95,8 @@
     setup() {
 
       const { locale, t } = useI18n();
+      //<html lang> and dir (rtl for Persian) follow the language (QA T26)
+      watch(locale, (l) => applyLocale(document, l), { immediate: true });
       const loggedIn = ref(false);
       const store = useStore();
       const router = useRouter();
@@ -268,9 +272,13 @@
         }finally{
           this.store.commit('listenerStarting', false);
         }
-        console.log('[login] http listener ' + (isListen && isListen.success ? 'started' : 'not started') + ' +' + Math.round(performance.now() - started) + ' ms (background)');
-        if(isListen && isListen.portInUse && session === this.loginSession){
-          this.$toast.error(this.t("msg.login.port_in_use", [isListen.portInUse]));
+        console.log('[login] http listener ' + (isListen && isListen.success ? 'started' : 'not started' + (isListen && isListen.portInUse ? ' (port ' + isListen.portInUse + ' in use)' : '')) + ' +' + Math.round(performance.now() - started) + ' ms (background)');
+        if(session === this.loginSession){
+          //its own state: the status says HTTP only while it runs, and why it doesn't (QA W01)
+          this.store.commit('httpListener', httpListenerState(isListen, this.configService.walletListenerPort));
+          if(isListen && isListen.portInUse){
+            this.$toast.error(this.t("msg.login.port_in_use", [isListen.portInUse]));
+          }
         }
         //logged out meanwhile: this listener belongs to no session, stop just this one
         if(session !== this.loginSession){
@@ -486,6 +494,7 @@
         await this.$walletService.stopAll(opts.switching ? true : cfg.node_background != false);
         this.store.commit('walletEpicboxService', false);
         this.store.commit('epicbox', null);
+        this.store.commit('httpListener', null);
         clearTimeout(this.epicboxRefreshId);
         console.log('[logout] processes stopped +' + Math.round(performance.now() - started) + ' ms');
 

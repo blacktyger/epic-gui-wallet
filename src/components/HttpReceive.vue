@@ -11,14 +11,14 @@
             <div class="message-header"><p>{{ $t("msg.httpReceive.listening") }}</p></div>
             <div class="message-body">
 
-              <p v-if="store.state.walletEpicboxService">
+              <p v-if="epicView.show">
                 {{ $t("msg.httpReceive.epicbox_address") }}:<br/>
-                <code>{{ epicboxAddress }}</code>&nbsp;<mdicon @click="copy(epicboxAddress)" name="content-copy" size=16 />&nbsp;<mdicon class="is-clickable" @click="qrcode(epicboxAddress, 'epicbox')" name="qrcode-scan" size=16 />
+                <code :class="{ 'has-text-grey': epicView.dim }">{{ epicboxAddress }}</code>&nbsp;<mdicon class="is-clickable" @click="copy(epicboxAddress)" name="content-copy" size=16 />&nbsp;<mdicon class="is-clickable" @click="qrcode(epicboxAddress, 'epicbox')" name="qrcode-scan" size=16 />
               </p>
               <p v-else>
                 {{ $t("msg.httpReceive.epicbox_address") }}:<br/>
 
-                <code v-if="this.store.state.user.epicbox_domain != ''">{{ $t("msg.httpReceive.epicbox_not_available") }}</code>
+                <code v-if="epicView.state == 'unknown'">{{ $t("msg.httpReceive.epicbox_address_unknown") }}</code>
                 <code v-else>{{ $t("msg.httpReceive.epicbox_off") }}</code>
 
               </p>
@@ -33,6 +33,11 @@
                 &nbsp;<mdicon class="is-clickable" @click="checkPortOpen()" name="refresh" size=16 />
                 &nbsp;<mdicon class="is-clickable" @click="copy(localAddress)" name="content-copy" size=16 />
                 &nbsp;<mdicon class="is-clickable" @click="qrcode(localAddress, 'local')" name="qrcode-scan" size=16 />
+              </p>
+              <!-- the HTTP listener isn't running: say why; Epicbox goes on (QA W01) -->
+              <p v-if="httpFailed" class="help is-danger" role="status">
+                {{ httpFailed.reason == 'port_in_use' ? $t("msg.httpReceive.http_failed_port", [httpFailed.port]) : $t("msg.httpReceive.http_failed") }}
+                &nbsp;<a href="#" @click.prevent="httpRetrying || retryHttp()">{{ $t("msg.httpReceive.http_retry") }}</a>
               </p>
 
             </div>
@@ -72,6 +77,19 @@
           <p>{{ $t("msg.httpReceive.reachableMsg") }}</p>
         </div>
       </div>
+      <!-- the Epic address works while the listener is stopped: payments wait on Epicbox (QA T09) -->
+      <div class="columns" v-if="epicView.show">
+        <div class="column is-two-thirds">
+          <p>
+            {{ $t("msg.httpReceive.epicbox_address") }}:<br/>
+            <code class="has-text-grey">{{ epicboxAddress }}</code>&nbsp;<mdicon class="is-clickable" @click="copy(epicboxAddress)" name="content-copy" size=16 />&nbsp;<mdicon class="is-clickable" @click="qrcode(epicboxAddress, 'epicbox')" name="qrcode-scan" size=16 />
+          </p>
+          <p class="help" role="status">{{ $t("msg.httpReceive.epicbox_address_off") }}</p>
+        </div>
+        <div class="column" v-show="addressTypeHeader">
+          <canvas ref="qrcodeCanvasOff"></canvas>
+        </div>
+      </div>
       <div class="columns">
         <div class="column is-half">
 
@@ -103,6 +121,8 @@ import { useStore } from '@/store';
 import useFormValidation from "@/modules/useFormValidation";
 import { epicboxStatus } from '@/shared/epicboxStatus';
 import { serverFromUrl, serverLabel, PORT_SECURE } from '@/shared/epicboxConfig';
+import { epicAddressView } from '@/shared/receiveAddress';
+import { httpListenerState } from '@/shared/httpListener';
 
 
 const clipboard = window.clipboard;
@@ -121,6 +141,8 @@ export default {
     const epicboxKey = ref('');
     const { resetFormErrors } = useFormValidation();
     const isLoading = ref(false);
+    //Try again on a failed HTTP listener (retryHttp)
+    const httpRetrying = ref(false);
     const vueCanvas = ref(null);
     const addressTypeHeader = ref('');
     const publicIp = ref('');
@@ -136,6 +158,7 @@ export default {
       epicboxKey,
       resetFormErrors,
       isLoading,
+      httpRetrying,
       addressTypeHeader,
       publicIp,
       portIsForwarded,
@@ -145,6 +168,20 @@ export default {
   },
 
   computed: {
+    /* the Epic address: shown whenever it is known, dimmed while nothing receives on it (shared/receiveAddress.js) */
+    epicView(){
+      return epicAddressView({
+        address: this.epicboxAddress,
+        domain: this.store.state.user.epicbox_domain,
+        listening: !!this.store.state.walletListenerService,
+        epicbox: !!this.store.state.walletEpicboxService,
+      });
+    },
+    /* the HTTP listener didn't start (port taken by another program, QA W01): {port, reason} or null */
+    httpFailed(){
+      const h = this.store.state.httpListener;
+      return h && h.state == 'failed' ? h : null;
+    },
     /* the server the Epicbox listener is really on (its own output), for the status line */
     epicboxLine(){
       const st = epicboxStatus(this.store.state.epicbox, this.store.state.walletEpicboxService);
@@ -192,7 +229,8 @@ export default {
     async qrcode(text, addressType){
 
       this.addressTypeHeader = addressType;
-      this.vueCanvas = document.getElementById("qrcodeCanvas");
+      //Classic draws it next to the address while the listener is stopped
+      this.vueCanvas = (!this.store.state.walletListenerService && this.$refs.qrcodeCanvasOff) || document.getElementById("qrcodeCanvas");
       window.nodeQr.toCanvas(this.vueCanvas, text, function (error) {
         if (error) console.error('HttpReceive.qrcode', error)
 
@@ -232,21 +270,24 @@ export default {
         const isListen = await this.$walletService.startListen('http');
         const isEpicbox = await this.$walletService.startEpicbox();
         this.isLoading = false;
+        //HTTP has its own state (QA W01): a port another program holds stops HTTP, not Epicbox
+        this.store.commit('httpListener', httpListenerState(isListen, this.configService.walletListenerPort));
         if(isListen && isListen.success){
 
           this.$toast.success(this.$t("msg.login.listener_started"));
           this.store.commit('walletListenerService', true);
 
-        }else if(isListen.success == false){
+        }else{
 
-          this.$toast.error(isListen.portInUse ? this.$t("msg.login.port_in_use", [isListen.portInUse]) : this.$t("msg.login.error_listener_started"));
-          this.store.commit('walletListenerService', false);
+          this.$toast.error(isListen && isListen.portInUse ? this.$t("msg.login.port_in_use", [isListen.portInUse]) : this.$t("msg.login.error_listener_started"));
+          this.store.commit('walletListenerService', !!(isEpicbox && (isEpicbox.success || isEpicbox.pending)));
         }
 
         if(isEpicbox && isEpicbox.success){
           this.epicboxAddress = await this.getEpicboxAddress();
           this.$toast.success(this.$t("msg.login.epicbox_started"));
           this.store.commit('walletEpicboxService', true);
+          this.store.commit('walletListenerService', true);
         }else if(isEpicbox && isEpicbox.pending){
           //it runs and keeps trying to connect: its events turn it on (App.onEpicboxEvent)
           this.epicboxAddress = await this.getEpicboxAddress();
@@ -261,6 +302,23 @@ export default {
 
 
     },
+    /* the HTTP listener alone, after its port was busy (QA W01): Epicbox keeps running */
+    async retryHttp(){
+      this.httpRetrying = true;
+      let res;
+      try{
+        res = await this.$walletService.startListen('http');
+      }finally{
+        this.httpRetrying = false;
+      }
+      this.store.commit('httpListener', httpListenerState(res, this.configService.walletListenerPort));
+      if(res && res.success){
+        this.store.commit('walletListenerService', true);
+        this.$toast.success(this.$t("msg.login.listener_started"));
+      }else{
+        this.$toast.error(res && res.portInUse ? this.$t("msg.login.port_in_use", [res.portInUse]) : this.$t("msg.login.error_listener_started"));
+      }
+    },
     async stop(){
 
       this.isLoading = true;
@@ -268,6 +326,7 @@ export default {
       this.isLoading = false;
       if(killed){
         this.store.commit('walletListenerService', false);
+        this.store.commit('httpListener', null);
         this.$toast.success(this.$t("msg.httpReceive.listener_stopped"));
       }
     },

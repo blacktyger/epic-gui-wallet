@@ -209,6 +209,7 @@
   const lastFiat = { total: null, usd: 0 };
   import { nodeSyncPercent } from '@/components/modern/format';
   import { epicboxStatus } from '@/shared/epicboxStatus';
+  import { httpShown } from '@/shared/httpListener';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import MoneyText from '@/components/modern/ui/MoneyText.vue';
   import RecentTx from '@/components/modern/activity/RecentTx.vue';
@@ -351,12 +352,17 @@
         if (box.kind == 'checking') return { busy: true, tone: 'warn', text: ts('rcv_checking', box.checking) };
         if ((box.kind == 'starting' || box.kind == 'connecting') && box.server) return { busy: true, tone: 'warn', text: ts('rcv_connecting', box.server) };
         if (st.listenerStarting) return { busy: true, tone: 'warn', text: t('rcv_starting') };
+        //HTTP only while its listener runs, and why it doesn't (shared/httpListener.js, QA W01)
+        const http = httpShown(st.walletListenerService, st.httpListener);
+        const failed = http == 'failed' ? (st.httpListener.reason == 'port_in_use' ? this.$t('msg.modern.send.rcv_http_failed_port_short', { port: st.httpListener.port }) : this.$t('msg.modern.send.rcv_http_failed_error_short')) : '';
         if (st.walletEpicboxService && box.server) {
-          return { busy: false, tone: box.kind == 'paused' ? 'warn' : 'ok', text: ts(st.walletListenerService ? 'rcv_both_on' : 'rcv_epicbox_on', box.server) };
+          if (failed) return { busy: false, tone: 'warn', text: this.$t('msg.modern.overview.rcv_epicbox_on_http_failed', { s: box.server, reason: failed }) };
+          return { busy: false, tone: box.kind == 'paused' ? 'warn' : 'ok', text: ts(http == 'on' ? 'rcv_both_on' : 'rcv_epicbox_on', box.server) };
         }
-        if (st.walletListenerService && st.walletEpicboxService) return { busy: false, tone: 'ok', text: t('rcv_both') };
+        if (failed) return { busy: false, tone: 'warn', text: this.$t(st.walletEpicboxService ? 'msg.modern.overview.rcv_epicbox_http_failed' : 'msg.modern.overview.rcv_http_failed', { reason: failed }) };
+        if (http == 'on' && st.walletEpicboxService) return { busy: false, tone: 'ok', text: t('rcv_both') };
         if (st.walletEpicboxService) return { busy: false, tone: 'ok', text: t('rcv_epicbox') };
-        if (st.walletListenerService) return { busy: false, tone: 'warn', text: t(this.nodeSynced ? 'rcv_http_off' : 'rcv_http_wait') };
+        if (http == 'on') return { busy: false, tone: 'warn', text: t(this.nodeSynced ? 'rcv_http_off' : 'rcv_http_wait') };
         if (st.walletSync == 'loading') return { busy: true, tone: 'warn', text: t('rcv_after_balance') };
         return { busy: false, tone: 'warn', text: t('rcv_off') };
       },

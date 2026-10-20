@@ -56,7 +56,6 @@ export default {
   rcv_copy_addr: 'Copy address',
   rcv_listening_via: 'Listening via {domain}',
   rcv_listening_no_epicbox: 'The listener is on, but Epicbox is not running.',
-  rcv_not_listening: 'Not listening. Payments wait on the relay.',
   rcv_qr_label: 'QR code',
   rcv_qr_empty: 'Choose an address below to show its QR code.',
   rcv_paused: 'Paused',
@@ -69,6 +68,13 @@ export default {
   rcv_http_closed_text: ' Only wallets on your network can send here. To receive from anywhere, forward TCP port {port} on your router to this computer.',
   rcv_http_checking: 'Checking port {port}…',
   rcv_http_off: 'Not listening. Start the listener to use this address.',
+  //the HTTP listener couldn't start while Epicbox runs (QA W01): the bold part, then the reason
+  rcv_http_failed: 'HTTP is not receiving.',
+  rcv_http_failed_port: ' Port {port} is used by another program. Close that program, then try again.',
+  rcv_http_failed_error: ' The HTTP listener could not start. Try again, or stop and start receiving.',
+  //the reason in the Overview line (after "HTTP failed: ")
+  rcv_http_failed_port_short: 'port {port} is used by another program',
+  rcv_http_failed_error_short: 'the listener could not start',
   rcv_check_again: 'Check again',
   rcv_copy_http: 'Copy HTTP address',
   rcv_copy_http_off: 'Copy HTTP address (not listening)',

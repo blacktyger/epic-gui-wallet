@@ -6,6 +6,7 @@ import { createOldServerCheck, oldServerCheckStep, CHECK_TIMES } from '@/shared/
 import { EPICBOX_CHECK_DIR, isEpicboxCheckDir } from '@/shared/processOwnership';
 import { ownerApiArgs, listenArgs, epicboxArgs as buildEpicboxArgs, initArgs, statusMessageText, OWNER_API_START_DIR } from '@/shared/walletArgs';
 import { WALLET_API_ORIGIN, isWalletApiUrl } from '@/shared/security';
+import { isAddrInUse } from '@/shared/httpListener';
 const Buffer = require('buffer').Buffer;
 
 require('promise.prototype.finally').shim();
@@ -795,7 +796,9 @@ class WalletService {
               //the listener started here (none when one was already running)
               return {success:true, pid: walletListenId.msg};
           }else{
-            return {success:false, noSession: !!(walletListenId && walletListenId.noSession)};
+            //it couldn't bind its port though the check above found it free (e.g. taken on another interface)
+            const msg = walletListenId && walletListenId.msg;
+            return {success:false, msg, noSession: !!(walletListenId && walletListenId.noSession), ...(isAddrInUse(msg) ? {portInUse: port} : {})};
           }
         }
 

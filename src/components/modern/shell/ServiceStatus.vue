@@ -26,6 +26,7 @@
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import { nodeSyncPercent } from '@/components/modern/format';
   import { epicboxStatus } from '@/shared/epicboxStatus';
+  import { httpShown } from '@/shared/httpListener';
 
   export default {
     name: 'ServiceStatus',
@@ -52,7 +53,9 @@
 
       const receiving = computed(() => {
         const base = { key: 'rcv', icon: 'antenna', name: t('msg.modern.svc_receiving'), to: '/httpReceive' };
-        const http = store.state.walletListenerService;
+        //HTTP only while its listener runs, "failed" when it couldn't start (shared/httpListener.js, QA W01)
+        const httpState = httpShown(store.state.walletListenerService, store.state.httpListener);
+        const http = httpState == 'on';
         const epicbox = store.state.walletEpicboxService;
         //the server the Epicbox listener is really on (its own output), not the saved setting
         const box = epicboxStatus(store.state.epicbox, epicbox);
@@ -60,8 +63,10 @@
         if ((box.kind == 'starting' || box.kind == 'connecting') && box.server) return { ...base, tone: 'busy', detail: t('msg.modern.svc_epicbox_connecting', { s: box.server }) };
         if (store.state.listenerStarting) return { ...base, tone: 'busy', detail: t('msg.modern.svc_listener_starting') };
         if (epicbox && box.server) {
+          if (httpState == 'failed') return { ...base, tone: 'warn', detail: t('msg.modern.svc_epicbox_http_failed', { s: box.server }) };
           return { ...base, tone: box.kind == 'paused' ? 'warn' : 'ok', detail: t(http ? 'msg.modern.svc_epicbox_http_on' : 'msg.modern.svc_epicbox_on', { s: box.server }) };
         }
+        if (httpState == 'failed') return { ...base, tone: 'warn', detail: t(epicbox ? 'msg.modern.svc_epicbox_http_failed_short' : 'msg.modern.svc_http_failed') };
         if (http && epicbox) return { ...base, tone: 'ok', detail: t('msg.modern.svc_epicbox_http') };
         if (epicbox) return { ...base, tone: 'ok', detail: t('msg.modern.svc_epicbox') };
         if (http) return { ...base, tone: 'warn', detail: t('msg.modern.svc_http_only') };

@@ -42,6 +42,10 @@ export default {
   svc_epicbox_checking: 'Checking old server {s}…',
   svc_http_only: 'HTTP on · Epicbox off',
   svc_off: 'Listener off',
+  //the HTTP listener couldn't start (its port is taken), Epicbox runs (QA W01)
+  svc_epicbox_http_failed: 'Epicbox · {s} · HTTP failed',
+  svc_epicbox_http_failed_short: 'Epicbox on · HTTP failed',
+  svc_http_failed: 'HTTP failed · Epicbox off',
   title_unlock: 'Unlock',
   title_welcome: 'Welcome',
   title_create: 'Create wallet',

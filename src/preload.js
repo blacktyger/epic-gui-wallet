@@ -301,8 +301,9 @@ async function spawnPty(cmd, args, kind, secrets){
 }
 
 //the error lines of epic-wallet output, for a message
+//a port another program holds: the listener's own words (shared/httpListener.js isAddrInUse reads them)
 function errorLines(text){
-  return String(text || '').split('\n').filter(l => /\bERROR\b|Wallet command failed|Error opening wallet|invalid/i.test(l)).join('\n').trim();
+  return String(text || '').split('\n').filter(l => /\bERROR\b|Wallet command failed|Error opening wallet|invalid|address already in use|addrinuse|only one usage of each socket address|os error (98|48|10048)\b/i.test(l)).join('\n').trim();
 }
 
 /* one start at a time per role and wallet dir: a second caller while the first one runs (the

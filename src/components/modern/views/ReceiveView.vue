@@ -30,17 +30,18 @@
         <div class="e-rcv-hero-text">
           <h2 id="e-rcv-addr-t">{{ $t('msg.modern.send.rcv_addr_title') }}</h2>
           <p class="e-dim">{{ $t('msg.modern.send.rcv_addr_text') }}</p>
-          <div class="e-addr e-lg e-rcv-addr" :class="{ 'e-is-off': !listening }">
-            <code v-if="epicShown" translate="no"><span :class="{ 'e-hl': listening }">{{ epicHead }}</span>{{ epicMid }}<span :class="{ 'e-hl': listening }">{{ epicTail }}</span>{{ epicDomain }}</code>
-            <code v-else-if="store.state.user.epicbox_domain != ''">{{ $t('msg.httpReceive.epicbox_not_available') }}</code>
+          <!-- shown whenever it is known, dimmed while nothing receives on it (QA T09, shared/receiveAddress.js) -->
+          <div class="e-addr e-lg e-rcv-addr" :class="{ 'e-is-off': epicView.dim }">
+            <code v-if="epicShown" translate="no"><span :class="{ 'e-hl': !epicView.dim }">{{ epicHead }}</span>{{ epicMid }}<span :class="{ 'e-hl': !epicView.dim }">{{ epicTail }}</span>{{ epicDomain }}</code>
+            <code v-else-if="epicView.state == 'unknown'">{{ $t('msg.httpReceive.epicbox_address_unknown') }}</code>
             <code v-else>{{ $t('msg.httpReceive.epicbox_off') }}</code>
           </div>
-          <p v-if="epicShown && listening" class="e-small e-faint">{{ $t('msg.modern.send.rcv_addr_check') }}</p>
+          <p v-if="epicShown" class="e-small e-faint">{{ $t('msg.modern.send.rcv_addr_check') }}</p>
           <div class="e-rcv-hero-actions">
-            <button type="button" class="e-btn" :class="{ 'e-btn-primary': listening }" :disabled="!epicShown" @click="copy(epicboxAddress)"><EIcon name="copy" />{{ $t('msg.modern.send.rcv_copy_addr') }}</button>
+            <button type="button" class="e-btn" :class="{ 'e-btn-primary': epicView.state == 'receiving' }" :disabled="!epicShown" @click="copy(epicboxAddress)"><EIcon name="copy" />{{ $t('msg.modern.send.rcv_copy_addr') }}</button>
             <button v-if="epicShown && addressTypeHeader != 'epicbox'" type="button" class="e-btn e-btn-ghost" @click="showQr(epicboxAddress, 'epicbox')"><EIcon name="qr" />{{ $t('msg.modern.send.rcv_show_qr') }}</button>
             <p class="e-rcv-status" role="status">
-              <template v-if="!listening"><EIcon name="minusc" size="sm" class="e-faint" />{{ $t('msg.modern.send.rcv_not_listening') }}</template>
+              <template v-if="!listening"><EIcon name="minusc" size="sm" class="e-faint" />{{ $t('msg.httpReceive.epicbox_address_off') }}</template>
               <template v-else-if="epicboxLine && epicboxLine.tone != 'ok'"><EIcon :name="epicboxLine.tone == 'busy' ? 'sync' : 'alert'" size="sm" :class="epicboxLine.tone == 'busy' ? 'e-faint' : 'e-warn'" />{{ epicboxLine.text }}</template>
               <template v-else-if="store.state.walletEpicboxService && epicDomainName"><EIcon name="okc" size="sm" class="e-ok" />{{ $t('msg.modern.send.rcv_listening_via', { domain: epicDomainName }) }}</template>
               <!-- the listener is up but the address isn't known yet (the first seconds after unlock): not "Listening via " with no server -->
@@ -50,10 +51,11 @@
           </div>
         </div>
         <div class="e-rcv-qrbox">
-          <div class="e-qr e-rcv-qr" :class="{ 'e-is-off': !listening }">
+          <!-- the Epic address works while the listener is stopped, so its QR code stays scannable -->
+          <div class="e-qr e-rcv-qr" :class="{ 'e-is-off': qrOff }">
             <canvas v-show="addressTypeHeader" id="qrcodeCanvas" role="img" :aria-label="addressTypeHeader ? $t('msg.httpReceive.your_qrcode', [addressTypeHeader]) : null"></canvas>
             <p v-show="!addressTypeHeader" class="e-rcv-qr-empty"><EIcon name="qr" size="lg" />{{ $t('msg.modern.send.rcv_qr_empty') }}</p>
-            <span v-if="!listening && addressTypeHeader" class="e-rcv-qr-note" aria-hidden="true">{{ $t('msg.modern.send.rcv_paused') }}</span>
+            <span v-if="qrOff" class="e-rcv-qr-note" aria-hidden="true">{{ $t('msg.modern.send.rcv_paused') }}</span>
           </div>
           <p v-if="addressTypeHeader" class="e-small e-faint e-rcv-qr-cap">{{ $t('msg.httpReceive.your_qrcode', [addressTypeHeader]) }}</p>
         </div>
@@ -67,16 +69,19 @@
             <div class="e-set-row e-rcv-row">
               <div>
                 <b>{{ $t('msg.modern.send.rcv_http') }}</b>
-                <div class="e-rcv-line"><code class="e-mono" :class="{ 'e-faint': !listening }" translate="no">{{ localAddress || '…' }}</code></div>
+                <div class="e-rcv-line"><code class="e-mono" :class="{ 'e-faint': !listening || httpFailed }" translate="no">{{ localAddress || '…' }}</code></div>
                 <p v-if="!listening" class="e-rcv-check"><EIcon name="minusc" size="sm" class="e-faint" /><span>{{ $t('msg.modern.send.rcv_http_off') }}</span></p>
+                <!-- the HTTP listener didn't start: say why; Epicbox goes on (QA W01) -->
+                <p v-else-if="httpFailed" class="e-rcv-check" role="status"><EIcon name="alert" size="sm" class="e-warn" /><span><b>{{ $t('msg.modern.send.rcv_http_failed') }}</b>{{ httpFailed.reason == 'port_in_use' ? $t('msg.modern.send.rcv_http_failed_port', { port: httpFailed.port }) : $t('msg.modern.send.rcv_http_failed_error') }}</span></p>
                 <p v-else-if="portState == 'checking'" class="e-rcv-check" role="status"><EIcon name="sync" size="sm" class="e-faint" /><span>{{ $t('msg.modern.send.rcv_http_checking', { port }) }}</span></p>
                 <p v-else-if="portState == 'open'" class="e-rcv-check" role="status"><EIcon name="okc" size="sm" class="e-ok" /><span><b>{{ $t('msg.modern.send.rcv_http_open', { port }) }}</b>{{ $t('msg.modern.send.rcv_http_open_text') }}</span></p>
                 <p v-else class="e-rcv-check" role="status"><EIcon name="alert" size="sm" class="e-warn" /><span><b>{{ $t('msg.modern.send.rcv_http_closed', { port }) }}</b>{{ $t('msg.modern.send.rcv_http_closed_text', { port }) }}</span></p>
               </div>
               <div class="e-ctl">
-                <button v-if="listening" type="button" class="e-btn e-btn-sm" :class="{ 'e-is-busy': portChecking }" :aria-busy="portChecking ? 'true' : null" @click="portChecking || recheckPort()"><EIcon name="refresh" />{{ $t('msg.modern.send.rcv_check_again') }}</button>
-                <button type="button" class="e-icon-btn" :disabled="!listening || !localAddress" :aria-label="listening ? $t('msg.modern.send.rcv_copy_http') : $t('msg.modern.send.rcv_copy_http_off')" @click="copy(localAddress)"><EIcon name="copy" size="sm" /></button>
-                <button type="button" class="e-icon-btn" :disabled="!listening || !localAddress" :aria-label="$t('msg.modern.send.rcv_qr_http')" @click="showQr(localAddress, 'local')"><EIcon name="qr" size="sm" /></button>
+                <button v-if="listening && httpFailed" type="button" class="e-btn e-btn-sm" :class="{ 'e-is-busy': httpRetrying }" :aria-busy="httpRetrying ? 'true' : null" @click="httpRetrying || retryHttp()"><EIcon name="refresh" />{{ $t('msg.httpReceive.http_retry') }}</button>
+                <button v-else-if="listening" type="button" class="e-btn e-btn-sm" :class="{ 'e-is-busy': portChecking }" :aria-busy="portChecking ? 'true' : null" @click="portChecking || recheckPort()"><EIcon name="refresh" />{{ $t('msg.modern.send.rcv_check_again') }}</button>
+                <button type="button" class="e-icon-btn" :disabled="!listening || !!httpFailed || !localAddress" :aria-label="listening ? $t('msg.modern.send.rcv_copy_http') : $t('msg.modern.send.rcv_copy_http_off')" @click="copy(localAddress)"><EIcon name="copy" size="sm" /></button>
+                <button type="button" class="e-icon-btn" :disabled="!listening || !!httpFailed || !localAddress" :aria-label="$t('msg.modern.send.rcv_qr_http')" @click="showQr(localAddress, 'local')"><EIcon name="qr" size="sm" /></button>
               </div>
             </div>
 
@@ -143,8 +148,9 @@
     },
     computed: {
       listening() { return !!this.store.state.walletListenerService; },
-      //Classic shows the Epicbox address only while Epicbox is connected
-      epicShown() { return !!(this.store.state.walletEpicboxService && this.epicboxAddress); },
+      epicShown() { return this.epicView.show; },
+      //the HTTP address's QR code while nothing listens on it (its button is disabled then; a QR code picked before)
+      qrOff() { return !this.listening && !!this.addressTypeHeader && this.addressTypeHeader != 'epicbox'; },
       port() { return this.configService.walletListenerPort; },
       //the Epic address split for reading out: first five and last four characters of the key
       epicKey() { return String(this.epicboxAddress || '').split('@')[0]; },

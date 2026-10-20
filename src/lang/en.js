@@ -1,9 +1,9 @@
-import modern from './modern/en';
-import nodedir from './nodedir';
-import epicboxdir from './epicboxdir';
-import wallets from './wallets';
-import removal from './removal';
-import chaindata from './chaindata';
+import modern from './modern/en.js';
+import nodedir from './nodedir.js';
+import epicboxdir from './epicboxdir.js';
+import wallets from './wallets.js';
+import removal from './removal.js';
+import chaindata from './chaindata.js';
 
 const messages = {
   msg: {
@@ -410,7 +410,14 @@ const messages = {
       epicbox_address: 'Your public Epic address',
       your_qrcode: 'Your QRcode for your "{0}" address',
       click_qrcode_icon: 'Click the qr code icon',
-      epicbox_not_available: 'Epicbox not available. Wait for the Node to be synced or try to restart the wallet listener',
+      //the Epic address while the listener is stopped (shown dimmed, Copy and QR work: QA T09)
+      epicbox_address_off: 'Receiving is off. Payments wait on Epicbox until you start it.',
+      //the wallet could not tell its Epic address (its API didn't answer)
+      epicbox_address_unknown: 'Your Epic address could not be read. Open Receive again in a moment.',
+      //the HTTP listener didn't start while Epicbox runs (QA W01); {0} is the port (3415)
+      http_failed_port: 'HTTP is not receiving: port {0} is used by another program. Close it, then try again.',
+      http_failed: 'HTTP is not receiving: the listener could not start.',
+      http_retry: 'Try again',
       epicbox_off: 'Your epicbox is not configured. Update your settings and define a epicbox domain',
       epicbox_listening_on: 'Listening on {0}',
       epicbox_listening: 'Epicbox listening',

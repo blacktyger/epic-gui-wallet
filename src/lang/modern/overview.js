@@ -84,6 +84,10 @@ export default {
   rcv_http_wait: 'HTTP listening · Epicbox starts when the node is synced',
   rcv_http_off: 'HTTP listening · Epicbox is off',
   rcv_off: 'Not listening',
+  //the HTTP listener couldn't start (QA W01); {reason}: send.rcv_http_failed_port_short or _error_short
+  rcv_epicbox_on_http_failed: 'Epicbox listening on {s} · HTTP failed: {reason}',
+  rcv_epicbox_http_failed: 'Epicbox listening · HTTP failed: {reason}',
+  rcv_http_failed: 'Not listening · HTTP failed: {reason}',
   more_ways: 'Show QR code and other ways to receive',
   pending_files: '{n} file send needs a response | {n} file sends need a response',
   pending_files_text: 'When the receiver sends back the response file, finalize the transaction to complete the payment.',
