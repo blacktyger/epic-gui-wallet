@@ -9,7 +9,8 @@
       class="e-svc"
       :class="'e-is-' + line.tone"
       :title="line.name + ': ' + line.detail + (line.action ? ' · ' + line.action : '')"
-      @click="$router.push(line.to)"
+      :aria-label="line.open + ': ' + line.detail"
+      @click="go(line.to)"
     >
       <EIcon :name="line.tone == 'busy' ? 'sync' : line.icon" />
       <span><b>{{ line.name }}</b></span>
@@ -23,6 +24,8 @@
   import { computed } from 'vue';
   import { useStore } from '@/store';
   import { useI18n } from 'vue-i18n';
+  import { useRouter } from 'vue-router';
+  import { openSettingsSection } from '@/components/modern/settings/jump';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import { nodeSyncPercent } from '@/components/modern/format';
   import { epicboxStatus } from '@/shared/epicboxStatus';
@@ -37,7 +40,7 @@
 
       const node = computed(() => {
         const s = store.state.nodeStatus || {};
-        const base = { key: 'node', icon: 'server', name: t('msg.modern.svc_node'), to: '/settings' };
+        const base = { key: 'node', icon: 'server', name: t('msg.modern.svc_node'), to: { path: '/settings', hash: '#node' }, open: t('msg.modern.svc_open_node') };
         if (s.error) return { ...base, tone: 'risk', detail: t('msg.modern.svc_node_down') };
         if (!s.user_agent) return { ...base, tone: 'busy', detail: t('msg.modern.svc_connecting') };
         //behind the network tip (nodeService.assessStatus): the line opens Settings, node first, to switch
@@ -52,7 +55,7 @@
       });
 
       const receiving = computed(() => {
-        const base = { key: 'rcv', icon: 'antenna', name: t('msg.modern.svc_receiving'), to: '/httpReceive' };
+        const base = { key: 'rcv', icon: 'antenna', name: t('msg.modern.svc_receiving'), to: { path: '/settings', hash: '#epicbox' }, open: t('msg.modern.svc_open_epicbox') };
         //HTTP only while its listener runs, "failed" when it couldn't start (shared/httpListener.js, QA W01)
         const httpState = httpShown(store.state.httpListener);
         const http = httpState == 'on';
@@ -74,7 +77,9 @@
       });
 
       const lines = computed(() => [node.value, receiving.value]);
-      return { lines };
+      const router = useRouter();
+      const go = (to) => openSettingsSection(router, to);
+      return { lines, go };
     },
   };
 </script>

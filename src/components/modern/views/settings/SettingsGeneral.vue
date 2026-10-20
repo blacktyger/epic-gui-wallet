@@ -1,8 +1,8 @@
 <template>
   <SettingsFrame>
     <!-- ============================================================ node -->
-    <section class="e-set-group" aria-labelledby="stg-node-h">
-      <h2 id="stg-node-h">{{ $t('msg.modern.settings.node') }}</h2>
+    <section id="stg-sec-node" class="e-set-group" aria-labelledby="stg-node-h">
+      <h2 id="stg-node-h" tabindex="-1">{{ $t('msg.modern.settings.node') }}</h2>
       <div class="e-set-list">
         <div class="e-set-row e-stacked">
           <p class="e-stg-lede">{{ $t('msg.modern.settings.node_hint') }}</p>
@@ -46,7 +46,7 @@
     </section>
 
     <!-- ============================================================ receiving -->
-    <section class="e-set-group" aria-labelledby="stg-rcv-h">
+    <section id="stg-sec-epicbox" class="e-set-group" aria-labelledby="stg-rcv-h">
       <h2 id="stg-rcv-h">{{ $t('msg.modern.settings.receiving') }}</h2>
       <div class="e-set-list">
         <div class="e-set-row">
@@ -202,6 +202,7 @@
   import SettingsFrame from '@/components/modern/settings/SettingsFrame.vue';
   import { resetNotice } from '@/shared/theme';
   import { epicboxStatus } from '@/shared/epicboxStatus';
+  import { jumpTo, JUMP_EVENT } from '@/components/modern/settings/jump';
   import { toastLift } from '@/components/modern/ui/toastLift';
   export default reskin(Settings, {
     components: { EIcon, EDialog, NodeserverField, EpicboxServers, SettingsFrame },
@@ -235,10 +236,23 @@
     },
     mounted() {
       //Settings.vue fills the form in its own mounted, which runs first
-      this.$nextTick(() => { this.saved = this.current; });
+      this.$nextTick(() => { this.saved = this.current; this.jump(); });
+      this.onJump = () => this.jump();
+      window.addEventListener(JUMP_EVENT, this.onJump);
+    },
+
+    beforeUnmount() {
+      window.removeEventListener(JUMP_EVENT, this.onJump);
+    },
+    watch: {
+      '$route.hash'() { this.$nextTick(() => this.jump()); },
     },
 
     methods: {
+      /* a sidebar link (#node, #epicbox): scroll to the section, flash it, focus into it */
+      jump() {
+        if (this.$route && this.$route.hash) jumpTo(this.$route.hash);
+      },
       /* Settings.vue's save; the form counts as saved once the config holds what the form shows */
       async saveChanges() {
         //false: nothing was saved (the chain data prompt was closed, or a save already runs)
