@@ -95,6 +95,17 @@ const messages = {
       node_behind: 'आपका नोड {n} ब्लॉक पीछे है।',
       switch_node: 'नोड बदलें',
     },
+    //the node's sync state (shared/nodeState.js), Classic header and Modern Overview
+    node_state: {
+      synced: 'सिंक हो गया',
+      header_sync: 'ब्लॉक हेडर डाउनलोड हो रहे हैं',
+      body_sync: 'ब्लॉक डाउनलोड हो रहे हैं',
+      awaiting_peers: 'दूसरे नोड का इंतज़ार',
+      txhashset_download: 'चेन की स्थिति डाउनलोड हो रही है',
+      syncing: 'प्रोसेस हो रहा है',
+      txhashset_rangeproofs_validation: 'चेन की स्थिति जांची जा रही है (2 में से 1)',
+      txhashset_kernels_validation: 'चेन की स्थिति जांची जा रही है (2 में से 2)',
+    },
     dashboard: {
       transactions: 'लेन-देन',
       coins: 'सिक्के',

@@ -1,121 +1,111 @@
 const messages = [
   {
     title: 'Poslat mince',
-    text: `Příkaz Poslat je prvním krokem při vytváření interaktivní transakce.<br/>
+    text: `Odeslání je první krok při vytváření interaktivní transakce.<br/>
     <br/>
-    Transakci lze buď okamžitě odeslat na adresu Epicbox nebo http(s), nebo provést ručně prostřednictvím výměny souborů.<br/>
+    Transakci lze odeslat okamžitě na adresu Epicbox nebo http(s), nebo ji provést ručně výměnou souborů.<br/>
     <br/>
-    Chcete-li zahájit novou transakci, ujistěte se, že je Váš node server plně synchronizován 
-    do sítě Epic Cash.<br/></br>
-    Stav vašeho node serveru by měl být „synchronizován“.<br/>
+    Než začnete novou transakci, ujistěte se, že je váš uzel plně synchronizován
+    se sítí Epic Cash.<br/></br>
+    Stav vašeho uzlu by měl být „synchronizován“.<br/>
     <br/>
-    Adresa příjemce může být adresa Epicbox nebo jakákoli externí adresa http(s).<br/>`,
+    Adresou příjemce může být adresa Epicbox nebo libovolná externí adresa http(s).<br/>`,
   },
   {
     title: 'Obdržet mince',
-    text: `Chcete-li přijímat mince, vaše peněženka musí být v listen mode.<br/><br/>
-    Pokaždé, když spustíte/restartujete listener, vaše adresa ngrok se změní, takže pokaždé ji zkopírujte.<br/><br/>
-    Výchozí nastavení peněženky ve výchozím nastavení aktivuje režim listen/obdržet.<br/><br/>
-    Tuto funkci lze změnit v Nastavení.<br/>
+    text: `Aby peněženka mohla přijímat mince, musí běžet naslouchání peněženky.<br/><br/>
+    Ve výchozím nastavení je naslouchání zapnuto.<br/><br/>
+    Toto lze změnit v Nastavení.<br/>
     <br/>
-    Na stránce Obdržet bude seznam adres, které lze použít k přijímání mincí.<br/>
+    Na stránce Příjem je seznam adres, na které můžete mince přijímat.<br/>
     <br/>
-    Pokud se něco pokazí a Vaše peněženka neobdržela mince, restartujte lestener na stránce Obdržet.<br/>`
+    Pokud se něco pokazí a peněženka mince nepřijímá, restartujte naslouchání na stránce Příjem.<br/>`
   },
   {
-    title: 'Dokončete offline transakci',
-    text: `Chcete-li dokončit offline transakci, použijte tuto stránku k importu dokončené transakce<br/>
-    transakční soubor poskytnutý příjemcem.<br/>`
+    title: 'Dokončit offline transakci',
+    text: `Chcete-li dokončit offline transakci, naimportujte na této stránce soubor<br/>
+    s odpovědí, který jste obdrželi od příjemce.<br/>`
   },
   {
     title: 'Import offline transakce',
-    text: `Tuto stránku použijte k importu transakčního souboru poskytnutého příjemcem.<br/>
+    text: `Na této stránce naimportujete soubor transakce, který jste obdrželi od odesílatele.<br/>
     <br/>
-    Po importu transakčního souboru uložte hotový transakční soubor a doručte jej odesílateli.<br/>`
+    Po importu uložte soubor s odpovědí a pošlete ho zpět
+    odesílateli.<br/>`
   },
   {
     title: 'Adresář',
-    text: `Uložte své kontakty a jejich adresy do adresáře.<br/>
+    text: `Ukládejte své kontakty a jejich adresy do adresáře.<br/>
     <br/>
-    Pokud se později rozhodnete provést další transakci, můžete vyhledat adresu kontaktu v poli adresy příjemce.<br/>`
+    Když se později rozhodnete provést další transakci, můžete adresu kontaktu vyhledat v poli adresy příjemce.<br/>`
   },
   {
     title: 'ID transakce',
-    text: `ID transakce je jedinečný identifikátor pro každou transakci sdílenou příjemcem a odesílatelem.<br/>`
+    text: `ID transakce je jedinečný identifikátor každé transakce, společný pro příjemce a odesílatele.<br/>`
   },
   {
     title: 'Coin ID',
-    text: `Coin ID je jedinečný identifikátor Vašich coinů na blockchainu.<br/>
-    Pouze Vy vidíte hodnotu Coin ID.<br/>`
+    text: `Coin ID je jedinečný identifikátor vašich mincí na blockchainu.<br/>
+    Hodnotu Coin ID vidíte jen vy.<br/>`
   },
   {
-    title: 'Wallet Listener',
-    text: `The wallet listener musí být spuštěn, aby mohl přijímat mince z jiných peněženek.<br/>
+    title: 'Naslouchání peněženky',
+    text: `Aby peněženka mohla přijímat mince z jiných peněženek, musí běžet naslouchání peněženky.<br/>
     <br/>
-    The listener lze spustit nebo zastavit na stránce obdržet.<br/><br/>
-     Vaše adresa ngrok se změní při každém spuštění the listener.`
+    Naslouchání lze spustit nebo zastavit na stránce Příjem.<br/>`
   },
   {
     title: 'Účet',
-    text: `Nastavte své uživatelské jméno na stránce Účet.<br/>
+    text: `V části Účet nastavíte své uživatelské jméno.<br/>
     <br/>
     Uživatelské jméno se zobrazuje v horní části aplikace.<br/>`
   },
   {
     title: 'Nastavení',
-    text: `Zde můžete změnit nastavení provedená během procesu průvodce nastavením.<br/>`
+    text: `Zde můžete změnit nastavení zvolená během asistenta nastavení.<br/>`
   },
   {
-    title: 'Node Server',
-    text: `Toto je umístění Vašeho node server.<br/>
+    title: 'Server uzlu',
+    text: `Toto je umístění vašeho uzlu.<br/>
     <br/>
-    Aby peněženka mohla odesílat a přijímat mince, je vyžadován Node Server.<br/>
+    Peněženka potřebuje uzel, aby mohla odesílat a přijímat mince.<br/>
     <br/>
-    Můžete si vybrat mezi vestavěným node serverem a externím node serverem.<br/><br/>
+    Můžete si vybrat mezi vestavěným uzlem a externím uzlem.<br/><br/>
     Pokud tuto hodnotu změníte, restartujte peněženku.<br/>`
   },
   {
-    title: 'Váš Ngrok Authtoken',
-    text: `Ověřovací ngrok Authoken je vyžadován, aby služba ngrok našla Váš počítač s peněženkou.<br/><br/>
-    Pokud nechcete používat službu ngrok, nechte pole "Ngrok Authtoken" prázdné.<br/>`
-  },
-  {
     title: 'Import offline transakce',
-    text: `Pokud Vám někdo pošle offline transakci, můžete ji importovat na stránce „Importovat offline transakci".<br/>
-    <br/>Po importu musíte uložit soubor finalizační transakce a odeslat jej zpět odesílateli.<br/>`
+    text: `Pokud vám někdo pošle offline transakci, můžete ji naimportovat na stránce „Import offline transakce“.<br/>
+    <br/>Po importu musíte uložit soubor s odpovědí a poslat ho zpět odesílateli.<br/>`
   },
   {
-    title: 'Mnemonická slova',
-    text: `Mnemonická slova jsou slova, která potřebujete, abyste obnovili zpět svou peněženku. Vytvořte zálohu těchto slov ve stejném pořadí,
-    v jakém jsou zobrazena. Zapište si na papír, pořiďte snímek obrazovky a uložte soubor obrázku atd.<br/>
+    title: 'Obnovovací fráze',
+    text: `Obnovovací fráze je seznam slov, který potřebujete k obnovení peněženky. Slova si zapište
+    na papír, ve stejném pořadí, v jakém se zobrazují, a papír uschovejte na bezpečném místě offline.
+    Nikdy je neukládejte jako fotografii, snímek obrazovky ani soubor.<br/>
     <br/>
-    Pokud později ztratíte data z peněženky, můžete peněženku obnovit<br/>
-    s těmito slovy.<br/>`
+    Pokud ztratíte tento počítač nebo soubory peněženky, můžete peněženku obnovit<br/>
+    pomocí těchto slov.<br/>`
   },
   {
-    title: 'Ngrok',
-    text: `ngrok je služba, která poskytuje veřejnou adresu, která je propojena se soukromou IP adresou Vaší peněženky
-           za vaším routerem.<br/><br/> Adresu ngrok sdílíte s odesílateli peněženky nebo ji používáte v adrese příjemce na burzách.<br/>`
+    title: 'Uzel sítě',
+    text: `Uzel sítě je server, který uchovává data blockchainu.<br/><br/>
+           Vaše peněženka má vestavěný uzel, který můžete používat, nebo si můžete vybrat externí uzel
+           běžící na jiném počítači či externí veřejný uzel.<br/><br/>
+           Při prvním spuštění vestavěného uzlu trvá synchronizace dat blockchainu přibližně 2 hodiny.`
   },
   {
-    title: 'Network node',
-    text: `Network node je server, který ukládá data blockchainu.<br/><br/>
-           Vaše peněženka má built-in node, který můžete použít nebo vybrat external node, který provozujete na jiném počítači
-           nebo external public node.<br/><br/>
-           Při prvním spuštění built-in node bude trvat cca. 2 hodiny na synchronizaci blockchainových dat.`
+    title: 'Protějšky',
+    text: `Protějšky jsou další uzly sítě připojené k vašemu uzlu.<br/>`
   },
   {
-    title: 'Peers',
-    text: `Peers jsou další network node, které jsou připojeny k Vašemu network node<br/>`
+    title: 'Výška blockchainu',
+    text: `Výška blockchainu je číslo posledního bloku v řetězci. Každých 60 sekund vznikne nový blok a hodnota se změní.<br/>`
   },
+  /* use this for new topic
   {
-    title: 'Blockchain Height',
-    text: `The blockchain height je poslední číslo bloku v řetězci. Každých 60 sekund blockchain vytvoří nový blok a změní se hodnota Height.<br/>`
-  },
-  /* použijte to pro nové téma
-  {
-    title: 'Téma',
-    text: `může být i html`
+    title: 'topic',
+    text: `can be html too`
   },
   */
 ];

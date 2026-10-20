@@ -95,6 +95,17 @@ const messages = {
       node_behind: 'نود شما {n} بلاک عقب است.',
       switch_node: 'تعویض نود',
     },
+    //the node's sync state (shared/nodeState.js), Classic header and Modern Overview
+    node_state: {
+      synced: 'همگام‌سازی شده',
+      header_sync: 'در حال دانلود سرایند بلاک‌ها',
+      body_sync: 'در حال دانلود بلاک‌ها',
+      awaiting_peers: 'در انتظار نودهای دیگر',
+      txhashset_download: 'در حال دانلود وضعیت زنجیره',
+      syncing: 'در حال پردازش',
+      txhashset_rangeproofs_validation: 'در حال بررسی وضعیت زنجیره (۱ از ۲)',
+      txhashset_kernels_validation: 'در حال بررسی وضعیت زنجیره (۲ از ۲)',
+    },
     dashboard: {
       transactions: 'تراکنش‌ها',
       coins: 'سکه ها',

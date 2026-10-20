@@ -95,6 +95,17 @@ const messages = {
       node_behind: 'Váš uzel je pozadu, chybějící bloky: {n}.',
       switch_node: 'Přepnout uzel',
     },
+    //the node's sync state (shared/nodeState.js), Classic header and Modern Overview
+    node_state: {
+      synced: 'synchronizován',
+      header_sync: 'stahování hlaviček bloků',
+      body_sync: 'stahování bloků',
+      awaiting_peers: 'čekání na další uzly',
+      txhashset_download: 'stahování stavu řetězce',
+      syncing: 'zpracování',
+      txhashset_rangeproofs_validation: 'kontrola stavu řetězce (1 z 2)',
+      txhashset_kernels_validation: 'kontrola stavu řetězce (2 z 2)',
+    },
     dashboard: {
       transactions: 'Transakce',
       coins: 'Mince',

@@ -95,6 +95,17 @@ const messages = {
       node_behind: 'Вашият възел изостава. Липсващи блокове: {n}.',
       switch_node: 'Смяна на възела',
     },
+    //the node's sync state (shared/nodeState.js), Classic header and Modern Overview
+    node_state: {
+      synced: 'синхронизиран',
+      header_sync: 'изтегляне на заглавията на блоковете',
+      body_sync: 'изтегляне на блокове',
+      awaiting_peers: 'изчакване на други възли',
+      txhashset_download: 'изтегляне на състоянието на веригата',
+      syncing: 'обработка',
+      txhashset_rangeproofs_validation: 'проверка на състоянието на веригата (1 от 2)',
+      txhashset_kernels_validation: 'проверка на състоянието на веригата (2 от 2)',
+    },
     dashboard: {
       transactions: 'Транзакции',
       coins: 'Монети',

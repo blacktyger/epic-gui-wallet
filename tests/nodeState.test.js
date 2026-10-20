@@ -39,7 +39,7 @@ test('every sync state the store sets has an English message; an unknown one is 
 
 test('Classic: every page with the header bar has a translated title key that exists in English', () => {
   const router = src('router/index.js');
-  const routes = router.split(/\n  \{\n/).slice(1);
+  const routes = router.split(/\n {2}\{\n/).slice(1);
   const withHeader = routes.filter(r => /headerbar: HeaderBar/.test(r));
   assert.ok(withHeader.length >= 12);
   for (const r of withHeader) {

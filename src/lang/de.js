@@ -95,6 +95,17 @@ const messages = {
       node_behind: 'Ihrem Netzwerkknoten fehlen noch Blöcke: {n}.',
       switch_node: 'Netzwerkknoten wechseln',
     },
+    //the node's sync state (shared/nodeState.js), Classic header and Modern Overview
+    node_state: {
+      synced: 'synchronisiert',
+      header_sync: 'Block-Header werden heruntergeladen',
+      body_sync: 'Blöcke werden heruntergeladen',
+      awaiting_peers: 'wartet auf andere Netzwerkknoten',
+      txhashset_download: 'Blockchain-Status wird heruntergeladen',
+      syncing: 'wird verarbeitet',
+      txhashset_rangeproofs_validation: 'Blockchain-Status wird geprüft (1 von 2)',
+      txhashset_kernels_validation: 'Blockchain-Status wird geprüft (2 von 2)',
+    },
     dashboard: {
       transactions: 'Transaktionen',
       coins: 'Coins',

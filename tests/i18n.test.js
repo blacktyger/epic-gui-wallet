@@ -18,14 +18,7 @@ import { localeAttrs } from '../src/shared/locale.js';
 const LANGS = { bg, cz, de, fa, hi, pl };
 
 /* keys a language may leave to the English fallback, with the reason. Empty: everything is translated. */
-//TEMPORARY (fix/6.1.5-lock, item #33): the lock-check strings, English until translated
-const LOCK_CHECK = {
-  'msg.removal.reason_inuse': 'item #33, awaiting translation',
-  'msg.removal.reason_lockunknown': 'item #33, awaiting translation',
-  'msg.wallets.folder_inuse': 'item #33, awaiting translation',
-  'msg.chaindata.offer_in_use': 'item #33, awaiting translation',
-};
-const FALLBACK = { bg: LOCK_CHECK, cz: LOCK_CHECK, de: LOCK_CHECK, fa: LOCK_CHECK, hi: LOCK_CHECK, pl: LOCK_CHECK };
+const FALLBACK = {};
 
 const flat = (o, p = '', r = {}) => {
   for (const [k, v] of Object.entries(o)) {

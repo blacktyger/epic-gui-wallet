@@ -95,6 +95,17 @@ const messages = {
       node_behind: 'Twój węzeł jest w tyle. Bloki do nadrobienia: {n}.',
       switch_node: 'Zmień węzeł',
     },
+    //the node's sync state (shared/nodeState.js), Classic header and Modern Overview
+    node_state: {
+      synced: 'zsynchronizowany',
+      header_sync: 'pobieranie nagłówków bloków',
+      body_sync: 'pobieranie bloków',
+      awaiting_peers: 'oczekiwanie na inne węzły',
+      txhashset_download: 'pobieranie stanu łańcucha',
+      syncing: 'przetwarzanie',
+      txhashset_rangeproofs_validation: 'sprawdzanie stanu łańcucha (1 z 2)',
+      txhashset_kernels_validation: 'sprawdzanie stanu łańcucha (2 z 2)',
+    },
     dashboard: {
       transactions: 'Transakcje',
       coins: 'Monety',
