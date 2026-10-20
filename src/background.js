@@ -2,6 +2,7 @@
 
 import { app, protocol, net, session, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard } from 'electron'
 import contextMenu from 'electron-context-menu'
+import { menuTemplate, menuState } from './shared/appMenu'
 import { execFile, spawn } from 'child_process'
 import { pathToFileURL } from 'url'
 import { createDirectory } from './shared/nodeDirectory'
@@ -316,101 +317,7 @@ async function createWindow() {
 
 
   if (!isDevelopment) {
-    if(process.platform == 'darwin'){
-      var menu = Menu.buildFromTemplate([
-          {
-              label: 'Menu',
-              submenu: [
-                  { label: "About Application", selector: "orderFrontStandardAboutPanel:" },
-                  { label: "Source on GitHub", click ()
-                    {
-                      shell.openExternal('https://github.com/EpicCash/epic-gui-wallet');
-                    }
-                   },
-                  { type: "separator" },
-                  {
-                      label:'Quit',
-                      accelerator: "CmdOrCtrl+Q",
-                      async click() {
-                          await shutdown.run();
-                          app.quit()
-                      }
-                  },
-
-              ],
-
-          },
-          {
-            label: "Application",
-            submenu: [
-
-              {
-                label: "Edit",
-                submenu: [
-                    { label: "Undo", accelerator: "CmdOrCtrl+Z", selector: "undo:" },
-                    { label: "Redo", accelerator: "Shift+CmdOrCtrl+Z", selector: "redo:" },
-                    { type: "separator" },
-                    { label: "Cut", accelerator: "CmdOrCtrl+X", selector: "cut:" },
-                    { label: "Copy", accelerator: "CmdOrCtrl+C", selector: "copy:" },
-                    { label: "Paste", accelerator: "CmdOrCtrl+V", selector: "paste:" },
-                    { label: "Select All", accelerator: "CmdOrCtrl+A", selector: "selectAll:" }
-                ]
-              }
-            ]
-
-
-          }
-
-      ]);
-    }else{
-      menu = Menu.buildFromTemplate([
-          {
-              label: 'Menu',
-              submenu: [
-
-                  { label: "Source on GitHub", click ()
-                    {
-                      shell.openExternal('https://github.com/EpicCash/epic-gui-wallet');
-                    }
-                   },
-                  { type: "separator" },
-                  {
-                      label:'Quit',
-                      accelerator: "CmdOrCtrl+Q",
-                      async click() {
-                        await shutdown.run();
-                        app.quit()
-                      }
-                  },
-
-              ],
-
-          },
-          {
-            label: "Application",
-            submenu: [
-
-              {
-                label: "Edit",
-                submenu: [
-                    { label: "Undo", accelerator: "CmdOrCtrl+Z", selector: "undo:" },
-                    { label: "Redo", accelerator: "Shift+CmdOrCtrl+Z", selector: "redo:" },
-                    { type: "separator" },
-                    { label: "Cut", accelerator: "CmdOrCtrl+X", selector: "cut:" },
-                    { label: "Copy", accelerator: "CmdOrCtrl+C", selector: "copy:" },
-                    { label: "Paste", accelerator: "CmdOrCtrl+V", selector: "paste:" },
-                    { label: "Select All", accelerator: "CmdOrCtrl+A", selector: "selectAll:" }
-                ]
-              }
-            ]
-
-
-          }
-
-      ]);
-    }
-
-    Menu.setApplicationMenu(menu);
+    setAppMenu();
   }else{
     console.log(win);
   }
@@ -704,6 +611,28 @@ ipcMain.handle('node-directory', async (event, chain) => {
 //only the app's own window may ask the main process to open things, send requests, show dialogs,
 //write the clipboard or restart (there is no other window: new windows and webviews are refused)
 const fromAppWindow = (event) => !!win && !win.isDestroyed() && event.sender === win.webContents;
+
+//the app menu (shared/appMenu.js): Lock wallet is enabled while the renderer reports an unlocked
+//wallet; its click locks the way the Lock button does (the renderer's app.logout)
+let menuStateNow = menuState({});
+function setAppMenu() {
+  if (isDevelopment) return;
+  Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate({
+    platform: process.platform,
+    labels: menuStateNow.labels,
+    unlocked: menuStateNow.unlocked,
+    onLock: () => { if (win && !win.isDestroyed()) win.webContents.send('menu-lock'); },
+    onQuit: async () => { await shutdown.run(); app.quit(); },
+    onSource: () => shell.openExternal('https://github.com/EpicCash/epic-gui-wallet'),
+  })));
+}
+ipcMain.on('menu-state', (event, data) => {
+  if (!fromAppWindow(event)) return;
+  const next = menuState(data);
+  if (JSON.stringify(next) === JSON.stringify(menuStateNow)) return;
+  menuStateNow = next;
+  setAppMenu();
+});
 
 //a link from the page (About, Credits, the node notice and list): http(s) only, in the system browser
 ipcMain.handle('open-external', (event, url) => fromAppWindow(event) && openExternal(url));

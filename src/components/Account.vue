@@ -43,7 +43,10 @@
             <b>{{ nameOf(w) }}</b> <span v-if="badge(w.network)" class="tag is-warning is-light">{{ badge(w.network) }}</span>
             <p class="is-size-7"><code :title="w.dataDir">{{ short(w.dataDir) }}</code></p>
           </div></div>
-          <div class="level-right"><button type="button" class="button is-small is-danger is-outlined" @click="askRemove(w)" :aria-label="$t('msg.removal.open_named', [nameOf(w)])">{{ $t('msg.removal.open') }}</button></div>
+          <div class="level-right"><div class="buttons">
+            <button type="button" class="button is-small is-outlined" @click="showInFolder(w)" :aria-label="$t('msg.wallets.show_in_folder_named', [nameOf(w)])">{{ $t('msg.wallets.show_in_folder') }}</button>
+            <button type="button" class="button is-small is-danger is-outlined" @click="askRemove(w)" :aria-label="$t('msg.removal.open_named', [nameOf(w)])">{{ $t('msg.removal.open') }}</button>
+          </div></div>
         </div>
 
         <h2 class="title is-5" style="margin-top: 1.5rem;">{{ $t('msg.wallets.add_wallet') }}</h2>
@@ -149,6 +152,17 @@ import RemoveWalletDialog from '@/components/layout/RemoveWalletDialog.vue';
       },
       openFolder(dir) {
         if (dir) window.openepichidden.open(dir);
+      },
+      /* another listed wallet's own folder in the file manager: <root>/wallets/<id> (its WALLET.txt
+         names the data folder), else its data folder. open-folder (background.js) opens only a
+         folder of the app or of a listed wallet */
+      async showInFolder(w) {
+        for (const dir of [w && w.configDir, w && w.dataDir]) {
+          try {
+            if (dir && await window.openepichidden.open(dir)) return;
+          } catch (e) { /* the next one */ }
+        }
+        this.$toast.error(this.$t('msg.wallets.missing', [(w && (w.configDir || w.dataDir)) || '']));
       },
       async copyPath(dir) {
         if (!dir) return;

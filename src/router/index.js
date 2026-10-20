@@ -73,7 +73,8 @@ const routes = [
   {
 
     meta: {
-      title: 'Dashboard'
+      title: 'Dashboard',
+      titleKey: 'msg.menu.dashboard'
     },
     path: '/dashboard',
     name: 'dashboard',
@@ -87,7 +88,8 @@ const routes = [
   {
 
     meta: {
-      title: 'Account'
+      title: 'Account',
+      titleKey: 'msg.menu.account'
     },
     path: '/account',
     name: 'account',
@@ -101,7 +103,8 @@ const routes = [
   {
 
     meta: {
-      title: 'Help'
+      title: 'Help',
+      titleKey: 'msg.menu.help'
     },
     path: '/help',
     name: 'help',
@@ -115,7 +118,8 @@ const routes = [
   {
 
     meta: {
-      title: 'About'
+      title: 'About',
+      titleKey: 'msg.menu.about'
     },
     path: '/about',
     name: 'about',
@@ -128,7 +132,8 @@ const routes = [
   },
   {
     meta: {
-      title: 'Receive'
+      title: 'Receive',
+      titleKey: 'msg.menu.receive'
     },
     path: '/httpReceive',
     name: 'httpReceive',
@@ -142,7 +147,8 @@ const routes = [
   {
 
     meta: {
-      title: 'Finalize offline transaction'
+      title: 'Finalize offline transaction',
+      titleKey: 'msg.menu.finalize'
     },
     path: '/finalizeTransaction',
     name: 'finalizeTransaction',
@@ -156,7 +162,8 @@ const routes = [
   {
 
     meta: {
-      title: 'Import offline transaction'
+      title: 'Import offline transaction',
+      titleKey: 'msg.menu.import'
     },
     path: '/importTransaction',
     name: 'importTransaction',
@@ -170,7 +177,8 @@ const routes = [
   {
     //the Modern interface's Activity page (transactions and coins); Classic shows them on the dashboard
     meta: {
-      title: 'Activity'
+      title: 'Activity',
+      titleKey: 'msg.modern.activity'
     },
     path: '/activity',
     name: 'activity',
@@ -183,7 +191,8 @@ const routes = [
   },
   {
     meta: {
-      title: 'Send'
+      title: 'Send',
+      titleKey: 'msg.menu.send'
     },
     path: '/httpSend',
     name: 'httpSend',
@@ -197,7 +206,8 @@ const routes = [
   {
 
     meta: {
-      title: 'Addressbook'
+      title: 'Addressbook',
+      titleKey: 'msg.menu.address_book'
     },
     path: '/addressBook',
     name: 'addressBook',
@@ -211,7 +221,8 @@ const routes = [
   {
 
     meta: {
-      title: 'Mnemonic Words'
+      title: 'Recovery phrase',
+      titleKey: 'msg.menu.mnemonic'
     },
     path: '/mnemonic',
     name: 'mnemonic',
@@ -258,7 +269,8 @@ const routes = [
   {
 
     meta: {
-      title: 'Settings'
+      title: 'Settings',
+      titleKey: 'msg.menu.settings'
     },
     path: '/settings',
     name: 'settings',
@@ -272,7 +284,8 @@ const routes = [
   {
 
     meta: {
-      title: 'Recheck balance'
+      title: 'Recheck balance',
+      titleKey: 'msg.menu.recheck'
     },
     path: '/recheckBalance',
     name: 'recheckBalance',

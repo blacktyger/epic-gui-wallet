@@ -99,6 +99,8 @@
       //<html lang> and dir (rtl for Persian) follow the language (QA T26)
       watch(locale, (l) => applyLocale(document, l), { immediate: true });
       const loggedIn = ref(false);
+      //Menu › Lock wallet (shared/appMenu.js): enabled while a wallet is unlocked, in the app's language
+      watch([loggedIn, locale], ([on]) => window.api.menuState(on, { lock: t('msg.modern.lock'), quit: t('msg.wallets.quit') }), { immediate: true });
       const store = useStore();
       const router = useRouter();
       const isNodeModalActive = ref(false);
@@ -135,6 +137,12 @@
     async created() {
 
       this.locale = await window.api.locale();
+
+      //Menu › Lock wallet: the same as the Lock button and Ctrl+L, only while a wallet is unlocked
+      //(skipped while a lock is under way: Ctrl+L can reach both the page and the menu)
+      window.api.onMenuLock(() => {
+        if (this.loggedIn && !(Date.now() - (this.logoutStartedAt || 0) < 15000)) this.emitter.emit('app.logout');
+      });
 
       window.nodeChildProcess.on('firstscan-stdout', (payload) => {
 
@@ -466,6 +474,7 @@
       /* opts.stay: the caller (Add another wallet) goes on from its own page; opts.done: called once closed;
          opts.switching: Switch wallet, so the built-in node keeps running */
       async logoutApp(opts = {}){
+        this.logoutStartedAt = Date.now();
         //first: the main process forgets the password, whatever happens below
         window.nodeChildProcess.clearSessionPassword().catch(() => {});
         //a copied recovery phrase leaves the clipboard on lock

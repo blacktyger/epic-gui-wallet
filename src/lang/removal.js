@@ -1,5 +1,6 @@
 //Removing a wallet (msg.removal.*): list only, this app's files, or everything.
-//Used by the Classic and the Modern screens; other languages fall back to English.
+//Used by the Classic and the Modern screens. The app never stores the recovery phrase: 'everything'
+//deletes the wallet seed (wallet_data/wallet.seed), from which only the phrase can restore it.
 export default {
   //the button that opens the dialog
   open: 'Remove…',
@@ -11,14 +12,14 @@ export default {
   ready: 'Choose one of the options below.',
 
   list_label: 'Remove from the list only',
-  list_hint: 'All files stay where they are. You can add the wallet back later with “Open a wallet folder”.',
+  list_hint: 'All files stay where they are. You can add the wallet back later with “Add a wallet from a folder”.',
   app_label: 'Remove this app’s files for it',
-  app_hint: 'Also deletes its settings, its contacts in this app and this app’s files for it. The wallet itself, with its recovery phrase, stays in {0}.',
+  app_hint: 'Also deletes its settings, its contacts in this app and this app’s files for it. The wallet itself, with its seed, stays in {0}.',
   app_hint_missing: 'Also deletes its settings, its contacts in this app and this app’s files for it in {0}.',
-  all_label: 'Remove everything, including the recovery phrase',
-  all_hint: 'Deletes the wallet completely from this computer: {0}',
+  all_label: 'Remove everything, including the wallet seed',
+  all_hint: 'Deletes this wallet from this computer: {0}. You can restore it only with your recovery phrase; without it the coins are lost.',
   //the choice can't be used here (the reason follows): no folder named, so nothing reads as if it would go
-  all_hint_off: 'Deletes the wallet and its recovery phrase from this computer.',
+  all_hint_off: 'Deletes this wallet from this computer. You can restore it only with your recovery phrase; without it the coins are lost.',
 
   //why a choice can't be used
   reason_open: 'This wallet is open. Lock it or switch to another wallet first.',
@@ -26,17 +27,17 @@ export default {
   reason_notours: 'This wallet’s files are in a folder this app didn’t create: {0}. They stay where they are.',
   reason_shared: 'Another wallet in the list uses this folder: {0}. Its files stay where they are.',
   reason_legacy: 'This folder belongs to an older Epic Wallet: {0}. Its files stay where they are.',
-  reason_imported: 'This wallet’s recovery phrase is in a folder this app didn’t create: {0}. It stays where it is.',
-  reason_separate: 'This wallet’s recovery phrase is in another folder: {0}. It stays where it is.',
+  reason_imported: 'This wallet’s seed is in a folder this app didn’t create: {0}. It stays where it is.',
+  reason_separate: 'This wallet’s seed is in another folder: {0}. It stays where it is.',
   reason_chain: 'The built-in node keeps its blockchain data in this folder: {0}. Its files stay where they are.',
-  reason_missing: 'The wallet’s folder was not found, so its recovery phrase can’t be deleted here.',
+  reason_missing: 'The wallet’s folder was not found, so its seed can’t be deleted here.',
   reason_gone: 'This wallet is no longer in the list.',
   reason_readonly: 'The settings file can’t be read, so nothing can be removed.',
   reason_unknown: 'This can’t be removed here.',
 
   //removing everything: the confirmation
   danger_title: 'This can’t be undone',
-  danger_text: 'The coins in this wallet can only be recovered with its recovery phrase. Without the recovery phrase they are lost for good.',
+  danger_text: 'This deletes the wallet seed from this computer. You can restore the wallet only with your recovery phrase; without it the coins are lost for good.',
   ack: 'I have my recovery phrase written down',
   type_label: 'To confirm, type the wallet’s name: {0}',
   type_mismatch: 'The name doesn’t match yet.',

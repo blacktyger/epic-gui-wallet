@@ -23,14 +23,14 @@ const messages = [
   },
   {
     title: 'Finalize offline transaction',
-    text: `To finalize an offline transaction, use this page to import the finalized<br/>
-    transaction file provided by the receiver.<br/>`
+    text: `To finalize an offline transaction, use this page to import the response<br/>
+    file you received from the receiver.<br/>`
   },
   {
     title: 'Import offline transaction',
-    text: `Use this page to import the transaction file provided by the receiver.<br/>
+    text: `Use this page to import the transaction file you received from the sender.<br/>
     <br/>
-    After importing the transaction file, save a finalized transaction file and deliver it 
+    After importing the transaction file, save the response file and send it back
     to the sender.<br/>`
   },
   {
@@ -79,12 +79,13 @@ const messages = [
     <br/>After the import you must save a finalization transaction file and send it back to the sender.<br/>`
   },
   {
-    title: 'Mnemonic Words',
-    text: `The Mnemoonic Words are the words you need to recover your wallet. Make a backup of these words
-    in the same order they are displayed. Write down on paper, take a screenshot and save image file, etc.<br/>
+    title: 'Recovery phrase',
+    text: `The recovery phrase is the list of words you need to restore your wallet. Write the words down
+    on paper, in the order they are shown, and keep the paper somewhere safe and offline. Never keep them
+    as a photo, screenshot or file.<br/>
     <br/>
-    Later if you loose your wallet data, you can recover the wallet<br/>
-    with this words.<br/>`
+    If you lose this computer or the wallet's files, you can restore the wallet<br/>
+    with these words.<br/>`
   },
   {
     title: 'Network node',

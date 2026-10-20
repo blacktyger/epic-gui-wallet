@@ -72,7 +72,7 @@
       <div>
         <b>{{ $t('msg.modern.overview.node_syncing', { p: syncPercent }) }}</b>
         <p>
-          {{ $t('msg.modern.overview.node_syncing_detail', { status: store.state.nodeStatus.sync_status, cur: fmt(currentHeight), high: fmt(highestHeight) }) }}
+          {{ $t('msg.modern.overview.node_syncing_detail', { status: nodeState(store.state.nodeStatus.sync_status), cur: fmt(currentHeight), high: fmt(highestHeight) }) }}
           <template v-if="store.state.walletTip">{{ $t('msg.modern.overview.node_syncing_balance', { h: fmt(store.state.walletTip) }) }}</template>
           {{ $t('msg.modern.overview.node_syncing_send') }}
         </p>
@@ -155,7 +155,7 @@
               <small v-if="nodeConnecting" role="status">{{ $t('msg.modern.overview.node_connecting') }}</small>
               <small v-else-if="nodeDown" class="e-risk">{{ $t('msg.modern.overview.node_not_responding') }}</small>
               <small v-else-if="nodeBehind" role="status">{{ $t('msg.modern.node_behind', { n: fmt(nodeBehind) }) }} <router-link to="/settings" class="e-link-btn">{{ $t('msg.modern.switch_node') }}</router-link></small>
-              <small v-else-if="nodeSyncing">{{ $t('msg.modern.overview.node_progress', { status: store.state.nodeStatus.sync_status, p: syncPercent }) }}<template v-if="node.connections != null"> · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</template></small>
+              <small v-else-if="nodeSyncing">{{ $t('msg.modern.overview.node_progress', { status: nodeState(store.state.nodeStatus.sync_status), p: syncPercent }) }}<template v-if="node.connections != null"> · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</template></small>
               <small v-else>{{ $t('msg.modern.overview.node_synced') }}<template v-if="node.connections != null"> · {{ $t('msg.modern.overview.node_peers', { n: peers }) }}</template></small>
               <small v-if="nodeSynced" class="e-ov-height" translate="no" :title="$t('msg.modern.overview.node_block')">{{ $t('msg.modern.overview.node_block') }} <span class="e-mono">{{ fmt(blockHeight) }}</span></small>
               <small v-if="!isInternal && nodeHost" class="e-mono e-ov-host" translate="no" :title="store.state.nodeType">{{ nodeHost }}</small>

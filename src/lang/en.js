@@ -92,7 +92,7 @@ const messages = {
       account: 'Profile',
       settings: 'Settings',
       recheck: 'Recheck Balance',
-      mnemonic: 'Mnemonic Words',
+      mnemonic: 'Recovery phrase',
       run_setup: 'Run Setup Assistant',
       updates: 'Updates',
       openepichidden: 'Epic wallet location',
@@ -109,6 +109,17 @@ const messages = {
       node_sync_status: 'Internal node sync status',
       node_behind: 'Your node is {n} blocks behind.',
       switch_node: 'Switch node',
+    },
+    //the node's sync state (shared/nodeState.js: the store's values → these keys), Classic header and Modern Overview
+    node_state: {
+      synced: 'synced',
+      header_sync: 'downloading block headers',
+      body_sync: 'downloading blocks',
+      awaiting_peers: 'waiting for other nodes',
+      txhashset_download: 'downloading the chain state',
+      syncing: 'processing',
+      txhashset_rangeproofs_validation: 'checking the chain state (1 of 2)',
+      txhashset_kernels_validation: 'checking the chain state (2 of 2)',
     },
     dashboard:{
       transactions: 'Transactions',
@@ -251,7 +262,7 @@ const messages = {
     },
     seed:{
       errorGetMnemonic: 'Error getting Mnemonic. Is password correct?',
-      mnemonic: 'Mnemonic Words'
+      mnemonic: 'Recovery phrase'
     },
     new:{
       create: 'Create new wallet',

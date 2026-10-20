@@ -83,7 +83,10 @@
                 <b><span class="e-truncate">{{ nameOf(w) }}</span><span v-if="badge(w.network)" class="e-tag e-warn">{{ badge(w.network) }}</span></b>
                 <p class="e-mono" :title="w.dataDir" translate="no">{{ short(w.dataDir) }}</p>
               </div>
-              <button type="button" class="e-btn e-btn-sm e-btn-ghost" :aria-label="$t('msg.removal.open_named', [nameOf(w)])" @click="askRemove(w)"><EIcon name="trash" />{{ $t('msg.removal.open') }}</button>
+              <div class="e-wlist-acts">
+                <button type="button" class="e-btn e-btn-sm e-btn-ghost" :aria-label="$t('msg.wallets.show_in_folder_named', [nameOf(w)])" @click="showInFolder(w)"><EIcon name="open" />{{ $t('msg.wallets.show_in_folder') }}</button>
+                <button type="button" class="e-btn e-btn-sm e-btn-ghost" :aria-label="$t('msg.removal.open_named', [nameOf(w)])" @click="askRemove(w)"><EIcon name="trash" />{{ $t('msg.removal.open') }}</button>
+              </div>
             </li>
           </ul>
         </div>

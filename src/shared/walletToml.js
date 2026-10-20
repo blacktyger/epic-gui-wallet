@@ -173,8 +173,10 @@ export function renderNodeToml({ template, network, nodeDir, chainDir, foundatio
 
 /*
  * WALLET.txt in a wallet's 6.1 folder (<root>/wallets/<id>): tells someone browsing the folders
- * which wallet wN is. Informational only; the app never reads it. eol: '\r\n' on Windows, so
- * any editor shows the lines.
+ * which wallet wN is. Informational only; the app never reads it. Written when a wallet is added,
+ * when its label changes and when it starts (configService.writeWalletMarker). English, plain text;
+ * eol: '\r\n' on Windows, so Notepad shows the lines. Never a secret: no password, phrase or key.
+ * Layout from tester feedback #35: what the file is first, then one block of details.
  */
 export const WALLET_MARKER = 'WALLET.txt';
 
@@ -183,14 +185,22 @@ export function walletMarkerText({ id, label, network, createdAt, dataDir, confi
   //one line: no line breaks from a label can make it look like more
   const one = (s) => String(s == null ? '' : s).replace(/[\r\n\t]+/g, ' ');
   const lines = [
-    'Epic Wallet: ' + (one(label) || '(no label)') + ' · ' + one(network) + (day ? ' · created ' + day : '') + ' · data: ' + one(dataDir),
+    'This file tells you which Epic Cash wallet this folder belongs to.',
+    'Epic Wallet writes this file but never reads it: changing it changes nothing.',
     '',
-    'Wallet id: ' + one(id),
-    'Wallet data (the seed is in wallet_data): ' + one(dataDir),
-    ...(configDir && configDir !== dataDir ? ['Settings of this wallet in Epic Wallet 6.1: ' + one(configDir)] : []),
-    ...(importedFrom && importedFrom.dir ? ['Imported from an older Epic Wallet' + (importedFrom.app ? ' (' + one(importedFrom.app) + ')' : '') + '.'] : []),
+    '## YOUR WALLET DETAILS ##',
     '',
-    'This file is only for you: Epic Wallet writes it and never reads it.',
+    'LABEL       = ' + (one(label) || '(no label)'),
+    ...(day ? ['CREATED     = ' + day] : []),
+    'NETWORK     = ' + one(network),
+    'WALLET ID   = ' + one(id),
+    'DATA FOLDER =',
+    one(dataDir),
+    ...(configDir && configDir !== dataDir ? ['', 'SETTINGS FOLDER (this app\'s files for the wallet) =', one(configDir)] : []),
+    ...(importedFrom && importedFrom.dir ? ['', 'IMPORTED FROM = an older Epic Wallet' + (importedFrom.app ? ' (' + one(importedFrom.app) + ')' : '')] : []),
+    '',
+    'The wallet seed is kept encrypted in the "wallet_data" folder inside the data folder.',
+    'Only your recovery phrase can restore this wallet: keep it written down on paper.',
   ];
   return lines.join(eol) + eol;
 }

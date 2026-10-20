@@ -341,11 +341,12 @@ test('Windows: paths with spaces and quotes reach the tomls intact', () => {
   assert.equal(tomlStr(fs.readFileSync(root + '\\node\\main\\epic-server.toml'), 'db_root'), root + '\\node\\main\\chain_data');
   //WALLET.txt with Windows line ends, the old folder named, nothing written there
   const m = fs.readFileSync(root + '\\wallets\\w1\\WALLET.txt');
-  assert.ok(m.includes('\r\n') && m.includes('data: ' + old + '\r\n'), m);
+  assert.ok(m.includes('DATA FOLDER =\r\n' + old + '\r\n'), m);
+  assert.ok(!/(^|[^\r])\n/.test(m), 'every line ends in CRLF');
   assert.ok(!fs.existsSync(old + '\\WALLET.txt'));
 });
 
-test('WALLET.txt: label, network, day, data folder; written on register, rename and start; one line per field', () => {
+test('WALLET.txt (feedback #35): what it is first, one details block, the data folder once; written on register, rename and start', () => {
   const { cs, fs, root } = setup();
   const old = '/home/jane/.epic/alpha/main';
   fs.put(old + '/wallet_data/wallet.seed', 'seed');
@@ -354,13 +355,30 @@ test('WALLET.txt: label, network, day, data folder; written on register, rename 
     importedFrom: { app: '5.3.1', account: 'alpha', dir: old } });
   const file = root + '/wallets/w1/WALLET.txt';
   const first = fs.readFileSync(file).split('\n');
-  assert.equal(first[0], 'Epic Wallet: Alpha · floonet · created 2026-10-19 · data: ' + old);
-  assert.ok(first.includes('Settings of this wallet in Epic Wallet 6.1: ' + root + '/wallets/w1'));
-  assert.ok(first.includes('Imported from an older Epic Wallet (5.3.1).'));
+  assert.deepEqual(first.slice(0, 11), [
+    'This file tells you which Epic Cash wallet this folder belongs to.',
+    'Epic Wallet writes this file but never reads it: changing it changes nothing.',
+    '',
+    '## YOUR WALLET DETAILS ##',
+    '',
+    'LABEL       = Alpha',
+    'CREATED     = 2026-10-19',
+    'NETWORK     = floonet',
+    'WALLET ID   = w1',
+    'DATA FOLDER =',
+    old,
+  ]);
+  //the data folder once (it was on two lines before)
+  assert.equal(first.filter(l => l.includes(old)).length, 1);
+  assert.ok(first.includes(root + '/wallets/w1'));
+  assert.ok(first.includes('IMPORTED FROM = an older Epic Wallet (5.3.1)'));
+  assert.equal(first[first.length - 1], '', 'ends with a line break');
+  //no secret, nothing that says the phrase is in a file
+  assert.ok(!/password|secret|mnemonic|screenshot/i.test(first.join('\n')));
   //nothing that suggests using the older app on this wallet alongside 6.1
   assert.ok(!/older app|still open/i.test(first.join('\n')));
   assert.equal(cs.renameWallet('w1', ' Savings\nfake line '), true);
-  assert.match(fs.readFileSync(file).split('\n')[0], /^Epic Wallet: Savings fake line · floonet/);
+  assert.ok(fs.readFileSync(file).split('\n').includes('LABEL       = Savings fake line'));
   fs.unlinkSync(file);
   assert.equal(cs.startCheck('w1'), 'login');
   assert.ok(fs.existsSync(file));
@@ -370,8 +388,9 @@ test('WALLET.txt: label, network, day, data folder; written on register, rename 
   fs.put(n.configDir + '/wallet_data/wallet.seed', 'seed');
   cs.registerWallet({ ...n, network: 'mainnet', origin: 'created' });
   const t = fs.readFileSync(n.configDir + '/WALLET.txt');
-  assert.match(t, /^Epic Wallet: \(no label\) · mainnet · created \d{4}-\d\d-\d\d · data: /);
-  assert.ok(!t.includes('Settings of this wallet'));
+  const day = new Date().toISOString().slice(0, 10);
+  assert.ok(t.includes('\nLABEL       = (no label)\nCREATED     = ' + day + '\nNETWORK     = mainnet\nWALLET ID   = w2\nDATA FOLDER =\n'), t);
+  assert.ok(!t.includes('SETTINGS FOLDER') && !t.includes('IMPORTED FROM'));
 });
 
 test('killEpicProcess: our processes, Tor in the data dir, background roles kept; the ports to wait for', async () => {

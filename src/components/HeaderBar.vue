@@ -6,7 +6,7 @@
           <div class="level-left">
             <div class="level-item">
               <ul>
-                <li>{{ route.meta.title }}</li>
+                <li>{{ route.meta.titleKey ? $t(route.meta.titleKey) : route.meta.title }}</li>
               </ul>
             </div>
           </div>
@@ -55,7 +55,7 @@
                   <div>{{ $t('msg.headerbar.version') }}: {{store.state.nodeStatus.user_agent}}</div>
                   <!-- unknown for a node read via /v2/foreign get_tip -->
                   <div v-if="store.state.nodeStatus.connections != null">{{ $t('msg.headerbar.peers') }}: {{store.state.nodeStatus.connections}}</div>
-                  <div>{{ $t('msg.headerbar.status') }}: {{store.state.nodeStatus.sync_status}}</div>
+                  <div>{{ $t('msg.headerbar.status') }}: {{ nodeState(store.state.nodeStatus.sync_status) }}</div>
 
                     <div v-if="store.state.nodeStatus.sync_status != 'synced'">{{ $t('msg.headerbar.progress') }}: {{currentHeight}}&nbsp;/&nbsp;{{highestHeight}} ({{loaded}}%)</div>
                     <div v-else >{{ $t('msg.headerbar.block_height') }}: {{height}}</div>
@@ -82,6 +82,7 @@ import { computed, ref } from 'vue';
 import { useStore } from '@/store';
 import { useRoute } from 'vue-router';
 import WalletSyncStatus from '@/components/layout/WalletSyncStatus.vue';
+import { nodeStateText } from '@/shared/nodeState';
 
 export default {
   name: "headerbar",
@@ -199,6 +200,10 @@ export default {
 
   },
   methods:{
+    //the node's sync state in the app's language (shared/nodeState.js)
+    nodeState(state){
+      return nodeStateText(this.$t, state);
+    },
     async hideValues(){
       this.store.commit('hideValues');
     },

@@ -783,7 +783,16 @@ contextBridge.exposeInMainWorld('api', {
     releaseUrl: () => ipcRenderer.invoke('release-url'),
     //start the app again: after choosing another app folder (configService.setRoot), which is read at start
     relaunch: () => ipcRenderer.invoke('app-relaunch'),
-    
+    //the app menu (shared/appMenu.js): whether a wallet is unlocked, and its labels in the app's language
+    menuState: (unlocked, labels) => {
+      ipcRenderer.send('menu-state', { unlocked: unlocked === true, labels: { lock: String((labels && labels.lock) || ''), quit: String((labels && labels.quit) || '') } });
+    },
+    //Menu › Lock wallet was chosen: one listener (App.vue)
+    onMenuLock: (func) => {
+      ipcRenderer.removeAllListeners('menu-lock');
+      ipcRenderer.on('menu-lock', () => func());
+    },
+
 
 });
 

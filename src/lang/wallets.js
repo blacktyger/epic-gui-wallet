@@ -54,7 +54,8 @@ export default {
   restore: 'Restore from recovery phrase',
   back_to_unlock: 'Back to unlock',
   advanced: 'Advanced',
-  open_wallet_folder: 'Open a wallet folder',
+  //adds a wallet that is already on this computer (a picker), not the open wallet's own folder
+  open_wallet_folder: 'Add a wallet from a folder…',
   open_wallet_folder_hint: 'Choose the wallet’s own folder: the one with wallet_data inside, for example .epic/main in your home folder. Not the blockchain folder (chain_data). The wallet stays where it is.',
   open: 'Open',
   import_older: 'Import from an older Epic Wallet',
@@ -116,6 +117,9 @@ export default {
   imported_from: 'Imported from {0}.',
   other_wallets: 'Other wallets',
   other_wallets_hint: 'Lock this wallet to switch to another one.',
+  //that wallet's own folder in the file manager
+  show_in_folder: 'Show in folder',
+  show_in_folder_named: 'Show {0} in folder',
   no_other_wallets: 'This is the only wallet in the list.',
   add_wallet: 'Add another wallet',
   add_wallet_hint: 'Create a new wallet, or restore one from its recovery phrase. This wallet is kept: pick either one when you unlock.',
