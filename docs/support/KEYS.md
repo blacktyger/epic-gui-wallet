@@ -14,8 +14,8 @@ stick or a password manager attachment), not a cloud folder synced in clear.
 ## Opening a report
 
 ```sh
-npm run support:decrypt -- r7k2m9q4            # a report id from the bot: fetched over the tailnet (gfb token)
-npm run support:decrypt -- report.epicsupport  # a file a user sent by hand
+npm run support:fetch -- r7k2m9q4            # a report id: fetched from the intake over ssh (docs/SUPPORT.md)
+npm run support:fetch -- report.epicsupport  # a file a user sent by hand
 ```
 
 It writes `~/epic-support-reports/<name>/report.txt` and `logs/` (mode 700/600); `--print` also prints the
@@ -33,8 +33,9 @@ report's header, so reports made with an older key still open as long as its `.p
      console.log(k.keyId, k.publicKey) })"
    ```
 2. Put the new public key and key id in `src/shared/supportKey.js`; `npm test` checks they match.
-3. Add the new key id to the bot's accepted list (`SUPPORT_KEY_IDS`, docs/support/INTAKE.md) **before**
-   the release ships; keep the old id there until no tester runs a release with the old key.
+3. Add the new key id to the intake's accepted list (`SUPPORT_KEY_IDS` in epic-support-intake.service on
+   hostinger, docs/SUPPORT.md) **before** the release ships; keep the old id there until no release in use
+   has the old key.
 4. Keep the old `.pem` (older reports and older app versions still use it). Delete it only after a leak, and
-   then remove its id from the bot so it refuses new reports sealed to it.
+   then remove its id from the intake so it refuses new reports sealed to it.
 5. Release notes: nothing for users to do.

@@ -6,9 +6,9 @@
 export const SUPPORT_PUBLIC_KEY = 'YM65I1OjO76rTaLGRAbLux2+rIObMMd+3v092QufNSU=';
 export const SUPPORT_KEY_ID = 'd9749febd701c2fe';
 
-/* where reports are sent (the feedback bot's intake, docs/support/INTAKE.md); '' until it is live:
-   the app then offers "Save encrypted report to a file" only */
-export const SUPPORT_URL = '';
+/* where reports are sent: the support intake on support.btlabs.uk (docs/SUPPORT.md). '' would leave
+   "Save to file" only */
+export const SUPPORT_URL = 'https://support.btlabs.uk/v1/report';
 
 /* the intake URL: EPIC_SUPPORT_URL (the e2e gate, a local instance) when it is on this machine, or
    an https staging instance in a development build only; else SUPPORT_URL */

@@ -692,12 +692,13 @@ const support = createSupport({
     }
   },
   publicKey: SUPPORT_PUBLIC_KEY,
-  //only the sealed bundle leaves this computer: description, contact and logs are all inside it
+  //only the sealed bundle leaves this computer (description, contact and logs are all inside it), and
+  //the app version beside it, so the developer's ping can say which version sent the report
   post: async (bytes) => {
     const url = supportUrl(process.env, { packaged: app.isPackaged });
     if (!url) return { ok: false, error: 'no-endpoint' };
     const res = await net.fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ v: 2, bundle: bytes.toString('base64') }), redirect: 'error', signal: AbortSignal.timeout(60000) });
+      body: JSON.stringify({ v: 2, bundle: bytes.toString('base64'), app: app.getVersion() }), redirect: 'error', signal: AbortSignal.timeout(60000) });
     return intakeResult(res.status, await res.text().catch(() => ''));
   },
   randomToken: () => require('crypto').randomBytes(16).toString('hex'),

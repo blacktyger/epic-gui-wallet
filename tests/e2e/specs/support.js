@@ -31,7 +31,7 @@ function startIntake() {
       let body = {};
       try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch (e) { body = {}; }
       got.push({ method: req.method, url: req.url, type: req.headers['content-type'], body });
-      const ok = req.method === 'POST' && req.url === '/v1/report' && body.v === 2 && typeof body.bundle === 'string';
+      const ok = req.method === 'POST' && req.url === '/v1/report' && body.v === 2 && typeof body.bundle === 'string' && typeof body.app === 'string';
       res.writeHead(ok ? 200 : 400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(ok ? { ok: true, id: 'e2etest1' } : { ok: false, error: 'bad-request' }));
     });
@@ -188,7 +188,8 @@ H.runCase('support', async (t) => {
     await shot(w, '6-sent');
     const r = intake.got[intake.got.length - 1];
     if (!r || r.type !== 'application/json' || r.body.v !== 2) throw new Error('intake got ' + JSON.stringify(r && { type: r.type, v: r.body.v }));
-    if (Object.keys(r.body).sort().join() !== 'bundle,v') throw new Error('fields besides the bundle: ' + Object.keys(r.body));
+    //the sealed bundle and the app version, nothing else
+    if (Object.keys(r.body).sort().join() !== 'app,bundle,v' || !/^\d+\.\d+\.\d+/.test(r.body.app)) throw new Error('fields: ' + JSON.stringify(Object.keys(r.body)) + ' app ' + r.body.app);
     const b = Buffer.from(r.body.bundle, 'base64');
     if (b.subarray(0, 8).toString() !== 'EPICSUP1') throw new Error('not sealed');
     if (b.includes(Buffer.from('does not connect'))) throw new Error('plaintext in the bundle');

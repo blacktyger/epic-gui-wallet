@@ -25,7 +25,9 @@
     "package-check": "node scripts/package-check.js",
     "release": "bash scripts/release.sh",
     "support:decrypt": "node --no-warnings scripts/support-decrypt.mjs",
-    "clean-logs": "node --no-warnings scripts/clean-logs.mjs"
+    "clean-logs": "node --no-warnings scripts/clean-logs.mjs",
+    "support:fetch": "node --no-warnings scripts/support-decrypt.mjs",
+    "support:list": "node --no-warnings scripts/support-decrypt.mjs --list"
   },
   "main": "index.js",
   "dependencies": {

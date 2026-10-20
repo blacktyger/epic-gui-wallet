@@ -27,27 +27,13 @@ Binary file `.epicsupport`:
   must be ≤ 2 MiB (older files are dropped first until it fits).
 - Node built-in `crypto` only (OpenSSL): no new dependency.
 
-## Intake request (bot endpoint, contract v2)
+## Intake request
 
-`POST <SUPPORT_URL>/v1/report`, `Content-Type: application/json`, body ≤ 3 MiB, exactly:
-
-```json
-{ "v": 2, "bundle": "<base64 of the .epicsupport bytes>" }
-```
-
-- Everything the user sends (description, contact, logs, app and system versions) is inside the sealed
-  bundle. The intake and the bot see an opaque blob only; nothing is posted to any chat. Patryk gets a
-  one-line DM with the report id; the item holds no user text.
-- Server checks: v == 2, no other field, base64 decodes, bundle starts with "EPICSUP1", bundle ≤ 2 MiB,
-  key id known; rate limits per client (hashed, in memory), a daily cap, a disk quota, 30-day retention.
-- Answers: `200 {"ok":true,"id":"<report id, [a-z2-7]{8}>"}`; 400 bad request; 413 too big; 429 rate
-  (+ Retry-After); 404, 405, 503 (store full) and other 5xx → "server". The client decides by the status
-  code, not the body (supportReport.intakeResult).
-- The description is cleaned by the same log cleaner before it is sealed; "Show what's sent" shows it so.
-- Fetching a stored bundle (Patryk only): `/report <id>` to the bot (sent to his private chat), or the fleet
-  API over the tailnet, `GET <GFB_URL>/support/<id>` with the gfb token (`scripts/support-decrypt.mjs <id>`).
-- In the app's strings: only "sent to the Epic GUI Wallet developer" and "Encrypted. Only the developer can
-  read them." Never a channel, group, service or bot (tests/supportStrings.test.js).
+`POST https://support.btlabs.uk/v1/report`, `{"v": 2, "bundle": "<base64 .epicsupport>", "app": "<version>"}`:
+the whole report is inside the bundle; the app version is the only readable field. The intake on hostinger,
+its limits, storage, the developer ping and the tools: [docs/SUPPORT.md](../SUPPORT.md).
+In the app's strings: only "sent to the Epic GUI Wallet developer" and "Encrypted. Only the developer can
+read them." Never a channel, group, service or bot (tests/supportStrings.test.js).
 
 ## Renderer API (preload: `window.support`) [lead; UI helper consumes]
 

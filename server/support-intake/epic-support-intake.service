@@ -1,0 +1,45 @@
+# Epic GUI Wallet support intake (docs/SUPPORT.md): /etc/systemd/system/epic-support-intake.service on hostinger.
+# Sealed report bundles in, stored under /srv/epic-support/reports, the developer pinged through the
+# feedback bot's fleet API over the tailnet (scoped notify token, no bot token on this host).
+[Unit]
+Description=Epic GUI Wallet support intake (127.0.0.1:8795, support.btlabs.uk)
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=epic-support
+Group=epic-support
+ExecStart=/usr/local/bin/node /opt/epic-support/intake.mjs
+Environment=SUPPORT_HOST=127.0.0.1
+Environment=SUPPORT_PORT=8795
+Environment=SUPPORT_DATA_DIR=/srv/epic-support/reports
+Environment=SUPPORT_KEY_IDS=d9749febd701c2fe
+Environment=SUPPORT_RETENTION_DAYS=30
+Environment=SUPPORT_NOTIFY_URL=http://100.125.95.78:8790/support/notify
+Environment=SUPPORT_NOTIFY_TOKEN_FILE=/etc/epic-support/notify.token
+Restart=on-failure
+RestartSec=5
+UMask=0077
+MemoryMax=256M
+TasksMax=64
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/srv/epic-support
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
