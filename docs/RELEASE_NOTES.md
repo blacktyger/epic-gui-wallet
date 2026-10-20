@@ -15,6 +15,10 @@
   - The help pages in Bulgarian, Czech, German, Persian and Hindi now cover the same topics as the English (old Ngrok topics removed, mixed-in English translated), with "recovery phrase" instead of "mnemonic words".
   - Classic: page titles (e.g. "Dashboard") and the node's status ("synced", "downloading blocks"…) are translated; the Modern overview shows the node's sync state in your language too.
 - Classic, dark mode: the remove-wallet dialog is dark like the rest; its Cancel button was white on white and a disabled Delete button red on red.
+- Windows: after Lock, a switch to another wallet or Quit, the wallet's receiving processes (the HTTP and Epicbox listeners) sometimes kept running in the background. The app reads the list of running processes to find its own; on Windows that list came from a text format that wraps long lines, and a listener's line (two wallet folder paths) was read back with a space missing, so the app no longer recognised it as its own and left it running. The list is now read in a format that is never wrapped (JSON). Checked on Windows: Lock three times, four wallet switches, and Receive › Try again followed by Lock, with no listener left over.
+- Receive: when HTTP can't start because the node didn't answer (the listener asks the node first), it now says so ("the node did not answer… Try again once the node is reachable") instead of only "the listener could not start". Try again works as soon as the node answers. This was the cause of a "Try again" that seemed to do nothing on Windows while the public node had a short outage.
+- Classic: Ctrl+L locks the wallet from the page too, as in Modern; before, only the menu shortcut did, which needs the window to have the keyboard focus.
+- Polish: the remaining English texts are translated (Classic About page, confirmation and first-scan dialogs, some toasts and hover titles), and a wallet's default name ("Wallet 2") shows in the app's language.
 - A proposal for an optional blockchain download ("head start") from the Epic project's server is in docs/plans/bootstrap.md, for testers to comment on. Nothing of it is in this version (feedback #30).
 
 ## 6.1.4
