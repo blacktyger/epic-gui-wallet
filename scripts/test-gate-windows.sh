@@ -52,8 +52,8 @@ WORK='C:\EpicRig'
 work_of() { if [ "$1" = 1 ]; then echo 'C:\EpicRig'; else echo "C:\EpicRig$1"; fi; }
 # the specs whose ports follow the session (rig suite/lib/ports.js); any other spec runs in session 1
 PORTABLE_SPECS="gate core contacts38 mynodes sidebar37 addwallet34 help listeners615 confirm615 support"
-# rough minutes per spec on one session (2026-10-21, 6.1.5), to balance the shards; unknown = 3
-SPEC_MIN="gate=4 core=8 contacts38=4 mynodes=4 sidebar37=3 addwallet34=5 help=3 listeners615=8 confirm615=9 support=3"
+# minutes per spec on one session (rig job on 6.1.5 ec94b91, 2026-10-21), to balance the shards; unknown = 3
+SPEC_MIN="gate=0.6 core=5.7 contacts38=0.4 mynodes=0.5 sidebar37=0.4 addwallet34=1.5 help=0.7 listeners615=2.4 confirm615=2.9 support=0.4"
 OUTROOT="$ROOT/tests/out/gate-windows"
 T0=$SECONDS
 
@@ -72,7 +72,8 @@ rps() {  # rps <timeout s> <vars ps1 text> <script ps1 text>
   printf '%s\n%s\n%s\n' 'Remove-Item -LiteralPath $PSCommandPath -ErrorAction SilentlyContinue' "$2" "$3" > "$tmp"
   timeout 60 scp -q -o BatchMode=yes "$tmp" "$WIN_HOST:C:/EpicRig/gate-scripts/$f" || { rm -f "$tmp"; return 1; }
   rm -f "$tmp"
-  timeout "$1" "${SSH[@]}" "pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:\\EpicRig\\gate-scripts\\$f"
+  #stdin from /dev/null: ssh would read the caller's (the shard plan of the queue loop)
+  timeout "$1" "${SSH[@]}" "pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:\\EpicRig\\gate-scripts\\$f" < /dev/null
 }
 psq() { printf "'%s'" "${1//\'/\'\'}"; }   # a PowerShell single-quoted string
 [ -n "$APPDIR" ] && [ -n "$INSTALLER" ] && die "--appdir and --installer are exclusive" 2
@@ -215,7 +216,7 @@ for (const s of list) if (N === 1 || !mov.includes(s)) put(0, s);
 for (const s of list.filter(s => N > 1 && mov.includes(s)).sort((a, b) => (min[b] || 3) - (min[a] || 3))) {
   let k = 0; for (let i = 1; i < N; i++) if (shards[i].load < shards[k].load) k = i; put(k, s);
 }
-shards.forEach((x, i) => x.specs.length && console.log(`${i + 1} ${x.specs.join(',')} ${x.load}`));
+shards.forEach((x, i) => x.specs.length && console.log(`${i + 1} ${x.specs.join(',')} ${x.load.toFixed(1)}`));
 EOF
 ) || die "could not split the specs"
 JOBS=""
