@@ -20,6 +20,8 @@
 
     <modal-kill-box/>
 
+    <modal-support/>
+
     <modal-firstsync-box
       :is-active="isFirstscanModalActive"
       @confirm="firstscanConfirm"
@@ -66,6 +68,7 @@
   import ModalNodeBox from '@/components/layout/NodesyncedModalBox.vue'
   import ModalFirstsyncBox from '@/components/layout/FirstsyncModalBox.vue'
   import ModalKillBox from '@/components/layout/KillProcessModalBox.vue'
+  import ModalSupport from '@/components/layout/SupportReportModalBox.vue'
   import ModernApp from '@/components/modern/ModernApp.vue'
   import RestartOverlay from '@/components/RestartOverlay.vue'
 
@@ -80,6 +83,7 @@
       ModalNodeBox,
       ModalFirstsyncBox,
       ModalKillBox,
+      ModalSupport,
       ModernApp,
       RestartOverlay,
     },
@@ -103,7 +107,8 @@
       watch([loggedIn, locale], ([on]) => window.api.menuState(on, { lock: t('msg.modern.lock'), quit: t('msg.wallets.quit'),
         menu: t('msg.wallets.menu_menu'), source: t('msg.wallets.menu_source'), application: t('msg.wallets.menu_application'),
         edit: t('msg.wallets.menu_edit'), undo: t('msg.wallets.menu_undo'), redo: t('msg.wallets.menu_redo'), cut: t('msg.wallets.menu_cut'),
-        copy: t('msg.wallets.menu_copy'), paste: t('msg.wallets.menu_paste'), selectAll: t('msg.wallets.menu_select_all') }), { immediate: true });
+        copy: t('msg.wallets.menu_copy'), paste: t('msg.wallets.menu_paste'), selectAll: t('msg.wallets.menu_select_all'),
+        help: t('msg.support.menu_help'), support: t('msg.support.menu_item') }), { immediate: true });
       const store = useStore();
       const router = useRouter();
       const isNodeModalActive = ref(false);
@@ -155,6 +160,8 @@
           this.emitter.emit('app.logout');
         }
       });
+      //Help › Get help / Report a problem…: the report dialog, wherever the user is (locked or not)
+      window.support.onOpen(() => this.emitter.emit('open-support'));
 
       window.nodeChildProcess.on('firstscan-stdout', (payload) => {
 

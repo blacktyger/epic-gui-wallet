@@ -6,6 +6,7 @@ import removal from './removal.js';
 import chaindata from './chaindata.js';
 import mynodes from './mynodes.js';
 import contacts from './contacts.js';
+import support from './support.js';
 
 const messages = {
   msg: {
@@ -23,6 +24,8 @@ const messages = {
     mynodes,
     //the redesigned Contacts and the Send screen's contact picker (6.1.6), see lang/contacts.js
     contacts,
+    //Get help / Report a problem: the report dialog, its entry points and the tour step, see lang/support.js
+    support,
 
     title: '',
     password: 'Password',

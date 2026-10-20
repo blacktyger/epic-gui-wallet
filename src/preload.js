@@ -17,7 +17,6 @@ import { serverDefaultsFromEnv } from './shared/settingsStore';
 
 const MENU_LABEL_KEYS = Object.keys(MENU_LABELS);
 
-const moment = require('moment');
 const crypto = require('crypto-browserify');
 const qr = require("qrcode");
 const ps = require('ps-node');
@@ -39,13 +38,14 @@ const resourcePath =
     : path.join(__dirname, '../resources/'); // Dev Mode
 
 
-let logFile = `${moment(new Date()).format('YYYY_MM_D')}.log`
-let logPath = join(appPaths.logsDir, logFile);
+//the page's log: renderer.log, appended (a restart after a problem keeps what led to it), at debug,
+//bounded: 2 MiB, then it becomes renderer.old.log (one archive). Up to 6.1.5 this was a file a day
+//(YYYY_MM_D.log), started empty on every start
+let logPath = join(appPaths.logsDir, 'renderer.log');
 log.transports.file.resolvePath = () => logPath
 log.transports.file.format = '{y}-{m}-{d} {h}:{i}:{s}:{ms} [{level}] {text}';
-log.transports.file.maxSize = 5 * 1024 * 1024
+log.transports.file.maxSize = 2 * 1024 * 1024
 log.transports.file.level = 'debug';
-log.transports.file.streamConfig = {flags: 'w'};
 log.transports.console.format = '{y}-{m}-{d} {h}:{i}:{s}:{ms} [{level}] {text}'
 log.transports.console.level = process.env.NODE_ENV === 'production' ? 'info' : 'debug'
 
@@ -137,7 +137,8 @@ function spawnEpic(cmd, args){
 
 function track(child, cmd, args, extra){
   cmd = plainBin(cmd);
-  debug ? console.log('spawn', cmd, redactArgs(args).join(' ')) : null;
+  //which process started, with which arguments (never a password: redactArgs)
+  log.info('spawn ' + path.basename(cmd) + ' ' + redactArgs(args).join(' ') + (child.pid ? ' (pid ' + child.pid + ')' : ' (not started)'));
   if(child.pid){
     const entry = ownProcesses.record(child.pid, cmd, args, extra);
     if(entry){
@@ -817,4 +818,25 @@ contextBridge.exposeInMainWorld('api', {
 
 
 });
+
+/* support reports (docs/support/DESIGN.md): the main process collects, cleans and seals the logs;
+   the page gets the cleaned text to show, and sends or saves only on the user's click */
+contextBridge.exposeInMainWorld('support', {
+  //{attachLogs, ui, lang, description} → {token, app, files: [{name, bytes, text, cut}], counts, totalBytes,
+  //description (cleaned, as it will be posted), canSend}
+  preview: (opts) => ipcRenderer.invoke('support-preview', {
+    attachLogs: !!(opts && opts.attachLogs), ui: String((opts && opts.ui) || ''), lang: String((opts && opts.lang) || ''),
+    description: String((opts && opts.description) || '') }),
+  send: (req) => ipcRenderer.invoke('support-send', supportReq(req)),
+  save: (req) => ipcRenderer.invoke('support-save', supportReq(req)),
+  openLogsFolder: () => ipcRenderer.invoke('open-folder', appPaths.logsDir),
+  //Help › Get help / Report a problem… was chosen: one listener
+  onOpen: (func) => {
+    ipcRenderer.removeAllListeners('open-support');
+    ipcRenderer.on('open-support', () => func());
+  },
+});
+function supportReq(r) {
+  return { token: String((r && r.token) || ''), description: String((r && r.description) || ''), contact: String((r && r.contact) || '') };
+}
 

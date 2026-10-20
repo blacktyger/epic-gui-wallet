@@ -20,6 +20,9 @@ import { createShutdown, SIGNALS } from './shared/shutdown'
 import { createSecretClipboard } from './shared/secretClipboard'
 import { registerSessionIpc, wipeWithWindow, wipeWithApp } from './shared/sessionIpc'
 import { httpUrl, isAppUrl, isInside, nodeRequest, contentSecurityPolicy } from './shared/security'
+import { createSupport, intakeResult } from './shared/supportReport'
+import { SUPPORT_PUBLIC_KEY, supportUrl } from './shared/supportKey'
+import { sanitizeText, KNOWN_PUBLIC_HOSTS } from './shared/logSanitize'
 
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -55,6 +58,9 @@ if (!primaryInstance) {
 fs.mkdirSync(appLayout.logsDir, { recursive: true });
 const log = require('electron-log');
 log.transports.file.resolvePath = () => path.join(appLayout.logsDir, 'main.log');
+//on by default at debug, bounded: 2 MiB, then main.log becomes main.old.log (one archive)
+log.transports.file.level = 'debug';
+log.transports.file.maxSize = 2 * 1024 * 1024;
 //no wallet password in any log line (src/logRedact.js)
 require('./logRedact').installLogRedaction(log);
 require('./logRedact').installConsoleRedaction(console);
@@ -91,7 +97,9 @@ contextMenu({
 //-------------------------------------------------------------------
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'debug';
-log.info('App starting...');
+//what support needs to place a log: versions and the system, never a path or a name
+log.info('App starting: ' + app.getVersion() + (app.isPackaged ? '' : ' (dev)') + ', electron ' + process.versions.electron
+  + ', ' + process.platform + ' ' + os.release() + ' ' + process.arch + ', folder: ' + rootInfo.source);
 
 
 async function kill(pid){
@@ -652,6 +660,7 @@ function setAppMenu() {
     onLock: () => { if (win && !win.isDestroyed()) win.webContents.send('menu-lock'); },
     onQuit: async () => { await shutdown.run(); app.quit(); },
     onSource: () => shell.openExternal('https://github.com/EpicCash/epic-gui-wallet'),
+    onSupport: () => { if (win && !win.isDestroyed()) win.webContents.send('open-support'); },
   })));
 }
 ipcMain.on('menu-state', (event, data) => {
@@ -660,6 +669,83 @@ ipcMain.on('menu-state', (event, data) => {
   if (JSON.stringify(next) === JSON.stringify(menuStateNow)) return;
   menuStateNow = next;
   setAppMenu();
+});
+
+/* ---- support reports (docs/support/DESIGN.md): preview, then send or save on the user's click ----
+   The logs are cleaned here (shared/logSanitize.js) and sealed to the developer's public key
+   (shared/supportBundle.js); the page only ever sees the cleaned text it shows the user. */
+const support = createSupport({
+  fs, path, logsDir: appLayout.logsDir, root: appLayout.root,
+  wallets: () => {
+    try {
+      const s = JSON.parse(fs.readFileSync(appLayout.settingsFile, 'utf8'));
+      return Array.isArray(s && s.wallets) ? s.wallets : [];
+    } catch (e) {
+      return [];
+    }
+  },
+  app: () => supportApp,
+  sanitize: (text, { ids, description } = {}) => {
+    const base = { home: os.homedir(), username: os.userInfo().username, hostname: os.hostname(), keepHosts: KNOWN_PUBLIC_HOSTS, ids };
+    //the user's own description: not checked against the password (the preview would tell the page
+    //whether a guess was the password)
+    if (description) return sanitizeText(text, base);
+    //the unlocked wallet's password, should it ever be in a log line: removed as it is
+    const pw = sessionSecret.copy();
+    try {
+      return sanitizeText(text, Object.assign(base, { secrets: pw && pw.length >= 4 ? [pw.toString('utf8')] : [] }));
+    } finally {
+      if (pw) pw.fill(0);
+    }
+  },
+  publicKey: SUPPORT_PUBLIC_KEY,
+  //only the sealed bundle leaves this computer (description, contact and logs are all inside it), and
+  //the app version beside it, so the developer's ping can say which version sent the report
+  post: async (bytes) => {
+    const url = supportUrl(process.env, { packaged: app.isPackaged });
+    if (!url) return { ok: false, error: 'no-endpoint' };
+    const res = await net.fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ v: 2, bundle: bytes.toString('base64'), app: app.getVersion() }), redirect: 'error', signal: AbortSignal.timeout(60000) });
+    return intakeResult(res.status, await res.text().catch(() => ''));
+  },
+  randomToken: () => require('crypto').randomBytes(16).toString('hex'),
+});
+let supportApp = {};
+const short = (v) => String(v == null ? '' : v).replace(/[^\w .:/()-]/g, '').slice(0, 40);
+ipcMain.handle('support-preview', (event, opts) => {
+  if (!fromAppWindow(event)) return null;
+  const o = opts && typeof opts === 'object' ? opts : {};
+  supportApp = { version: app.getVersion(), electron: process.versions.electron, platform: process.platform,
+    release: os.release(), arch: process.arch, locale: app.getLocale(), ui: short(o.ui), lang: short(o.lang) };
+  const p = Object.assign(support.preview({ attachLogs: o.attachLogs === true, description: typeof o.description === 'string' ? o.description : '' }),
+    { canSend: !!supportUrl(process.env, { packaged: app.isPackaged }) });
+  log.info('support: preview, ' + p.files.length + ' log(s), ' + Math.round(p.totalBytes / 1024) + ' KiB');
+  return p;
+});
+ipcMain.handle('support-send', async (event, req) => {
+  if (!fromAppWindow(event)) return { ok: false, error: 'server' };
+  const r = req && typeof req === 'object' ? req : {};
+  const res = await support.send({ token: r.token, description: r.description, contact: r.contact });
+  log.info('support: send ' + (res.ok ? 'ok, report ' + res.id : 'failed: ' + res.error));
+  return res;
+});
+ipcMain.handle('support-save', async (event, req) => {
+  if (!fromAppWindow(event)) return { ok: false, error: 'server' };
+  const r = req && typeof req === 'object' ? req : {};
+  const res = await support.save({ token: r.token, description: r.description, contact: r.contact }, async (bytes) => {
+    const day = new Date().toISOString().slice(0, 10);
+    const pick = await dialog.showSaveDialog(win, { defaultPath: path.join(app.getPath('documents'), 'epic-wallet-report-' + day + '.epicsupport'),
+      filters: [{ name: 'Epic Wallet report', extensions: ['epicsupport'] }] });
+    if (pick.canceled || !pick.filePath) return { ok: false, canceled: true };
+    try {
+      fs.writeFileSync(pick.filePath, bytes, { mode: 0o600 });
+      return { ok: true, path: pick.filePath };
+    } catch (e) {
+      return { ok: false, error: 'write' };
+    }
+  });
+  log.info('support: save ' + (res.ok ? 'ok' : res.canceled ? 'canceled' : 'failed: ' + res.error));
+  return res;
 });
 
 //a link from the page (About, Credits, the node notice and list): http(s) only, in the system browser

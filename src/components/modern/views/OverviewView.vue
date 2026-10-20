@@ -255,6 +255,8 @@
           s('receive', '[data-tour=receive]'),
           s('activity', '[data-tour=activity]'),
           s('settings', '[data-tour=settings]'),
+          //help is in Settings › Help: one step, on the same item
+          { target: '[data-tour=settings]', title: this.$t('msg.support.tour_t'), text: this.$t('msg.support.tour') },
         ];
       },
       summary() {

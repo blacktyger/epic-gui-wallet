@@ -8,12 +8,15 @@
  * with 'menu-state'), so a disabled item's Ctrl+L does nothing on the Welcome or Unlock screen.
  * Ctrl+L in the page and in the menu may both arrive; logging out twice is harmless (App.logoutApp).
  *
- * labels: {lock, quit, menu, source, application, edit, undo, …} (DEFAULT_LABELS) in the app's language (the
- * renderer sends them, English until then)
+ * Help › Get help / Report a problem… opens the support report (docs/support/DESIGN.md) wherever the
+ * user is, locked or not: main sends 'open-support' to the window. Nothing is sent from the menu.
+ *
+ * labels: {lock, quit, menu, source, application, edit, undo, …, help, support} (DEFAULT_LABELS) in the app's
+ * language (the renderer sends them, English until then)
  */
 export const DEFAULT_LABELS = { lock: 'Lock wallet', quit: 'Quit', menu: 'Menu', source: 'Source on GitHub',
   application: 'Application', edit: 'Edit', undo: 'Undo', redo: 'Redo', cut: 'Cut', copy: 'Copy', paste: 'Paste',
-  selectAll: 'Select All' };
+  selectAll: 'Select All', help: 'Help', support: 'Get help / Report a problem…' };
 export const LOCK_ACCELERATOR = 'CmdOrCtrl+L';
 
 const label = (labels, key) => {
@@ -21,7 +24,7 @@ const label = (labels, key) => {
   return v && v.length <= 60 ? v : DEFAULT_LABELS[key];
 };
 
-export function menuTemplate({ platform = process.platform, labels = {}, unlocked = false, onLock = () => {}, onQuit = () => {}, onSource = () => {} } = {}) {
+export function menuTemplate({ platform = process.platform, labels = {}, unlocked = false, onLock = () => {}, onQuit = () => {}, onSource = () => {}, onSupport = () => {} } = {}) {
   const mac = platform === 'darwin';
   return [
     {
@@ -49,6 +52,13 @@ export function menuTemplate({ platform = process.platform, labels = {}, unlocke
             { label: label(labels, 'selectAll'), accelerator: 'CmdOrCtrl+A', selector: 'selectAll:' },
           ],
         },
+      ],
+    },
+    {
+      label: label(labels, 'help'),
+      ...(mac ? { role: 'help' } : {}),
+      submenu: [
+        { id: 'support', label: label(labels, 'support'), click: () => onSupport() },
       ],
     },
   ];

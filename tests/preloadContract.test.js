@@ -15,16 +15,16 @@ const main = MAIN.map(src).join('\n');
 
 //window.<name> in the page
 const EXPOSED = ['api', 'clipboard', 'config', 'debug', 'explorer', 'log', 'nodeAes256gcm', 'nodeChildProcess', 'nodeFs',
-  'nodePath', 'nodeQr', 'nodeSecp256k1', 'nodeWebUtils', 'openepichidden', 'openlink'];
+  'nodePath', 'nodeQr', 'nodeSecp256k1', 'nodeWebUtils', 'openepichidden', 'openlink', 'support'];
 
 //ipcRenderer.invoke channels (each one has an ipcMain.handle: tests/ipcChannels.test.js)
 const INVOKED = ['app-relaunch', 'clipboard-copy-secret', 'clipboard-wipe-secret', 'clipboard-write-text', 'folder-lock', 'legacy-scan',
   'locale', 'lookup', 'node-directory', 'node-fetch', 'open-external', 'open-folder', 'pick-wallet-folder', 'pty-start',
   'quit', 'release-url', 'reload-ui', 'resize', 'session-password-clear', 'session-password-has', 'session-password-set',
-  'show-open-dialog', 'show-save-dialog', 'version'];
+  'show-open-dialog', 'show-save-dialog', 'support-preview', 'support-save', 'support-send', 'version'];
 
 //ipcRenderer.on with a fixed channel (besides the validChannels listener)
-const LISTENED = ['menu-lock', 'pty-data', 'pty-exit'];
+const LISTENED = ['menu-lock', 'open-support', 'pty-data', 'pty-exit'];
 
 //handlers that do not check the sender, and why that is fine
 const UNCHECKED = {

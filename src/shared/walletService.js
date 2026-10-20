@@ -17,6 +17,21 @@ const ownerApiPort = 3420;
 const jsonRPCUrl = WALLET_API_ORIGIN + '/v3/owner'
 const jsonRPCForeignUrl = WALLET_API_ORIGIN + '/v2/foreign'
 
+/* processes as "pid role" for a log line */
+function procList(list){
+  return (Array.isArray(list) ? list : []).map(p => p && typeof p === 'object' ? p.pid + ' ' + (p.role || p.name || '') : String(p)).join(', ') || 'none';
+}
+
+/* a slate's id (a uuid), from a slate object or its JSON; '' when there is none */
+function slateId(slate){
+  try{
+    const s = typeof slate === 'string' ? JSON.parse(slate) : slate;
+    return s && typeof s.id === 'string' && /^[0-9a-f-]{36}$/i.test(s.id) ? s.id : '';
+  }catch(e){
+    return '';
+  }
+}
+
 class WalletService {
 
     constructor(emitter, configService) {
@@ -82,7 +97,7 @@ class WalletService {
       }
 
       let response = await this.client.post(url, body, headers).catch(error => {
-            this.debug ? console.log('walletService.initSecure', error) : null;
+            this.logApiError('init_secure_api', (error && error.message) || String(error));
             return false;
       });
 
@@ -180,7 +195,7 @@ class WalletService {
           .catch(error => {
                 //the error object holds the request, with the owner API secret: log its message only
                 this.lastError = (error.code == 'ECONNABORTED' || error.code == 'ETIMEDOUT') ? 'no answer within ' + Math.round(timeout/1000) + ' s' : (error.message || String(error));
-                this.debug ? console.log('WalletService.error', method, this.lastError) : null;
+                this.logApiError(method, this.lastError);
                 return false;
           });
           let nonce2;
@@ -192,7 +207,7 @@ class WalletService {
             if(response && response.data && response.data.error && !this.lastError){
               this.lastError = response.data.error.message || JSON.stringify(response.data.error);
             }
-            this.debug ? console.log('WalletService.jsonRPC', method) : null;
+            this.logApiError(method, this.lastError || 'no result');
             return false;
           }
 
@@ -207,7 +222,7 @@ class WalletService {
 
         let response = await this.client.post(url, body, headers)
         .catch(error => {
-              this.debug ? console.log('WalletService.jsonRPC', error) : null;
+              this.logApiError(method, (error && error.message) || String(error));
               return false;
         });
 
@@ -215,13 +230,21 @@ class WalletService {
         if(response){
           return response;
         }else{
-          this.debug ? console.log('WalletService.noresponce', method) : null;
+          this.logApiError(method, 'no response');
         }
 
       }
 
       return false;
 
+    }
+
+    /* a failed wallet API call, logged when its error changes (the refresh repeats every 10 s) */
+    logApiError(method, error){
+      const key = method + ' ' + error;
+      if(this.lastApiError === key) return;
+      this.lastApiError = key;
+      console.log('[wallet-api] ' + method + ' failed: ' + String(error).slice(0, 300));
     }
 
     async getNodeHeight(){
@@ -270,57 +293,71 @@ class WalletService {
     }
 
     async cancelTransactions(tx_id, tx_salte_id){
-      return await this.jsonRPC(
+      return this.logTx('cancel', tx_salte_id || (tx_id != null ? 'tx ' + tx_id : ''), await this.jsonRPC(
           'cancel_tx',
           {
             token: this.token,
             tx_id: tx_id,
             tx_slate_id: tx_salte_id
-          }, false);
+          }, false));
     }
 
     async receiveTransaction(slate, account, message){
-      return this.jsonRPC('receive_tx', [slate, account, message, null], true)
+      return this.logTx('receive', slateId(slate), await this.jsonRPC('receive_tx', [slate, account, message, null], true));
     }
 
     async issueSendTransaction(tx_data){
-      return await this.jsonRPC(
+      const res = await this.jsonRPC(
         'init_send_tx',
         {
           token: this.token,
           args: tx_data
         }, false);
+      const amount = tx_data && tx_data.amount != null ? String(tx_data.amount) : '';
+      return this.logTx('send: create', slateId(res && res.result && res.result.Ok), res,
+        (amount ? 'amount ' + amount + ' nanoepic' : '') + (tx_data && tx_data.selection_strategy_is_use_all ? ', all outputs' : ''));
     }
 
     async lock_outputs(params){
 
-      return await this.jsonRPC(
+      return this.logTx('send: lock outputs', slateId(params), await this.jsonRPC(
         'tx_lock_outputs',
         {
           token: this.token,
           slate: params,
           participant_id: 0,
           addr_to: "",
-        }, false);
+        }, false));
     }
 
     async finalizeTransaction(slate){
-      return await this.jsonRPC(
+      return this.logTx('finalize', slateId(slate), await this.jsonRPC(
         'finalize_tx',
         {
           token: this.token,
           slate: slate
-        }, false);
+        }, false));
     }
 
     async postTransaction(tx){
-      return await this.jsonRPC(
+      return this.logTx('post to the node', '', await this.jsonRPC(
         'post_tx',
         {
           token: this.token,
           tx: tx,
           fluff: true
-        }, false);
+        }, false));
+    }
+
+    /* one log line per transaction step: the step, the slate id, ok or the wallet's error (never the
+       slate itself). Returns res as it is */
+    logTx(step, id, res, detail = ''){
+      const r = res && res.data ? res.data : res;
+      const err = !res ? (this.lastError || 'no answer')
+        : r && r.error ? (r.error.message || JSON.stringify(r.error))
+        : r && r.result && r.result.Err !== undefined ? JSON.stringify(r.result.Err) : '';
+      console.log('[tx] ' + step + (id ? ' ' + id : '') + (detail ? ', ' + detail : '') + ': ' + (err ? 'failed: ' + String(err).slice(0, 300) : 'ok'));
+      return res;
     }
 
     async getEpicboxAddress(){
@@ -822,7 +859,7 @@ class WalletService {
 
       const roles = ['listen', 'epicbox'];
       const res = await window.nodeChildProcess.stopOwned(roles, this.ownedOpts());
-      this.debug ? console.log('WalletService.listener_stopped', JSON.stringify(res.stopped)) : null;
+      console.log('[wallet] listener stopped: ' + procList(res.stopped));
       return true;
     }
 
@@ -840,7 +877,7 @@ class WalletService {
       }
       const roles = ['owner_api', 'listen', 'epicbox', ...(node_background ? [] : ['node'])];
       const res = await window.nodeChildProcess.stopOwned(roles, this.ownedOpts());
-      this.debug ? console.log('WalletService.stopAll', JSON.stringify(res.stopped)) : null;
+      console.log('[wallet] all wallet processes stopped: ' + procList(res.stopped));
       return true;
     }
 
@@ -848,7 +885,7 @@ class WalletService {
     async stopWallet(){
 
       const res = await window.nodeChildProcess.stopOwned(['owner_api'], {dir: this.configService.walletConfigDir});
-      this.debug ? console.log('WalletService.stopWallet', JSON.stringify(res.stopped)) : null;
+      console.log('[wallet] wallet stopped: ' + procList(res.stopped));
       return true;
     }
 
@@ -937,7 +974,7 @@ class WalletService {
 
         this.checkStopped = true;
         const res = await window.nodeChildProcess.stopOwned(['scan'], {dir: this.configService.walletConfigDir});
-        this.debug ? console.log('WalletService.stopCheck', JSON.stringify(res.stopped)) : null;
+        console.log('[epicbox] old server check stopped: ' + procList(res.stopped));
 
     }
 

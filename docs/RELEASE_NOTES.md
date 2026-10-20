@@ -19,6 +19,14 @@
   - Pictures: the initials sit on a colour taken from the name, the same every time, readable in both themes. You can also pick a photo (PNG, JPEG, WebP or GIF, up to 10 MB): the app makes a small 128-pixel copy, which drops the photo's hidden details (location, camera, date), and keeps only that copy, separately from your contacts. SVG files and pictures from the internet are not accepted.
   - On a narrow window or with large text, the list and the contact take turns, with an "All contacts" button to go back.
   - Nothing changes in how contacts are stored: older versions still open them, and the hidden fields of very old contacts (a Tor address, payment proof settings, country and city) are kept.
+## Next (feat/support-logs)
+
+- Report a problem: in Settings › Help (Classic: Help), the Help menu and on the unlock screen, so it works before a wallet is open too. Describe what happened, add a contact if you like, and keep "Attach logs (recommended)" ticked. The whole report is encrypted on your computer and goes to the Epic GUI Wallet developer: only the developer can read it. "Show what's sent" shows its content first. Send it, or save it to a file and send that yourself. Nothing is sent without your click, and a description that looks like a recovery phrase is refused (feedback #40).
+  - Before anything is sealed, the logs and the description are cleaned: your user name, home folder, computer name, email addresses, IP addresses, private node addresses and wallet addresses become placeholders such as `<ip-1>`, and anything that looks like a password, key, slate or recovery phrase is dropped. Amounts and transaction ids stay: a payment problem can't be looked into without them.
+  - Encryption: X25519 + AES-256-GCM to the developer's public key, built into the app.
+- Logs are on by default, at debug level, and bounded: the app's own logs (`logs/main.log`, `logs/renderer.log`, 2 MiB each plus one older file), each wallet's `epic-wallet.log` (5 MiB × 4 files) and the built-in node's `epic-server.log` (Info level, 5 MiB × 3 files). Existing wallets get it the next time they are opened. The page log used to be a new file every day that started empty on every start.
+- The logs hold what is needed to find a problem, with less noise: versions and system at start, every process the app starts (passwords redacted), node state changes (not every 10 seconds), send and receive steps with their transaction ids, wallet errors once instead of on every refresh. They never contain passwords, recovery phrases, seeds, API secrets, slates or the clipboard.
+- The first-unlock tour (BT Labs Theme) has one more step: "Need help? Settings › Help › Report a problem."
 
 ## 6.1.5
 
