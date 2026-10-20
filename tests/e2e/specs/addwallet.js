@@ -1,7 +1,7 @@
 // e2e-timeout: 600
 // e2e-ui: modern
 /*
- * Adding wallets (tester item #34), once per interface. Every way of adding lists a NEW wallet;
+ * Adding wallets (tester item #34), Modern (Classic is frozen and no longer tested). Every way of adding lists a NEW wallet;
  * none replaces the open one. After each, the open wallet locks (its epic-wallet stops) and Unlock
  * opens with the new wallet chosen. Settings › This wallet › Open wallet folder opens the open
  * wallet's own folder.

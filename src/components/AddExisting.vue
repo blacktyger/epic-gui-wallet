@@ -55,6 +55,8 @@
 
 import { walletFolder, walletOpen, addBackRoute } from '@/components/wallets';
 
+const NETWORKS = ['mainnet', 'floonet', 'usernet'];
+
 /*
  * Add a wallet › Add an existing wallet: a wallet already on this computer is added to the list
  * where it is (nothing is copied, moved or replaced): one an older Epic Wallet left (the found
@@ -65,15 +67,23 @@ import { walletFolder, walletOpen, addBackRoute } from '@/components/wallets';
 export default {
   name: 'addExisting',
   mixins: [walletFolder, walletOpen],
+  created() {
+    //a folder whose network can't be told asks for it, starting with the network chosen on Welcome
+    if (NETWORKS.includes(this.$route.query.network)) this.folderNetwork = this.$route.query.network;
+  },
   computed: {
     from() {
       return this.$route.query.from === 'settings' ? 'settings' : 'new';
     },
+    net() {
+      return NETWORKS.includes(this.$route.query.network) && this.$route.query.network !== 'mainnet' ? { network: this.$route.query.network } : {};
+    },
     foundRoute() {
-      return { name: 'found', query: { from: this.from } };
+      return { name: 'found', query: { from: this.from, ...this.net } };
     },
     backRoute() {
-      return addBackRoute(this.from, this.$store);
+      const r = addBackRoute(this.from, this.$store);
+      return r.name === 'new' ? { ...r, query: this.net } : r;
     },
   },
   methods: {

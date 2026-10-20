@@ -488,10 +488,20 @@
       async logoutApp(opts = {}){
         //Menu › Lock wallet waits for this one instead of starting a second (Ctrl+L can reach both)
         this.loggingOut = true;
+        //done is called once, also when closing failed part way (the add flows wait for it)
+        let doneCalled = false;
+        const done = () => {
+          if (doneCalled) return;
+          doneCalled = true;
+          if (typeof opts.done === 'function') opts.done();
+        };
         try {
-          await this.closeSession(opts);
+          await this.closeSession({ ...opts, done });
+        } catch (e) {
+          console.log('[logout] failed: ' + (e && e.message ? e.message : e));
         } finally {
           this.loggingOut = false;
+          done();
         }
       },
       async closeSession(opts){

@@ -245,7 +245,7 @@
     methods: {
       back(){
         if(this.adding && isLoggedIn(this.$store)){
-          this.$router.push({name: 'account'});
+          this.$router.push({name: 'wallets'});
         }else{
           this.$router.push({name: this.fromRoute});
         }

@@ -118,6 +118,8 @@ export default {
       missing: null,
       //the wallet being removed (RemoveWalletDialog): {wallet, name}
       removing: null,
+      //the "was added" line is put in its status region after the page shows, so it is announced
+      addedReady: false,
     };
   },
   computed: {
@@ -130,7 +132,7 @@ export default {
     //just added (route query added=1, components/wallets.js unlockAdded): said while it is the one chosen
     addedName() {
       const q = this.$route.query || {};
-      return q.added === '1' && this.selected && this.selected.id === q.wallet ? this.selectedName : '';
+      return this.addedReady && q.added === '1' && this.selected && this.selected.id === q.wallet ? this.selectedName : '';
     },
   },
   created() {
@@ -140,6 +142,7 @@ export default {
     if (!this.wallets.length) {
       this.$router.push('/new');
     }
+    setTimeout(() => { this.addedReady = true; }, 150);
   },
   methods: {
     loadWallets(prefer) {

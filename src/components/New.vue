@@ -90,7 +90,8 @@ export default {
   data() {
     const settings = this.configService.settings;
     return {
-      network: 'mainnet',
+      //Welcome › Advanced; kept when coming back from Add an existing wallet (route query network)
+      network: ['floonet', 'usernet'].includes(this.$route.query.network) ? this.$route.query.network : 'mainnet',
       advancedOpen: false,
       hasWallets: !!(settings && settings.wallets().length),
       //another app data folder: only while the list is empty and the folder is not set by EPIC_GUI_HOME

@@ -303,6 +303,30 @@ describe.each(BOTH(Create, CreateView))('Create ($name)', ({ C }) => {
   });
 });
 
+describe.each(BOTH(Create, CreateView).concat(BOTH(Restore, RestoreView)))('Back from $C.name started in Settings', ({ C }) => {
+  test('goes back to Settings › All wallets, where the add options are', async () => {
+    const s = setup(C, { route: { query: { add: '1' } } });
+    s.wrapper.vm.back();
+    expect(s.$router.push).toHaveBeenLastCalledWith({ name: 'wallets' });
+  });
+});
+
+describe('a lock that never reports back', () => {
+  test('the add flow still reaches Unlock after 60 s, with the new wallet chosen', async () => {
+    vi.useFakeTimers();
+    const s = setup(Create, { route: { query: { add: '1' } } });
+    s.emitter.all.clear();      //no App.vue: nobody answers app.logout
+    s.wrapper.vm.wallet = W2;
+    s.wrapper.vm.page = 'created';
+    const going = s.wrapper.vm.openNewWallet();
+    await flushPromises();
+    expect(s.$router.push).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(60000);
+    await going;
+    expect(s.$router.push).toHaveBeenLastCalledWith({ name: 'login', query: { wallet: 'w2', added: '1' } });
+  });
+});
+
 describe.each(BOTH(Restore, RestoreView))('Restore ($name)', ({ C }) => {
   test('from Settings: restored as a new wallet, the open wallet locks, Unlock opens with it', async () => {
     const s = setup(C, { route: { query: { add: '1' } } });
@@ -327,6 +351,14 @@ describe.each(BOTH(AddExisting, AddExistingView))('Add an existing wallet ($name
     expect(window.api.pickWalletFolder).toHaveBeenCalledWith(t('msg.wallets.folder_dialog_title'));
     expect(s.configService.openExistingWallet).toHaveBeenCalledWith('/media/usb/main', 'mainnet');
     expectUnlockWith(s, 'w2');
+  });
+
+  test('from Welcome on a test network: the network goes along to the found screen and back to Welcome', () => {
+    const s = setup(C, { loggedIn: false, route: { query: { from: 'new', network: 'floonet' } } });
+    const links = s.wrapper.findAllComponents({ name: 'RouterLinkStub' }).map(l => l.props('to'));
+    expect(links).toContainEqual({ name: 'found', query: { from: 'new', network: 'floonet' } });
+    expect(links).toContainEqual({ name: 'new', query: { network: 'floonet' } });
+    expect(s.wrapper.vm.folderNetwork).toBe('floonet');
   });
 
   test('From an older Epic Wallet goes to the found screen; Back goes to Settings › All wallets', () => {
@@ -364,12 +396,17 @@ describe.each(BOTH(Found, FoundView))('Older Epic Wallet import ($name)', ({ C }
 /* ------------------------------------------------------------------ 3. Unlock */
 
 describe.each(BOTH(Login, UnlockView))('Unlock after adding ($name)', ({ C }) => {
-  test('the new wallet is chosen (not the old default) and said to be added', () => {
+  test('the new wallet is chosen (not the old default) and said to be added, after the page shows', async () => {
+    vi.useFakeTimers();
     const configService = fakeConfig({ wallets: [W1, W2], open: '' });
     const s = setup(C, { loggedIn: false, configService, route: { query: { wallet: 'w2', added: '1' } } });
     expect(s.wrapper.vm.selectedId).toBe('w2');
     const checked = s.wrapper.find('select').exists() ? s.wrapper.find('select').element.value : s.wrapper.find('input[type=radio]:checked').element.value;
     expect(checked).toBe('w2');
+    //put into its status region after the page is there, so a screen reader announces it
+    expect(s.wrapper.find('[data-added]').exists()).toBe(false);
+    vi.advanceTimersByTime(200);
+    await flushPromises();
     expect(s.wrapper.find('[data-added]').text()).toBe(t('msg.wallets.added_unlock', ['Wallet 2']));
   });
 

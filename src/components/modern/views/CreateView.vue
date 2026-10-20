@@ -58,7 +58,7 @@
     </div>
 
     <!-- 4. the phrase is written down: a wallet open now locks, then Unlock with the new one chosen -->
-    <div v-if="page === 'created' && opening" class="e-hero-screen">
+    <div v-if="page === 'created' && opening && locking" class="e-hero-screen">
       <div class="e-onb-progress">
         <BrandTile />
         <div class="e-auth-title">

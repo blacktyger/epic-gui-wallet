@@ -262,10 +262,17 @@ export const walletOpen = {
       return false;
     },
 
-    /* a wallet is open (Settings › Add a wallet): close it the way Lock does, staying on this page */
+    /* a wallet is open (Settings › Add a wallet): close it the way Lock does, staying on this page.
+       Never waits more than 60 s: the add flows go on to Unlock (App.vue answers done also on a failure) */
     logoutCurrent() {
       if (!isLoggedIn(this.$store)) return Promise.resolve();
-      return new Promise((resolve) => this.emitter.emit('app.logout', { stay: true, done: resolve }));
+      return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          console.log('[wallets] the open wallet did not report locked within 60 s: going on');
+          resolve();
+        }, 60000);
+        this.emitter.emit('app.logout', { stay: true, done: () => { clearTimeout(timer); resolve(); } });
+      });
     },
 
     /* a wallet was added (Create, Restore, a wallet folder, an older Epic Wallet's wallet): the wallet
@@ -306,6 +313,7 @@ export const walletFolder = {
   },
   methods: {
     async pickWalletFolder() {
+      if (this.folderBusy) return;
       this.folderError = '';
       this.folderAsk = null;
       //Choose another folder: the picker closes, so focus goes back to the screen's button
