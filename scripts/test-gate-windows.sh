@@ -83,7 +83,8 @@ if ($rig) { "RIGRUN " + (Get-Content -Raw C:\EpicRig\wallet-ports.lock -ErrorAct
 $l = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { @(3413,3415,3420,13413) -contains $_.LocalPort })
 foreach ($c in $l) {
   $path = (Get-CimInstance Win32_Process -Filter "ProcessId=$($c.OwningProcess)" -ErrorAction SilentlyContinue).ExecutablePath
-  $ours = ($path -and $path.StartsWith("C:\EpicRig\", "OrdinalIgnoreCase")) -or ($rig -and -not $path)
+  #during a rig run the stub node of the specs is node.exe on 13413
+  $ours = ($path -and $path.StartsWith("C:\EpicRig\", "OrdinalIgnoreCase")) -or ($rig -and (-not $path -or ($c.LocalPort -eq 13413 -and $path -match "\\node\.exe$")))
   "{0} {1}:{2} pid {3} {4}" -f $(if ($ours) { "RIGPORT" } else { "PORT" }), $c.LocalAddress, $c.LocalPort, $c.OwningProcess, $path
 }
 Get-CimInstance Win32_Process | Where-Object { $_.Name -match "^(epic|epic-wallet|EpicWallet|tor)\.exe$" } | ForEach-Object {
