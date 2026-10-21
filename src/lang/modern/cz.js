@@ -690,6 +690,7 @@ export default {
       err_listener: 'Tor je zapnutý, ale příjem peněženky se zastavil. Zkuste to znovu.',
       err_tor_off: 'Tor je vypnutý. Zapněte ho, abyste mohli poslat na tuto adresu.',
       err_other: 'Tor přestal fungovat. Zkuste to znovu.',
+      err_publish: 'Tor je připojený, ale vaši adresu Tor se nepodařilo zveřejnit. Zkontrolujte připojení k internetu a zkuste to znovu.',
       send_typo: 'V této adrese Tor je překlep.',
       send_off: 'Zapněte Tor, abyste mohli poslat na tuto adresu.',
       send_turn_on: 'Zapnout Tor',

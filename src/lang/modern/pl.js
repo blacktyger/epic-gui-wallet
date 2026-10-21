@@ -690,6 +690,7 @@ export default {
       err_listener: 'Tor jest włączony, ale odbiornik portfela przestał działać. Spróbuj ponownie.',
       err_tor_off: 'Tor jest wyłączony. Włącz go, aby wysłać na ten adres.',
       err_other: 'Tor przestał działać. Spróbuj ponownie.',
+      err_publish: 'Tor jest połączony, ale nie udało się opublikować Twojego adresu Tor. Sprawdź połączenie z internetem i spróbuj ponownie.',
       send_typo: 'W tym adresie Tor jest literówka.',
       send_off: 'Włącz Tor, aby wysłać na ten adres.',
       send_turn_on: 'Włącz Tor',

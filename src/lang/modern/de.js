@@ -690,6 +690,7 @@ export default {
       err_listener: 'Tor ist an, aber der Empfänger der Wallet wurde beendet. Versuche es erneut.',
       err_tor_off: 'Tor ist aus. Schalte es ein, um an diese Adresse zu senden.',
       err_other: 'Tor funktioniert nicht mehr. Versuche es erneut.',
+      err_publish: 'Tor ist verbunden, aber deine Tor-Adresse konnte nicht veröffentlicht werden. Prüfe deine Internetverbindung und versuche es erneut.',
       send_typo: 'In dieser Tor-Adresse steckt ein Tippfehler.',
       send_off: 'Schalte Tor ein, um an diese Adresse zu senden.',
       send_turn_on: 'Tor einschalten',

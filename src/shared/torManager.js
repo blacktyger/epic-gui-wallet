@@ -10,7 +10,8 @@
  * [err]/[warn] line), network (progress stuck 60 s, or no 100 % after 120 s: restarted after 5 s,
  * 30 s, 2 min, then left failed), clock (CLOCK_SKEW before the bootstrap), keys (no key for the
  * onion, or tor published another one), listener (the wallet's HTTP listener doesn't answer),
- * stopped (tor exited or closed its control port after the bootstrap: restarted like network).
+ * stopped (tor exited or closed its control port after the bootstrap: restarted like network),
+ * publish (bootstrapped, but no HS_DESC UPLOADED within publishMs: restarted like network).
  *
  * Start (start()): torrc in <configDir>/tor, data in <configDir>/tor/data (0700); `tor -f <torrc>
  * --defaults-torrc <empty>`, no shell; cookie auth; TAKEOWNERSHIP (tor exits when the app's
@@ -29,12 +30,14 @@ import { parseOnion, readOnionKeyFile, keyForTor, onionKeyPath, ONION_LEN } from
 import { createTorControl, parseControlFile } from './torControl.js';
 
 export const STATES = ['off', 'starting', 'publishing', 'ready', 'failed'];
-export const ERRORS = ['missing', 'start', 'network', 'clock', 'keys', 'listener', 'stopped'];
+export const ERRORS = ['missing', 'start', 'network', 'clock', 'keys', 'listener', 'stopped', 'publish'];
 
 export const TIMINGS = Object.freeze({
   controlFileMs: 30000,
   stallMs: 60000,
   bootMs: 120000,
+  //bootstrapped with the onion added, but no descriptor uploaded yet
+  publishMs: 180000,
   backoffMs: [5000, 30000, 120000],
   stopKillMs: 5000,
   //after the kill: how long stop() still waits for tor's exit before it gives up (and says so)
@@ -111,7 +114,7 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
   }
 
   function clearRunTimers(r) {
-    for (const k of ['stall', 'boot', 'listener', 'controlPoll']) {
+    for (const k of ['stall', 'boot', 'publish', 'listener', 'controlPoll']) {
       if (r[k]) clearTimer(r[k]);
       r[k] = null;
     }
@@ -154,7 +157,7 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
   function fail(r, error, detail) {
     if (r.dead || r !== run) return;
     info('tor: failed, ' + error + (detail ? ' (' + String(detail).slice(0, 200) + ')' : ''));
-    const auto = (error === 'network' || error === 'stopped') && restarts < t.backoffMs.length;
+    const auto = ['network', 'stopped', 'publish'].includes(error) && restarts < t.backoffMs.length;
     teardown(r).catch(() => {});
     run = null;
     emit({ state: 'failed', progress: status.progress, error, detail: detail ? String(detail).slice(0, 300) : '' });
@@ -205,12 +208,15 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
   function advance(r) {
     if (r.dead || r !== run) return;
     if (r.bootstrapped && r.serviceId && r.uploaded) {
+      if (r.publish) clearTimer(r.publish);
+      r.publish = null;
       if (status.state !== 'ready') {
         emit({ state: 'ready', progress: 100, error: '', detail: '' });
         restarts = 0;
         watchListener(r);
       }
     } else if (r.bootstrapped && r.serviceId) {
+      if (!r.publish) r.publish = timer(() => fail(r, 'publish', 'no upload after ' + Math.round(t.publishMs / 1000) + ' s'), t.publishMs);
       if (status.state !== 'publishing') emit({ state: 'publishing', progress: 100, error: '', detail: '' });
     } else if (status.state !== 'starting' || status.progress !== r.progress) {
       emit({ state: 'starting', progress: r.progress || 0, error: '', detail: '' });

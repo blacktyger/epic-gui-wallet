@@ -215,6 +215,28 @@ test('stopped: tor dying after the bootstrap is restarted with the backoff', asy
   assert.equal(u.spawned.length, 1);
 });
 
+test('publish: no descriptor upload within the publish time fails and restarts', async () => {
+  const t = harness({ timings: { publishMs: 60 } });
+  await t.m.start(START(walletDir()));
+  await t.until(() => t.logs.some(l => l.includes('onion service added')));
+  t.event('STATUS_CLIENT NOTICE BOOTSTRAP PROGRESS=100 TAG=done SUMMARY="Done"');
+  await t.until(() => t.m.status().state === 'publishing');
+  await t.until(() => t.m.status().state === 'failed');
+  assert.equal(t.m.status().error, 'publish');
+  await t.until(() => t.spawned.length === 2);
+  await t.m.stop();
+  //an upload in time clears it
+  const u = harness({ timings: { publishMs: 80 } });
+  await u.m.start(START(walletDir()));
+  await u.until(() => u.logs.some(l => l.includes('onion service added')));
+  u.event('STATUS_CLIENT NOTICE BOOTSTRAP PROGRESS=100 TAG=done SUMMARY="Done"');
+  u.event('HS_DESC UPLOADED ' + ONION + ' UNKNOWN $A');
+  await u.until(() => u.m.status().state === 'ready');
+  await new Promise(r => setTimeout(r, 120));
+  assert.equal(u.m.status().state, 'ready');
+  await u.m.stop();
+});
+
 test('missing: no tor binary in this build', async () => {
   const t = harness({ missing: true });
   await t.m.start(START(walletDir()));
