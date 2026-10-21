@@ -19,6 +19,30 @@
  * Plain ESM: tests/torSession.test.js.
  */
 import { listenerNodeDown } from './httpListener.js';
+import { parseOnion } from './onion.js';
+
+/*
+ * The onion for a start: the saved one (settings tor_onion) at once, else fetch() (the wallet's
+ * get_public_proof_address, which waits behind a scan after a restore), with onWait() before that
+ * wait and save(onion) after it. → '<56>.onion' | ''
+ */
+export async function onionFor({ saved, fetch, save = () => {}, onWait = () => {} }) {
+  const s = parseOnion(saved);
+  if (s.valid) return s.host;
+  onWait();
+  const onion = await fetch();
+  if (onion) save(onion);
+  return onion || '';
+}
+
+/* a saved onion checked against the wallet (in the background, after a start with it): the
+   wallet's own onion when it differs (saved again, Tor restarted with it), else '' */
+export async function staleSavedOnion({ saved, fetch }) {
+  const s = parseOnion(saved);
+  if (!s.valid) return '';
+  const onion = await Promise.resolve(fetch()).catch(() => '');
+  return onion && onion !== s.host ? onion : '';
+}
 
 export async function startTorFor({ walletId, isCurrent, startListen, torAddress, start, stop, stopPid, log = () => {} }) {
   const current = () => { try { return !!isCurrent(); } catch (e) { return false; } };

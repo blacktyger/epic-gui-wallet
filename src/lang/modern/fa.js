@@ -661,6 +661,7 @@ export default {
       title: 'Tor',
       text: 'با یک آدرس خصوصی .onion دریافت و ارسال کنید. به پورت باز نیازی نیست. اتصال کندتر است.',
       connecting: 'در حال اتصال به Tor… {n}٪',
+      waiting_wallet: 'در انتظار کیف پول…',
       publishing: 'در حال انتشار آدرس Tor شما…',
       ready: 'آماده',
       retry: 'تلاش دوباره',

@@ -661,6 +661,7 @@ export default {
       title: 'Tor',
       text: 'Odbieraj i wysyłaj na prywatny adres .onion. Bez otwierania portów. Połączenie trwa dłużej.',
       connecting: 'Łączenie z Tor… {n} %',
+      waiting_wallet: 'Oczekiwanie na portfel…',
       publishing: 'Publikowanie Twojego adresu Tor…',
       ready: 'Gotowe',
       retry: 'Spróbuj ponownie',

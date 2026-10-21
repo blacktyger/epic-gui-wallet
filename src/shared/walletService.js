@@ -10,7 +10,7 @@ import { ownerApiPort as findOwnerApiPort } from '@/shared/testPorts';
 import { isAddrInUse } from '@/shared/httpListener';
 import { onionFromPubkeyHex } from '@/shared/onion';
 import { sendOverTor as torSend } from '@/shared/torSend';
-import { startTorFor } from '@/shared/torSession';
+import { startTorFor, onionFor, staleSavedOnion } from '@/shared/torSession';
 const Buffer = require('buffer').Buffer;
 
 require('promise.prototype.finally').shim();
@@ -403,15 +403,22 @@ class WalletService {
        -> {ok, status, onion, listener, waitListener} | {ok: false, error, listener?} | {stale: true}
        error: listener | keys | the main process's refusal (locked, no wallet, invalid).
        waitListener: the node keeps the listener down; tor runs for sending and the listener is tried
-       again (retryTorListener) until it runs */
-    async startTor({ isCurrent = () => true } = {}){
+       again (retryTorListener) until it runs.
+       The onion: the wallet's tor_onion once known (it never changes), else get_public_proof_address,
+       which can wait minutes behind a scan after a restore: onWaitWallet() is called before that wait
+       (the row says "Waiting for the wallet…"). A cached onion is checked against the wallet in the
+       background; if it differs, the right one is saved and Tor started again (onStale) */
+    async startTor({ isCurrent = () => true, onWaitWallet = () => {}, onStale = () => {} } = {}){
       const walletId = this.configService.walletId;
+      const current = () => isCurrent() && this.configService.walletId === walletId;
       this.cancelTorListener();
+      const saved = (this.configService.config && this.configService.config.tor_onion) || '';
+      const save = (onion) => { if(current()) this.configService.updateConfig({ tor_onion: onion }); };
       const r = await startTorFor({
         walletId,
-        isCurrent: () => isCurrent() && this.configService.walletId === walletId,
+        isCurrent: current,
         startListen: () => this.startListen('http'),
-        torAddress: () => this.torAddress(),
+        torAddress: () => onionFor({ saved, fetch: () => this.torAddress(), save, onWait: onWaitWallet }),
         start: (w, onion, opts) => window.api.tor.start(w, onion, opts),
         stop: (w) => window.api.tor.stop(w),
         stopPid: (pid) => window.nodeChildProcess.stopPids([pid]),
@@ -419,6 +426,14 @@ class WalletService {
       });
       //a listener started for Tor (none was running) is stopped again when Tor is turned off
       if(!r.stale && r.listenerPid) this.torListener = { walletId, pid: r.listenerPid };
+      if(!r.stale && saved){
+        staleSavedOnion({ saved, fetch: () => this.torAddress() }).then((onion) => {
+          if(!onion || !current()) return;
+          console.log('[tor] the saved onion is not this wallet\'s: saved again, Tor restarted');
+          save(onion);
+          onStale();
+        });
+      }
       if(!r.stale && r.ok && r.waitListener){
         this.torListenerJob = { walletId, isCurrent, timer: null, busy: false };
         this.torListenerJob.timer = setTimeout(() => this.retryTorListener(), TOR_LISTENER_RETRY_MS);

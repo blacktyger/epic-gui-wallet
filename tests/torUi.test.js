@@ -54,6 +54,8 @@ test('torPhase / torPercent', () => {
 test('torStatus: the row line for each state', () => {
   assert.equal(torStatus(undefined), null);
   assert.deepEqual(torStatus(tor({ progress: 45 })), { tone: 'busy', key: 'msg.modern.settings.tor.connecting', params: { n: 45 } });
+  //the onion is asked from the wallet (no saved one): not 0 %
+  assert.deepEqual(torStatus(tor({ step: 'wallet' })), { tone: 'busy', key: 'msg.modern.settings.tor.waiting_wallet', params: {} });
   assert.equal(torStatus(tor({ state: 'publishing' })).key, 'msg.modern.settings.tor.publishing');
   assert.deepEqual(torStatus(tor({ state: 'ready' })).tone, 'ok');
   const f = torStatus(tor({ state: 'failed', error: 'start', detail: 'boom' }));

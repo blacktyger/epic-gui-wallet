@@ -168,7 +168,7 @@
         if (s.walletId && s.walletId !== this.configService.walletId) return;
         //off at lock or Tor off: enabled stays what the setting says
         this.store.commit('tor', { state: s.state, progress: s.progress, onion: s.onion || this.store.state.tor.onion,
-          error: s.error || '', detail: s.detail || '' });
+          error: s.error || '', detail: s.detail || '', step: '' });
       });
 
       //the window hidden or minimized polls less (nodePoll.js, walletSync.js); shown again, the node
@@ -363,15 +363,19 @@
          listener's own start; tor's own progress comes as tor-status events (created above) */
       this.emitter.on('app.startTor', async () => {
         const session = this.loginSession;
-        this.store.commit('tor', { enabled: true, state: 'starting', progress: 0, error: '', detail: '' });
+        this.store.commit('tor', { enabled: true, state: 'starting', progress: 0, error: '', detail: '', step: '' });
         this.store.commit('listenerStarting', true);
         let r;
         try {
           //locked or switched meanwhile: the start stops only what it started (its wallet's tor, its
           //own listener) and never touches the wallet open now (shared/torSession.js)
-          r = await this.$walletService.startTor({ isCurrent: () => session === this.loginSession });
+          r = await this.$walletService.startTor({ isCurrent: () => session === this.loginSession,
+            //no saved onion: the wallet is asked, which waits behind a scan after a restore
+            onWaitWallet: () => { if(session === this.loginSession) this.store.commit('tor', { step: 'wallet' }); },
+            onStale: () => { if(session === this.loginSession && this.store.state.tor.enabled) this.emitter.emit('app.startTor'); } });
         } finally {
           if(session === this.loginSession) this.store.commit('listenerStarting', false);
+          if(session === this.loginSession) this.store.commit('tor', { step: '' });
         }
         if(r.stale || session !== this.loginSession) return;
         if(r.listener){

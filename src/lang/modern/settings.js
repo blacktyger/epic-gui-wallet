@@ -147,6 +147,7 @@ export default {
     title: 'Tor',
     text: 'Receive and send at a private .onion address. No open ports needed. Slower to connect.',
     connecting: 'Connecting to Tor… {n} %',
+    waiting_wallet: 'Waiting for the wallet…',
     publishing: 'Publishing your Tor address…',
     ready: 'Ready',
     retry: 'Try again',

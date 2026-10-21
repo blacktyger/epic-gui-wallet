@@ -62,8 +62,9 @@ export const store = createStore({
     httpListener: {state: 'off', port: 0, reason: ''},
     /* Tor (docs/plans/tor-616.md §7): enabled = the wallet's tor_enabled; state from the main process's
        tor-status events: 'off'|'starting'|'publishing'|'ready'|'failed', progress 0-100, onion
-       '' | '<56>.onion', error '' | missing|start|network|clock|keys|listener, detail */
-    tor: {enabled: false, state: 'off', progress: 0, onion: '', error: '', detail: ''},
+       '' | '<56>.onion', error '' | missing|start|network|clock|keys|listener|node, detail;
+       step: '' | 'wallet' (starting, the onion is asked from the wallet: "Waiting for the wallet…") */
+    tor: {enabled: false, state: 'off', progress: 0, onion: '', error: '', detail: '', step: ''},
     /* our Epicbox listener, from its own output (App.onEpicboxEvent) and walletService:
        state: '' | starting | connecting | listening | paused | switching | checking_old | off;
        server: the wss:// url it connected to (or is starting on); checking: the old server being
@@ -150,7 +151,7 @@ export const store = createStore({
     /* null resets it (logout, stopped) */
     /* a change of the Tor state (null: reset, at lock); only the known keys are taken */
     tor(state, payload){
-      const off = {enabled: false, state: 'off', progress: 0, onion: '', error: '', detail: ''};
+      const off = {enabled: false, state: 'off', progress: 0, onion: '', error: '', detail: '', step: ''};
       if(!payload){
         state.tor = off;
         return;

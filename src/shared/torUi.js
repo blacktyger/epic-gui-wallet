@@ -4,7 +4,7 @@
  * onion recipient. Pure functions, no Vue: unit-tested in tests/torUi.test.js.
  *
  * store.state.tor: { enabled, state: 'off'|'starting'|'publishing'|'ready'|'failed', progress,
- *                    onion: '' | '<56>.onion', error: '' | code, detail }
+ *                    onion: '' | '<56>.onion', error: '' | code, detail, step: '' | 'wallet' }
  */
 import { parseOnion } from './onion.js';
 import { isOnionAddress } from './sendForm.js';
@@ -37,7 +37,9 @@ export function torErrorText(t, code, detail) {
 export function torStatus(tor) {
   switch (torPhase(tor)) {
     case 'off': return null;
-    case 'starting': return { tone: 'busy', key: MSG + 'connecting', params: { n: torPercent(tor) } };
+    case 'starting':
+      if (tor.step === 'wallet') return { tone: 'busy', key: MSG + 'waiting_wallet', params: {} };
+      return { tone: 'busy', key: MSG + 'connecting', params: { n: torPercent(tor) } };
     case 'publishing': return { tone: 'busy', key: MSG + 'publishing', params: {} };
     case 'ready': return { tone: 'ok', key: MSG + 'ready', params: {} };
     default: return { tone: 'warn', key: torErrorKey(tor.error), params: { msg: tor.detail || '', detail: tor.detail || '' } };
