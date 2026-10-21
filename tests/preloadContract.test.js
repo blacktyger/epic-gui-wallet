@@ -21,10 +21,11 @@ const EXPOSED = ['api', 'clipboard', 'config', 'debug', 'explorer', 'log', 'node
 const INVOKED = ['app-relaunch', 'clipboard-copy-secret', 'clipboard-wipe-secret', 'clipboard-write-text', 'folder-lock', 'legacy-scan',
   'locale', 'lookup', 'node-directory', 'node-fetch', 'open-external', 'open-folder', 'pick-wallet-folder', 'pty-start',
   'quit', 'release-url', 'reload-ui', 'resize', 'session-password-clear', 'session-password-has', 'session-password-set',
-  'show-open-dialog', 'show-save-dialog', 'support-preview', 'support-save', 'support-send', 'version'];
+  'show-open-dialog', 'show-save-dialog', 'support-preview', 'support-save', 'support-send', 'tor-foreign', 'tor-retry',
+  'tor-start', 'tor-stop', 'version'];
 
 //ipcRenderer.on with a fixed channel (besides the validChannels listener)
-const LISTENED = ['menu-lock', 'open-support', 'pty-data', 'pty-exit', 'window-hidden'];
+const LISTENED = ['menu-lock', 'open-support', 'pty-data', 'pty-exit', 'tor-status', 'window-hidden'];
 
 //handlers that do not check the sender, and why that is fine
 const UNCHECKED = {
@@ -106,4 +107,19 @@ test('no navigation, no webviews, no new windows; links go to the system browser
   assert.match(bg, /contents\.on\('will-attach-webview', \(e\) => e\.preventDefault\(\)\)/);
   assert.match(bg, /setWindowOpenHandler\(\(\{ url \}\) => \{\s*openExternal\(url\);\s*return \{ action: 'deny' \};/);
   assert.match(bg, /if \(isAppUrl\(url, devServer\)\) return;\s*e\.preventDefault\(\);/);
+});
+
+test('6.1.6 Tor: window.api.tor has exactly start, stop, retry, foreign, onStatus; tor-start takes no path from the page', () => {
+  const block = preload.slice(preload.indexOf('    tor: {'), preload.indexOf('    },', preload.indexOf('    tor: {')));
+  assert.deepEqual(names(block, /^ {6}([a-zA-Z]+): /gm), ['foreign', 'onStatus', 'retry', 'start', 'stop']);
+  assert.match(block, /invoke\('tor-start', \{ walletId: String\(walletId \|\| ''\), onion: String\(onion \|\| ''\) \}\)/);
+  //the main process takes the dirs from settings.json and allows only the unlocked wallet
+  const bg = src('background.js');
+  const h = bg.slice(bg.indexOf("ipcMain.handle('tor-start'"), bg.indexOf("ipcMain.handle('tor-stop'"));
+  assert.match(h, /walletRecord\(String\(req\.walletId/);
+  assert.match(h, /sessionSecret\.dir\(\)\) !== path\.resolve\(wallet\.dataDir\)/);
+  assert.doesNotMatch(h, /req\.(configDir|dataDir|dir|path|port|listenerPort|bin)/);
+  //tor-foreign goes through the allowlist
+  const f = bg.slice(bg.indexOf("ipcMain.handle('tor-foreign'"));
+  assert.match(f.slice(0, 600), /checkForeignRequest\(req\)/);
 });

@@ -33,6 +33,8 @@ export function registerSessionIpc({ ipcMain, session, ptyHost, isAppWindow }) {
 
   ipcMain.handle('pty-start', (event, req) => {
     if (!isAppWindow(event) || !req || typeof req !== 'object') return { ok: false, error: 'refused' };
+    //the one-shot onion key run is the main process's own (background.js tor-start), never the page's
+    if (req.kind === 'torkeys') return { ok: false, error: 'refused' };
     const sender = event.sender;
     const token = String(req.token || '');
     const listener = req.kind === 'listen' || req.kind === 'epicbox';
