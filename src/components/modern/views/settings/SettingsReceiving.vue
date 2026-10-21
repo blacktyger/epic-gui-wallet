@@ -34,7 +34,7 @@
           <div>
             <b id="stg-http-l">{{ $t('msg.modern.settings.http_l') }}</b>
             <p id="stg-http-h">{{ $t('msg.modern.settings.http_text') }}</p>
-            <p class="e-stg-meta" role="status">
+            <p class="e-stg-meta e-one" role="status">
               <template v-if="httpFailed"><span class="e-st e-down" aria-hidden="true"></span><span><b>{{ $t('msg.modern.send.rcv_http_failed') }}</b> {{ httpFailed.reason == 'port_in_use' ? $t('msg.modern.send.rcv_http_failed_port', { port: httpFailed.port }) : $t(httpFailed.reason == 'node' ? 'msg.modern.send.rcv_http_failed_node' : 'msg.modern.send.rcv_http_failed_error') }}</span></template>
               <template v-else-if="httpOn"><span class="e-st e-ok" aria-hidden="true"></span><span>{{ $t('msg.modern.settings.http_on', { port: configService.walletListenerPort }) }}</span></template>
               <template v-else><span class="e-st e-off" aria-hidden="true"></span><span>{{ $t('msg.modern.settings.http_off') }}</span></template>
