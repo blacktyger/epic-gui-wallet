@@ -67,6 +67,10 @@ export const store = createStore({
        retrying: starting again after a network/stopped/publish failure (quietly the first time, then
        behind the shown error, failed with retrying) */
     tor: {enabled: false, state: 'off', progress: 0, onion: '', error: '', detail: '', step: '', retrying: false},
+    /* Direct transactions (6.1.7, shared/directTx.js directState): on = the switch this session;
+       http, tor = the chips; public = the listener takes connections from other computers now
+       (direct_public with HTTP on); wantPublic = direct_public as saved */
+    direct: {on: false, http: false, tor: true, public: false, wantPublic: false},
     /* our Epicbox listener, from its own output (App.onEpicboxEvent) and walletService:
        state: '' | starting | connecting | listening | paused | switching | checking_old | off;
        server: the wss:// url it connected to (or is starting on); checking: the old server being
@@ -161,6 +165,9 @@ export const store = createStore({
       const next = Object.assign({}, state.tor);
       for(const k of Object.keys(off)) if(payload[k] !== undefined) next[k] = payload[k];
       state.tor = next;
+    },
+    direct(state, payload){
+      state.direct = Object.assign({on: false, http: false, tor: true, public: false, wantPublic: false}, payload || {});
     },
     httpListener(state, payload){
       state.httpListener = payload ? Object.assign({state: 'off', port: 0, reason: ''}, payload) : {state: 'off', port: 0, reason: ''};
