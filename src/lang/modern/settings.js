@@ -183,7 +183,7 @@ export default {
     send_off: 'Turn on Tor to send to this address.',
     send_turn_on: 'Turn on Tor',
     send_turning_on: 'Turning on Tor…',
-    send_connect: 'Connecting to the recipient over Tor… (up to a minute)',
+    send_connect: 'Connecting to the recipient over Tor… (the first time can take up to two minutes)',
     send_sign: 'The recipient\'s wallet is signing…',
     send_post: 'Sending to the network…',
     menu_send: 'Send over Tor',

@@ -4,7 +4,9 @@
  *
  *   1. parseOnion                                   invalid
  *   2. tor bootstrapped (publishing or ready)       tor_off
- *   3. check_version over tor-foreign               V3 if offered, else V2 (adapters/http.rs)
+ *   3. check_version over tor-foreign               V3 if offered, else V2 (adapters/http.rs); a
+ *      connect timeout is tried once more on a new circuit (the first circuit to an onion this tor
+ *      has not reached yet can take over a minute; the next one is usually quick)
  *   4. init_send_tx, no send_args, target_slate_version from 3      create (the wallet's message)
  *   5. receive_tx [slate, null, null, null] over tor-foreign → the recipient's slate
  *   6. tx_lock_outputs with that slate, finalize_tx, post_tx
@@ -59,8 +61,10 @@ function recipientError(envelope) {
 /*
  *   api: {initSend(txData), lockOutputs(slate), finalize(slate), post(tx, fluff), cancel(slateId)},
  *        each resolving the owner API answer ({result: {Ok}} or an error, or false)
- *   foreign(method, params) → {ok, result: envelope} | {ok: false, code, detail} (window.api.tor.foreign
- *        bound to the onion and this send's isolation name)
+ *   foreign(method, params, attempt) → {ok, result: envelope} | {ok: false, code, detail}
+ *        (window.api.tor.foreign bound to the onion and this send's isolation name; attempt 1: the
+ *        retry of check_version, which must get a circuit of its own: another isolation name.
+ *        receive_tx goes with the attempt check_version succeeded with)
  *   torReady() → true when tor is bootstrapped (store.state.tor.state publishing or ready)
  *   txData: the init_send_tx args (send_args and target_slate_version are set here)
  *   onStep(step): 'connecting' | 'signing' | 'posting'
@@ -74,7 +78,13 @@ export async function sendOverTor({ api, foreign, torReady, txData, onion, fluff
   if (!torReady()) return { ok: false, code: 'tor_off', detail: '' };
 
   onStep('connecting');
-  const cv = await foreign('check_version', []);
+  let attempt = 0;
+  let cv = await foreign('check_version', [], attempt);
+  //only a connect timeout: tor's own answers (0xF0 not there, 0xF6 bad address…) are final
+  if (cv && !cv.ok && cv.code === 'unreachable' && cv.detail === 'timeout') {
+    attempt = 1;
+    cv = await foreign('check_version', [], attempt);
+  }
   if (!cv || !cv.ok) return { ok: false, code: (cv && cv.code) || 'broken', detail: (cv && cv.detail) || '' };
   const v = slateVersionFrom(cv.result);
   if (v.code) return { ok: false, code: v.code, detail: v.detail };
@@ -85,7 +95,7 @@ export async function sendOverTor({ api, foreign, torReady, txData, onion, fluff
   const slateId = slate.id || '';
 
   onStep('signing');
-  const rx = await foreign('receive_tx', [slate, null, null, null]);
+  const rx = await foreign('receive_tx', [slate, null, null, null], attempt);
   if (!rx || !rx.ok) return { ok: false, code: (rx && rx.code) || 'broken', detail: (rx && rx.detail) || '', slateId };
   const theirs = rx.result && rx.result.result && rx.result.result.Ok;
   if (!theirs || typeof theirs !== 'object') return { ok: false, code: 'refused', detail: recipientError(rx.result), slateId };

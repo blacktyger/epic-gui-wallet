@@ -696,7 +696,7 @@ export default {
       send_off: 'Zapněte Tor, abyste mohli poslat na tuto adresu.',
       send_turn_on: 'Zapnout Tor',
       send_turning_on: 'Zapínání Toru…',
-      send_connect: 'Připojování k příjemci přes Tor… (až minutu)',
+      send_connect: 'Připojování k příjemci přes Tor… (poprvé to může trvat až dvě minuty)',
       send_sign: 'Peněženka příjemce podepisuje…',
       send_post: 'Odesílání do sítě…',
       menu_send: 'Odeslat přes Tor',

@@ -19,8 +19,9 @@ import { parseOnion } from './onion.js';
 export const METHODS = ['check_version', 'receive_tx'];
 export const BODY_MAX = 1024 * 1024;
 export const REPLY_MAX = 4 * 1024 * 1024;
-//tor itself waits up to 120 s before it says an onion isn't there: too long for a person to wait
-export const CONNECT_TIMEOUT_MS = 75000;
+//tor itself waits up to 120 s before it says an onion isn't there: too long for a person to wait.
+//torSend tries check_version once more after this timeout, so a send waits at most ~2.4 min to connect
+export const CONNECT_TIMEOUT_MS = 72000;
 export const REPLY_TIMEOUT_MS = 120000;
 
 /* SOCKS reply codes → the §5 error codes */

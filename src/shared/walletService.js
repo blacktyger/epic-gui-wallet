@@ -456,7 +456,8 @@ class WalletService {
           post: (tx, fluff) => this.postTransaction(tx, fluff),
           cancel: (id) => this.cancelTransactions(null, id),
         },
-        foreign: (method, params) => window.api.tor.foreign(onion, method, params, isolation),
+        //attempt 1 (check_version's retry after a connect timeout): a new circuit
+        foreign: (method, params, attempt) => window.api.tor.foreign(onion, method, params, attempt ? isolation + '-' + attempt : isolation),
         torReady: typeof opts.torReady === 'function' ? opts.torReady : () => true,
         txData, onion, fluff: opts.fluff !== false, onStep,
       });

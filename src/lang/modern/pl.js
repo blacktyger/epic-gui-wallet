@@ -696,7 +696,7 @@ export default {
       send_off: 'Włącz Tor, aby wysłać na ten adres.',
       send_turn_on: 'Włącz Tor',
       send_turning_on: 'Włączanie Tor…',
-      send_connect: 'Łączenie z odbiorcą przez Tor… (do minuty)',
+      send_connect: 'Łączenie z odbiorcą przez Tor… (za pierwszym razem może to potrwać do dwóch minut)',
       send_sign: 'Portfel odbiorcy podpisuje…',
       send_post: 'Wysyłanie do sieci…',
       menu_send: 'Wyślij przez Tor',
