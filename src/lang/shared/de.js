@@ -331,7 +331,7 @@ export default {
     menu_details: 'Details',
     copy_epicbox: 'Epicbox-Adresse kopieren',
     copy_http: 'HTTP-Adresse kopieren',
-    pick_hint: 'Wählen Sie einen Kontakt aus, um ihm etwas zu senden. Die Schaltfläche … neben jedem Kontakt bietet Details, „Bearbeiten“ und „Löschen“.',
+    pick_hint: 'Wählen Sie einen Kontakt, um Details zu sehen, ihm etwas zu senden oder ihn zu bearbeiten oder zu löschen.',
 
     //one contact
     epicbox_address: 'Epicbox-Adresse',
@@ -340,6 +340,7 @@ export default {
     send: 'Senden',
     send_epicbox: 'Über Epicbox senden',
     send_http: 'Über HTTP senden',
+    send_via: 'Senden über',
     copy: 'Kopieren',
     copied: 'Kopiert',
     txs_title: 'Transaktionen mit {name}',

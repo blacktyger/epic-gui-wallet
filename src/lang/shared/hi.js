@@ -331,7 +331,7 @@ export default {
     menu_details: 'विवरण',
     copy_epicbox: 'Epicbox एड्रेस कॉपी करें',
     copy_http: 'HTTP एड्रेस कॉपी करें',
-    pick_hint: 'किसी संपर्क को भुगतान भेजने के लिए उसे चुनें। हर संपर्क के बगल के … बटन में उसका विवरण, “संपादन करना” और “डिलीट” मिलेंगे।',
+    pick_hint: 'विवरण देखने, भुगतान भेजने, संपादित करने या हटाने के लिए कोई संपर्क चुनें।',
 
     //one contact
     epicbox_address: 'Epicbox एड्रेस',
@@ -340,6 +340,7 @@ export default {
     send: 'भेजें',
     send_epicbox: 'Epicbox से भेजें',
     send_http: 'HTTP से भेजें',
+    send_via: 'इससे भेजें',
     copy: 'कॉपी करें',
     copied: 'कॉपी हो गया',
     txs_title: '{name} के साथ लेन-देन',

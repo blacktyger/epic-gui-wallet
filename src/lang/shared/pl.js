@@ -332,7 +332,7 @@ export default {
     menu_details: 'Szczegóły',
     copy_epicbox: 'Kopiuj adres Epicbox',
     copy_http: 'Kopiuj adres HTTP',
-    pick_hint: 'Wybierz kontakt, aby wysłać mu płatność. Pod przyciskiem … przy każdym kontakcie znajdziesz szczegóły oraz opcje „Edytuj” i „Usuń”.',
+    pick_hint: 'Wybierz kontakt, aby zobaczyć jego dane, wysłać mu płatność, edytować go lub usunąć.',
 
     //one contact
     epicbox_address: 'Adres Epicbox',
@@ -341,6 +341,7 @@ export default {
     send: 'Wyślij',
     send_epicbox: 'Wyślij przez Epicbox',
     send_http: 'Wyślij przez HTTP',
+    send_via: 'Wyślij przez',
     copy: 'Kopiuj',
     copied: 'Skopiowano',
     txs_title: 'Transakcje z kontaktem {name}',

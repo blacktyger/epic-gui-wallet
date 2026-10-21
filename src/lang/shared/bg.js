@@ -331,7 +331,7 @@ export default {
     menu_details: 'Подробности',
     copy_epicbox: 'Копирай Epicbox адрес',
     copy_http: 'Копирай HTTP адрес',
-    pick_hint: 'Изберете контакт, за да му изпратите плащане. Бутонът … до всеки контакт дава достъп до подробностите, „Промени“ и „Изтрий“.',
+    pick_hint: 'Изберете контакт, за да видите подробностите му, да му изпратите плащане, да го промените или изтриете.',
 
     //one contact
     epicbox_address: 'Epicbox адрес',
@@ -340,6 +340,7 @@ export default {
     send: 'Изпрати',
     send_epicbox: 'Изпрати през Epicbox',
     send_http: 'Изпрати през HTTP',
+    send_via: 'Изпращане чрез',
     copy: 'Копирай',
     copied: 'Копирано',
     txs_title: 'Транзакции с {name}',
