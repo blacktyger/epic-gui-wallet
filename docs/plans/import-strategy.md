@@ -1,8 +1,8 @@
 # Import strategy: review of the Import wizard plan
 
-Status: recommendation (2026-10-21), branch `plan/import-strategy` off `plan/import-wizard` (edc124d). Docs only.
+Status: recommendation (2026-10-21), branch `plan/import-strategy` off `plan/import-wizard` (2cc1712). Docs only.
 
-What was reviewed: `docs/plans/import-wizard.md` (the wizard, 972cfb5), its mockup and prototype
+What was reviewed: `docs/plans/import-wizard.md` (the wizard, 972cfb5, updated 2cc1712 after Patryk's prototype feedback), its mockup and prototype
 (`import-wizard-mockup/`, `import-wizard-proto/`), `fresh-start.md` (the 6.1 data model),
 `plan/accounts:docs/plans/accounts.md`; the 6.1.6 code (`legacyScan.js`, `walletFolder.js`, `importer.js`,
 `legacyProfile.js`, `chainOffer.js`, `walletRemoval.js`, `folderLock.js`, `settingsStore.js`,
@@ -23,7 +23,8 @@ who have their phrase; the wizard is for everyone who has files: no phrase writt
 accounts, a history and contacts they want to keep. Silent migration, keep-in-place, move-instead-of-copy
 and a standalone tool were each weighed (section 3) and lose.
 
-Nine changes make the plan simpler and safer (section 4). The three that matter most:
+Eight changes make the plan simpler and safer (section 4; a ninth, C6, was overtaken by Patryk's decision 9c
+and is withdrawn). The three that matter most:
 
 1. **One definition of a wallet, everywhere.** A wallet is one folder, `<root>/wallets/<id>`, with
    everything in it. The wizard copies exactly `wallet_data/` (Tor keys regenerate). Removal deletes
@@ -67,7 +68,7 @@ Patryk: "Wallet import has to be done right first time."
 | User deletes the old folder believing it was copied (in-place design) | **Yes, if no phrase** | The copy design itself; the Settings warning row until then (C5) |
 | Copy taken while the old program writes (SQLite WAL mid-commit) | Possible corruption of the copy, old intact | Lock check before, byte hashes before and after, lock check after; the copy is rolled back |
 | Copy verified, old deleted, copy later fails to open | **Yes, if no phrase** | Delete is offered only after the copy test-opened with the password |
-| Two live copies (Keep, then the old app or CLI keeps using the old folder) | No (one seed), balances drift until a scan | One warning line on Done; the lock check refuses an import while the other program runs |
+| Two live copies (Keep, then the old app or CLI keeps using the old folder) | No (one seed), balances drift until a scan | One warning line next to [Keep] in the post-unlock Delete panel (C2); the lock check refuses an import while the other program runs |
 | Password of an old account forgotten | No access to that copy | Phrase restore; nothing the wizard can do, and it never asks for a password |
 | 3.x LMDB wallet: history not carried | No | The row says so (`legacyDb`) |
 | CLI internal accounts invisible | No (coins stay in the database) | accounts.md phase 1 makes them visible |
@@ -181,8 +182,11 @@ In `~/.epic/main` (every CLI user, and every 4.x–6.0 GUI wallet folder, which 
 
 Unknown files stay; the folder itself goes only when nothing is left in it. Never: `~/.epic` itself,
 `epic_3-0-0_config.json`, the old Electron profiles, a home folder, a drive root, a folder that overlaps
-another listed wallet, or a `node.<net>.chainDir` still in use (the plan's refusals stay). The screen
-says what stays: "The folder still holds the node's settings and blockchain data."
+another listed wallet, or a `node.<net>.chainDir` still in use (the plan's refusals stay). The Delete
+panel (since 2cc1712 it appears after the first unlock, not on the fresh-import Done screen) says what
+stays: "The folder still holds the node's settings and blockchain data." The "separate copy" warning
+that 2cc1712 took off the Done screen belongs next to [Keep] in that panel: "If you still use the older
+app or the epic program with that folder, it is now a separate copy."
 
 **C3 — The destructive confirmation is native.** `importer:trash(key)` makes the main process show
 `dialog.showMessageBox` (parent: the wizard window) naming the path and "Goes to the Recycle Bin
@@ -211,14 +215,16 @@ is checked to be inside the folder right before it goes. This fixes the 6.1.6 le
 Why it is safe to require: the move is a copy; the old folder is intact until the user deletes it, and
 the population is a handful of testers from the last two weeks, all reachable in the group.
 
-**C6 — Welcome puts Import first when wallets are found.** Decision 9a stays (no auto-open), but with
-N > 0 the *Import existing wallets…* row is the first and highlighted option with "We found N wallets
-from an older Epic Wallet"; with N = 0 it is the third. For an upgrading user import *is* the main action
-(#25: "how does a new install get you started").
+**C6 — withdrawn.** This review first proposed putting *Import existing wallets…* first on Welcome when
+the probe found wallets. Patryk's feedback on the prototype (2cc1712, decision 9c) took the Welcome hint
+out altogether: the wizard does the finding, and scanning twice has no use. Agreed, with two consequences:
+`importer:probe` can leave the plan (one channel less in the main window), and the row's subtitle must
+carry the recognition instead ("From an older Epic Wallet, the epic program or a folder"), because an
+upgrading user has no other cue that this entry is theirs (#25).
 
-**C7 — Two guards.** The wizard refuses to start while settings.json is `readOnly` (the broken-file
-screen already exists; adopt would fail late otherwise). The first-run probe runs asynchronously after
-Welcome renders; Welcome never waits for it.
+**C7 — One guard.** The wizard refuses to start while settings.json is `readOnly` (the broken-file
+screen already exists; adopt would fail late otherwise). With decision 9c there is no first-run probe left
+to guard.
 
 **C8 — No passwords in the wizard; password unification is a separate feature.** Decision 2a stays.
 A tester's "one password for all" (#43) is served by accounts.md phase 2 (linked wallets, same password
@@ -243,7 +249,7 @@ Screen-level detail stays in `import-wizard.md`; this is the list the implemente
 
 | # | Flow | Path |
 |---|---|---|
-| F1 | First run, old wallets found | Welcome (Import first, C6) → wizard Find → Choose → Check → Copy and verify → Settings → Done ("unlock once to finish") → Unlock → test open → `verified` → Finish prompt → Delete (native confirm, Trash) or Keep |
+| F1 | First run, old wallets on disk | Welcome › *Import existing wallets…* (no hint, decision 9c) → wizard Find → Choose → Check (skipped when nothing is locked, 2cc1712) → Copy and verify → Settings → Done ("unlock once to finish") → Unlock → test open → `verified` → Finish prompt → Delete (native confirm, Trash) or Keep |
 | F2 | Later import | Settings › Advanced › Import existing wallets…, or *Add a wallet* › Import existing wallets… → F1 from Find |
 | F3 | A folder the scan can't know (Desktop, `D:\`, external disk) | Find › *Choose a folder…* → `walletFolder.js` resolves picked → wallets → F1 from Choose |
 | F4 | 6.1.x in-place wallet | 6.2: offer after unlock [m4] → wizard move mode (Check → Copy → Done; ref compare at the next unlock). 6.3: required (C5). 6.4: wizard, import-style |
@@ -313,7 +319,7 @@ Estimates are focused working days. Tasks 1–7 are the plan's with the deltas f
 | 1 | Importer core, main process (`src/importer/main/*`, tests, fixtures 3.0.1 / 4.x / 5.3.1 / 6.0 / 6.1) | backend | 1.5 d | C1 manifest = `wallet_data/` only; C2 two delete lists incl. `.api_secret` rule; LMDB copy note | moved tests pass unchanged; new tests: manifest incl. `-wal`/`-shm`, symlink refusal, hash mismatch, source change mid-copy, no space, rollback leaves nothing, every delete refusal, node files kept unless ticked, Windows rules via `path.win32` |
 | 2 | Window, preload, IPC, adopt protocol, `move` in settingsStore | backend | 1 d | C3 native confirmations in `importer:trash`; C7 readOnly guard | sandboxed window verified; a fake renderer can't read `~/.epic` from either window; `importer:trash` without the native click deletes nothing (test with a stubbed dialog); adopt round-trip tests |
 | 3 | Wizard UI (`src/importer/ui/**`, `msg.importer.*` ×7) | frontend | 2 d | Done step wording per C2 ("the folder still holds…"); [w6d] native | build, lint, `npm test`; screenshots of every step at 1280 and 1044, dark and light |
-| 4 | Main app changes: Welcome row (C6), Settings › Advanced, warning row, move offer, test-open path in unlock, failure dialog, Finish prompt | frontend | 1.5 d | C6, C7 async probe | a pending wallet's unlock runs the offline calls before any node refresh; mismatch and failure paths roll back; screenshots |
+| 4 | Main app changes: Settings › Advanced, the *Import existing wallets…* row subtitle (C6), warning row, move offer, test-open path in unlock, failure dialog, Finish prompt | frontend | 1.5 d | C7 | a pending wallet's unlock runs the offline calls before any node refresh; mismatch and failure paths roll back; screenshots |
 | 5 | Removal: delete the files in section 7 (6.2 column); `walletRemoval` positional + whole-folder | backend | 1 d | C4 | `git grep` finds no references; `tor/`, `tor-keys/` gone after 'everything' (test); gate passes |
 | 6 | Tests: Linux e2e + Windows rig (section 10) | tester | 2 d | matrix rows M8–M12 new | all rows green |
 | 7 | Review (IPC surface, `oldFolder.js`, rollback, native confirm) + fixes | reviewer | 0.5 d | | findings fixed |
@@ -356,7 +362,7 @@ in session 1 (file locks).
 ## 11. Risks
 
 - **Two copies after Keep.** Funds are safe (one seed); balances drift until a scan. Accepted trade-off;
-  one line on Done. The 6.3 required move does not touch this (it is about in-place wallets).
+  one line next to [Keep] (C2). The 6.3 required move does not touch this (it is about in-place wallets).
 - **Lock probe `unknown`** (no perl, PowerShell time-out): the before/after hashes cover the copy; a
   writer that changes nothing can't hurt it.
 - **Deleting too little** (C2 leaves node files): a husk folder remains for mixed folders. Harmless, and
@@ -387,8 +393,7 @@ in session 1 (file locks).
    old password and re-encrypts the seeds to one new password. **Pick: a.** A run-once tool must not
    rewrite seeds.
 
-Not decisions, but worth a yes: task 0 (the 6.1.7 warning row) and C6 (Import first on Welcome when
-wallets are found).
+Not a decision, but worth a yes: task 0 (the 6.1.7 warning row).
 
 ## Appendix: facts checked for this review
 
