@@ -136,7 +136,7 @@
           const f = this.httpFailed;
           const text = f.reason == 'port_in_use' ? t(this.M + 'port_busy', { port: f.port })
             : t(f.reason == 'node' ? 'msg.modern.send.rcv_http_failed_node' : 'msg.modern.send.rcv_http_failed_error');
-          return { tone: 'down', text, retry: 'http' };
+          return { tone: 'down', text, retry: this.direct.tor && this.torPhase == 'failed' ? 'tor' : 'http' };
         }
         if (this.direct.tor && this.torPhase == 'failed') {
           const still = this.tor.retrying ? ' ' + t('msg.modern.settings.tor.still_trying') : '';
@@ -206,8 +206,7 @@
       retry() {
         if (this.retrying) return;
         this.retrying = true;
-        if (this.status.retry == 'tor') this.emitter.emit('app.startTor');
-        else this.apply({});
+        this.apply(this.status.retry == 'tor' ? { retryTor: true } : {});
         setTimeout(() => { this.retrying = false; }, 1500);
       },
       copy(text) {

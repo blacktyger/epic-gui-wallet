@@ -33,7 +33,6 @@ const UNCHECKED = {
   'locale': 'read-only: the system language',
   'version': 'read-only: the app version',
   'node-directory': 'read-only: the public node list (fixed URL in the main process)',
-  'direct-addresses': 'read-only: the LAN and public IPv4 address (fixed URL in the main process)',
   'session-password-clear': 'can only forget the password (a lock), never read or set it',
   //echoes: they reply to the sender with what it sent
   'scan-stdout': 'echo', 'firstscan-stdout': 'echo', 'scan-finish': 'echo', 'scan-error': 'echo',

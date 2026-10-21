@@ -176,7 +176,8 @@
           const h = st.httpListener || {};
           const addr = st.direct.public ? st.direct.httpAddr : 'http://127.0.0.1:' + this.port;
           out.push({ key: 'http', icon: 'svc-http', dot: h.state == 'on' ? 'ok' : h.state == 'failed' ? 'down' : 'busy', label: this.$t(st.direct.public ? 'msg.modern.send.rcv_http_public' : 'msg.modern.send.rcv_http'),
-            addr: h.state == 'on' ? addr : '', status: h.state == 'failed' ? this.$t('msg.modern.send.rcv_http_failed') : this.$t('msg.modern.settings.direct.st_starting'), qrType: 'local',
+            addr: h.state == 'on' ? addr : '', qrType: 'local',
+            status: h.state == 'failed' ? this.$t('msg.modern.send.rcv_http_failed') : h.state == 'on' ? this.$t('msg.modern.settings.direct.public_unknown') : this.$t('msg.modern.settings.direct.st_starting'),
             copyLabel: this.$t('msg.modern.send.rcv_copy_http'), qrLabel: this.$t('msg.modern.send.rcv_qr_http') });
         }
         return out;

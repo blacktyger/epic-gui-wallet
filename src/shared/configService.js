@@ -386,6 +386,12 @@ class ConfigService {
     return network === 'mainnet' && settings.nodesynced == false && addr == local ? this.nodeFallBack : addr;
   }
 
+  /* the HTTP listener's interface for a wallet's settings: 0.0.0.0 only in Public mode of Direct
+     transactions, and only in Modern (App.vue sets listenPublicAllowed; Classic always 127.0.0.1) */
+  listenIface(settings) {
+    return this.listenPublicAllowed === true ? listenInterface(settings) : '127.0.0.1';
+  }
+
   /* <configDir>/epic-wallet.toml of the current (or the given) wallet, written whole every time */
   writeWalletToml(wallet = this.wallet) {
     if (!wallet) throw new Error('no wallet');
@@ -394,7 +400,7 @@ class ConfigService {
     const file = this.path.join(wallet.configDir, WALLET_TOML);
     const text = renderWalletToml({
       template: this.template(WALLET_TOML), network: wallet.network, configDir: wallet.configDir, dataDir: wallet.dataDir,
-      nodeUrl, epicboxDomain: s.epicbox_domain || this.epicboxDomain, listenInterface: listenInterface(s),
+      nodeUrl, epicboxDomain: s.epicbox_domain || this.epicboxDomain, listenInterface: this.listenIface(s),
       //the built-in node's secret only goes to a node on this machine, never to a public node
       //(the one used while the built-in node syncs, or one typed in)
       nodeApiSecretPath: s.nodeInternal && isLocalNodeUrl(nodeUrl) ? this.path.join(this.nodeDir(wallet.network), NODE_SECRET) : '',
@@ -404,7 +410,7 @@ class ConfigService {
       this.walletTOMLPath = file;
       this.walletNodeAddr = nodeUrl;
       //what the HTTP listener binds when it starts next (App.vue directRun compares it)
-      this.walletListenIface = listenInterface(s);
+      this.walletListenIface = this.listenIface(s);
     }
     return file;
   }

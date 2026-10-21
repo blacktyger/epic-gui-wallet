@@ -44,16 +44,17 @@ test('chips: each one on its own, at least one stays on', () => {
   assert.equal(chipLocked({ http: false, tor: true }, 'http'), false);
 });
 
-test('listen interface: public only with Public mode AND the HTTP chip (Tor alone stays on 127.0.0.1)', () => {
-  assert.equal(listenInterface({ direct_public: true, direct_http: true }), '0.0.0.0');
-  assert.equal(listenInterface({ direct_public: true, direct_http: false, direct_tor: true }), '127.0.0.1');
-  assert.equal(listenInterface({ direct_public: false, direct_http: true }), '127.0.0.1');
+test('listen interface: public only with Direct on, Public mode AND the HTTP chip (Tor alone stays on 127.0.0.1)', () => {
+  assert.equal(listenInterface({ direct_on: true, direct_public: true, direct_http: true }), '0.0.0.0');
+  assert.equal(listenInterface({ direct_on: false, direct_public: true, direct_http: true }), '127.0.0.1');
+  assert.equal(listenInterface({ direct_on: true, direct_public: true, direct_http: false, direct_tor: true }), '127.0.0.1');
+  assert.equal(listenInterface({ direct_on: true, direct_public: false, direct_http: true }), '127.0.0.1');
   assert.equal(listenInterface({}), '127.0.0.1');
 });
 
 test('plan: the listener runs for HTTP and for Tor; tor only with its chip; nothing while off', () => {
   assert.deepEqual(directPlan({ direct_http: false, direct_tor: true }, true), { listener: true, tor: true, iface: '127.0.0.1' });
-  assert.deepEqual(directPlan({ direct_http: true, direct_tor: false, direct_public: true }, true), { listener: true, tor: false, iface: '0.0.0.0' });
+  assert.deepEqual(directPlan({ direct_on: true, direct_http: true, direct_tor: false, direct_public: true }, true), { listener: true, tor: false, iface: '0.0.0.0' });
   assert.deepEqual(directPlan({ direct_http: true, direct_tor: true }, false), { listener: false, tor: false, iface: '127.0.0.1' });
   assert.equal(directAtUnlock({ direct_on: true, direct_autostart: true, direct_tor: true }), true);
   assert.equal(directAtUnlock({ direct_on: true, direct_autostart: false, direct_tor: true }), false);
@@ -84,12 +85,14 @@ test('steps: from what runs to the plan', () => {
 });
 
 test('state for the screens: HTTP offered only with Direct on and the HTTP chip', () => {
-  const d = directState({ direct_http: true, direct_tor: false, direct_public: true }, true);
+  const d = directState({ direct_on: true, direct_http: true, direct_tor: false, direct_public: true }, true);
   assert.deepEqual(d, { on: true, http: true, tor: false, public: true, wantPublic: true });
   assert.equal(httpOffered(d), true);
   assert.equal(torOffered(d), false);
   assert.equal(httpOffered({ ...d, on: false }), false);
-  assert.equal(directState({ direct_http: false, direct_tor: true, direct_public: true }, true).public, false);
+  assert.equal(directState({ direct_on: true, direct_http: false, direct_tor: true, direct_public: true }, true).public, false);
+  //switched off this session: not public, whatever is saved
+  assert.equal(directState({ direct_on: true, direct_http: true, direct_public: true }, false).public, false);
 });
 
 test('Epicbox shown by its domain', () => {
@@ -108,10 +111,23 @@ test('the toml writer: api_listen_interface 127.0.0.1 by default, 0.0.0.0 in Pub
   const base = { template, network: 'mainnet', configDir: '/w/c', dataDir: '/w/d', nodeUrl: 'https://node.btlabs.uk' };
   const line = (t) => t.split('\n').filter((l) => /^\s*api_listen_interface\s*=/.test(l));
   assert.deepEqual(line(renderWalletToml(base)), ['api_listen_interface = "127.0.0.1"']);
-  const pub = renderWalletToml({ ...base, listenInterface: listenInterface({ direct_public: true, direct_http: true }) });
+  const pub = renderWalletToml({ ...base, listenInterface: listenInterface({ direct_on: true, direct_public: true, direct_http: true }) });
   assert.deepEqual(line(pub), ['api_listen_interface = "0.0.0.0"']);
   assert.deepEqual(line(renderWalletToml({ ...base, listenInterface: 'anything' })), ['api_listen_interface = "127.0.0.1"']);
   //the owner API keeps its own interface
   assert.doesNotMatch(pub, /owner_api_interface\s*=\s*"0\.0\.0\.0"/);
   assert.deepEqual(line(renderTorKeysToml({ template, network: 'mainnet', keysDir: '/w/c/tor-keys', dataDir: '/w/d', nodeUrl: 'https://node.btlabs.uk', socksPort: 9150, listenPort: 41000 })), ['api_listen_interface = "127.0.0.1"']);
+});
+
+test('configService: Classic always writes 127.0.0.1 (listenPublicAllowed is set by Modern only)', async () => {
+  const { default: ConfigService } = await import('../src/shared/configService.js').catch(() => ({ default: null }));
+  const pub = { direct_on: true, direct_public: true, direct_http: true };
+  const listenIface = (allowed, s) => (allowed === true ? listenInterface(s) : '127.0.0.1');
+  if (ConfigService && ConfigService.prototype && ConfigService.prototype.listenIface) {
+    assert.equal(ConfigService.prototype.listenIface.call({ listenPublicAllowed: false }, pub), '127.0.0.1');
+    assert.equal(ConfigService.prototype.listenIface.call({}, pub), '127.0.0.1');
+    assert.equal(ConfigService.prototype.listenIface.call({ listenPublicAllowed: true }, pub), '0.0.0.0');
+  } else {
+    assert.equal(listenIface(false, pub), '127.0.0.1');
+  }
 });

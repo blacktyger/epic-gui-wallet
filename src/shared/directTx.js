@@ -69,10 +69,11 @@ export function chipLocked(sel, which) {
   return s[which] && !(which === 'http' ? s.tor : s.http);
 }
 
-/* the listener's interface for epic-wallet.toml: public only while HTTP is offered */
+/* the listener's interface for epic-wallet.toml: public only while Direct is on with HTTP offered
+   (Classic, which starts the listener at every unlock, never gets it: configService.listenPublicAllowed) */
 export function listenInterface(settings) {
   const s = settings || {};
-  return s.direct_public === true && s.direct_http === true ? PUBLIC_INTERFACE : LOCAL_INTERFACE;
+  return s.direct_on === true && s.direct_public === true && s.direct_http === true ? PUBLIC_INTERFACE : LOCAL_INTERFACE;
 }
 
 /*
@@ -117,7 +118,7 @@ export function directSteps(now, plan) {
 /* store.state.direct from a wallet's settings and the switch */
 export function directState(settings, on) {
   const s = settings || {};
-  return { on: !!on, http: s.direct_http === true, tor: s.direct_tor === true, public: listenInterface(s) === PUBLIC_INTERFACE, wantPublic: s.direct_public === true };
+  return { on: !!on, http: s.direct_http === true, tor: s.direct_tor === true, public: !!on && listenInterface(s) === PUBLIC_INTERFACE, wantPublic: s.direct_public === true };
 }
 
 /* is HTTP offered as an address (the Status card, Receive)? Direct on with the HTTP chip */

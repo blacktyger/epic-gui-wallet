@@ -746,7 +746,8 @@ ipcMain.handle('node-directory', async (event, chain) => {
 //this computer's LAN and public address for Settings › Receiving › Receive from the internet
 //(shared/netAddresses.js): read-only; the public one from a fixed URL, cached
 const addressLookup = createAddressLookup({ fetch: (url, opts) => net.fetch(url, opts), interfaces: networkInterfaces });
-ipcMain.handle('direct-addresses', async () => {
+ipcMain.handle('direct-addresses', async (event) => {
+  if (!fromAppWindow(event)) return { lan: [], public: '' };
   try {
     return await addressLookup.get();
   } catch (e) {
