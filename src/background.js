@@ -539,6 +539,15 @@ app.on('activate', () => {
 app.on('ready', async (event) => {
   if (!primaryInstance) return;
   secureSession(session.defaultSession);
+  //DIAG fix/616-node: Chromium's net log of a test run (rig), one file per app start
+  if (String(process.env.EPIC_GUI_TEST || '') === '1') {
+    try {
+      const f = path.join(appLayout.logsDir, 'net-' + Date.now() + '.json');
+      await session.defaultSession.netLog.startLogging(f, { captureMode: 'default' });
+      log.info('DIAG netlog ' + f);
+      app.on('will-quit', () => { session.defaultSession.netLog.stopLogging().catch(() => {}); });
+    } catch (e) { log.info('DIAG netlog failed ' + e.message); }
+  }
   //a temp copy of an old profile that couldn't be removed at quit (Windows file locks: the reading
   //session holds its leveldb until the app exits); a scan waits for this, so a retry never meets a new copy
   leftoverImportCleanup = cleanLeftoverImport({ fs, path, root: appLayout.root, log: (m) => log.info(m) }).catch(() => false);
@@ -947,12 +956,18 @@ ipcMain.handle('node-fetch', (event, req) => {
 /* {status, text} | {error, timeout}. net.request, not net.fetch: net.fetch rejects a redirect it is
    told not to follow, net.request reports its status, so a node behind a redirect (http -> https)
    reads as one (nodeVersion.js 'redirects elsewhere'), not as a node that doesn't answer */
+let diagSeq = 0;
 function nodeHttp(r){
   return new Promise((resolve) => {
     let settled = false;
     let req = null;
+    const diagId = ++diagSeq;
+    const diagT0 = Date.now();
+    const diagWhat = (() => { try { const u = new URL(r.url); return u.host + u.pathname + ' ' + (r.body ? (String(r.body).match(/"method":"(\w+)"/) || [])[1] || '' : r.method); } catch (e) { return '?'; } })();
+    log.info('DIAG node-fetch #' + diagId + ' start ' + diagWhat + ' timeout ' + r.timeoutMs);
     const finish = (v) => {
       if (settled) return;
+      log.info('DIAG node-fetch #' + diagId + ' ' + (v.error ? 'error ' + v.error : 'status ' + v.status) + ' in ' + (Date.now() - diagT0) + ' ms');
       settled = true;
       clearTimeout(timer);
       resolve(v);
@@ -982,7 +997,9 @@ function nodeHttp(r){
         res.on('end', () => finish({ status: res.statusCode, text: Buffer.concat(chunks).toString('utf8') }));
         res.on('error', () => finish({ error: 'not reachable', timeout: false }));
       });
-      req.on('error', () => finish({ error: 'not reachable', timeout: false }));
+      req.on('error', (e) => { log.info('DIAG node-fetch #' + diagId + ' req error ' + (e && e.message)); finish({ error: 'not reachable', timeout: false }); });
+      req.on('abort', () => log.info('DIAG node-fetch #' + diagId + ' aborted at ' + (Date.now() - diagT0) + ' ms'));
+      req.on('close', () => log.info('DIAG node-fetch #' + diagId + ' closed at ' + (Date.now() - diagT0) + ' ms'));
       req.end(r.body);
     } catch (e) {
       finish({ error: 'not reachable', timeout: false });
