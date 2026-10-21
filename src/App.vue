@@ -362,15 +362,13 @@
         this.store.commit('listenerStarting', true);
         let r;
         try {
-          r = await this.$walletService.startTor();
+          //locked or switched meanwhile: the start stops only what it started (its wallet's tor, its
+          //own listener) and never touches the wallet open now (shared/torSession.js)
+          r = await this.$walletService.startTor({ isCurrent: () => session === this.loginSession });
         } finally {
-          this.store.commit('listenerStarting', false);
+          if(session === this.loginSession) this.store.commit('listenerStarting', false);
         }
-        if(session !== this.loginSession){
-          //locked or switched meanwhile: nothing of this start may keep running
-          await this.$walletService.stopTor();
-          return;
-        }
+        if(r.stale || session !== this.loginSession) return;
         if(r.listener){
           this.store.commit('httpListener', httpListenerState(r.listener, this.configService.walletListenerPort));
           if(r.listener.success) this.store.commit('walletListenerService', true);
@@ -625,7 +623,7 @@
           locked: 0,
         });
         //the wallet's tor first: it would report its listener gone (stopAll stops the listener)
-        await this.$walletService.stopTor({ keepListener: true }).catch(() => {});
+        await this.$walletService.stopTor({ keepListener: true, walletId: '' }).catch(() => {});
         this.store.commit('tor', null);
         //one process scan for listener, wallet and node (walletService.stopAll)
         const started = performance.now();

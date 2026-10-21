@@ -874,7 +874,7 @@ ipcMain.handle('open-folder', async (event, dir) => {
        and listener port from settings.json; the onion from the page (get_public_proof_address), which
        only selects which of the wallet's own key files is used (torManager checks the key is that
        onion's). → {ok, status} | {ok: false, error}
-     tor-stop, tor-retry → status; 'tor-status' events carry every change
+     tor-stop {walletId} (only that wallet's tor; '' any), tor-retry → status; 'tor-status' events carry every change
      tor-foreign {onion, method, params, isolation}: check_version / receive_tx to the onion's
        /v2/foreign over the wallet's tor (shared/torForeign.js) → {ok, result} | {ok: false, code, detail} */
 ipcMain.handle('tor-start', async (event, req) => {
@@ -908,9 +908,10 @@ ipcMain.handle('tor-start', async (event, req) => {
   });
   return { ok: true, status };
 });
-ipcMain.handle('tor-stop', async (event) => {
+ipcMain.handle('tor-stop', async (event, req) => {
   if (!fromAppWindow(event)) return null;
-  return torManager.stop();
+  //a late stop of a wallet that is no longer open leaves the open one's tor alone
+  return torManager.stop({ walletId: String((req && req.walletId) || '') });
 });
 ipcMain.handle('tor-retry', async (event) => {
   if (!fromAppWindow(event)) return null;

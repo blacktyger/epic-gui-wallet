@@ -424,8 +424,10 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
       launch();
       return status;
     },
-    /* stop tor (lock, switch, Tor off, quit, removal) */
-    async stop({ quiet = false } = {}) {
+    /* stop tor (lock, switch, Tor off, quit, removal). walletId: only if it is that wallet's (a
+       late stop of a wallet no longer open does nothing, not even an "off" event) */
+    async stop({ quiet = false, walletId = '' } = {}) {
+      if (walletId && (!target || target.walletId !== walletId)) return this.status();
       if (restartTimer) clearTimer(restartTimer);
       restartTimer = null;
       const r = run;

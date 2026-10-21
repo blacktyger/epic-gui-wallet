@@ -10,6 +10,7 @@ import { ownerApiPort as findOwnerApiPort } from '@/shared/testPorts';
 import { isAddrInUse } from '@/shared/httpListener';
 import { onionFromPubkeyHex } from '@/shared/onion';
 import { sendOverTor as torSend } from '@/shared/torSend';
+import { startTorFor } from '@/shared/torSession';
 const Buffer = require('buffer').Buffer;
 
 require('promise.prototype.finally').shim();
@@ -71,7 +72,7 @@ class WalletService {
       this.token = undefined;
       this.walletIsListen = false;
       this.walletIsEpicbox = false;
-      this.torListenerPid = 0;
+      this.torListener = null;
       //lock, logout, wallet switch: the main process forgets the session password, and an Epicbox
       //job of the last session stops
       this.epicboxSession++;
@@ -393,44 +394,48 @@ class WalletService {
 
     /* start the wallet's tor (unlock with Tor on, Turn on, Try again). D6: Tor needs the HTTP listener,
        so it is started first (and kept while Tor is on); the main process then starts tor for this
-       wallet (window.api.tor.start). -> {ok, status, onion, listener} | {ok: false, error, listener?}
+       wallet (window.api.tor.start). isCurrent(): still the session that asked (App.vue's
+       loginSession); a start that outlives it stops only what it started (shared/torSession.js).
+       -> {ok, status, onion, listener} | {ok: false, error, listener?} | {stale: true}
        error: listener | keys | the main process's refusal (locked, no wallet, invalid) */
-    async startTor(){
-      const listener = await this.startListen('http');
-      if(!listener || !listener.success){
-        console.log('[tor] not started: the http listener did not start');
-        return { ok: false, error: 'listener', listener };
-      }
+    async startTor({ isCurrent = () => true } = {}){
+      const walletId = this.configService.walletId;
+      const r = await startTorFor({
+        walletId,
+        isCurrent: () => isCurrent() && this.configService.walletId === walletId,
+        startListen: () => this.startListen('http'),
+        torAddress: () => this.torAddress(),
+        start: (w, onion) => window.api.tor.start(w, onion),
+        stop: (w) => window.api.tor.stop(w),
+        stopPid: (pid) => window.nodeChildProcess.stopPids([pid]),
+        log: (m) => console.log(m),
+      });
       //a listener started for Tor (none was running) is stopped again when Tor is turned off
-      if(listener.pid) this.torListenerPid = listener.pid;
-      const onion = await this.torAddress();
-      if(!onion){
-        console.log('[tor] not started: no proof address from the wallet');
-        return { ok: false, error: 'keys', listener };
-      }
-      const r = await window.api.tor.start(this.configService.walletId, onion);
-      console.log('[tor] start: ' + (r && r.ok ? (r.status && r.status.state) : 'refused (' + (r && r.error) + ')'));
-      return Object.assign({ listener, onion }, r || { ok: false, error: 'start' });
+      if(!r.stale && r.listenerPid) this.torListener = { walletId, pid: r.listenerPid };
+      return r;
     }
 
     /* stop the wallet's tor; listenerStopped: the HTTP listener Tor had started was stopped too
-       (it goes back to its own switch). keepListener: lock and switch, where stopAll stops it anyway */
-    async stopTor({ keepListener = false } = {}){
-      await window.api.tor.stop().catch(() => {});
-      const pid = this.torListenerPid;
-      this.torListenerPid = 0;
-      if(pid && !keepListener){
-        await window.nodeChildProcess.stopPids([pid]).catch(() => {});
+       (it goes back to its own switch). keepListener: lock and switch, where stopAll stops it anyway,
+       and Tor off with Start with wallet on. walletId: whose tor ('' at lock and switch: whatever runs) */
+    async stopTor({ keepListener = false, walletId = this.configService.walletId } = {}){
+      await window.api.tor.stop(walletId).catch(() => {});
+      const own = this.torListener;
+      if(!own || (walletId && own.walletId !== walletId)) return { listenerStopped: false };
+      this.torListener = null;
+      if(own.pid && !keepListener){
+        await window.nodeChildProcess.stopPids([own.pid]).catch(() => {});
         return { listenerStopped: true };
       }
       return { listenerStopped: false };
     }
 
-    /* Settings › Receiving › Tor: saved for this wallet at once (tor_enabled), then started or stopped */
-    async setTorEnabled(on){
+    /* Settings › Receiving › Tor: saved for this wallet at once (tor_enabled), then started or stopped.
+       opts: startTor's (isCurrent), stopTor's (keepListener) */
+    async setTorEnabled(on, opts = {}){
       this.configService.updateConfig({ tor_enabled: !!on });
       console.log('[tor] turned ' + (on ? 'on' : 'off'));
-      return on ? this.startTor() : this.stopTor();
+      return on ? this.startTor(opts) : this.stopTor(opts);
     }
 
     /*

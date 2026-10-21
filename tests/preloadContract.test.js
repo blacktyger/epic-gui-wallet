@@ -113,6 +113,7 @@ test('6.1.6 Tor: window.api.tor has exactly start, stop, retry, foreign, onStatu
   const block = preload.slice(preload.indexOf('    tor: {'), preload.indexOf('    },', preload.indexOf('    tor: {')));
   assert.deepEqual(names(block, /^ {6}([a-zA-Z]+): /gm), ['foreign', 'onStatus', 'retry', 'start', 'stop']);
   assert.match(block, /invoke\('tor-start', \{ walletId: String\(walletId \|\| ''\), onion: String\(onion \|\| ''\) \}\)/);
+  assert.match(block, /invoke\('tor-stop', \{ walletId: String\(walletId \|\| ''\) \}\)/);
   //the main process takes the dirs from settings.json and allows only the unlocked wallet
   const bg = src('background.js');
   const h = bg.slice(bg.indexOf("ipcMain.handle('tor-start'"), bg.indexOf("ipcMain.handle('tor-stop'"));

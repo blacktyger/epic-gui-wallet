@@ -827,7 +827,8 @@ contextBridge.exposeInMainWorld('api', {
     //→ {ok, result} | {ok: false, code, detail}; onStatus(func): one listener for every status change
     tor: {
       start: (walletId, onion) => ipcRenderer.invoke('tor-start', { walletId: String(walletId || ''), onion: String(onion || '') }),
-      stop: () => ipcRenderer.invoke('tor-stop'),
+      //walletId: only that wallet's tor ('' : whatever runs, at lock and switch)
+      stop: (walletId) => ipcRenderer.invoke('tor-stop', { walletId: String(walletId || '') }),
       retry: () => ipcRenderer.invoke('tor-retry'),
       foreign: (onion, method, params, isolation) => ipcRenderer.invoke('tor-foreign', { onion: String(onion || ''), method: String(method || ''),
         params: params === undefined ? [] : params, isolation: isolation === undefined ? undefined : String(isolation) }),

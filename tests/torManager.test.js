@@ -252,6 +252,24 @@ test('stop during the one-shot key run aborts it and waits for it', async () => 
   assert.equal(t.m.status().state, 'off');
 });
 
+test('a stop for another wallet leaves the running tor alone and emits nothing', async () => {
+  const t = harness();
+  await t.m.start(START(walletDir(), { walletId: 'B' }));
+  await t.until(() => t.sent.some(c => c.startsWith('ADD_ONION')));
+  const before = t.statuses.length;
+  await t.m.stop({ walletId: 'A' });
+  assert.ok(!t.sent.includes('SIGNAL SHUTDOWN'));
+  assert.equal(t.m.status().walletId, 'B');
+  assert.equal(t.statuses.length, before);
+  await t.m.stop({ walletId: 'B' });
+  assert.ok(t.sent.includes('SIGNAL SHUTDOWN'));
+  assert.equal(t.m.status().state, 'off');
+  //nothing running: a per-wallet stop says nothing either (no "off" for the wallet open now)
+  const n = t.statuses.length;
+  await t.m.stop({ walletId: 'A' });
+  assert.equal(t.statuses.length, n);
+});
+
 test('missing: no tor binary in this build', async () => {
   const t = harness({ missing: true });
   await t.m.start(START(walletDir()));
