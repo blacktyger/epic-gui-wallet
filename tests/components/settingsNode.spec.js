@@ -146,6 +146,39 @@ describe('Settings › Node address', () => {
     expect($toast.success).toHaveBeenCalledWith(t('msg.settings.settings_saved'));
   });
 
+  /* rig 6.1.6: Lock while a picked node was still being checked; the check answered after Settings
+     was gone and the save went on ("Cannot read properties of null (reading 'select')") */
+  test.each([
+    ['answers', { ok: true, version: '4.1.0' }],
+    ['does not answer in time', { ok: false, reason: 'no reply within 5 s', timeout: true }],
+    ['is not an Epic node', { ok: false, reason: 'HTTP 404' }],
+  ])('a check that %s after Settings was left saves nothing and throws nothing', async (_, answer) => {
+    const pending = [];
+    const { wrapper, configService, emitter } = setup({ check: () => new Promise((resolve) => pending.push(resolve)) });
+    const s = { userService: wrapper.vm.$userService };
+    await flushPromises();
+    const errors = [];
+    const onError = (e) => errors.push(e);
+    process.on('unhandledRejection', onError);
+    const warn = vi.spyOn(console, 'warn');
+    try {
+      await typeAndEnter(wrapper, 'https://node.example.com');
+      expect(pending).toHaveLength(1);
+      wrapper.unmount();
+      //the timeout asks once more: that one is answered too
+      while (pending.length) { pending.shift()(answer); await flushPromises(); }
+      await new Promise((r) => setTimeout(r, 0));
+      expect(errors).toEqual([]);
+      expect(warn.mock.calls.map((c) => String(c[0])).filter((m) => /Unhandled error/.test(m))).toEqual([]);
+      expect(configService.updateConfig).not.toHaveBeenCalled();
+      expect(s.userService.ensureUser).not.toHaveBeenCalled();
+      expect(emitter.emit).not.toHaveBeenCalledWith('app.nodeStart');
+      expect(configService.config.check_node_api_http_addr).toBe(SAVED_NODE);
+    } finally {
+      process.off('unhandledRejection', onError);
+    }
+  });
+
   test('"Sync in background" only for the built-in node, and it saves at once', async () => {
     const remote = setup();
     await flushPromises();
