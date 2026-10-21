@@ -63,3 +63,5 @@
   .e-combo-list .e-opt > .e-h { display: none; }
   .e-combo-list .e-opt.e-has-lat { grid-template-columns: 16px minmax(0, 1fr) auto 36px; }
 }
+/* a narrow picker: the operator note gives way too, so the host names stay readable */
+@container (max-width: 520px) { .e-combo-list .e-opt-op { display: none; } }

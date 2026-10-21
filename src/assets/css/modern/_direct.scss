@@ -92,3 +92,17 @@
   .e-set-row.e-direct { gap: var(--sp-4); }
   .e-chip { height: 32px; padding: 0 8px 0 7px; gap: 6px; }
 }
+
+/* a narrow block (e.g. a 1044 px window at 150 %): the chips leave the control column and sit under the
+   description, so the text keeps the full width. The main and control columns become grid items of the
+   row (display: contents): title | switch, then everything else across the row. */
+.e-direct-list { container-type: inline-size; }
+@container (max-width: 560px) {
+  .e-set-row.e-direct { grid-template-columns: minmax(0, 1fr) auto; row-gap: 0; column-gap: var(--sp-4); align-items: start; }
+  .e-direct > .e-direct-main, .e-set-row .e-ctl.e-direct-ctl { display: contents; }
+  .e-direct-main > * { grid-column: 1 / -1; }
+  .e-direct-main > #stg-direct-l { grid-column: 1; grid-row: 1; align-self: center; }
+  .e-direct-ctl > .e-switch { grid-column: 2; grid-row: 1; justify-self: end; }
+  .e-direct-main > .e-direct-desc { grid-row: 2; }
+  .e-direct-ctl > .e-direct-chips { grid-column: 1 / -1; grid-row: 3; justify-content: flex-start; flex-wrap: wrap; margin-top: var(--sp-3); }
+}

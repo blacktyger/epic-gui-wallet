@@ -38,7 +38,7 @@
         </div>
       </div>
       <!-- Direct transactions (6.1.6): HTTP and Tor in one block, off by default (DirectTxRow, shared/directTx.js) -->
-      <div class="e-set-list"><DirectTxRow /></div>
+      <div class="e-set-list e-direct-list"><DirectTxRow /></div>
     </section>
 
   </SettingsFrame>
