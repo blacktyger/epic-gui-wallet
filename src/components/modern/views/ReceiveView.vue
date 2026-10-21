@@ -74,7 +74,7 @@
                 <!-- one short muted line (#60): didn't start (why; Epicbox goes on, QA W01), on, or off.
                      The wallet's toml listens on 127.0.0.1 only: no port check, no "forward the port" (it would not help) -->
                 <p v-if="httpFailed" class="e-stg-meta" role="status"><span class="e-st e-down" aria-hidden="true"></span><span><b>{{ $t('msg.modern.send.rcv_http_failed') }}</b> {{ httpFailed.reason == 'port_in_use' ? $t('msg.modern.send.rcv_http_failed_port', { port: httpFailed.port }) : $t(httpFailed.reason == 'node' ? 'msg.modern.send.rcv_http_failed_node' : 'msg.modern.send.rcv_http_failed_error') }}</span></p>
-                <p v-else-if="httpOn" class="e-stg-meta" role="status" :title="$t('msg.modern.send.rcv_http_local_only', { port })"><span class="e-st e-ok" aria-hidden="true"></span><span>{{ $t('msg.modern.settings.http_on', { port }) }}</span></p>
+                <p v-else-if="httpOn" class="e-stg-meta" role="status" :title="$t('msg.modern.send.rcv_http_local_only', { port })"><span class="e-st e-ok" aria-hidden="true"></span><span>{{ $t('msg.modern.settings.http_on', { port }) }}</span><span class="e-sr-only">{{ $t('msg.modern.send.rcv_http_local_only', { port }) }}</span></p>
                 <p v-else class="e-stg-meta" role="status"><span class="e-st e-off" aria-hidden="true"></span><span>{{ $t('msg.modern.settings.http_off') }}</span></p>
               </div>
               <div class="e-ctl">

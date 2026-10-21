@@ -141,6 +141,10 @@
         if (ok !== false) {
           this.savedInternal = internal;
           this.savedAddress = String((this.configService.config || {}).check_node_api_http_addr || '');
+        } else {
+          //picking a remote node turned it off in the form (Settings.vue changeNodeBackgroundSetting): back to what is saved
+          this.nodeInternal = this.savedInternal;
+          this.node_background = !!(this.configService.config || {}).node_background;
         }
         this.$nextTick(() => this.$refs.nodeserverField.done(ok !== false));
       },

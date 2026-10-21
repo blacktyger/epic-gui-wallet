@@ -75,7 +75,8 @@
         <div class="e-field">
           <div class="e-label-row">
             <label class="e-label" for="e-send-amt">{{ $t('msg.modern.send.amount') }}</label>
-            <button type="button" class="e-avail" @click="$refs.amountField && $refs.amountField.sendAll()">{{ $t('msg.modern.send.available') }} <MoneyText :value="store.state.summary.spendable" :updating="store.state.walletSync != 'synced'" /> EPIC</button>
+            <button type="button" class="e-avail" :title="$t('msg.transaction.sendall')" :aria-describedby="'e-avail-what'" @click="$refs.amountField && $refs.amountField.sendAll()">{{ $t('msg.modern.send.available') }} <MoneyText :value="store.state.summary.spendable" :updating="store.state.walletSync != 'synced'" /> EPIC</button>
+            <span id="e-avail-what" class="e-sr-only">{{ $t('msg.transaction.sendall') }}</span>
           </div>
           <AmountField ref="amountField" input-id="e-send-amt" />
           <p v-if="store.state.summary.unconfirmed > 0" class="e-help">{{ $t('msg.modern.send.unconfirmed_note', { n: unconfirmedText }) }}</p>
@@ -217,6 +218,8 @@
   export default reskin(HttpSend, {
     components: { EIcon, EDialog, MoneyText, AmountField, AddressField, ContactAvatar, ContactPicker, EpicboxDownNotice },
     mixins: [epicboxSwitch],
+    //a send that ends after the page was left doesn't take the user to Overview (#54)
+    beforeUnmount() { this.left = true; },
     data() {
       return {
         //the "Privacy" disclosure
@@ -370,7 +373,7 @@
           this.reviewOpen = false;
         }
         //sent (Epicbox or HTTP, sendForm.js clearSendForm): to Overview, where it shows in Recent activity (#54)
-        if (this.sent) this.$router.push({ name: 'dashboard' });
+        if (this.sent && !this.left) this.$router.push({ name: 'dashboard' });
       },
     },
   });

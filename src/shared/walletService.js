@@ -663,6 +663,11 @@ class WalletService {
         if(session !== this.epicboxSession){
           return {success: false, cancelled: true};
         }
+        //the line comes before its exit: it must be gone, or the new start would reuse it
+        if(res.pid && await window.nodeChildProcess.liveEpicbox(this.configService.walletConfigDir)){
+          await this.stopEpicboxPids([{pid: res.pid}]);
+        }
+        this.epicboxState({state: 'starting', server: serverUrl(cfg), address: ''});
         res = await this.spawnEpicbox({server: serverUrl(cfg), timeoutMs: 45000});
       }
       const pid = res && res.pid ? Number(res.pid) : 0;

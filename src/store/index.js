@@ -131,7 +131,7 @@ export const store = createStore({
       //failed: the listener stopped while it was still trying to connect (epic-wallet gives up after its retries)
       if(payload.state !== undefined && payload.state !== prev.state){
         next.since = Date.now();
-        if(payload.state == 'off') next.failed = prev.state == 'connecting' || prev.state == 'starting';
+        if(payload.state == 'off') next.failed = prev.state == 'connecting';
         else if(payload.state == 'listening' || payload.state == 'switching' || payload.state == 'starting') next.failed = false;
       }
       state.epicbox = next;

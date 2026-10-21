@@ -16,13 +16,15 @@
         autocomplete="off"
         translate="no"
         data-test="node-combo"
+        role="combobox"
         aria-autocomplete="list"
         :aria-expanded="expanded ? 'true' : 'false'"
         :aria-controls="uid + '-list'"
         :aria-invalid="errors.nodeaddress ? 'true' : null"
-        :aria-describedby="describedby"
+        :aria-describedby="[errors.nodeaddress ? uid + '-e' : '', describedby].filter(Boolean).join(' ') || null"
+        :aria-busy="busy ? 'true' : null"
         :placeholder="$t('msg.modern.settings.node_find')"
-        :disabled="busy"
+        :readonly="busy"
         :value="shownText"
         @focus="openList"
         @click="openList"
@@ -235,6 +237,7 @@
       },
       /* back to showing the saved node; the field goes back to it too */
       collapse() {
+        if (this.errors) this.errors.nodeaddress = null;
         this.expanded = false;
         this.editing = false;
         this.query = '';

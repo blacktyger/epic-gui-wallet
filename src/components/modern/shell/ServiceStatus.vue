@@ -3,7 +3,7 @@
        with one word; the details in a hover card; a click opens that service's Settings page. Nothing
        here is cut off at the 224 px sidebar: server names are only in the card. -->
   <div class="e-sbA">
-    <div v-for="row in rows" :key="row.key" class="e-sbA-wrap">
+    <div v-for="row in rows" :key="row.key" class="e-sbA-wrap" :class="{ 'e-is-dismissed': dismissed == row.key }" @keydown.esc="dismissed = row.key" @mouseleave="dismissed = ''" @focusout="dismissed = ''">
       <button type="button" class="e-sbA-row" :data-test="'svc-' + row.key" :aria-label="row.open + ': ' + row.word" :aria-describedby="uid + '-' + row.key" @click="go(row.to)">
         <span class="e-st" :class="'e-' + row.glyph" aria-hidden="true"></span>
         <b>{{ row.name }}</b>
@@ -36,7 +36,8 @@
       return { store: useStore() };
     },
     data() {
-      return { uid: 'e-svc-' + (++seq) };
+      //Esc hides that row's card until the pointer or the focus leaves (WCAG 1.4.13)
+      return { uid: 'e-svc-' + (++seq), dismissed: '' };
     },
     computed: {
       node() {

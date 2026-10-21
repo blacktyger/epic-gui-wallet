@@ -40,7 +40,8 @@ export default {
     this.ebLoad();
     this.ebTimer = setInterval(() => {
       this.ebNow = Date.now();
-      if (this.ebHealth.state != 'listening' && this.ebNow - (this.ebLoaded || 0) >= LIST_MS) this.ebLoad();
+      const s = this.ebHealth.state;
+      if ((s == 'connecting' || s == 'down') && this.ebNow - (this.ebLoaded || 0) >= LIST_MS) this.ebLoad();
     }, TICK_MS);
   },
   beforeUnmount() {
@@ -77,8 +78,16 @@ export default {
           this.$toast.error(this.$t('msg.settings.error_save'));
           return false;
         }
-        //App.vue says how the switch went (switched / connecting / failed)
-        if (this.$walletService.token) this.emitter.emit('app.applyEpicbox', { saved });
+        //App.vue says how the switch went (switched / connecting / failed); the button stays busy until
+        //our listener's state moves (or 30 s), so a second click can't switch again to yet another server
+        if (this.$walletService.token) {
+          const moved = new Promise((resolve) => {
+            const stop = this.$watch(() => this.store.state.epicbox.state, () => { stop(); resolve(); });
+            setTimeout(() => { stop(); resolve(); }, 30000);
+          });
+          this.emitter.emit('app.applyEpicbox', { saved });
+          await moved;
+        }
         return true;
       } finally {
         this.ebSwitching = false;

@@ -139,9 +139,9 @@ describe('Receive (Modern)', () => {
     expect(text).toContain(t('msg.modern.send.rcv_on'));
     expect(text.replace(/\s+/g, '')).toContain(ADDRESS);
     expect(text).toContain(HTTP_ADDRESS);
-    //one short muted line; the long 127.0.0.1 explanation is only its title
+    //one short muted line; the long 127.0.0.1 explanation is its title and, for screen readers, a hidden span
     expect(text).toContain(t('msg.modern.settings.http_on', { port: 3415 }));
-    expect(text).not.toContain(t('msg.modern.send.rcv_http_local_only', { port: 3415 }));
+    expect(wrapper.find('.e-rcv-row .e-sr-only').text()).toBe(t('msg.modern.send.rcv_http_local_only', { port: 3415 }));
     expect(wrapper.find('p[title]').attributes('title')).toBe(t('msg.modern.send.rcv_http_local_only', { port: 3415 }));
     expect(text).toContain(t('msg.modern.send.rcv_listening_via', { domain: DOMAIN }));
   });
