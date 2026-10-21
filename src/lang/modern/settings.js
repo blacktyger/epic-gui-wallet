@@ -51,7 +51,7 @@ export default {
   http_off: 'Off · most payments come via Epicbox',
   http_auto_l: 'Start with the wallet',
   appearance: 'Appearance',
-  interface_row_hint: 'Modern, or Classic (the look of 6.0). Applies after a restart.',
+  interface_row_hint: 'The BT Labs Theme, or Classic (the look of 6.0). Applies after a restart.',
   tour_show: 'Show the tour',
   //About: credits (BT Labs Theme)
   about_credits: 'Credits',
