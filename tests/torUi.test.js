@@ -36,7 +36,7 @@ test('parseOnion: a typo fails the checksum, other text is not an onion name', (
   assert.equal(parseOnion(TYPO).reason, 'checksum');
   assert.equal(parseOnion('abc.onion').reason, 'format');
   assert.equal(parseOnion('').valid, false);
-  assert.equal(parseOnion(GOOD + ':8080').valid, false);
+  assert.equal(parseOnion(GOOD + ':8080').valid, true, 'a port (epic-wallet prints :3415) is fine: the GUI always calls port 80');
 });
 
 const tor = (o) => ({ enabled: true, state: 'starting', progress: 0, onion: '', error: '', detail: '', ...o });

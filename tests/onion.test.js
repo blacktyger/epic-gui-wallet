@@ -43,9 +43,10 @@ test('expandSeed: SHA-512 of the seed, clamped', () => {
   assert.throws(() => expandSeed(new Uint8Array(31), sha512));
 });
 
-test('parseOnion accepts the bare name, .onion, http://, :80, a trailing slash and upper case', () => {
+test('parseOnion accepts the bare name, .onion, http://, any :port, a path and upper case', () => {
   for (const t of [ONION, ONION + '.onion', 'http://' + ONION + '.onion', 'http://' + ONION + '.onion:80/', ' ' + ONION.toUpperCase() + '.ONION ',
-    'https://' + ONION + '.onion/']) {
+    'https://' + ONION + '.onion/', 'http://' + ONION + '.onion:3415', ONION + '.onion:8080', ONION + '.onion/v2/foreign',
+    'http://' + ONION + '.onion:3415/v2/foreign', ONION + ':3415']) {
     assert.deepEqual(parseOnion(t), { host: ONION + '.onion', valid: true, reason: '' }, t);
   }
 });
@@ -59,8 +60,9 @@ test('parseOnion: a typo is a checksum error, other shapes are not onions', () =
   assert.equal(parseOnion('').reason, 'empty');
   assert.equal(parseOnion(null).reason, 'empty');
   assert.equal(parseOnion(ONION.slice(1)).reason, 'format');
-  assert.equal(parseOnion(ONION + '.onion:8080').reason, 'format');
-  assert.equal(parseOnion(ONION + '.onion/v2/foreign').reason, 'format');
+  assert.equal(parseOnion(ONION + '.onion:abc').reason, 'format');
+  assert.equal(parseOnion(ONION + '.onion:123456').reason, 'format');
+  assert.equal(parseOnion('http://' + typo + '.onion:3415/v2/foreign').reason, 'checksum', 'the checksum still counts with a port and path');
   assert.equal(parseOnion('esXXXXX@epicbox.stackwallet.com').reason, 'format');
   assert.equal(parseOnion('expyuzz4wqqyqhjn.onion').reason, 'format', 'v2 onions are gone');
   assert.equal(parseOnion(ONION.slice(0, 55) + '1').reason, 'format');

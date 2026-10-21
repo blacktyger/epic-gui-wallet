@@ -4,7 +4,9 @@
  *   onionFromPubkeyHex(hex)  the 56-character name of an ed25519 public key:
  *                            base32(pubkey ‖ sha3-256(".onion checksum" ‖ pubkey ‖ 0x03)[0..2] ‖ 0x03)
  *   parseOnion(text)         {host: '<56>.onion' | '', valid, reason}: the bare name, with or without
- *                            .onion, http://, :80 or a trailing /; checks version and checksum
+ *                            .onion, http(s)://, a :port and a path (epic-wallet prints
+ *                            http://<name>.onion:3415; the GUI always calls port 80 /v2/foreign);
+ *                            checks version and checksum
  *   expandSeed(seed, sha512) the 64-byte key tor wants (SHA-512 of the seed, clamped): epic-wallet
  *                            4.1.0 writes seed ‖ pubkey instead (§1, §8.1)
  *   readOnionKeyFile(buf)    the 96-byte hs_ed25519_secret_key: {seed, pub} | null
@@ -89,7 +91,7 @@ export function onionFromPubkeyHex(hex) {
 export function parseOnion(text) {
   let s = String(text == null ? '' : text).trim().toLowerCase();
   if (!s) return { host: '', valid: false, reason: 'empty' };
-  s = s.replace(/^https?:\/\//, '').replace(/\/+$/, '').replace(/:80$/, '').replace(/\.onion$/, '');
+  s = s.replace(/^https?:\/\//, '').replace(/\/.*$/s, '').replace(/:\d{1,5}$/, '').replace(/\.onion$/, '');
   if (s.length !== ONION_LEN || !/^[a-z2-7]+$/.test(s)) return { host: '', valid: false, reason: 'format' };
   const host = s + '.onion';
   const bytes = base32Decode(s);
