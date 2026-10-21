@@ -309,7 +309,7 @@ export default {
     /* Tor addresses are contacts' addresses too (Modern; Classic is frozen without Tor) */
     torAware(){ return false; },
     //the options the contact helpers take for it
-    torOpts(){ return { tor: this.torAware }; },
+    torOpts(){ return { tor: this.torAware, keepOnion: this.isEditAddress && this.selectedAddress ? this.selectedAddress.onion : '' }; },
     avatarStore(){ return this.$contactAvatars || contactAvatars(); },
     activity(){ return contactActivity(this.store.state.txs); },
     /* what the list shows: the search, then the chosen order */

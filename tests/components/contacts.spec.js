@@ -217,7 +217,8 @@ describe.each(BOOKS)('Contacts ($name)', (ui) => {
     const web = w.find('input[id$=f-ext]');
     await web.setValue('http://' + 'a'.repeat(56) + '.onion');
     await web.trigger('blur');
-    expect(w.text()).toContain(t('msg.contacts.err_onion'));
+    //Modern keeps Tor addresses in their own field (tor.spec.js)
+    expect(w.text()).toContain(t('msg.modern.settings.tor.err_field'));
     expect(name.exists()).toBe(true);
   });
 

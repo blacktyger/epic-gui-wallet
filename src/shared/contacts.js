@@ -98,7 +98,7 @@ const HTTP_URL = /^(ftp|http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\
 /* what is wrong with each field of a contact form, as the form shows it while you type:
    { name, address, epicbox, http, onion } with true where a problem is. A Tor address in either
    field is refused (no Tor in this wallet), with its own message (onion) */
-export function contactProblems(c = {}, { tor = false } = {}) {
+export function contactProblems(c = {}, { tor = false, keepOnion = '' } = {}) {
   const f = contactFields(c);
   const v = (k) => f[k].trim();
   const out = {};
@@ -114,8 +114,9 @@ export function contactProblems(c = {}, { tor = false } = {}) {
   if (isOnionAddress(box) || isOnionAddress(web)) out.onion = true;
   if (tor) {
     //the Tor address field: empty is fine; one given must be good, and counts as an address to send to
+    //(a value an older version stored is left as it is: only a changed one is judged)
     const onion = v('onion');
-    if (onion) {
+    if (onion && onion !== String(keepOnion || '').trim()) {
       const p = parseOnion(onion);
       if (!p.valid) out[isOnionAddress(onion) ? 'torTypo' : 'torFormat'] = true;
       else delete out.address;

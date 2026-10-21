@@ -1,3 +1,4 @@
+/* global BigInt */
 /*
  * TOR-CORE: replaced by feat/tor-616-core. A stub of the part of onion.js the UI needs (spec §4):
  * parseOnion(text) → { host, valid, reason }. Only the lookup is stubbed; the checksum is real
