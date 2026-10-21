@@ -1,6 +1,12 @@
 # Plan: the Import wizard
 
 Status: proposal (2026-10-21), branch `plan/import-wizard` off `build/6.1.6-rc` (5a83e2f). Docs only.
+Decisions taken by Patryk on 21 Oct (after the prototype review): in-place 6.1 wallets are handled manually, so the
+"Move into the app's folder" offer, the warning row and the move mode are out; Delete removes only the wallet's own
+files, node files only with the blockchain tick, unknown files never; the wizard runs in its own window and Delete
+uses a native OS confirmation; one shared address book for all wallets; no passwords in the wizard (a separate
+*Change password* setting exists in the app). The prototype and the copy below reflect them.
+Public prototype: https://examples.btlabs.uk/epic/gui-wallet/import-wizard/
 Clickable prototype: `docs/plans/import-wizard-proto/index.html` (open it in a browser; its Demo panel sets the scenarios). Static mockups: `docs/plans/import-wizard-mockup/index.html` (static HTML, dark/light and 1280/1044 toggles; `?s=<id>&theme=light&w=1044`). The 88 PNGs are in the published link only, not in git.
 Builds on `docs/plans/fresh-start.md` (paths, settings.json, the importer) and `plan/accounts:docs/plans/accounts.md`.
 
@@ -110,14 +116,18 @@ src/importer/
 
 ## The wizard
 
-Mockup ids in brackets. The wording is the mockups' wording: short, plain, one main action per screen.
-The chrome is a 6-step list on the left (at 1044, a "Step 2 of 6" line with a thin bar), Back and
-Continue at the bottom, and Cancel at the top.
+Mockup ids in brackets. The wording is the prototype's wording: short, factual, no "we" or "you", labels of
+1–3 words, one short sentence per description, verbs on buttons, one main action per screen.
+The chrome is a 6-step list on the left (Find, Choose, Check, Copy, Settings, Done; at 1044, a "Step 2
+of 6" line with a thin bar), Back and Continue at the bottom, and Cancel at the top. Cancel asks "Stop
+the import? Copies made so far are removed. Old folders are unchanged." [Go back] [Stop import].
 **Cancel** at any step leaves no trace. The staging copies are removed. Nothing is registered unless
 step 4 finished and `adopt` ran (wallets adopted before Cancel stay, and are listed on close). Nothing
 in any old folder has changed.
 
 ### 1. Find [w1, w1b, w1c, w1d]
+- Heading while scanning: "Finding wallets. Searching the folders of older Epic Wallet versions and the epic
+  program. Nothing is changed." When done: "N wallets found. Old folders are only read." (no extra notice).
 - Scans automatically on open (`scan.js`, the same rules as `legacyScan.js` today):
   - `epic_3-0-0_config.json` `account_dirs`, in both layouts;
   - `~/.epic/<net>`, `~/.epic/*/<net>` and `~/.epic/<net>/*`, on all three networks;
@@ -129,24 +139,25 @@ in any old folder has changed.
 - *Choose a folder…* runs `walletFolder.js` (picked folder → wallets). Only the resolved wallet folders
   become keys (feedback #32 rule kept).
 - Failures:
-  - nothing found → "No wallets found automatically." [Choose a folder…], with a link to Restore;
-  - a folder with no wallet → "There's no wallet in this folder. A wallet folder has a wallet_data
-    folder with a wallet.seed file in it.";
-  - chain data only → "This is blockchain data, not a wallet.";
+  - nothing found → "No wallets found. Choose the wallet folder, or restore from the recovery phrase."
+    [Choose a folder…] [Restore from recovery phrase];
+  - a folder with no wallet → "No wallet in this folder. A wallet folder contains wallet_data/wallet.seed.";
+  - chain data only → "Blockchain data, not a wallet.";
   - the scan throws → the same as nothing found, plus a log line.
 
 ### 2. Choose [w2]
+- "Choose wallets. Ticked wallets are copied into the app. Each keeps its password."
 - One row per wallet, ticked by default:
   - label (the old display name, else the account name);
   - network tag (not for mainnet);
   - short folder (full path in a tooltip);
   - last used, contacts count, size.
 - Notes on a row:
-  - `legacyDb` (epic-wallet 3.x database): "Made by Epic Wallet 5.x or older: the wallet scans the
-    blockchain once to show its history."
+  - `legacyDb` (epic-wallet 3.x database): "Epic Wallet 5.x or older. One blockchain scan restores the
+    history."
   - **Same wallet**: the SHA-256 of `wallet.seed` equals one already in the app, or another row's. The
-    row is unticked with "Already in this app as Savings", or "Same wallet as <row>". The user can tick
-    it anyway (decision 8). Note that equal seed *files* mean the same wallet *and* the same password.
+    row is unticked with "Already in the app as Savings. Tick for a second copy.", or "Same wallet as
+    <row>. Tick for a second copy." The user can tick it anyway (decision 8). Note that equal seed *files* mean the same wallet *and* the same password.
     A seed re-encrypted with another password has different bytes, which is caught after the test
     open (Edge cases).
 - Continue needs at least one tick.
@@ -164,8 +175,8 @@ in any old folder has changed.
   LMDB locks.
 - Results:
   - `free` → "Not in use".
-  - `locked` → "In use by another program. Close the older Epic Wallet or the epic program (check the
-    taskbar or tray), then check again." [Check again]. The user can also *Skip this wallet*.
+  - `locked` → "In use by another program. Close the older Epic Wallet or the epic program, then check
+    again." [Check again] [Skip]. Footer: "Close the other program or skip the wallet".
   - `unknown` (the probe couldn't run: no perl, a PowerShell time-out) → allowed, with a quiet note.
     Step 4's before/after hashes catch a wallet that changes during the copy, so the copy is safe
     without the probe.
@@ -174,8 +185,8 @@ in any old folder has changed.
 ### 4. Copy and verify [w4, w4e1, w4e2]
 Per wallet, in the main process (`copy.js`):
 1. **Space**: the sum of the manifest's sizes plus 64 MB, against `fs.statfs(<root>)` `bavail × bsize`.
-   If it doesn't fit, the screen says "Not enough free space. Needs 2.1 GB on C:, 0.8 GB free." and
-   nothing is copied.
+   If it doesn't fit, the screen says "Not enough disk space. Needs 2.1 GB, 0.8 GB free. Nothing was
+   copied." [Try again] and nothing is copied.
 2. **Manifest** of the source, read only:
    - Copied: every regular file under `wallet_data/`, which includes `wallet.seed`,
      `db/sqlite/epic.db`, `epic.db-wal`, `epic.db-shm`, `db/lmdb/data.mdb`, `lock.mdb`, `saved_txs/*`
@@ -194,9 +205,11 @@ Per wallet, in the main process (`copy.js`):
 5. **Source unchanged**: re-stat and re-hash the source. Size, mtime and SHA-256 must all equal pass 2.
    Then run the lock check again.
 6. Any mismatch, read error or lock → **roll back**. The staging dir is removed (an exact path under
-   `<root>/tmp/import-copy`, guarded like `walletRemoval.removeFiles`). The screen says: "Savings
-   wasn't copied: a file changed while it was being copied. The older app may still be open. Nothing
-   was changed. Your old folder is as it was." [Try again] [Skip this wallet].
+   `<root>/tmp/import-copy`, guarded like `walletRemoval.removeFiles`). The row says "Not copied" with:
+   "A file changed during the copy. The older app may still be open. The copy was discarded; the old
+   folder is unchanged." [Try again] [Skip]. Step heading: "Copying. Each copy is compared with the
+   original file by file. Old folders are only read." Per-wallet lines: "Old folder read · N files,
+   38 MB", "Copied to a temporary folder", "Copy checked file by file", "Old folder unchanged".
 7. Success → "Copied and checked". The manifest (paths, sizes, hashes) is kept in memory for `place`.
 
 After all copies, Continue → **adopt** (Architecture). `place` renames the staging `wallet_data` to
@@ -245,14 +258,15 @@ own folder, so a downgrade works.
       or the wallet restored from its phrase.
 
 ### 5. Settings [w5]
-"Bring over from your older app", each ticked by default. The values come from the old `config.json` and
-the old profile's User row, cleaned as `shared/importer.js` does today:
-- contacts (count; merged and deduped as today);
-- node (`cleanNodeAddress`; a testnet gets the local node);
-- Epicbox server (`epicbox.epic.tech` → `epicbox.epiccash.com`);
-- language (the first wallet with one sets the app's, unless the user chose one);
-- wallet labels (the names the user gave the wallets).
-Unticked items get `WALLET_DEFAULTS`.
+"Settings. Settings from the older app. Untick to keep the app's defaults." Each row ticked by default:
+label, one-line description, value on the right. The values come from the old `config.json` and the old
+profile's User row, cleaned as `shared/importer.js` does today:
+- Contacts, "Added to the shared address book. Duplicates skipped." (one address book for all wallets);
+- Node, "Node of the older app" (`cleanNodeAddress`; a testnet gets the local node);
+- Epicbox server, "Updated to the current server" (`epicbox.epic.tech` → `epicbox.epiccash.com`);
+- Language, "Language of the older app" (the first wallet with one, unless the user chose one);
+- Wallet labels, "Names from the older app".
+Unticked items get `WALLET_DEFAULTS`. The button is Continue.
 
 **Blockchain data** (a separate panel, unticked by default, decision 4) is shown when a usable chain was
 found (`scanChains` + `chainOffer.js`'s USABLE rules, `lmdb` + `txhashset` + header hashes) and
@@ -262,28 +276,33 @@ found (`scanChains` + `chainOffer.js`'s USABLE rules, `lmdb` + `txhashset` + hea
 - it shows progress;
 - no hashes: chain data is node data the node validates and can download again;
 - a failure removes the partial copy and says the node will download instead.
-Note: "Only used if you turn on the built-in node." `node.<net>.chainDir` is never set to an old folder
-again.
+Panel: "Blockchain data 8.1 GB. Found in ~/.epic/main." tick "Copy the blockchain data", fine print
+"Copied, not moved. Used only by the built-in node. Needs 8.4 GB free." `node.<net>.chainDir` is never set
+to an old folder again.
 
 ### 6. Done [w6, w6d, w6v]
-"Your wallets are in the app now."
-- Each wallet: "Copied and checked — unlock it once to finish".
-- One short line, no choice here: "You can delete the old folder after you've unlocked the wallet once."
-  There is no Delete or Keep button on a fresh import and no "separate copy" warning. The Delete offer
-  comes after the first successful unlock: the main app shows a one-time "Finish moving Savings" prompt,
-  which reopens the wizard at Done for that wallet, with the panel "Your old folders are no longer used"
-  and one row per old folder with [Delete…] and [Keep]. **Delete is enabled only for `verified`
-  wallets.**
-- Primary: [Open my wallet]. It closes the wizard and shows Unlock with the first adopted wallet
-  selected.
+"Wallets copied. Unlock each wallet once to finish."
+- Each wallet: "Copied and checked". A "Settings:" tag row lists what was brought over.
+- One short line, no choice here: "Old folders can be deleted after the first unlock." There is no
+  Delete or Keep button on a fresh import. The Delete offer comes after the first successful unlock: the
+  main app shows a notice "Savings: old folder no longer used. The copy is verified. Delete the old
+  folder or keep it." [Old folder…], which reopens the wizard window titled "Old folders" (no stepper)
+  with "Old folder no longer used. The copy opened. Delete the old folder or keep it.", the line "Never
+  deleted automatically. Deleting moves the files to the Recycle Bin." and one row per old folder with
+  [Delete…] and [Keep]. **Delete is enabled only for `verified` wallets.**
+- Primary: [Open wallet]. It closes the wizard and shows Unlock with the first adopted wallet selected.
+  Unlock shows "Copied wallet. The first unlock checks the copy."; the check dialog is "Checking the copy
+  of Savings" with four lines (Opening with the password, Reading the database, Reading the balance and
+  transactions, Checking the address); the result toast is "Copy verified: 12.50 EPIC before refresh."
 
 **Delete** (`oldFolder.js`, the only code that ever changes an old folder):
-- The plan lists what goes, with sizes:
-  - the wallet folder's `wallet_data`, `wallet_tor`, its old toml, secrets, `config.json` and
-    `*.log`;
-  - its `chain_data` only when the user ticks "Also delete the blockchain data in it (8.1 GB)"
-    (unticked).
-- The folder itself goes only when nothing else is left in it.
+- The plan lists what goes, with sizes (decision of 21 Oct: the wallet's own files; node files only with
+  the blockchain tick; unknown files never):
+  - always: `wallet_data`, `wallet_tor`, `epic-wallet.toml`, `.owner_api_secret`, `config.json`,
+    `epic-wallet.log*`;
+  - only when the user ticks "Also delete the blockchain data and node files (8.1 GB)" (unticked):
+    `chain_data`, `epic-server.toml`, `epic-server.log*`, `foundation.json`, `.api_secret`.
+- Other files stay. The folder itself goes only when nothing else is left in it.
 - Refused when:
   - the wallet isn't `verified`;
   - the folder isn't the manifest's source;
@@ -293,8 +312,10 @@ again.
   - it contains a `node.<net>.chainDir` still in use (a 6.1.1–6.1.6 reuse in place). The screen then
     says: "The built-in node still uses the blockchain data in it: [Copy it into the app first] or
     keep the folder."
-- The confirmation [w6d] names the path, says "It goes to the Recycle Bin (Trash), so you can still
-  get it back.".
+- The confirmation [w6d] is a **native OS dialog** shown by the main process (`dialog.showMessageBox`,
+  parent: the wizard window; the tick is its `checkboxLabel`). It names the path, lists what goes and
+  says "Moved to the Recycle Bin. Other files stay. The folder itself is removed only when empty."
+  [Cancel] [Delete]. The wizard renderer only asks; it never confirms.
 - The delete is **`shell.trashItem`** per listed entry (decision 3). If the trash fails (no
   Recycle Bin on that drive, no gio on Linux), a second confirmation offers "Delete permanently",
   otherwise Keep.
@@ -303,6 +324,11 @@ again.
   simply shows that account as missing.
 
 ## Migration: 6.1.x wallets used in place
+
+**Decision (21 Oct): handled manually.** The in-place wallets of the 6.1.1–6.1.6 test builds belong to a
+handful of testers, who move them by hand (import the old folder, then remove the in-place entry). None
+of the following ships: no one-time Move offer [m4], no Settings warning row [m3], no `move` mode in the
+wizard, no `ref` compare. The text below is kept for the record only.
 
 Wallets with `dataDir ≠ configDir` (origin `imported` or `opened`, 6.1.1–6.1.6):
 - **One-time offer after unlock** [m4]: "Move this wallet into the app's folder?" with [Move it] or
