@@ -53,4 +53,6 @@ a.e-tx-link { color: inherit; text-decoration: none; }
 .e-ov-row small { overflow-wrap: anywhere; }
 
 /* Status card: the node's host gets its own line and may wrap; the height sits under the label */
-.e-ov-status .e-ov-nodeicon { display: inline-flex; }
+.e-ov-status .e-ov-row { align-items: flex-start; }
+/* the sidebar's dot, level with the name */
+.e-ov-status .e-ov-row > .e-st { margin-top: 6px; }

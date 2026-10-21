@@ -6,7 +6,7 @@
       <p id="stg-tor-h">{{ $t('msg.modern.settings.tor.text') }}</p>
       <p v-if="status" class="e-stg-meta" role="status" data-test="tor-status">
         <span class="e-st" :class="dotClass" aria-hidden="true"></span>
-        <span>{{ $t(status.key, status.params) }}</span>
+        <span>{{ $t(status.key, status.params) }}<template v-if="failed && tor.retrying">{{ ' ' + $t('msg.modern.settings.tor.still_trying') }}</template></span>
       </p>
       <p v-if="onion" class="e-stg-meta" data-test="tor-onion">
         <code class="e-mono e-small e-tor-onion e-tor-onion-block" translate="no" dir="ltr">{{ onion }}</code>

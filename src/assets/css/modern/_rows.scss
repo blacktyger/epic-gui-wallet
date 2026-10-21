@@ -46,10 +46,12 @@ html[data-ui='modern'] { --ctl-col: 224px; }
 .e-st.e-down { border: 2px solid var(--risk); }
 .e-st.e-down::after { content: ''; position: absolute; left: 50%; top: -2px; width: 2px; height: 10px; margin-left: -1px; background: var(--risk); transform: rotate(45deg); }
 .e-st.e-off { border: 2px solid var(--faint); }
+/* paused: two bars, the pause sign */
+.e-st.e-pause { border-radius: 2px; background: linear-gradient(90deg, var(--warn) 0 35%, transparent 35% 65%, var(--warn) 65% 100%); }
 @media (prefers-reduced-motion: reduce) { .e-st.e-sync, .e-st.e-busy { animation: none; } }
 .e-stword { font-weight: 600; font-size: var(--fs-sm); white-space: nowrap; }
 .e-stword.e-ok { color: var(--ok); }
-.e-stword.e-sync { color: var(--warn); }
+.e-stword.e-sync, .e-stword.e-pause { color: var(--warn); }
 .e-stword.e-down { color: var(--risk); }
 .e-stword.e-off, .e-stword.e-busy { color: var(--dim); }
 
@@ -77,7 +79,7 @@ html[data-ui='modern'] { --ctl-col: 224px; }
 .e-srv-old { color: var(--warn); font-weight: 500; }
 .e-node-status { margin-top: var(--sp-2); }
 .e-stg-notice { margin-top: var(--sp-3); }
-.e-combo-wrap { position: relative; max-width: 560px; }
+.e-combo-wrap { position: relative; max-width: 560px; container-type: inline-size; }
 .e-combo {
   position: relative; display: flex; align-items: center; gap: 10px; width: 100%; height: var(--ctl); padding: 0 4px 0 14px;
   border: 1px solid var(--line-field); border-radius: var(--r-sm); background: var(--s2);
@@ -86,10 +88,13 @@ html[data-ui='modern'] { --ctl-col: 224px; }
 .e-combo:hover { border-color: var(--dim); }
 .e-combo:focus-within, .e-combo.e-is-open { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft); }
 .e-combo.e-is-bad { border-color: var(--risk); box-shadow: 0 0 0 3px var(--risk-soft); }
-.e-combo-in { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; outline: none; padding: 0; color: var(--text); font: 500 0.8125rem var(--font-mono); }
+/* the server name keeps its room (flex-basis: its length, set by the combo); the operator label
+   shrinks first and goes when the field is narrow (150 % at 1044 px); a name that still doesn't fit ends in "…" */
+.e-combo-in { flex: 1 1 0%; min-width: 0; height: 100%; border: 0; background: transparent; outline: none; padding: 0; color: var(--text); font: 500 0.8125rem var(--font-mono); text-overflow: ellipsis; }
 .e-combo-in::placeholder { color: var(--faint); font-family: var(--font-ui); font-weight: 400; }
 .e-combo-in:disabled { opacity: 0.6; }
-.e-combo-op { flex: 0 10 auto; min-width: 0; color: var(--faint); font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.e-combo-op { flex: 0 100 auto; min-width: 0; color: var(--faint); font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@container (max-width: 379px) { .e-combo-op { display: none; } }
 .e-combo-chev { display: grid; place-items: center; flex: none; width: 36px; height: 36px; margin-left: auto; border: 0; border-radius: var(--r-xs, 4px); background: none; color: var(--dim); cursor: pointer; }
 .e-combo-chev:hover { color: var(--text); background: var(--hover); }
 .e-combo.e-is-open .e-combo-chev .e-icon { transform: rotate(180deg); }
@@ -147,7 +152,7 @@ html[data-ui='modern'] { --ctl-col: 224px; }
 .e-sbA-row b { font-weight: 500; white-space: nowrap; }
 .e-sbA-row small { justify-self: end; min-width: 0; color: var(--faint); font-size: var(--fs-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .e-sbA-row small.e-down { color: var(--risk); }
-.e-sbA-row small.e-sync { color: var(--warn); }
+.e-sbA-row small.e-sync, .e-sbA-row small.e-pause { color: var(--warn); }
 /* the hover card: to the right of the sidebar, never over the menu */
 .e-hcard {
   position: fixed; z-index: 60; left: 234px; bottom: 8px; width: 280px; padding: 10px 12px;

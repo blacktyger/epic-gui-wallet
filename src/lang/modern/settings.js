@@ -40,6 +40,9 @@ export default {
   eb_delivers: 'delivers payments to your Epic address',
   eb_connecting: 'connecting to the server',
   eb_down_line: 'payments wait until it is back',
+  eb_paused_line: 'waiting for the node; payments wait until it is ready',
+  //a node check without a reply in time (verifyNode asks twice): not "not an Epic node"
+  node_check_timeout: 'The node didn’t answer in time. Try again.',
   eb_off: 'start it on the Receive page',
   eb_off_unlock: 'starts when you unlock',
   epicbox_auto_l: 'Start Epicbox with the wallet',
@@ -149,6 +152,8 @@ export default {
     connecting: 'Connecting to Tor… {n} %',
     waiting_wallet: 'Waiting for the wallet…',
     retrying: 'Connecting to Tor, trying again… {n} %',
+    //the error is shown while the automatic restarts go on (torManager quietRestarts)
+    still_trying: 'Still trying in the background.',
     publishing: 'Publishing your Tor address…',
     ready: 'Ready',
     retry: 'Try again',

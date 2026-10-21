@@ -351,12 +351,21 @@ H.runCase('confirm615', async (t) => {
     return states.join(', ');
   }, { fatal: true, timeout: 120000 });
   const before = Object.fromEntries(Object.entries(held).map(([k, d]) => [k, V.hashTree(d)]));
+  /* Settings › Node › the built-in node, which opens the chain data offer. Modern 6.1.6: the node
+     combobox's built-in row applies at once (data-test hooks as in tests/components/nodeCombo.spec.js) */
+  const pickBuiltin = async () => {
+    if (ui === 'modern') {
+      await w.locator('input[data-test=node-combo]').first().click({ timeout: 8000 });
+      await w.locator('[data-test=node-use-builtin]').first().click({ timeout: 8000 });
+      return;
+    }
+    await w.locator('section.is-main-section select').first().selectOption('internal');
+    await w.locator('section.is-main-section button.is-primary').last().click({ timeout: 8000 });
+  };
 
   await check('d', 'chain data offer (Settings › Built-in node › Save): "Use this data" disabled, the folder in use', async () => {
     await U.openSettings(w, ui);
-    if (ui === 'modern') await w.getByText('Built-in node server', { exact: true }).first().click();
-    else await w.locator('section.is-main-section select').first().selectOption('internal');
-    await (ui === 'modern' ? w.locator('.e-stg-savebar button.e-btn-primary') : w.locator('section.is-main-section button.is-primary').last()).click({ timeout: 8000 });
+    await pickBuiltin();
     const dlg = w.locator('dialog[open]').last();
     await dlg.getByText('Existing blockchain data found').waitFor({ timeout: 30000 });
     const t0 = (await dlg.innerText()).replace(/\s+/g, ' ');
@@ -368,8 +377,9 @@ H.runCase('confirm615', async (t) => {
     if (!/Another Epic program is using this folder\./.test(t0)) throw new Error('no in-use text: ' + t0.slice(0, 300));
     return (t0.match(/Another Epic program is using this folder\.[^.]*\./) || [''])[0];
   });
+  //back to the stub node (Modern 6.1.6: the combobox applies at once, there is no Discard)
   const revertNode = async () => {
-    if (ui === 'modern') { const d = w.getByRole('button', { name: 'Discard', exact: true }); if (await d.count()) await d.first().click(); }
+    if (ui === 'modern') await U.setNode(w, ui, U.NODE_URL, t);
     else await w.locator('section.is-main-section select').first().selectOption('external');
   };
   await revertNode();
@@ -444,9 +454,7 @@ H.runCase('confirm615', async (t) => {
   }, { timeout: 120000 });
   await check('d', 'after: the chain data offer lets "Use this data" be pressed', async () => {
     await U.openSettings(w, ui);
-    if (ui === 'modern') await w.getByText('Built-in node server', { exact: true }).first().click();
-    else await w.locator('section.is-main-section select').first().selectOption('internal');
-    await (ui === 'modern' ? w.locator('.e-stg-savebar button.e-btn-primary') : w.locator('section.is-main-section button.is-primary').last()).click({ timeout: 8000 });
+    await pickBuiltin();
     const dlg = w.locator('dialog[open]').last();
     await dlg.getByText('Existing blockchain data found').waitFor({ timeout: 30000 });
     const enabled = !(await dlg.getByRole('button', { name: 'Use this data' }).isDisabled());

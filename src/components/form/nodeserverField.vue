@@ -158,10 +158,16 @@
           return true;
         }
         this.checking = true;
-        const check = await this.$nodeService.checkNodeVersion(this.defaultValue);
+        let check = await this.$nodeService.checkNodeVersion(this.defaultValue);
+        //no reply in time says nothing about what answers there (a busy node): ask once more
+        if(!check.ok && check.timeout){
+          check = await this.$nodeService.checkNodeVersion(this.defaultValue);
+        }
         this.checking = false;
         if(!check.ok){
-          this.errors.nodeaddress = this.$t("msg.validators.not_epic_node", [this.defaultValue + ' (' + check.reason + ')']);
+          this.errors.nodeaddress = check.timeout
+            ? this.$t("msg.modern.settings.node_check_timeout")
+            : this.$t("msg.validators.not_epic_node", [this.defaultValue + ' (' + check.reason + ')']);
         }
         return check.ok;
       },

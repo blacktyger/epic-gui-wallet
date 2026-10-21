@@ -53,7 +53,7 @@
   import { MIN_CONFIRMATIONS, outputConfirmationState } from '@/shared/confirmations';
   import { walletSyncAfterSummary, needsNodeRefresh, nextRefreshDelay, refreshFromNode } from '@/shared/walletSync';
   import { nextNodePollDelay } from '@/shared/nodePoll';
-  import { wantsRefresh } from '@/shared/epicboxListener';
+  import { wantsRefresh, resumesListening } from '@/shared/epicboxListener';
   import { serverLabel } from '@/shared/epicboxConfig';
   import { httpListenerState, httpAutostart } from '@/shared/httpListener';
   import { kernelsDue, minHeightFor, fetchKernelHeight } from '@/shared/sendAllKernel';
@@ -714,6 +714,9 @@
           this.store.commit('epicbox', {state: 'listening', pid: ev.pid});
         }else if(ev.type == 'paused'){
           this.store.commit('epicbox', {state: 'paused', pid: ev.pid});
+        }else if(cur.state == 'paused' && resumesListening(ev)){
+          //4.1.0 has no "resumed" line: "Response Ok." (or a slate) says it works again
+          this.store.commit('epicbox', {state: 'listening', pid: ev.pid});
         }else if(ev.type == 'disconnected'){
           this.store.commit('epicbox', {state: 'connecting', pid: ev.pid});
         }else if(ev.type == 'exit' && (!cur.pid || cur.pid == ev.pid)){

@@ -87,6 +87,12 @@ describe('Settings › Receiving › Tor row', () => {
     await button(wrapper, t(k('retry'))).trigger('click');
     expect(emitter.emit).toHaveBeenCalledWith('app.startTor');
   });
+
+  test('the network error while the automatic restarts go on: says so, Try again still there', () => {
+    const { wrapper } = row(tor({ state: 'failed', error: 'network', retrying: true }));
+    expect(wrapper.find('[data-test=tor-status]').text()).toBe(t(k('err_network'), { detail: '', msg: '' }) + ' ' + t(k('still_trying')));
+    expect(button(wrapper, t(k('retry'))).exists()).toBe(true);
+  });
 });
 
 describe('Receive › Tor address', () => {

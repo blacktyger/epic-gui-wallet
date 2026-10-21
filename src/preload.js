@@ -8,7 +8,7 @@ import isPortReachable from 'is-port-reachable';
 import { createProcessRegistry, createPidCheck, describeSpawn, redactArgs } from './shared/processOwnership';
 import { createWinFindProcess } from './shared/winProcessList';
 import { spawnCommand, plainBin, epicCwd } from './shared/spawnCommand';
-import { parseListenerLine } from './shared/epicboxListener';
+import { parseListenerLine, resumesListening } from './shared/epicboxListener';
 import { createScopedFs, isInside } from './shared/security';
 import { checkSpawnArgs } from './shared/walletArgs';
 import { pickedReadDirs } from './shared/walletFolder';
@@ -223,6 +223,8 @@ async function startEpicboxListener(cmd, args, meta = {}){
             else if(ev.type == 'subscribed'){ live.state = 'listening'; }
             else if(ev.type == 'paused'){ live.state = 'paused'; }
             else if(ev.type == 'disconnected'){ live.state = 'disconnected'; }
+            //no "resumed" line: the next sign of life ends the pause
+            else if(live.state == 'paused' && resumesListening(ev)){ live.state = 'listening'; }
             //it exits now (shared/epicboxListener.js nodeNotReadyStart): said before its exit does
             else if(ev.type == 'node_not_ready'){ done({success: false, msg: 'node not synced'}); }
             emitEpicbox(Object.assign({pid, dir, check}, ev, {url: ev.url || live.url}));

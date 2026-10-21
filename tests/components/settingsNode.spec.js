@@ -115,6 +115,26 @@ describe('Settings › Node address', () => {
     expect(input(wrapper).element.value).toBe('example.org');
   });
 
+  /* final 6.1.6 QA bug 2: a node that was slow once got "Not an Epic node … (no reply within 5 s)" */
+  test('no reply in time: asked once more, then "didn\'t answer in time", never "not an Epic node"', async () => {
+    const slow = { ok: false, reason: 'no reply within 5 s', timeout: true };
+    const { wrapper, configService, $nodeService } = setup({ check: async () => slow });
+    await flushPromises();
+    await typeAndEnter(wrapper, 'https://example.org');
+    expect($nodeService.checkNodeVersion).toHaveBeenCalledTimes(2);
+    expect(wrapper.text()).toContain(t('msg.modern.settings.node_check_timeout'));
+    expect(wrapper.text()).not.toContain(t('msg.validators.not_epic_node', ['https://example.org (no reply within 5 s)']));
+    expect(configService.updateConfig).not.toHaveBeenCalled();
+
+    //slow once, then an answer: saved
+    const answers = [slow, { ok: true, version: '4.1.0' }];
+    const second = setup({ check: async () => answers.shift() });
+    await flushPromises();
+    await typeAndEnter(second.wrapper, 'https://example.org');
+    expect(second.$nodeService.checkNodeVersion).toHaveBeenCalledTimes(2);
+    expect(second.configService.updateConfig).toHaveBeenCalled();
+  });
+
   test('the built-in node row saves the local node, without asking any external node', async () => {
     const { wrapper, configService, $nodeService, $toast } = setup();
     await flushPromises();

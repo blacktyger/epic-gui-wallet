@@ -1,5 +1,5 @@
 /*
- * Epicbox as one status for the Modern screens (#52): listening, connecting or not responding,
+ * Epicbox as one status for the Modern screens (#52): listening, connecting, paused or not responding,
  * with the reason, and the healthiest other server to offer when ours doesn't answer. Never a
  * switch by itself: the screens only offer it (one click). Plain ESM (tests/epicboxHealth.test.js).
  *
@@ -16,9 +16,9 @@ const LIVE = { healthy: 0, degraded: 1 };
 
 /*
  * returns {state, server, why, since}
- *   state  'listening' | 'connecting' | 'down' | 'off'
+ *   state  'listening' | 'connecting' | 'paused' | 'down' | 'off'
  *   server the server for people ('' when unknown)
- *   why    '' | 'no_answer' (still trying after NO_ANSWER_MS) | 'stopped' (gave up after its
+ *   why    '' | 'node' (paused: the listener holds slates until the node is synced) | 'no_answer' (still trying after NO_ANSWER_MS) | 'stopped' (gave up after its
  *          retries) | 'status_down' (the status site says the server is down)
  *   since  ms timestamp of the last change, 0 when unknown
  */
@@ -30,11 +30,13 @@ export function epicboxHealth({ epicbox, on, domain = '', servers = [], now = Da
   const listed = (servers || []).find((s) => s && s.domain === cleanDomain(server));
   const listedDown = !!listed && listed.state === 'down';
   if (st.kind == 'listening' && e.state == 'listening') return { state: 'listening', server, why: '', since };
+  //connected, but the node isn't synced: never "connecting" (final 6.1.6 QA bug 1)
+  if (st.kind == 'paused') return { state: 'paused', server, why: 'node', since };
   if (st.kind == 'off') {
     if (e.failed) return { state: 'down', server: server, why: 'stopped', since };
     return { state: 'off', server: '', why: '', since };
   }
-  //starting, connecting, paused, checking the old server, or on with no event yet (6.1.5 said "listening")
+  //starting, connecting, checking the old server, or on with no event yet (6.1.5 said "listening")
   if (listedDown) return { state: 'down', server, why: 'status_down', since };
   if (e.state == 'connecting' && since && now - since >= NO_ANSWER_MS) return { state: 'down', server, why: 'no_answer', since };
   return { state: 'connecting', server, why: '', since };

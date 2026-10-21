@@ -3,14 +3,16 @@
  * private `auto` ports with a control port, so the app knows when it is ready and why it isn't.
  *
  *   off → starting (progress 0-100) → publishing → ready, or failed {error, detail} from any of them
- *   retrying: true while an automatic restart (network, stopped, publish) is waiting or running: the
- *   state stays starting (the error is only logged) until the backoff runs out, then it is failed
+ *   retrying: true while an automatic restart (network, stopped, publish) is waiting or running. The
+ *   first failure (quietRestarts) restarts quietly: the state stays starting, the error only logged.
+ *   From the next one the error shows (failed, retrying) and the restarts go on behind it at the
+ *   last backoff; a later start that bootstraps leaves it by itself (publishing, ready)
  *   ready: bootstrap 100 % and the first HS_DESC UPLOADED of the wallet's onion. Sending needs only
  *   the bootstrap (canSend); republishing is tor's job, a later HS_DESC FAILED is only logged.
  *
  * Errors (§4): missing (no binary), start (tor exited before its control file appeared: its last
  * [err]/[warn] line), network (progress stuck 60 s, or no 100 % after 120 s: restarted after 5 s,
- * 30 s, 2 min, then left failed), clock (CLOCK_SKEW before the bootstrap), keys (no key for the
+ * 30 s, then every 2 min; shown from the 2nd failure), clock (CLOCK_SKEW before the bootstrap), keys (no key for the
  * onion, or tor published another one), listener (the wallet's HTTP listener doesn't answer),
  * stopped (tor exited or closed its control port after the bootstrap: restarted like network),
  * publish (bootstrapped, but no HS_DESC UPLOADED within publishMs: restarted like network),
@@ -44,7 +46,10 @@ export const TIMINGS = Object.freeze({
   bootMs: 120000,
   //bootstrapped with the onion added, but no descriptor uploaded yet
   publishMs: 180000,
+  //an empty list: no automatic restarts; after the last one, its wait again
   backoffMs: [5000, 30000, 120000],
+  //failures restarted before the error shows (final 6.1.6 QA: no network showed it after 394 s)
+  quietRestarts: 1,
   stopKillMs: 5000,
   //after the kill: how long stop() still waits for tor's exit before it gives up (and says so)
   stopWaitMs: 5000,
@@ -114,6 +119,8 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
   let target = null;
   let restarts = 0;
   let restartTimer = null;
+  //the error is shown while the automatic restarts go on: their starts don't hide it
+  let shown = false;
 
   function emit(patch) {
     status = Object.assign({}, status, patch);
@@ -174,14 +181,16 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
   function fail(r, error, detail) {
     if (r.dead || r !== run) return;
     info('tor: failed, ' + error + (detail ? ' (' + String(detail).slice(0, 200) + ')' : ''));
-    const auto = ['network', 'stopped', 'publish'].includes(error) && restarts < t.backoffMs.length;
+    const auto = ['network', 'stopped', 'publish'].includes(error) && t.backoffMs.length > 0;
     teardown(r).catch(() => {});
     run = null;
-    //an automatic restart follows: still starting (a stall that the next try gets past is no error to show)
-    if (auto) emit({ state: 'starting', progress: 0, error: '', detail: '', retrying: true });
-    else emit({ state: 'failed', progress: status.progress, error, detail: detail ? String(detail).slice(0, 300) : '', retrying: false });
+    //the first automatic restart: still starting (a stall that the next try gets past is no error to show)
+    const quiet = auto && restarts < t.quietRestarts;
+    shown = auto && !quiet;
+    if (quiet) emit({ state: 'starting', progress: 0, error: '', detail: '', retrying: true });
+    else emit({ state: 'failed', progress: status.progress, error, detail: detail ? String(detail).slice(0, 300) : '', retrying: auto });
     if (auto) {
-      const wait = t.backoffMs[restarts++];
+      const wait = t.backoffMs[Math.min(restarts++, t.backoffMs.length - 1)];
       info('tor: restarting in ' + Math.round(wait / 1000) + ' s');
       restartTimer = timer(() => { restartTimer = null; if (target && !run) launch(); }, wait);
     }
@@ -226,6 +235,8 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
   /* the visible state from what is known */
   function advance(r) {
     if (r.dead || r !== run) return;
+    //bootstrapped: past what an error shown during the restarts was about
+    if (r.bootstrapped) shown = false;
     if (r.bootstrapped && r.waitingListener) {
       //sending works; receiving waits for the listener (the node)
       if (status.state !== 'failed' || status.error !== 'node') emit({ state: 'failed', progress: 100, error: 'node', detail: '' });
@@ -240,7 +251,7 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
     } else if (r.bootstrapped && r.serviceId) {
       if (!r.publish) r.publish = timer(() => fail(r, 'publish', 'no upload after ' + Math.round(t.publishMs / 1000) + ' s'), t.publishMs);
       if (status.state !== 'publishing') emit({ state: 'publishing', progress: 100, error: '', detail: '', retrying: false });
-    } else if (status.state !== 'starting' || status.progress !== r.progress) {
+    } else if (!shown && (status.state !== 'starting' || status.progress !== r.progress)) {
       emit({ state: 'starting', progress: r.progress || 0, error: '', detail: '' });
     }
   }
@@ -317,7 +328,8 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
     const r = { gen: g, proc: null, control: null, exited: false, onExit: [], progress: 0, bootstrapped: false,
       serviceId: '', uploaded: false, dead: false, started: now(), lastProblem: '' };
     run = r;
-    emit({ state: 'starting', progress: 0, onion: tgt.onion, error: '', detail: '' });
+    //an automatic restart behind a shown error keeps it until this start gets further
+    if (!shown) emit({ state: 'starting', progress: 0, onion: tgt.onion, error: '', detail: '' });
 
     const bin = torBin();
     if (!bin) return fail(r, 'missing', '');
@@ -455,6 +467,7 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
       await this.stop({ quiet: true });
       target = Object.assign({}, opts, { onion: p.host });
       restarts = 0;
+      shown = false;
       launch();
       return status;
     },
@@ -465,6 +478,7 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
       await this.stop({ quiet: true });
       target = keep;
       restarts = 0;
+      shown = false;
       launch();
       return status;
     },
@@ -479,6 +493,7 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
       gen++;
       const had = target;
       target = null;
+      shown = false;
       await teardown(r);
       status = Object.assign({}, OFF);
       //quiet: a start or retry follows at once (no flash of "off")

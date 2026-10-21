@@ -26,6 +26,8 @@
         :placeholder="$t('msg.modern.settings.node_find')"
         :readonly="busy"
         :value="shownText"
+        :title="editing ? null : shownText || null"
+        :style="fieldBasis(shownText)"
         @focus="openList"
         @click="openList"
         @input="typed($event.target.value)"
@@ -206,6 +208,10 @@
       this.loadPublic();
     },
     methods: {
+      /* the field as wide as its text (mono: 1ch a character): the operator label gives way first */
+      fieldBasis(text) {
+        return { flexBasis: (String(text || '').length + 1) + 'ch' };
+      },
       async loadPublic() {
         this.dirLoading = true;
         const dir = await loadDirectory(window.api, this.directoryChain, 4000);
