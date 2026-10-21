@@ -172,6 +172,7 @@ echo START %DATE% %TIME% > %LOG%
 git clone --quiet --no-checkout $REPO $WDIR\\src >> %LOG% 2>&1 || exit /b 12
 cd /d $WDIR\\src || exit /b 13
 git checkout --quiet --detach $SHA >> %LOG% 2>&1 || exit /b 13
+xcopy /e /i /y /q $WDIR\\tor-bundle resources\\bin\\win\\tor-bundle >> %LOG% 2>&1 || exit /b 17
 node -v >> %LOG% 2>&1
 set CI=1
 call npm ci --no-audit --no-fund >> %LOG% 2>&1 || exit /b 14
@@ -184,6 +185,12 @@ EOF
     timeout 60 "${SSH[@]}" "cmd /c if not exist $WDIR mkdir $WDIR" >/dev/null || die "cannot make $WDIR on $WIN_HOST"
     timeout 120 scp -q -o BatchMode=yes "$CMD" "$WIN_HOST:${WDIR//\\//}/build.cmd"
     rm -f "$CMD"
+    # the Tor bundle: fetched (SHA-256 pins, GPG when gpg is here) next to this script, copied to the host
+    [ -f "$ROOT/resources/bin/win/tor-bundle/tor.exe" ] || timeout 900 node "$ROOT/scripts/fetch-tor.mjs" --platform win >&2 ||
+      die "fetch-tor failed"
+    timeout 60 "${SSH[@]}" "cmd /c if exist $WDIR\\tor-bundle rmdir /s /q $WDIR\\tor-bundle" >/dev/null
+    timeout 300 scp -q -r -o BatchMode=yes "$ROOT/resources/bin/win/tor-bundle" "$WIN_HOST:${WDIR//\\//}/tor-bundle" ||
+      die "could not copy the Tor bundle to $WIN_HOST:$WDIR"
     set +e
     timeout 2400 "${SSH[@]}" "cmd /c $WDIR\\build.cmd"
     WEXIT=$?
