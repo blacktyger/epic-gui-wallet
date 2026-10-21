@@ -27,6 +27,8 @@ test('torrc: auto ports, extended errors, isolation, cookie, owner pid; quoted p
     '__OwningControllerProcess 4242',
     'Log notice stdout',
     'AvoidDiskWrites 1',
+    'GeoIPFile "/w/c 1/tor/geoip"',
+    'GeoIPv6File "/w/c 1/tor/geoip6"',
     '',
   ].join('\n'));
   const wrc = buildTorrc({ paths: torPaths('C:\\Users\\A B\\w1', path.win32.join), ownerPid: 1 });

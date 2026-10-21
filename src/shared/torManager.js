@@ -62,7 +62,8 @@ function q(v) {
 export function torPaths(configDir, join) {
   const dir = join(configDir, 'tor');
   return { dir, torrc: join(dir, 'torrc'), defaults: join(dir, 'torrc-defaults'), data: join(dir, 'data'),
-    controlFile: join(dir, 'control.txt'), cookie: join(dir, 'control.cookie') };
+    controlFile: join(dir, 'control.txt'), cookie: join(dir, 'control.cookie'),
+    geoip: join(dir, 'geoip'), geoip6: join(dir, 'geoip6') };
 }
 
 export function buildTorrc({ paths, ownerPid }) {
@@ -77,6 +78,10 @@ export function buildTorrc({ paths, ownerPid }) {
     '__OwningControllerProcess ' + Number(ownerPid),
     'Log notice stdout',
     'AvoidDiskWrites 1',
+    //no GeoIP files are bundled (a client doesn't need them). Absolute paths that aren't there: tor
+    //logs only an [info] line, where the Windows default "<default>" warned "is relative" twice per start
+    'GeoIPFile ' + q(paths.geoip),
+    'GeoIPv6File ' + q(paths.geoip6),
     '',
   ].join('\n');
 }
