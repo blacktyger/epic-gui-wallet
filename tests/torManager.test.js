@@ -101,7 +101,7 @@ function harness(opts = {}) {
   const m = createTorManager({
     spawn, connect, fs, join: path.join, sha512, ownerPid: 777, libDir: '/lib/tor', win: false,
     torBin: () => (opts.missing ? '' : '/app/bin/linux/tor-bundle/tor'),
-    kill: async (pid) => { t.killed.push(pid); t.procs.find(p => p.pid === pid)?.exit(null); return true; },
+    kill: async (pid) => { t.killed.push(pid); if (!opts.unkillable) t.procs.find(p => p.pid === pid)?.exit(null); return true; },
     record: (pid, cmd, args) => t.recorded.push({ pid, cmd, args }),
     forget: (pid) => t.forgot.push(pid),
     checkPort: async () => (opts.listener === undefined ? true : opts.listener()),
@@ -177,6 +177,18 @@ test('a tor that ignores SHUTDOWN is killed', async () => {
   await t.until(() => t.sent.some(c => c.startsWith('ADD_ONION')));
   await t.m.stop();
   assert.deepEqual(t.killed, [5000]);
+});
+
+test('a tor that survives the kill: stop gives up after the bounded wait instead of hanging', async () => {
+  const t = harness({ ignoreShutdown: true, unkillable: true, timings: { stopKillMs: 30, stopWaitMs: 60 } });
+  await t.m.start(START(walletDir()));
+  await t.until(() => t.sent.some(c => c.startsWith('ADD_ONION')));
+  const began = Date.now();
+  await t.m.stop();
+  assert.ok(Date.now() - began < 1000, 'stop returned');
+  assert.deepEqual(t.killed, [5000]);
+  assert.equal(t.m.status().state, 'off');
+  assert.ok(t.logs.some(l => l.includes('did not exit')));
 });
 
 test('missing: no tor binary in this build', async () => {

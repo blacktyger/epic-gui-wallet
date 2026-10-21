@@ -36,6 +36,8 @@ export const TIMINGS = Object.freeze({
   bootMs: 120000,
   backoffMs: [5000, 30000, 120000],
   stopKillMs: 5000,
+  //after the kill: how long stop() still waits for tor's exit before it gives up (and says so)
+  stopWaitMs: 5000,
   listenerCheckMs: 15000,
 });
 
@@ -114,7 +116,16 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
     }
   }
 
-  /* end the current tor (no state change): DEL_ONION, SHUTDOWN, a kill after stopKillMs */
+  /* p settled within ms → true; never waits longer (a tor that hangs must not hang lock or quit) */
+  function within(p, ms) {
+    return new Promise((resolve) => {
+      const h = timer(() => resolve(false), ms);
+      Promise.resolve(p).then(() => { clearTimer(h); resolve(true); }, () => { clearTimer(h); resolve(true); });
+    });
+  }
+
+  /* end the current tor (no state change): DEL_ONION, SHUTDOWN, a kill after stopKillMs, then at
+     most stopWaitMs more for its exit */
   async function teardown(r) {
     if (!r) return;
     r.dead = true;
@@ -124,16 +135,18 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
       if (!proc || r.exited) return resolve();
       r.onExit.push(resolve);
     });
+    const k = proc && !r.exited ? timer(() => { if (!r.exited) Promise.resolve(kill(proc.pid)).catch(() => {}); }, t.stopKillMs) : null;
     if (r.control && !r.control.closed) {
-      if (r.serviceId) await r.control.delOnion(r.serviceId).catch(() => {});
-      await r.control.signal('SHUTDOWN').catch(() => {});
+      await within((async () => {
+        if (r.serviceId) await r.control.delOnion(r.serviceId).catch(() => {});
+        await r.control.signal('SHUTDOWN').catch(() => {});
+      })(), t.stopKillMs);
       r.control.close();
     }
-    if (proc && !r.exited) {
-      const k = timer(() => { if (!r.exited) Promise.resolve(kill(proc.pid)).catch(() => {}); }, t.stopKillMs);
-      await exited;
-      clearTimer(k);
+    if (proc && !r.exited && !(await within(exited, t.stopKillMs + t.stopWaitMs))) {
+      warn('tor: ' + proc.pid + ' did not exit after the kill');
     }
+    if (k) clearTimer(k);
     if (proc && proc.pid) forget(proc.pid);
   }
 
