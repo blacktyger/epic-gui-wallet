@@ -1,7 +1,7 @@
 // The Node and Receiving status rows of the sidebar and the Overview card (src/components/modern/serviceRows.js). `npm test`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nodeRow, receivingRow, epicboxGlyph, epicboxStateText } from '../src/components/modern/serviceRows.js';
+import { nodeRow, receivingRow, serviceRows, onionShort, epicboxGlyph, epicboxStateText } from '../src/components/modern/serviceRows.js';
 
 //the key, and its parameters when there are any
 const t = (k, a) => (a && Object.keys(a).length ? k + JSON.stringify(a) : k);
@@ -50,4 +50,33 @@ test('receiving: a Tor line only while Tor is on', () => {
   const tor = receivingRow({ health: health('listening'), tor: { enabled: true, state: 'ready' } }, t);
   assert.equal(tor.lines.length, 3);
   assert.ok(tor.lines[2].includes('msg.modern.settings.tor.card_ready'));
+});
+
+const rows = (o) => Object.fromEntries(serviceRows({ node: nodeRow({ status: up, addr: 'node.example.org', locale: 'en-US' }, t), health: health('listening'), ...o }, t).map((r) => [r.key, r]));
+
+test('service rows: Node and Epicbox always, the domain only, the full host in the tip', () => {
+  const r = rows({});
+  assert.deepEqual(Object.keys(r), ['node', 'epicbox']);
+  assert.equal(r.node.icon, 'svc-node');
+  assert.equal(r.node.value, 'msg.modern.svc_synced · 3,100,000');
+  assert.equal(r.epicbox.value, 'epicnet.us');
+  assert.ok(r.epicbox.tip[0].includes('epicbox.epicnet.us'));
+  assert.equal(r.epicbox.err, false);
+  const down = rows({ health: health('down', 'no_answer') }).epicbox;
+  assert.equal(down.value, 'epicnet.us · msg.modern.svc_no_answer');
+  assert.deepEqual([down.glyph, down.err], ['down', true]);
+});
+
+test('service rows: HTTP only when offered, Tor only when offered; the short onion and the states', () => {
+  assert.deepEqual(Object.keys(rows({ direct: { on: false, http: true, tor: true } })), ['node', 'epicbox']);
+  const direct = { on: true, http: true, tor: true, public: false };
+  const onion = 'mk7ca5' + 'x'.repeat(46) + 'luyd';
+  const r = rows({ direct, httpListener: { state: 'on', port: 3415, reason: '' }, httpAddr: 'http://127.0.0.1:3415', tor: { enabled: true, state: 'ready', onion: onion + '.onion' } });
+  assert.equal(r.http.value, '127.0.0.1:3415');
+  assert.equal(r.tor.value, 'mk7ca5…luyd.onion');
+  assert.equal(onionShort(onion + '.onion'), 'mk7ca5…luyd.onion');
+  const s = rows({ direct, tor: { enabled: true, state: 'starting', progress: 62 } }).tor;
+  assert.deepEqual([s.glyph, s.value], ['busy', 'msg.modern.svc_tor_starting{"n":62}']);
+  const f = rows({ direct, tor: { enabled: true, state: 'failed', error: 'create' } }).tor;
+  assert.deepEqual([f.glyph, f.err], ['down', true]);
 });

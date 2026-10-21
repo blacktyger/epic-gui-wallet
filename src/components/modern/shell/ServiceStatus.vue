@@ -5,14 +5,17 @@
   <div class="e-sbA">
     <div v-for="row in rows" :key="row.key" class="e-sbA-wrap" :class="{ 'e-is-dismissed': dismissed == row.key }" @keydown.esc="dismissed = row.key" @mouseenter="place($event)" @focusin="place($event)" @mouseleave="dismissed = ''" @focusout="dismissed = ''">
       <button type="button" class="e-sbA-row" :data-test="'svc-' + row.key" :aria-label="row.open + ': ' + row.word" :aria-describedby="uid + '-' + row.key" @click="go(row.to)">
-        <span class="e-st" :class="'e-' + row.glyph" aria-hidden="true"></span>
+        <span class="e-ico" :class="{ 'e-err': row.glyph == 'down' }" aria-hidden="true"><EIcon :name="row.icon" size="sm" /><span class="e-st" :class="'e-' + row.glyph"></span></span>
         <b>{{ row.name }}</b>
         <small :class="'e-' + row.glyph">{{ row.word }}</small>
       </button>
       <div :id="uid + '-' + row.key" class="e-hcard" role="tooltip" :style="cardAt">
-        <span class="e-st" :class="'e-' + row.glyph" aria-hidden="true"></span>
-        <b>{{ row.name }} · {{ row.word }}</b>
-        <small v-for="(line, i) in row.lines" :key="i" translate="no">{{ line }}</small>
+        <div v-for="r in row.svc" :key="r.key" class="e-hcard-row" :data-test="'hc-' + r.key">
+          <span class="e-ico" :class="{ 'e-err': r.err }" aria-hidden="true"><EIcon :name="r.icon" size="sm" /><span class="e-st" :class="'e-' + r.glyph"></span></span>
+          <b>{{ r.label }}</b>
+          <span class="e-hcard-val" :class="{ 'e-mono': r.mono }" translate="no">{{ r.hoverValue }}</span>
+          <small v-for="(line, i) in r.tip" :key="i" translate="no">{{ line }}</small>
+        </div>
         <small class="e-hcard-go">{{ row.open }}</small>
       </div>
     </div>
@@ -22,13 +25,15 @@
 <script>
   import { useStore } from '@/store';
   import { openSettingsSection } from '@/components/modern/settings/jump';
-  import { nodeRow, receivingRow } from '@/components/modern/serviceRows';
+  import { nodeRow, receivingRow, serviceRows } from '@/components/modern/serviceRows';
   import epicboxSwitch from '@/components/modern/epicboxSwitch';
+  import EIcon from '@/components/modern/ui/EIcon.vue';
 
   let seq = 0;
 
   export default {
     name: 'ServiceStatus',
+    components: { EIcon },
     mixins: [epicboxSwitch],
     setup() {
       return { store: useStore() };
@@ -39,18 +44,26 @@
       return { uid: 'e-svc-' + (++seq), dismissed: '', cardAt: null };
     },
     computed: {
+      /* the service rows of the hover cards (modern/serviceRows.js), the Overview card's too */
+      svc() {
+        const st = this.store.state;
+        const cfg = (this.configService && this.configService.config) || {};
+        const addr = String(cfg.check_node_api_http_addr || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
+        const t = (k, a) => this.$t(k, a);
+        const node = nodeRow({ status: st.nodeStatus, problem: st.nodeProblem, internal: !!(st.user && st.user.nodeInternal), addr, locale: this.$i18n.locale }, t);
+        const httpAddr = (st.direct && st.direct.httpAddr) || 'http://127.0.0.1:' + (this.configService && this.configService.walletListenerPort);
+        return { node, rows: serviceRows({ node, health: this.ebHealth, domain: this.ebDomain, direct: st.direct, httpListener: st.httpListener, listenerStarting: st.listenerStarting, tor: st.tor, httpAddr }, t) };
+      },
       node() {
-        const internal = !!(this.store.state.user && this.store.state.user.nodeInternal);
-        const addr = String(((this.configService && this.configService.config) || {}).check_node_api_http_addr || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
-        const row = nodeRow({ status: this.store.state.nodeStatus, problem: this.store.state.nodeProblem, internal, addr, locale: this.$i18n.locale }, (k, a) => this.$t(k, a));
-        return { key: 'node', name: this.$t('msg.modern.svc_node'), to: { path: '/settings', hash: '#node' }, open: this.$t('msg.modern.svc_open_node'), glyph: row.glyph, word: row.word, lines: row.lines };
+        const row = this.svc.node;
+        return { key: 'node', icon: 'svc-node', name: this.$t('msg.modern.svc_node'), to: { path: '/settings', hash: '#node' }, open: this.$t('msg.modern.svc_open_node'), glyph: row.glyph, word: row.word, svc: this.svc.rows.filter(r => r.key == 'node') };
       },
       receiving() {
         const st = this.store.state;
         const row = receivingRow({ health: this.ebHealth, domain: this.ebDomain, httpListener: st.httpListener, listenerStarting: st.listenerStarting, tor: st.tor }, (k, a) => this.$t(k, a));
         return {
-          key: 'rcv', name: this.$t('msg.modern.svc_receiving'), to: { path: '/settings/receiving', hash: '#epicbox' }, open: this.$t('msg.modern.svc_open_epicbox'),
-          glyph: row.glyph, word: row.word, lines: row.lines,
+          key: 'rcv', icon: 'svc-epicbox', name: this.$t('msg.modern.svc_receiving'), to: { path: '/settings/receiving', hash: '#epicbox' }, open: this.$t('msg.modern.svc_open_epicbox'),
+          glyph: row.glyph, word: row.word, svc: this.svc.rows.filter(r => r.key != 'node'),
         };
       },
       rows() {

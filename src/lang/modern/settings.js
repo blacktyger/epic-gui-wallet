@@ -18,6 +18,7 @@ export default {
   node_find: 'Find or type a node address',
   node_list: 'Nodes to choose from',
   node_use: 'Use {node}',
+  picker_note: 'Status and latency from status.btlabs.uk',
   node_typed_note: 'Enter uses it. ☆ keeps it in My nodes.',
   node_check_port: 'Check the address and the port (usually 3413).',
   node_none: 'No nodes to show.',

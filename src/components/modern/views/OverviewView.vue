@@ -34,8 +34,8 @@
         <p>{{ $t('msg.modern.overview.upgraded_text') }}</p>
       </div>
       <div class="e-actions">
-        <router-link to="/settings" class="e-btn e-btn-sm" @click="dismissUpgraded">{{ $t('msg.modern.overview.upgraded_open') }}</router-link>
-        <button type="button" class="e-icon-btn" :aria-label="$t('msg.modern.overview.dismiss')" @click="dismissUpgraded"><EIcon name="close" /></button>
+        <router-link to="/settings" class="e-btn-inline" @click="dismissUpgraded">{{ $t('msg.modern.overview.upgraded_open') }}</router-link>
+        <button type="button" class="e-icon-btn e-inline" :aria-label="$t('msg.modern.overview.dismiss')" @click="dismissUpgraded"><EIcon name="close" /></button>
       </div>
     </div>
 
@@ -60,10 +60,10 @@
         <p>{{ isInternal ? $t('msg.modern.overview.node_down_internal') : $t('msg.modern.overview.node_down_external') }}</p>
       </div>
       <div class="e-actions">
-        <button v-if="isInternal" type="button" class="e-btn e-btn-sm" :disabled="nodeRestarting" @click.prevent="restartNode">
+        <button v-if="isInternal" type="button" class="e-btn-inline" :disabled="nodeRestarting" @click.prevent="restartNode">
           <EIcon name="refresh" />{{ nodeRestarting ? $t('msg.modern.overview.restarting_node') : $t('msg.modern.overview.restart_node') }}
         </button>
-        <router-link to="/settings" class="e-btn e-btn-sm e-btn-ghost">{{ $t('msg.modern.overview.node_settings') }}</router-link>
+        <router-link to="/settings" class="e-btn-inline">{{ $t('msg.modern.overview.node_settings') }}</router-link>
       </div>
     </div>
 
@@ -147,35 +147,42 @@
       <aside aria-labelledby="ov-status-h">
         <div class="e-section-head"><h2 id="ov-status-h">{{ $t('msg.modern.overview.status') }}</h2></div>
         <div class="e-panel e-ov-status">
-          <!-- the same dot, word and lines as the sidebar and its hover cards (modern/serviceRows.js) -->
-          <div class="e-ov-row" data-test="ov-node">
-            <span class="e-st" :class="'e-' + ovNode.glyph" aria-hidden="true"></span>
-            <div class="e-grow">
-              <b>{{ $t('msg.modern.svc_node') }} <span class="e-sep" aria-hidden="true">·</span> <span class="e-stword" :class="'e-' + ovNode.glyph">{{ ovNode.word }}</span></b>
-              <small v-for="(line, i) in ovNode.lines" :key="i" translate="no">{{ line }}</small>
-              <small role="status" class="e-sr-only" :data-node-state="badge.state">{{ badgeTip }}</small>
-              <small v-if="badge.behind"><router-link to="/settings#node" class="e-link-btn">{{ $t('msg.modern.switch_node') }}</router-link></small>
-              <small v-if="isInternal && !configService.config.nodesynced && (configService.defaultAccountNetwork || 'mainnet') == 'mainnet'" class="e-faint">{{ $t('msg.modern.overview.node_fallback', { addr: nodeFallBack }) }}</small>
-            </div>
+          <!-- one row per service, the same data as the sidebar hover cards (modern/serviceRows.js); the details
+               are in a tooltip that opens on hover and on focus, Esc closes it (WCAG 1.4.13) -->
+          <div
+            v-for="r in ovRows"
+            :key="r.key"
+            class="e-srow"
+            :class="{ 'e-is-dismissed': dismissed == r.key }"
+            tabindex="0"
+            :data-test="'ov-' + r.key"
+            :aria-describedby="'ov-tip-' + r.key"
+            @keydown.esc="dismissed = r.key"
+            @mouseleave="dismissed = ''"
+            @focusout="dismissed = ''"
+          >
+            <span class="e-ico" :class="{ 'e-err': r.err }" aria-hidden="true"><EIcon :name="r.icon" /><span class="e-st" :class="'e-' + r.glyph" :data-state="r.glyph"></span></span>
+            <span class="e-srow-lab">{{ r.label }}</span>
+            <span class="e-srow-val" :class="{ 'e-mono': r.mono }" translate="no">{{ r.value }}</span>
             <button
-              v-if="isInternal && !nodeDown"
+              v-if="r.key == 'node' && isInternal && !nodeDown"
               type="button"
-              class="e-icon-btn e-sm"
+              class="e-icon-btn e-inline"
               :disabled="nodeRestarting"
               :aria-label="$t('msg.modern.overview.restart_node')"
               :title="$t('msg.modern.overview.restart_node')"
               @click.prevent="restartNode"
-            ><EIcon name="restart" /></button>
+            ><EIcon name="restart" size="sm" /></button>
+            <span v-else></span>
+            <span :id="'ov-tip-' + r.key" class="e-srow-tip" role="tooltip">
+              <span v-for="(line, i) in r.tip" :key="i" translate="no">{{ line }}</span>
+            </span>
           </div>
-          <div class="e-ov-row" data-test="ov-rcv">
-            <span class="e-st" :class="'e-' + ovRcv.glyph" aria-hidden="true"></span>
-            <div class="e-grow">
-              <b>{{ $t('msg.modern.svc_receiving') }} <span class="e-sep" aria-hidden="true">·</span> <span class="e-stword" :class="'e-' + ovRcv.glyph">{{ ovRcv.word }}</span></b>
-              <small v-for="(line, i) in ovRcv.lines" :key="i" translate="no">{{ line }}</small>
-            </div>
-          </div>
-          <div class="e-ov-addr">
-            <router-link to="/httpReceive" class="e-small">{{ $t('msg.modern.overview.more_ways') }}</router-link>
+          <small role="status" class="e-sr-only" :data-node-state="badge.state">{{ badgeTip }}</small>
+          <p v-if="badge.behind" class="e-srow-note"><router-link to="/settings#node" class="e-btn-inline">{{ $t('msg.modern.switch_node') }}</router-link></p>
+          <p v-if="isInternal && !configService.config.nodesynced && (configService.defaultAccountNetwork || 'mainnet') == 'mainnet'" class="e-srow-note e-faint">{{ $t('msg.modern.overview.node_fallback', { addr: nodeFallBack }) }}</p>
+          <div class="e-srow-foot">
+            <button type="button" class="e-btn" data-test="ov-receive-options" @click="openReceiving">{{ $t('msg.modern.overview.receive_options') }}</button>
           </div>
         </div>
 
@@ -184,7 +191,7 @@
           <div>
             <b>{{ $t('msg.modern.overview.pending_files', { n: pendingFiles }, pendingFiles) }}</b>
             <p>{{ $t('msg.modern.overview.pending_files_text') }}</p>
-            <router-link to="/finalizeTransaction" class="e-btn e-btn-sm">{{ $t('msg.modern.overview.finalize') }}</router-link>
+            <router-link to="/finalizeTransaction" class="e-btn-inline">{{ $t('msg.modern.overview.finalize') }}</router-link>
           </div>
         </div>
       </aside>
@@ -203,7 +210,8 @@
   const lastFiat = { total: null, usd: 0 };
   import { nodeSyncPercent } from '@/components/modern/format';
   import { nodeBadge, nodeBadgeText } from '@/components/modern/nodeBadge';
-  import { nodeRow, receivingRow } from '@/components/modern/serviceRows';
+  import { nodeRow, serviceRows } from '@/components/modern/serviceRows';
+  import { openSettingsSection } from '@/components/modern/settings/jump';
   import epicboxSwitch from '@/components/modern/epicboxSwitch';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import MoneyText from '@/components/modern/ui/MoneyText.vue';
@@ -223,6 +231,8 @@
         //the first-run tour (shown once; Settings › Show the tour again)
         tourOpen: false,
         refreshing: false,
+        //Esc hides that row's tooltip until the pointer or focus leaves
+        dismissed: '',
       };
     },
     computed: {
@@ -329,14 +339,14 @@
           },
         ];
       },
-      /* the Status card: the sidebar's rows (modern/serviceRows.js), so the two can't say different things */
-      ovNode() {
-        const addr = String((this.configService.config || {}).check_node_api_http_addr || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
-        return nodeRow({ status: this.store.state.nodeStatus, problem: this.store.state.nodeProblem, internal: this.isInternal, addr, locale: this.$i18n.locale }, (k, a) => this.$t(k, a));
-      },
-      ovRcv() {
+      /* the Status card: the sidebar hover cards' rows (modern/serviceRows.js), so the two can't say different things */
+      ovRows() {
         const st = this.store.state;
-        return receivingRow({ health: this.ebHealth, domain: this.ebDomain, httpListener: st.httpListener, listenerStarting: st.listenerStarting, tor: st.tor }, (k, a) => this.$t(k, a));
+        const addr = String((this.configService.config || {}).check_node_api_http_addr || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
+        const t = (k, a) => this.$t(k, a);
+        const node = nodeRow({ status: st.nodeStatus, problem: st.nodeProblem, internal: this.isInternal, addr, locale: this.$i18n.locale }, t);
+        const httpAddr = (st.direct && st.direct.httpAddr) || 'http://127.0.0.1:' + this.configService.walletListenerPort;
+        return serviceRows({ node, health: this.ebHealth, domain: this.ebDomain, direct: st.direct, httpListener: st.httpListener, listenerStarting: st.listenerStarting, tor: st.tor, httpAddr }, t);
       },
       /* file sends waiting for the response file: the test of the sidebar badge */
       pendingFiles() {
@@ -377,6 +387,9 @@
       lastFiat.usd = this.usdPrice;
     },
     methods: {
+      openReceiving() {
+        openSettingsSection(this.$router, { path: '/settings/receiving' });
+      },
       fmt(n) {
         return Number(n || 0).toLocaleString(this.locale);
       },

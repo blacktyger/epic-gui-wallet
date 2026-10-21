@@ -74,7 +74,7 @@
 
       <template v-if="publicNodes.length">
         <div class="e-combo-grp" aria-hidden="true">{{ $t('msg.nodedir.title') }}</div>
-        <div v-for="n in publicNodes" :key="n.endpoint" class="e-opt" :class="{ 'e-is-on': isCurrent(n.endpoint) }" :title="facts(n)">
+        <div v-for="n in publicNodes" :key="n.endpoint" class="e-opt e-has-lat" :class="{ 'e-is-on': isCurrent(n.endpoint) }" :title="facts(n)">
           <button type="button" class="e-opt-pick" :aria-label="$t('msg.modern.settings.node_use', { node: n.host }) + (n.operator ? ', ' + n.operator : '')" :aria-current="isCurrent(n.endpoint) ? 'true' : null" @click="pick(n.endpoint)"></button>
           <span class="e-st" :class="'e-' + publicGlyph(n)" aria-hidden="true"></span>
           <span class="e-opt-name">
@@ -83,6 +83,7 @@
             <span v-else-if="n.operator" class="e-opt-op" translate="no">{{ n.operator }}</span>
           </span>
           <span class="e-h" translate="no"><template v-if="n.height !== null">{{ fmt(n.height) }}<HeightMeter :behind="n.tipLag" /></template></span>
+          <span class="e-lat" translate="no">{{ n.latencyMs !== null ? $t('msg.nodedir.latency_ms', { n: n.latencyMs }) : '' }}</span>
           <button v-if="myNodesReady && !inMine(n.endpoint)" type="button" class="e-opt-trail e-icon-btn" :aria-label="$t('msg.modern.settings.node_save_named', { node: n.host })" :title="$t('msg.mynodes.add')" @click="addPublicToMine(n)"><EIcon name="staro" size="sm" /></button>
           <span v-else class="e-opt-trail"><EIcon v-if="isCurrent(n.endpoint)" name="check" size="sm" /></span>
         </div>
@@ -99,6 +100,7 @@
           <span class="e-opt-trail"><EIcon v-if="savedInternal" name="check" size="sm" /></span>
         </div>
       </template>
+      <p v-if="publicNodes.length" class="e-combo-note">{{ $t('msg.modern.settings.picker_note') }}</p>
     </div>
     <p v-if="errors.nodeaddress" :id="uid + '-e'" class="e-error-msg" role="alert"><EIcon name="alertc" /><span>{{ errors.nodeaddress }}</span></p>
   </div>

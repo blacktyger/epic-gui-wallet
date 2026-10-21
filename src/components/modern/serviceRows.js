@@ -7,7 +7,8 @@
  */
 import { nodeBadge, nodeBadgeText } from './nodeBadge.js';
 import { httpShown } from '../../shared/httpListener.js';
-import { torCardLine } from '../../shared/torUi.js';
+import { torCardLine, torPhase, torPercent, torErrorText } from '../../shared/torUi.js';
+import { httpOffered, torOffered, epicboxDomainLabel } from '../../shared/directTx.js';
 
 const NODE_GLYPH = { online: 'ok', syncing: 'sync', offline: 'down' };
 const EB_GLYPH = { listening: 'ok', connecting: 'sync', paused: 'pause', down: 'down', off: 'off' };
@@ -39,6 +40,9 @@ export function nodeRow({ status, problem, internal = false, addr = '', locale }
     word: { online: t('msg.mynodes.state_online'), syncing: t('msg.mynodes.state_syncing'), offline: t('msg.mynodes.state_offline') }[b.state] || t('msg.modern.eb_connecting'),
     lines: lines.filter(Boolean),
     behind: b.behind,
+    //the Status card and hover cards: "Synced" (+ the height) while online
+    synced: b.state == 'online' ? t('msg.modern.svc_synced') : '',
+    height,
   };
 }
 
@@ -62,4 +66,65 @@ export function receivingRow({ health, domain = '', httpListener, listenerStarti
   if (listenerStarting && h.state == 'off') { glyph = 'sync'; word = t('msg.modern.eb_connecting'); }
   const torLine = torCardLine(tor, t);
   return { glyph, word, lines: torLine ? [epicLine, httpLine, torLine] : [epicLine, httpLine] };
+}
+
+/* "mk7ca5…luyd.onion" for the 56-character name, so the row never wraps */
+export function onionShort(onion) {
+  const name = String(onion || '').replace(/\.onion$/i, '');
+  return name.length > 12 ? name.slice(0, 6) + '…' + name.slice(-4) + '.onion' : name ? name + '.onion' : '';
+}
+
+/*
+ * The service rows of the Overview Status card and the sidebar hover cards, one source (icon, dot, label,
+ * value, tooltip lines). Returns [{key: 'node'|'epicbox'|'http'|'tor', icon, glyph, err, label, value,
+ * hoverValue, mono, tip: [lines]}]; value is the card's (right-aligned, muted), hoverValue the shorter
+ * one of the hover card.
+ *   node: nodeRow() of the screen; health, domain: the Epicbox; direct: store.state.direct;
+ *   httpListener, listenerStarting, tor: from the store; httpAddr: 'host:port' of the listener.
+ */
+export function serviceRows({ node, health, domain = '', direct, httpListener, listenerStarting = false, tor, httpAddr = '' } = {}, t) {
+  const rows = [];
+  const n = node || {};
+  const nodeWord = n.synced || n.word;
+  rows.push({
+    key: 'node', icon: 'svc-node', glyph: n.glyph || 'busy', err: n.glyph == 'down', label: t('msg.modern.svc_node'),
+    value: [nodeWord, n.height].filter(Boolean).join(' · '), hoverValue: nodeWord, mono: false, tip: n.lines || [],
+  });
+  const h = health || { state: 'off' };
+  const host = h.server || domain;
+  const dom = epicboxDomainLabel(host);
+  let ebGlyph = epicboxGlyph(h.state);
+  let ebWord = '';
+  if (h.state == 'down') ebWord = t('msg.modern.svc_no_answer');
+  else if (h.state == 'connecting') ebWord = t('msg.modern.eb_connecting');
+  else if (h.state == 'paused') ebWord = t('msg.modern.eb_paused');
+  if (listenerStarting && h.state == 'off') { ebGlyph = 'sync'; ebWord = t('msg.modern.eb_connecting'); }
+  const ebOff = h.state == 'off' && !listenerStarting;
+  rows.push({
+    key: 'epicbox', icon: 'svc-epicbox', glyph: ebGlyph, err: h.state == 'down', label: t('msg.modern.svc_epicbox'),
+    value: ebOff ? t('msg.modern.eb_off') : [dom, ebWord].filter(Boolean).join(' · '), hoverValue: ebOff ? t('msg.modern.eb_off') : dom, mono: false,
+    tip: [ebOff ? t('msg.modern.svc_epicbox_off') : t('msg.modern.svc_epicbox_line', { server: host, state: epicboxStateText(h, t) })],
+  });
+  if (httpOffered(direct)) {
+    const shown = httpShown(httpListener);
+    const addr = String(httpAddr || '').replace(/^https?:\/\//, '');
+    rows.push({
+      key: 'http', icon: 'svc-http', glyph: shown == 'on' ? 'ok' : shown == 'failed' ? 'down' : 'sync', err: shown == 'failed', label: t('msg.modern.svc_http'),
+      value: addr, hoverValue: addr, mono: true,
+      tip: [shown == 'failed' ? t('msg.modern.svc_http_failed_line') : t(direct.public ? 'msg.modern.svc_http_tip_public' : 'msg.modern.svc_http_tip_local')],
+    });
+  }
+  if (torOffered(direct)) {
+    const phase = torPhase(tor);
+    const failed = phase == 'failed';
+    const ready = phase == 'ready';
+    const pct = torPercent(tor);
+    rows.push({
+      key: 'tor', icon: 'svc-tor', glyph: ready ? 'ok' : failed ? 'down' : 'busy', err: failed, label: t('msg.modern.settings.tor.title'),
+      value: ready ? onionShort(tor.onion) || t('msg.modern.svc_on') : failed ? t('msg.modern.settings.tor.card_failed') : phase == 'publishing' ? t('msg.modern.svc_tor_publishing') : t('msg.modern.svc_tor_starting', { n: pct }),
+      hoverValue: ready ? t('msg.modern.svc_on') : failed ? t('msg.modern.settings.tor.card_failed') : t('msg.modern.settings.tor.card_connecting', { n: pct }),
+      mono: ready, tip: [ready && tor.onion ? tor.onion : '', failed ? torErrorText(t, tor.error, tor.detail) : torCardLine(tor, t)].filter(Boolean),
+    });
+  }
+  return rows;
 }

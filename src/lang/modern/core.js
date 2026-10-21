@@ -50,6 +50,15 @@ export default {
   svc_http_off: 'HTTP listener off',
   svc_http_failed_line: 'HTTP listener didn’t start',
   svc_http_only_word: 'HTTP only',
+  //the service rows (Overview Status card, sidebar hover cards)
+  svc_synced: 'Synced',
+  svc_epicbox: 'Epicbox',
+  svc_http: 'HTTP',
+  svc_no_answer: 'no answer',
+  svc_tor_starting: 'starting… {n} %',
+  svc_tor_publishing: 'publishing…',
+  svc_http_tip_local: 'Direct payments over HTTP · this computer only',
+  svc_http_tip_public: 'Direct payments over HTTP · reachable from other computers',
   //Epicbox status (#52): our listener's state, the reason, and the switch offered when it doesn't answer
   eb_listening: 'Listening',
   eb_connecting: 'Connecting…',

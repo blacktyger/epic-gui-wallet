@@ -78,7 +78,20 @@ describe('sidebar Receiving row', () => {
     expect(rcv.text()).toContain(t('msg.modern.svc_receiving'));
     expect(rcv.text()).toContain(t('msg.modern.svc_on'));
     expect(rcvCard.text()).toContain('epicbox.epiccash.com');
-    expect(rcvCard.text()).toContain(t('msg.modern.svc_http_off'));
+    //Epicbox shows its domain only; HTTP and Tor rows only when Direct offers them
+    expect(rcvCard.find('[data-test=hc-epicbox]').text()).toContain('epiccash.com');
+    expect(rcvCard.find('[data-test=hc-http]').exists()).toBe(false);
+    expect(rcvCard.find('[data-test=hc-tor]').exists()).toBe(false);
+  });
+
+  test('Direct on with HTTP and Tor: their rows in the card, with the address and Tor state', async () => {
+    const { rcvCard } = await sidebar({
+      walletEpicboxService: true, epicbox: { state: 'listening', server: 'wss://epicbox.epiccash.com:443', since: Date.now() },
+      direct: { on: true, http: true, tor: true, public: false, wantPublic: false }, httpListener: { state: 'on', port: 3415, reason: '' },
+      tor: { enabled: true, state: 'starting', progress: 62 },
+    }, { epicbox_domain: 'epicbox.epiccash.com' });
+    expect(rcvCard.find('[data-test=hc-http]').text()).toContain('127.0.0.1:');
+    expect(rcvCard.find('[data-test=hc-tor]').text()).toContain(t('msg.modern.settings.tor.card_connecting', { n: 62 }));
   });
 
   test('off: Off, and only HTTP running is "HTTP only"', async () => {
@@ -86,10 +99,10 @@ describe('sidebar Receiving row', () => {
     expect(dot(off.rcv)).toContain('e-off');
     expect(off.rcv.text()).toContain(t('msg.modern.eb_off'));
     expect(off.rcvCard.text()).toContain(t('msg.modern.svc_epicbox_off'));
-    const http = await sidebar({ httpListener: { state: 'on', port: 3415, reason: '' } });
+    const http = await sidebar({ httpListener: { state: 'on', port: 3415, reason: '' }, direct: { on: true, http: true, tor: false, public: false, wantPublic: false } });
     expect(dot(http.rcv)).toContain('e-ok');
     expect(http.rcv.text()).toContain(t('msg.modern.svc_http_only_word'));
-    expect(http.rcvCard.text()).toContain(t('msg.modern.svc_http_on'));
+    expect(http.rcvCard.text()).toContain(t('msg.modern.svc_http_tip_local'));
   });
 
   /* final 6.1.6 QA bug 1: paused (node not synced) showed "Connecting…" for the rest of the session */

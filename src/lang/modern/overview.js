@@ -70,7 +70,7 @@ export default {
   node_synced: 'Synced',
   node_progress: '{status} · {p}',
   node_block: 'Block height',
-  more_ways: 'Show QR code and other ways to receive',
+  receive_options: 'Receive options',
   pending_files: '{n} file send needs a response | {n} file sends need a response',
   pending_files_text: 'When the receiver sends back the response file, finalize the transaction to complete the payment.',
   finalize: 'Finalize…',

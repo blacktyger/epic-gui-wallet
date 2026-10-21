@@ -55,10 +55,10 @@
           <span v-else-if="s.isDefault" class="e-def">{{ $t('msg.modern.settings.default_label') }}</span>
           <span v-else-if="s.operator || s.label" class="e-opt-op" translate="no">{{ s.operator || s.label }}</span>
         </span>
-        <span></span>
+        <span class="e-lat" translate="no">{{ s.latencyMs !== null && s.latencyMs !== undefined ? $t('msg.epicboxdir.latency_ms', { n: s.latencyMs }) : '' }}</span>
         <span class="e-opt-trail"><EIcon v-if="s.domain === current" name="check" size="sm" /></span>
       </div>
-      <p class="e-combo-note">{{ live ? $t('msg.epicboxdir.live_note') : $t('msg.epicboxdir.unknown_note') }}</p>
+      <p class="e-combo-note">{{ live ? $t('msg.modern.settings.picker_note') : $t('msg.epicboxdir.unknown_note') }}</p>
     </div>
   </div>
 </template>
