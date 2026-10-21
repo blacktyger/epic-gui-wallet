@@ -377,3 +377,27 @@ describe('Activity: a Tor send', () => {
     expect(view.whoOf(sent({ type: 'tor', tor_address: 'javascript:x' })).text).toBe('msg.modern.overview.unknown_recipient');
   });
 });
+
+describe('Activity: found by scan (#55)', () => {
+  const view = Object.assign({ $t: (key) => key }, txDisplay.methods);
+  //what epic-wallet's scan writes (libwallet/src/internal/scan.rs): a confirmed receive, public_addr "Restore"
+  const scanned = { tx_type: 'TxReceived', tx_slate_id: null, public_addr: 'Restore', confirmed: true, amount_credited: '29000000' };
+
+  test('a scan record reads "Found by scan" with its tooltip, never "Restore" as an address', () => {
+    const who = view.whoOf(scanned);
+    expect(who.text).toBe('msg.modern.overview.found_by_scan');
+    expect(who.tip).toBe('msg.modern.overview.found_by_scan_tip');
+    expect(who.addr).toBe(false);
+    expect(view.addrOf(scanned)).toBe('');
+    expect(view.methodOf(scanned)).toBe('');
+    //the same with no public_addr at all (older wallets)
+    expect(view.whoOf({ ...scanned, public_addr: null }).text).toBe('msg.modern.overview.found_by_scan');
+  });
+
+  test('a real receive keeps its address; a coinbase stays a mining reward', () => {
+    const box = { ...scanned, tx_slate_id: 's1', public_addr: 'esAbc@epicbox.stackwallet.com' };
+    expect(view.whoOf(box).addr).toBe(true);
+    expect(view.methodOf(box)).toBe('msg.modern.overview.m_epicbox');
+    expect(view.whoOf({ ...scanned, tx_type: 'ConfirmedCoinbase' }).text).toBe('msg.modern.overview.mining_reward');
+  });
+});

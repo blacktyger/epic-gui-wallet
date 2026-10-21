@@ -51,17 +51,23 @@ export default {
       if (/\.onion$/i.test(a)) return truncateMid(a.slice(0, -6), 6) + '.onion';
       return /^https?:/i.test(a) ? a : truncateMid(a, 12);
     },
+    /* the address a tx went to or came from: never the "Restore" a scan writes there instead of one
+       (epic-wallet libwallet/src/internal/scan.rs) */
+    addrOf(tx) {
+      const a = tx.public_addr ? String(tx.public_addr) : '';
+      return a == 'Restore' ? '' : a;
+    },
     /* an output a scan found with no transaction record of its own (#55): epic-wallet logs it as a
-       receive with no slate, no address and no contact (another copy of the seed received it) */
+       receive with no slate, no address (or "Restore") and no contact (another copy of the seed received it) */
     foundByScan(tx) {
-      return !this.isSent(tx) && tx.tx_type != 'ConfirmedCoinbase' && !tx.tx_slate_id && !tx.public_addr && !(tx.address && (tx.address.name || tx.address.type));
+      return !this.isSent(tx) && tx.tx_type != 'ConfirmedCoinbase' && !tx.tx_slate_id && !this.addrOf(tx) && !(tx.address && (tx.address.name || tx.address.type));
     },
     /* who the tx was with: the contact's name, the address, or what kind of tx it was. A send over
        Tor has no public_addr (the GUI exchanges the slate itself): its onion is kept with the
        address-transaction row (tor_address, HttpSend.sendTor) */
     whoOf(tx) {
       if (tx.address && tx.address.name) return { text: tx.address.name, addr: false };
-      if (tx.public_addr) return { text: this.shortAddr(tx.public_addr), addr: true };
+      if (this.addrOf(tx)) return { text: this.shortAddr(this.addrOf(tx)), addr: true };
       if (this.torAddressOf(tx)) return { text: this.shortAddr(this.torAddressOf(tx)), addr: true, tip: this.torAddressOf(tx) };
       if (this.isFile(tx)) return { text: this.$t('msg.modern.overview.file_tx'), addr: false };
       if (tx.tx_type == 'ConfirmedCoinbase') return { text: this.$t('msg.modern.overview.mining_reward'), addr: false };
@@ -76,7 +82,7 @@ export default {
     methodOf(tx) {
       if (this.isFile(tx)) return this.$t('msg.modern.overview.m_file');
       if (tx.address && tx.address.type == 'tor') return this.$t('msg.modern.overview.m_tor');
-      const a = String(tx.public_addr || '');
+      const a = this.addrOf(tx);
       if (a.includes('@')) return this.$t('msg.modern.overview.m_epicbox');
       if (/^https?:/i.test(a)) return this.$t('msg.modern.overview.m_http');
       return '';

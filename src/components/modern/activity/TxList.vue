@@ -139,9 +139,9 @@
         <h3 class="e-act-sub">{{ $t('msg.modern.overview.d_details') }}</h3>
         <dl class="e-facts e-act-facts">
           <dt>{{ $t('msg.modern.overview.f_date') }}</dt><dd>{{ formatDateTime(selected.creation_ts, locale) }}</dd>
-          <template v-if="selected.public_addr">
+          <template v-if="addrOf(selected)">
             <dt>{{ $t(isSent(selected) ? 'msg.modern.overview.f_to' : 'msg.modern.overview.f_from') }}</dt>
-            <dd><span class="e-mono e-truncate e-hide" translate="no" :title="selected.public_addr">{{ selected.public_addr }}</span><button type="button" class="e-icon-btn e-sm" :aria-label="$t('msg.modern.overview.copy_field', { what: $t('msg.transaction.receiver') })" @click="copy(selected.public_addr)"><EIcon name="copy" size="sm" /></button></dd>
+            <dd><span class="e-mono e-truncate e-hide" translate="no" :title="addrOf(selected)">{{ addrOf(selected) }}</span><button type="button" class="e-icon-btn e-sm" :aria-label="$t('msg.modern.overview.copy_field', { what: $t('msg.transaction.receiver') })" @click="copy(addrOf(selected))"><EIcon name="copy" size="sm" /></button></dd>
           </template>
           <template v-if="methodOf(selected)"><dt>{{ $t('msg.modern.overview.f_method') }}</dt><dd>{{ methodOf(selected) }}</dd></template>
           <dt>{{ $t('msg.modern.overview.f_amount') }}</dt><dd><MoneyText :value="Math.abs(amountOf(selected))" :decimals="decFor(amountOf(selected))" unit /></dd>
