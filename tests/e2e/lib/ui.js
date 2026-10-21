@@ -22,9 +22,11 @@ const main = (w) => w.evaluate(() => {
   const el = document.querySelector('#e-main, .e-content, section.is-main-section') || document.body;
   return el.innerText.replace(/\s+/g, ' ').trim();
 });
-/** Modern: the sidebar's node icon says "Node online and ready" (its aria-label; no height in the main views). */
+/** Modern: the sidebar's Node row says Online (6.1.6: its aria-label "Open node settings: Online"); throws when it never does. */
 async function waitNodeOnline(w, timeout = 30000) {
-  return waitFor(async () => (await w.locator('button.e-svc[aria-label*="Node online and ready"]').count()) ? true : null, { timeout, interval: 300 });
+  const ok = await waitFor(async () => (await w.locator('[data-test=svc-node][aria-label$=": Online"]').count()) ? true : null, { timeout, interval: 300 });
+  if (!ok) throw new Error('the sidebar never says the node is Online: ' + JSON.stringify(await w.locator('[data-test=svc-node]').getAttribute('aria-label').catch(() => null)));
+  return 'sidebar: node Online';
 }
 
 async function waitText(w, re, timeout = 20000) {
@@ -252,6 +254,17 @@ async function typeNodeAddress(w, ui, url = NODE_URL) {
   return `typed ${url} key by key; field holds ${JSON.stringify(await input.inputValue())} (both slashes), live check shown`;
 }
 
+/** Modern: the combobox is done applying (not busy) and the sidebar's Node card names the address (6.1.6). */
+async function applied(w, url) {
+  const host = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const ok = await waitFor(async () => {
+    if ((await nodeInput(w, 'modern').getAttribute('aria-busy')) === 'true') return null;
+    const card = await w.locator('.e-sbA-wrap:has([data-test=svc-node]) [role=tooltip]').first().textContent().catch(() => '');
+    return card.includes(host) ? true : null;
+  }, { timeout: 60000, interval: 300 });
+  if (!ok) throw new Error('the node ' + host + ' was never applied (sidebar card: ' + JSON.stringify(await w.locator('.e-sbA-wrap:has([data-test=svc-node]) [role=tooltip]').first().textContent().catch(() => '')) + ')');
+}
+
 /** Settings › node: the address filled at once (not key by key), then applied like saveNode. */
 async function setNode(w, ui, url = NODE_URL, t = null) {
   await openSettings(w, ui);
@@ -272,6 +285,7 @@ async function setNode(w, ui, url = NODE_URL, t = null) {
 async function saveNode(w, ui, url = NODE_URL, t = null) {
   if (ui === 'modern') {
     await nodeInput(w, ui).press('Enter');
+    await applied(w, url);
     await waitNodeOnline(w, 45000);
   } else {
     await w.locator('section.is-main-section button.is-primary').filter({ hasText: /^\s*Save\s*$/ }).first().click({ timeout: 8000 });
