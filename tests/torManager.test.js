@@ -191,6 +191,30 @@ test('a tor that survives the kill: stop gives up after the bounded wait instead
   assert.ok(t.logs.some(l => l.includes('did not exit')));
 });
 
+test('stopped: tor dying after the bootstrap is restarted with the backoff', async () => {
+  const t = harness();
+  await t.m.start(START(walletDir()));
+  await t.until(() => t.logs.some(l => l.includes('onion service added')));
+  t.event('STATUS_CLIENT NOTICE BOOTSTRAP PROGRESS=100 TAG=done SUMMARY="Done"');
+  t.event('HS_DESC UPLOADED ' + ONION + ' UNKNOWN $A');
+  await t.until(() => t.m.status().state === 'ready');
+  t.procs[0].exit(1);
+  await t.until(() => t.m.status().state === 'failed');
+  assert.equal(t.m.status().error, 'stopped');
+  await t.until(() => t.spawned.length === 2);
+  await t.until(() => t.sent.filter(c => c.startsWith('ADD_ONION')).length === 2);
+  await t.m.stop();
+  //before the bootstrap an exit stays a start failure, with no restart
+  const u = harness();
+  await u.m.start(START(walletDir()));
+  await u.until(() => u.logs.some(l => l.includes('onion service added')));
+  u.procs[0].exit(1);
+  await u.until(() => u.m.status().state === 'failed');
+  assert.equal(u.m.status().error, 'start');
+  await new Promise(r => setTimeout(r, 80));
+  assert.equal(u.spawned.length, 1);
+});
+
 test('missing: no tor binary in this build', async () => {
   const t = harness({ missing: true });
   await t.m.start(START(walletDir()));

@@ -9,7 +9,8 @@
  * Errors (§4): missing (no binary), start (tor exited before its control file appeared: its last
  * [err]/[warn] line), network (progress stuck 60 s, or no 100 % after 120 s: restarted after 5 s,
  * 30 s, 2 min, then left failed), clock (CLOCK_SKEW before the bootstrap), keys (no key for the
- * onion, or tor published another one), listener (the wallet's HTTP listener doesn't answer).
+ * onion, or tor published another one), listener (the wallet's HTTP listener doesn't answer),
+ * stopped (tor exited or closed its control port after the bootstrap: restarted like network).
  *
  * Start (start()): torrc in <configDir>/tor, data in <configDir>/tor/data (0700); `tor -f <torrc>
  * --defaults-torrc <empty>`, no shell; cookie auth; TAKEOWNERSHIP (tor exits when the app's
@@ -28,7 +29,7 @@ import { parseOnion, readOnionKeyFile, keyForTor, onionKeyPath, ONION_LEN } from
 import { createTorControl, parseControlFile } from './torControl.js';
 
 export const STATES = ['off', 'starting', 'publishing', 'ready', 'failed'];
-export const ERRORS = ['missing', 'start', 'network', 'clock', 'keys', 'listener'];
+export const ERRORS = ['missing', 'start', 'network', 'clock', 'keys', 'listener', 'stopped'];
 
 export const TIMINGS = Object.freeze({
   controlFileMs: 30000,
@@ -153,7 +154,7 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
   function fail(r, error, detail) {
     if (r.dead || r !== run) return;
     info('tor: failed, ' + error + (detail ? ' (' + String(detail).slice(0, 200) + ')' : ''));
-    const auto = error === 'network' && restarts < t.backoffMs.length;
+    const auto = (error === 'network' || error === 'stopped') && restarts < t.backoffMs.length;
     teardown(r).catch(() => {});
     run = null;
     emit({ state: 'failed', progress: status.progress, error, detail: detail ? String(detail).slice(0, 300) : '' });
@@ -257,7 +258,7 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
       sock.once('connect', () => {
         sock.removeListener('error', onErr);
         resolve(createTorControl({ socket: sock, onEvent: (e) => onEvent(r, e),
-          onClose: () => { if (!r.dead && r === run) fail(r, 'start', 'tor stopped'); } }));
+          onClose: () => { if (!r.dead && r === run) fail(r, r.bootstrapped ? 'stopped' : 'start', 'tor stopped'); } }));
       });
     });
   }
@@ -324,7 +325,8 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
       r.exited = true;
       r.onExit.splice(0).forEach(f => f());
       if (proc.pid) forget(proc.pid);
-      if (!r.dead && r === run) fail(r, 'start', r.lastProblem || 'tor exited (' + code + ')');
+      //after the bootstrap it is no start problem: restarted with the network backoff
+      if (!r.dead && r === run) fail(r, r.bootstrapped ? 'stopped' : 'start', r.lastProblem || 'tor exited (' + code + ')');
     });
 
     const addr = await waitControlFile(r, paths);
