@@ -56,6 +56,9 @@ export const WALLET_DEFAULTS = Object.freeze({
   node_background: false,
   //an old Epicbox server still to be checked once (wss:// url; walletService.pendingEpicboxCheck)
   epicbox_check_pending: '',
+  //Tor (docs/plans/tor-616.md, D5): receive and send at the wallet's .onion address; off by default.
+  //While on, the HTTP listener runs too (D6). Added in 6.1.6 without a schema change
+  tor_enabled: false,
 });
 
 /*
