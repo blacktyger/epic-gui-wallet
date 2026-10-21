@@ -121,7 +121,20 @@ export const store = createStore({
     },
     /* merge into state.epicbox; null resets it (logout) */
     epicbox(state, payload){
-      state.epicbox = payload ? Object.assign({}, state.epicbox, payload) : {state: '', server: '', address: '', checking: '', pid: 0};
+      if(!payload){
+        state.epicbox = {state: '', server: '', address: '', checking: '', pid: 0};
+        return;
+      }
+      const prev = state.epicbox || {};
+      const next = Object.assign({}, prev, payload);
+      //since: when the state last changed (how long "connecting" has lasted, shared/epicboxHealth.js);
+      //failed: the listener stopped while it was still trying to connect (epic-wallet gives up after its retries)
+      if(payload.state !== undefined && payload.state !== prev.state){
+        next.since = Date.now();
+        if(payload.state == 'off') next.failed = prev.state == 'connecting' || prev.state == 'starting';
+        else if(payload.state == 'listening' || payload.state == 'switching' || payload.state == 'starting') next.failed = false;
+      }
+      state.epicbox = next;
     },
     walletListenerService(state, payload){
       state.walletListenerService = payload;

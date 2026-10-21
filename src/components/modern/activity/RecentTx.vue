@@ -15,7 +15,7 @@
           <router-link to="/activity" class="e-tx e-compact e-tx-link">
             <span class="e-tx-ico" :class="tx.status == 'cancelled' ? 'e-off' : (isSent(tx) ? 'e-out' : 'e-in')"><EIcon :name="iconOf(tx)" /></span>
             <span class="e-tx-who">
-              <b :class="{ 'e-addr-inline': whoOf(tx).addr, 'e-hide': whoOf(tx).addr }" translate="no">{{ whoOf(tx).text }}</b>
+              <b :class="{ 'e-addr-inline': whoOf(tx).addr, 'e-hide': whoOf(tx).addr }" translate="no" :title="whoOf(tx).tip || null">{{ whoOf(tx).text }}</b>
               <small class="e-tx-meta">
                 <TxRing v-if="statusOf(tx).ring" class="e-sm" :state="statusOf(tx).ring.state" :confirmations="statusOf(tx).ring.confirmations" />
                 <EIcon v-else-if="statusOf(tx).icon" :name="statusOf(tx).icon" size="sm" />

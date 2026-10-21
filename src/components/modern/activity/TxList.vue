@@ -39,7 +39,7 @@
           <li v-else class="e-act-row e-act-grid" :class="{ 'e-is-off': row.tx.status == 'cancelled' }">
             <span class="e-tx-ico" :class="row.tx.status == 'cancelled' ? 'e-off' : (isSent(row.tx) ? 'e-out' : 'e-in')"><EIcon :name="iconOf(row.tx)" /></span>
             <span class="e-tx-who">
-              <b :class="{ 'e-addr-inline': whoOf(row.tx).addr, 'e-hide': whoOf(row.tx).addr }" translate="no">{{ whoOf(row.tx).text }}</b>
+              <b :class="{ 'e-addr-inline': whoOf(row.tx).addr, 'e-hide': whoOf(row.tx).addr }" translate="no" :title="whoOf(row.tx).tip || null">{{ whoOf(row.tx).text }}</b>
               <small class="e-tx-meta">
                 <template v-if="methodOf(row.tx)">{{ methodOf(row.tx) }}</template>
                 <template v-if="messageOf(row.tx)"><span v-if="methodOf(row.tx)" class="e-sep">·</span><EIcon name="note" size="sm" /><span class="e-truncate">{{ messageOf(row.tx) }}</span></template>
@@ -113,6 +113,7 @@
           <div class="e-grow">
             <div class="e-act-big"><MoneyText :value="amountOf(selected)" :decimals="decFor(amountOf(selected))" unit :mono="false" /></div>
             <p class="e-small e-dim">{{ $t(isSent(selected) ? 'msg.modern.overview.d_to' : 'msg.modern.overview.d_from') }} <span class="e-mono e-hide" translate="no">{{ whoOf(selected).text }}</span></p>
+            <p v-if="whoOf(selected).tip" class="e-small e-faint">{{ whoOf(selected).tip }}</p>
           </div>
         </div>
         <p class="e-act-now" role="status">

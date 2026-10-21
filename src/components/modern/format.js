@@ -46,3 +46,15 @@ export function formatDateTime(date, locale = 'en', opts = { dateStyle: 'medium'
   if (isNaN(d)) return '';
   try { return new Intl.DateTimeFormat(locale, opts).format(d); } catch (e) { return d.toLocaleString(); }
 }
+
+/* An Epicbox address for reading out (#47): the first five and last four characters of the key are
+   the ones people check, the same split everywhere an address shows in full (Receive, Send review,
+   Contacts). {head, mid, tail, rest}; rest is "@domain". A short or other address: all in head. */
+export function addressParts(address) {
+  const a = String(address || '');
+  const at = a.indexOf('@');
+  const key = at > 0 ? a.slice(0, at) : a;
+  const rest = at > 0 ? a.slice(at) : '';
+  if (at <= 0 || key.length <= 9) return { head: a, mid: '', tail: '', rest: '' };
+  return { head: key.slice(0, 5), mid: key.slice(5, -4), tail: key.slice(-4), rest };
+}

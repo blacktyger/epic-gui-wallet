@@ -142,7 +142,7 @@
           <div v-for="a in selectedAddresses" :key="a.field">
             <dt><EIcon :name="a.kind == 'epicbox' ? 'antenna' : 'web'" size="sm" />{{ $t('msg.contacts.' + a.kind + '_address') }}</dt>
             <dd class="e-addr">
-              <code translate="no">{{ a.address }}</code>
+              <code translate="no"><template v-if="a.kind == 'epicbox' && addressParts(a.address).mid"><span class="e-hl">{{ addressParts(a.address).head }}</span>{{ addressParts(a.address).mid }}<span class="e-hl">{{ addressParts(a.address).tail }}</span>{{ addressParts(a.address).rest }}</template><template v-else>{{ a.address }}</template></code>
               <button type="button" class="e-btn e-btn-ghost e-btn-sm e-con-copy" :class="{ 'e-is-copied': copied == a.field }" :aria-label="$t('msg.modern.settings.copy_field', { what: $t('msg.contacts.' + a.kind + '_address') })" @click="copy(a.address, a.field)">
                 <EIcon :name="copied == a.field ? 'check' : 'copy'" size="sm" /><span aria-hidden="true">{{ copied == a.field ? $t('msg.contacts.copied') : $t('msg.contacts.copy') }}</span>
               </button>
@@ -189,12 +189,14 @@
   import EDialog from '@/components/modern/ui/EDialog.vue';
   import ContactAvatar from '@/components/ContactAvatar.vue';
   import ContactTx from '@/components/modern/activity/ContactTx.vue';
+  import { addressParts } from '@/components/modern/format';
 
   export default reskin(AddressBook, {
     components: { EIcon, EDialog, ContactAvatar, ContactTx },
     data() {
       return { sendUse: '' };
     },
+    methods: { addressParts },
     computed: {
       /* the sort toggle and the count only earn their place in a long list */
       longList() {

@@ -122,6 +122,9 @@ export default {
   unknown_recipient: 'Unknown recipient',
   file_tx: 'Transaction file',
   mining_reward: 'Mining reward',
+  //an output a scan found with no record of its own (#55)
+  found_by_scan: 'Found by scan',
+  found_by_scan_tip: 'A scan found this payment; the wallet has no record of who sent it. The time is when the scan found it.',
   m_epicbox: 'Epicbox',
   m_http: 'HTTP',
   m_file: 'File',

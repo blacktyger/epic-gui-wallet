@@ -12,8 +12,9 @@
                 <p class="e-mono" :title="folderOf(w)" translate="no">{{ short(folderOf(w)) }}</p>
               </div>
               <div class="e-wlist-acts">
-                <button type="button" class="e-btn e-btn-sm e-btn-ghost" :aria-label="$t('msg.wallets.show_in_folder_named', [nameOf(w)])" @click="showInFolder(w)"><EIcon name="open" />{{ $t('msg.wallets.show_in_folder') }}</button>
-                <button v-if="w.id !== walletId" type="button" class="e-btn e-btn-sm e-btn-ghost" :aria-label="$t('msg.removal.open_named', [nameOf(w)])" @click="askRemove(w)"><EIcon name="trash" />{{ $t('msg.removal.open') }}</button>
+                <button type="button" class="e-icon-btn" :aria-label="$t('msg.wallets.show_in_folder_named', [nameOf(w)])" :title="$t('msg.wallets.show_in_folder')" @click="showInFolder(w)"><EIcon name="folder" /></button>
+                <button v-if="w.id !== walletId" type="button" class="e-icon-btn" :aria-label="$t('msg.removal.open_named', [nameOf(w)])" :title="$t('msg.removal.open')" @click="askRemove(w)"><EIcon name="trash" /></button>
+                <span v-else class="e-wlist-gap" aria-hidden="true"></span>
               </div>
             </li>
           </ul>

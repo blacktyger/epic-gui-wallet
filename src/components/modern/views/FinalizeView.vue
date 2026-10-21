@@ -47,5 +47,15 @@
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
 
-  export default reskin(Finalize, { components: { EIcon } });
+  export default reskin(Finalize, {
+    components: { EIcon },
+    watch: {
+      //finalized and posted: to Overview, where it shows in Recent activity (#54)
+      isSent(v) {
+        if (!v) return;
+        this.$toast.success(this.$t('msg.finalize.success'));
+        this.$router.push({ name: 'dashboard' });
+      },
+    },
+  });
 </script>

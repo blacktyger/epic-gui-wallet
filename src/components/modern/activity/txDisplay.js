@@ -50,12 +50,18 @@ export default {
       if (at > 0) return truncateMid(a.slice(0, at), 6) + a.slice(at);
       return /^https?:/i.test(a) ? a : truncateMid(a, 12);
     },
+    /* an output a scan found with no transaction record of its own (#55): epic-wallet logs it as a
+       receive with no slate, no address and no contact (another copy of the seed received it) */
+    foundByScan(tx) {
+      return !this.isSent(tx) && tx.tx_type != 'ConfirmedCoinbase' && !tx.tx_slate_id && !tx.public_addr && !(tx.address && (tx.address.name || tx.address.type));
+    },
     /* who the tx was with: the contact's name, the address, or what kind of tx it was */
     whoOf(tx) {
       if (tx.address && tx.address.name) return { text: tx.address.name, addr: false };
       if (tx.public_addr) return { text: this.shortAddr(tx.public_addr), addr: true };
       if (this.isFile(tx)) return { text: this.$t('msg.modern.overview.file_tx'), addr: false };
       if (tx.tx_type == 'ConfirmedCoinbase') return { text: this.$t('msg.modern.overview.mining_reward'), addr: false };
+      if (this.foundByScan(tx)) return { text: this.$t('msg.modern.overview.found_by_scan'), addr: false, tip: this.$t('msg.modern.overview.found_by_scan_tip') };
       return { text: this.$t(this.isSent(tx) ? 'msg.modern.overview.unknown_recipient' : 'msg.modern.overview.unknown_sender'), addr: false };
     },
     methodOf(tx) {

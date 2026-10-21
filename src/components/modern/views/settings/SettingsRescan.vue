@@ -4,23 +4,18 @@
       <h2 id="stg-rs-h">{{ $t('msg.modern.settings.rescan') }}</h2>
       <div class="e-set-list">
 
-        <!-- idle -->
-        <div v-if="!checking" class="e-set-row e-stacked">
+        <!-- idle: one row (#59), the option as a small checkbox inside it -->
+        <form v-if="!checking" class="e-set-row" novalidate @submit.prevent="start">
           <div>
-            <b>{{ $t('msg.check.introTitle') }}</b>
-            <p>{{ $t('msg.check.intro1') }}</p>
+            <b id="stg-rs-l">{{ $t('msg.modern.settings.rescan_row') }}</b>
+            <p>{{ $t('msg.modern.settings.rescan_row_hint') }}</p>
+            <label class="e-check" for="unconfirmedSwitch"><input id="unconfirmedSwitch" type="checkbox" v-model="delete_unconfirmed" aria-describedby="stg-del-unc-h" />{{ $t('msg.check.delete_unconfirmed') }}</label>
+            <p id="stg-del-unc-h" class="e-stg-sub">{{ $t('msg.modern.settings.rescan_unc_hint') }}</p>
           </div>
-          <form class="e-stg-scan" novalidate @submit.prevent="start">
-            <label class="e-switch e-stg-sw-line" for="unconfirmedSwitch">
-              <input id="unconfirmedSwitch" type="checkbox" v-model="delete_unconfirmed" aria-describedby="stg-del-unc-h" />
-              <span class="e-track"></span>
-              <span><b>{{ $t('msg.check.delete_unconfirmed') }}</b><span id="stg-del-unc-h" class="e-help">{{ $t('msg.modern.settings.rescan_unc_hint') }}</span></span>
-            </label>
-            <div class="e-field">
-              <button type="submit" class="e-btn"><EIcon name="scan" />{{ $t('msg.check.start') }}</button>
-            </div>
-          </form>
-        </div>
+          <div class="e-ctl">
+            <button type="submit" class="e-btn e-btn-primary" aria-describedby="stg-rs-l"><EIcon name="scan" />{{ $t('msg.check.start') }}</button>
+          </div>
+        </form>
 
         <!-- running -->
         <div v-else class="e-set-row e-stacked">

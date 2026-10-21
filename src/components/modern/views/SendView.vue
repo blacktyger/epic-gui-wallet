@@ -21,6 +21,8 @@
         <p>{{ $t('msg.node_not_synced_hint') }}{{ syncing ? ' ' + $t('msg.modern.send.sync_done', { p: syncPercent }) : '' }}</p>
       </div>
     </div>
+    <!-- our Epicbox server doesn't answer: the same words and one-click switch as Receive (#52) -->
+    <EpicboxDownNotice v-else-if="epicboxSelected && ebHealth.state == 'down'" class="e-send-notice" :health="ebHealth" :suggest="ebSuggest" :busy="ebSwitching" @switch="switchEpicbox" />
     <div v-else-if="epicboxSelected && !epicboxConnected" class="e-notice e-warn e-send-notice" role="status">
       <EIcon name="antenna" />
       <div>
@@ -200,18 +202,21 @@
   import { formatEpic, nodeSyncPercent } from '@/components/modern/format';
   import { epicToNano, nanoToEpic } from '@/shared/sendMath';
   import { isOnionAddress } from '@/shared/sendForm';
+  import epicboxSwitch from '@/components/modern/epicboxSwitch';
+  import EpicboxDownNotice from '@/components/modern/form/EpicboxDownNotice.vue';
 
-  const HEAD = 6;
+  const HEAD = 5;
   /* how many decimals a typed amount or a number has, 4 to 8 */
   function decimalsOf(v) {
     const s = typeof v == 'number' ? v.toFixed(8).replace(/0+$/, '') : String(v || '').trim();
     const m = s.match(/[.,](\d*)$/);
     return Math.min(8, Math.max(4, m ? m[1].length : 0));
   }
-  const TAIL = 6;
+  const TAIL = 4;
 
   export default reskin(HttpSend, {
-    components: { EIcon, EDialog, MoneyText, AmountField, AddressField, ContactAvatar, ContactPicker },
+    components: { EIcon, EDialog, MoneyText, AmountField, AddressField, ContactAvatar, ContactPicker, EpicboxDownNotice },
+    mixins: [epicboxSwitch],
     data() {
       return {
         //the "Privacy" disclosure
@@ -364,6 +369,8 @@
         } finally {
           this.reviewOpen = false;
         }
+        //sent (Epicbox or HTTP, sendForm.js clearSendForm): to Overview, where it shows in Recent activity (#54)
+        if (this.sent) this.$router.push({ name: 'dashboard' });
       },
     },
   });

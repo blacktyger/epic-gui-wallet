@@ -30,9 +30,6 @@
 .e-rcv-row .e-ctl { padding-top: 2px; }
 .e-rcv-line { margin-top: 4px; }
 .e-rcv-line code { font-size: 0.8125rem; overflow-wrap: anywhere; }
-.e-rcv-check { display: grid; grid-template-columns: 16px 1fr; gap: var(--sp-2); margin-top: var(--sp-2) !important; }
-.e-rcv-check .e-icon { margin-top: 2px; }
-.e-rcv-check b { display: inline; color: var(--text); }
 
 .e-rcv-drop { min-height: 172px; }
 .e-rcv-drop .e-btn { margin-top: var(--sp-2); }
@@ -71,10 +68,11 @@
 .e-rcv-start-form .e-btn { align-self: stretch; }
 .e-rcv-row .e-ctl { align-self: start; }
 .e-rcv-line code { display: block; }
-.e-rcv-check b { font-weight: 600; }
 .e-set-row .e-btn { text-decoration: none; }
 .e-file-note { margin: 0 0 var(--sp-5); color: var(--dim); font-size: var(--fs-sm); }
 .e-file-drop { min-height: 240px; cursor: pointer; }
 .e-file-drop .e-btn { margin-top: var(--sp-2); }
 .e-file-sending { display: flex; align-items: center; gap: var(--sp-2); margin: 0 0 var(--sp-4); color: var(--dim); }
 .e-file-actions { justify-content: center; margin-top: var(--sp-5); }
+.e-rcv-ebdown { margin-top: var(--sp-3); }
+.e-rcv-row .e-stg-meta { margin-top: var(--sp-2); }
