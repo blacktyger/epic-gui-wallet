@@ -139,7 +139,10 @@ describe('Receive (Modern)', () => {
     expect(text).toContain(t('msg.modern.send.rcv_on'));
     expect(text.replace(/\s+/g, '')).toContain(ADDRESS);
     expect(text).toContain(HTTP_ADDRESS);
-    expect(text).toContain(t('msg.modern.send.rcv_http_local_only', { port: 3415 }));
+    //one short muted line; the long 127.0.0.1 explanation is its title and, for screen readers, a hidden span
+    expect(text).toContain(t('msg.modern.settings.http_on', { port: 3415 }));
+    expect(wrapper.find('.e-rcv-row .e-sr-only').text()).toBe(t('msg.modern.send.rcv_http_local_only', { port: 3415 }));
+    expect(wrapper.find('p[title]').attributes('title')).toBe(t('msg.modern.send.rcv_http_local_only', { port: 3415 }));
     expect(text).toContain(t('msg.modern.send.rcv_listening_via', { domain: DOMAIN }));
   });
 
@@ -156,7 +159,7 @@ describe('Receive (Modern)', () => {
     const { wrapper } = await setup(ReceiveView, { listening: true, epicbox: true, http: { state: 'off', port: 0, reason: '' } });
     const text = wrapper.text();
     expect(text).toContain(t('msg.modern.send.rcv_on'));
-    expect(text).toContain(t('msg.modern.send.rcv_http_on_demand'));
+    expect(text).toContain(t('msg.modern.settings.http_off'));
     expect(text).toContain(t('msg.modern.send.rcv_listener_on_epicbox'));
     expect(wrapper.find('code.e-faint').text()).toBe(HTTP_ADDRESS);
     expect(wrapper.find('button[aria-label="' + t('msg.modern.send.rcv_copy_http_off') + '"]').element.disabled).toBe(true);
@@ -171,7 +174,7 @@ describe('Receive (Modern)', () => {
     expect(wallet.startListen).toHaveBeenCalledWith('http');
     expect(wallet.startEpicbox).not.toHaveBeenCalled();
     expect(store.state.httpListener.state).toBe('on');
-    expect(wrapper.text()).toContain(t('msg.modern.send.rcv_http_local_only', { port: 3415 }));
+    expect(wrapper.text()).toContain(t('msg.modern.settings.http_on', { port: 3415 }));
     await button(wrapper, t('msg.modern.send.rcv_http_turn_off')).trigger('click');
     await flushPromises();
     expect(wallet.stopHttpListen).toHaveBeenCalledTimes(1);
@@ -210,7 +213,7 @@ describe('Receive (Modern)', () => {
 
   test('stopped: the HTTP address cannot be copied and says when to turn it on', async () => {
     const { wrapper } = await setup(ReceiveView, { listening: false });
-    expect(wrapper.text()).toContain(t('msg.modern.send.rcv_http_on_demand'));
+    expect(wrapper.text()).toContain(t('msg.modern.settings.http_off'));
     const copyHttp = wrapper.find('button[aria-label="' + t('msg.modern.send.rcv_copy_http_off') + '"]');
     expect(copyHttp.element.disabled).toBe(true);
   });

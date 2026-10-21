@@ -83,7 +83,7 @@
     '/httpReceive': ['importTransaction', 'finalizeTransaction'],
     '/addressBook': [],
   };
-  const SETTINGS = ['settings', 'account', 'mnemonic', 'recheckBalance', 'about', 'help'];
+  const SETTINGS = ['settingsReceiving', 'settingsAppearance', 'settings', 'account', 'wallets', 'mnemonic', 'recheckBalance', 'about', 'help'];
 
   export default reskin(NavBar, {
     name: 'AppShell',

@@ -36,6 +36,7 @@ const SLATE_ID = /Slate \[([0-9a-fA-F-]{8,})\]/;
  *   {type: 'listening', address}        "Starting epicbox listener for: <key>@<domain>"
  *   {type: 'subscribed'}                "Starting epicbox subscription..." (queued slates come now)
  *   {type: 'paused'}                    node not synced: the listener holds slates
+ *   {type: 'node_not_ready'}            at its start the node said it syncs (or didn't answer): it exits
  *   {type: 'disconnected'}              the connection broke; the wallet reconnects (5 times)
  *   {type: 'slate', stage, id}          stage: received (a payment), reply (the answer to our send),
  *                                       signing, finalizing, replied (our answer posted),
@@ -49,6 +50,7 @@ export function parseListenerLine(raw) {
   if (m) return { type: 'listening', address: m[1] };
   if (/Starting epicbox subscription/.test(line)) return { type: 'subscribed' };
   if (/Node not synced, pausing Epicbox/.test(line)) return { type: 'paused' };
+  if (/Node is currently syncing|Failed to check node sync status/.test(line)) return { type: 'node_not_ready' };
   if (/Error in listener loop|Client closed connection|Reconnect to epicbox/.test(line)) return { type: 'disconnected' };
   const id = (line.match(SLATE_ID) || [])[1] || '';
   if (/Slate \[[^\]]+\] received back from/.test(line)) return { type: 'slate', stage: 'reply', id };
@@ -66,6 +68,15 @@ export function parseListenerLine(raw) {
 export function wantsRefresh(ev) {
   return !!ev && ev.type === 'slate' && ['replied', 'finalized', 'mempool', 'failed'].includes(ev.stage);
 }
+
+/* the listener's start (preload execEpicbox's answer) ended because the node was not ready: it
+   asks the node once, at its start, and exits on "syncing", which a synced node may say for a
+   moment. Worth starting again a few times (NODE_RETRY) rather than leaving Epicbox off */
+export function nodeNotReadyStart(res) {
+  return !!res && !res.success && !res.pending && res.msg === 'node not synced';
+}
+
+export const NODE_RETRY = { tries: 6, delayMs: 5000 };
 
 /* stages after which the listener is still working on a slate */
 const BUSY = ['received', 'reply', 'signing', 'finalizing'];

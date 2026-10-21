@@ -307,6 +307,35 @@ const routes = [
       headerbar: HeaderBar,
     }
   },
+  //Modern only: Settings › Receiving and Appearance are their own pages (Classic shows all on /settings)
+  {
+    meta: {
+      title: 'Settings',
+      titleKey: 'msg.menu.settings'
+    },
+    path: '/settings/receiving',
+    name: 'settingsReceiving',
+    components: {
+      default: Settings,
+      navBar: NavBar,
+      asideMenu: AsideMenu,
+      headerbar: HeaderBar,
+    }
+  },
+  {
+    meta: {
+      title: 'Settings',
+      titleKey: 'msg.menu.settings'
+    },
+    path: '/settings/appearance',
+    name: 'settingsAppearance',
+    components: {
+      default: Settings,
+      navBar: NavBar,
+      asideMenu: AsideMenu,
+      headerbar: HeaderBar,
+    }
+  },
   {
 
     meta: {

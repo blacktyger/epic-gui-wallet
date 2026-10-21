@@ -46,7 +46,7 @@
 .e-mynodes-row.e-is-on .e-mynodes-line b { color: var(--accent-text); }
 .e-mynodes-meta { flex: none; display: inline-flex; align-items: center; gap: var(--sp-2); }
 .e-mynodes-meta .e-tag { white-space: nowrap; }
-.e-mynodes-meta .e-nodedir-lat { min-width: 0; text-align: start; font-variant-numeric: tabular-nums; }
+
 .e-mynodes-acts { display: flex; align-items: center; gap: 2px; }
 .e-mynodes-acts .e-btn { margin-inline-end: 4px; }
 .e-mynodes-sel { display: inline-flex; align-items: center; gap: 4px; margin-inline-end: 6px; color: var(--accent-text); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
@@ -76,23 +76,13 @@
   .e-nodedir-dot.e-wait { animation: none; }
 }
 
-/* Settings › Node: the saved node's details (form/CurrentNodeInfo.vue) */
-.e-nodeinfo { margin-top: var(--sp-3); }
-.e-nodeinfo-state { display: flex; align-items: center; gap: var(--sp-2); margin: 0; font-weight: 600; }
-.e-nodeinfo-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--sp-2) var(--sp-4); margin: var(--sp-2) 0 0; }
-.e-nodeinfo-rows dt { color: var(--dim); font-size: 0.8125rem; }
-.e-nodeinfo-rows dd { margin: 0; overflow-wrap: anywhere; }
-
-/* the height meter (ui/HeightMeter.vue): three thin steps, neutral when the network tip is unknown */
-.e-hmeter { display: inline-flex; align-items: flex-end; gap: 2px; height: 10px; vertical-align: baseline; flex: none; }
-.e-hmeter i { display: block; width: 4px; height: 100%; border-radius: 1px; background: var(--line); }
-.e-hmeter i:nth-child(1) { height: 40%; }
-.e-hmeter i:nth-child(2) { height: 70%; }
-.e-hmeter.e-ok i.e-on { background: var(--ok); }
-.e-hmeter.e-warn i.e-on { background: var(--warn); }
-.e-hmeter.e-risk i.e-on { background: var(--risk); }
-.e-nodeinfo-height { display: inline-flex; align-items: center; gap: var(--sp-2); }
-.e-nodeinfo-version.e-bad { color: var(--warn); }
+/* the height meter (ui/HeightMeter.vue): a 28 px bar, empty when the network tip is unknown, dashed when the node is down */
+.e-hmeter { position: relative; display: inline-block; width: 28px; height: 4px; border-radius: 2px; background: var(--line-strong); overflow: hidden; flex: none; vertical-align: middle; }
+.e-hmeter i { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--faint); }
+.e-hmeter.e-ok i { background: var(--ok); }
+.e-hmeter.e-warn i { background: var(--warn); }
+.e-hmeter.e-risk i { background: var(--risk); }
+.e-hmeter.e-down { background: repeating-linear-gradient(90deg, var(--line-strong) 0 3px, transparent 3px 5px); }
 .e-nodecheck-height { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--dim); }
 .e-nodecheck-state.e-ok { color: var(--ok); }
 .e-nodecheck-state.e-warn { color: var(--warn); }

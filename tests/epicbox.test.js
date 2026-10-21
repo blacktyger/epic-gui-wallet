@@ -7,6 +7,7 @@ import {
 } from '../src/shared/epicboxConfig.js';
 import {
   createLineSplitter, parseListenerLine, wantsRefresh, createOldServerCheck, oldServerCheckStep, CHECK_TIMES,
+  nodeNotReadyStart,
 } from '../src/shared/epicboxListener.js';
 import { epicboxStatus } from '../src/shared/epicboxStatus.js';
 import { isEpicboxCheckDir } from '../src/shared/processOwnership.js';
@@ -183,6 +184,20 @@ test('listener events', () => {
   assert.equal(parseListenerLine('ERROR - Error process incoming slate. X').stage, 'failed');
   assert.equal(parseListenerLine('DEBUG - Response Ok.'), null);
   assert.equal(parseListenerLine(''), null);
+});
+
+/* 6.1.5 rig "Epicbox server switch back" (1 in 3): the new listener asked the node at its start, got
+   "syncing" for a moment, exited, and nothing started it again */
+test('a listener that stopped at its start because the node was not ready is started again', () => {
+  const line = '20261021 00:37:53.878 ERROR epic_wallet::cmd::wallet - Node is currently syncing. Please wait until the node is fully synced.';
+  assert.deepEqual(parseListenerLine(line), { type: 'node_not_ready' });
+  assert.deepEqual(parseListenerLine('ERROR - Failed to check node sync status: x'), { type: 'node_not_ready' });
+  assert.ok(nodeNotReadyStart({ success: false, msg: 'node not synced', pid: 7 }));
+  assert.ok(!nodeNotReadyStart({ success: true, pid: 7 }));
+  assert.ok(!nodeNotReadyStart({ success: false, pending: true, msg: 7 }));
+  assert.ok(!nodeNotReadyStart({ success: false, msg: 'exited', exited: true }));
+  assert.ok(!nodeNotReadyStart({ success: false, noSession: true }));
+  assert.ok(!nodeNotReadyStart(null));
 });
 
 test('refresh when the wallet data changed, not on every line', () => {

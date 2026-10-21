@@ -1,50 +1,63 @@
 <template>
-  <!-- The saved node's details, read-only: the main views show only a status icon (nodeBadge.js).
-       Status, version and height come from the status poll that already runs. The last block's time
-       is asked (get_header) only while this is shown, once per new tip. -->
-  <div class="e-nodeinfo" role="group" :aria-label="$t('msg.modern.settings.node_info')">
-    <p class="e-nodeinfo-state" role="status" :title="tip"><EIcon :name="badge.icon" size="sm" :class="'e-' + badge.tone" />{{ stateText }}</p>
-    <dl v-if="shown" class="e-nodeinfo-rows">
-      <div v-if="version">
-        <dt>{{ $t('msg.modern.settings.node_info_version') }}</dt>
-        <dd class="e-num e-nodeinfo-version" :class="{ 'e-bad': versionOld }" translate="no">{{ version }}<template v-if="versionOld"> · {{ $t('msg.mynodes.version_old', { min: minVersion }) }}</template></dd>
-      </div>
-      <div v-if="height > 0">
-        <dt>{{ $t('msg.modern.settings.node_info_height') }}</dt>
-        <dd class="e-num" translate="no"><span class="e-nodeinfo-height">{{ num(height) }}<HeightMeter :behind="behind" /></span></dd>
-      </div>
-      <div v-if="blockTime">
-        <dt>{{ $t('msg.modern.settings.node_info_block') }}</dt>
-        <dd class="e-num" :title="exact">{{ age }}</dd>
-      </div>
-    </dl>
-  </div>
+  <!-- Settings › Node: the status line under the node field (mockups direction 2). One status glyph from
+       ready_for_txs (nodeBadge.js), the height with a meter (the gap in its tooltip), the last block as a
+       relative time (get_header, only while shown, once per new tip), the version only when too old. -->
+  <p :id="id || null" class="e-stg-meta e-node-status" role="status" data-test="node-status">
+    <span class="e-stword" :class="'e-' + glyph" :title="tip">{{ stateText }}</span>
+    <template v-if="shown && height > 0">
+      <span class="e-sep" aria-hidden="true">·</span>
+      <span class="e-tipwrap" tabindex="0" :aria-describedby="uid + '-gap'">
+        <span class="e-h" translate="no">{{ num(height) }}<HeightMeter :behind="behind" bare /></span>
+        <span :id="uid + '-gap'" class="e-tip" role="tooltip">{{ gapText }}</span>
+      </span>
+    </template>
+    <template v-if="shown && blockTime">
+      <span class="e-sep" aria-hidden="true">·</span>
+      <span :title="exact">{{ $t('msg.modern.settings.node_last_block', { age }) }}</span>
+    </template>
+    <template v-if="glyph == 'down' && why">
+      <span class="e-sep" aria-hidden="true">·</span>
+      <span>{{ why }}</span>
+    </template>
+    <template v-if="versionOld">
+      <span class="e-sep" aria-hidden="true">·</span>
+      <span class="e-srv-old">{{ $t('msg.mynodes.version_old', { min: minVersion }) }}</span>
+    </template>
+  </p>
 </template>
 
 <script>
   import { computed, ref, watch, onMounted, onBeforeUnmount, getCurrentInstance } from 'vue';
   import { useStore } from '@/store';
   import { useI18n } from 'vue-i18n';
-  import EIcon from '@/components/modern/ui/EIcon.vue';
   import HeightMeter from '@/components/modern/ui/HeightMeter.vue';
   import { nodeBadge, nodeBadgeText } from '@/components/modern/nodeBadge';
-  import { relativeAge, exactTime } from '@/shared/nodeTip';
+  import { relativeAge, exactTime, heightMeter } from '@/shared/nodeTip';
   import { compareVersions, MIN_NODE_VERSION } from '@/shared/nodeVersion';
 
   //the "N s ago" text is refreshed this often without any request
   const TICK_MS = 15000;
+  let seq = 0;
 
   export default {
-    name: 'CurrentNodeInfo',
-    components: { EIcon, HeightMeter },
-    setup() {
+    name: 'NodeStatus',
+    components: { HeightMeter },
+    props: {
+      id: { type: String, default: '' },
+    },
+    //glyph: the node's state for the field ('ok' | 'sync' | 'down' | 'busy')
+    emits: ['glyph'],
+    setup(props, { emit }) {
       const store = useStore();
       const { t, locale } = useI18n();
       const self = getCurrentInstance();
+      const uid = 'e-noderow-' + (++seq);
       const num = (n) => Number(n).toLocaleString(locale.value);
       const status = computed(() => store.state.nodeStatus || {});
       const badge = computed(() => nodeBadge(store.state.nodeStatus, store.state.nodeProblem));
+      const glyph = computed(() => ({ online: 'ok', syncing: 'sync', offline: 'down' }[badge.value.state] || 'busy'));
       const tip = computed(() => nodeBadgeText(badge.value, t));
+      const why = computed(() => (badge.value.why ? t('msg.modern.' + badge.value.why, { code: badge.value.code }) : ''));
       const stateText = computed(() => ({
         online: t('msg.mynodes.state_online'), syncing: t('msg.mynodes.state_syncing'), offline: t('msg.mynodes.state_offline'),
       }[badge.value.state] || t('msg.mynodes.checking')));
@@ -62,6 +75,14 @@
         const net = Number(status.value.network_height) || 0;
         return net > 0 && height.value > 0 ? Math.max(0, net - height.value) : null;
       });
+      const gapText = computed(() => {
+        const m = heightMeter(behind.value);
+        if (m.level === 'unknown') return t('msg.mynodes.height_unknown');
+        if (m.level === 'level') return t('msg.mynodes.height_level');
+        return t('msg.mynodes.height_behind', { n: num(behind.value) });
+      });
+
+      watch(glyph, (g) => emit('glyph', g), { immediate: true });
 
       const blockTime = ref(0);
       const now = ref(Date.now());
@@ -90,7 +111,8 @@
         alive = false;
         if (timer) clearInterval(timer);
       });
-      return { badge, tip, stateText, shown, version, versionOld, minVersion: MIN_NODE_VERSION, height, behind, num, blockTime, age, exact };
+      return { uid, glyph, tip, why, stateText, shown, version, versionOld, minVersion: MIN_NODE_VERSION, height, behind, gapText, num,
+        blockTime, age, exact };
     },
   };
 </script>

@@ -137,23 +137,6 @@ html[data-ui='modern'] { -webkit-text-size-adjust: 100%; }
 
 .e-side-foot { margin-top: auto; padding: var(--sp-3); border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--sp-2); }
 
-/* Connection status: one line per service, always in the same place. */
-.e-svc {
-  display: grid; grid-template-columns: 20px 1fr; column-gap: var(--sp-2); align-items: center;
-  padding: 6px var(--sp-2); border-radius: var(--r-sm);
-  font-size: var(--fs-sm); color: var(--dim);
-  background: none; border: 0; text-align: left; width: 100%;
-}
-button.e-svc:hover { background: var(--hover); }
-.e-svc b { color: var(--text); font-weight: 500; }
-.e-svc small { grid-column: 2; color: var(--faint); font-size: var(--fs-xs); }
-.e-svc small.e-svc-act { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
-.e-svc .e-icon { width: 16px; height: 16px; }
-.e-svc.e-is-ok .e-icon { color: var(--ok); }
-.e-svc.e-is-warn .e-icon { color: var(--warn); }
-.e-svc.e-is-risk .e-icon { color: var(--risk); }
-.e-svc.e-is-busy .e-icon { color: var(--accent-text); animation: e-spin 1.2s linear infinite; }
-
 /* the name gets what the avatar and the two buttons leave: "Portfel 2" fits at the 224px sidebar */
 .e-account {
   display: flex; align-items: center; gap: var(--sp-2);
@@ -302,7 +285,18 @@ button.e-svc:hover { background: var(--hover); }
 .e-input-wrap .e-trail { position: absolute; right: 4px; display: flex; align-items: center; gap: 2px; }
 .e-input-wrap .e-unit { color: var(--dim); font: 500 var(--fs-sm) var(--font-mono); padding: 0 8px; }
 .e-input-wrap .e-trail .e-icon-btn { width: 36px; height: 36px; }
-.e-input-lg { height: 56px; font-size: 1.375rem; font-family: var(--font-mono); font-weight: 500; }
+/* Send amount: normal control height; only the typed number is mono, the placeholder stays UI font */
+.e-input-wrap .e-amount-input { padding-right: 112px; font-family: var(--font-mono); font-size: var(--fs-md); font-weight: 500; font-variant-numeric: tabular-nums; }
+.e-amount-input::placeholder { font-family: var(--font-ui, inherit); font-weight: 400; font-variant-numeric: normal; }
+.e-input-wrap .e-trail { gap: var(--sp-1); }
+.e-amount-all { height: 28px; padding: 0 var(--sp-3); border-radius: var(--r-sm); border: 1px solid var(--line-field); background: transparent; color: var(--dim); font-size: var(--fs-sm); font-weight: 500; font-family: inherit; cursor: pointer; }
+.e-amount-all:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+.e-amount-all:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
+.e-amount-all.e-is-busy { opacity: 0.6; cursor: progress; }
+.e-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); flex-wrap: wrap; }
+.e-avail { background: none; border: 0; padding: 0; font-size: var(--fs-sm); color: var(--dim); cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; }
+.e-avail:hover { color: var(--text); text-decoration-color: currentColor; }
+.e-avail:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 2px; }
 
 /* Switch. A real checkbox underneath, so it reads and toggles like one. */
 .e-switch { position: relative; display: inline-flex; align-items: center; gap: var(--sp-3); cursor: pointer; min-height: 44px; }
@@ -468,7 +462,6 @@ button.e-svc:hover { background: var(--hover); }
 .e-trace.e-is-syncing path,
 .e-spinner,
 .e-btn.e-is-busy::before,
-.e-svc.e-is-busy .e-icon { animation: none; }
   .e-ring.e-is-wait .e-arc { stroke-dasharray: 3 3 !important; }
 }
 

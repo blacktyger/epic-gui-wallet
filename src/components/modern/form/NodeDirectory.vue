@@ -7,15 +7,15 @@
     <div class="e-nodedir-list" role="radiogroup" :aria-labelledby="uid + '-h'">
       <label v-for="n in nodes" :key="n.endpoint" class="e-nodedir-row" :class="{ 'e-is-on': selected && selected.endpoint === n.endpoint }">
         <input type="radio" :name="uid" :value="n.endpoint" :checked="!!selected && selected.endpoint === n.endpoint" :disabled="disabled" @change="pick($event.target)" />
-        <span class="e-nodedir-dot" :class="'e-' + tone(n)" aria-hidden="true"></span>
+        <span class="e-st" :class="tone(n) == 'ok' ? 'e-ok' : 'e-sync'" aria-hidden="true"></span>
         <span class="e-nodedir-name">
           <b class="e-mono" translate="no">{{ n.host }}</b>
           <small v-if="n.operator" translate="no">{{ n.operator }}</small>
         </span>
+        <!-- the same minimal row as Settings › Node: the state as the glyph (and a word only when not online), the height with its meter; no "at tip", no response time (those are in the summary) -->
         <span class="e-nodedir-meta">
-          <span v-if="n.state !== 'healthy' || n.awaitingPeers" class="e-tag e-warn">{{ stateText(n) }}</span>
-          <span v-else-if="n.tipLag !== null" class="e-tag" :class="n.tipLag === 0 ? 'e-ok' : 'e-warn'">{{ lagText(n) }}</span>
-          <span v-if="n.latencyMs !== null" class="e-num e-nodedir-lat">{{ $t('msg.nodedir.latency_ms', { n: n.latencyMs }) }}</span>
+          <span v-if="n.state !== 'healthy' || n.awaitingPeers" class="e-stword e-sync">{{ stateText(n) }}</span>
+          <span v-if="n.height !== null" class="e-h" translate="no">{{ fmt(n.height) }}<HeightMeter :behind="n.tipLag" /></span>
         </span>
       </label>
     </div>
@@ -47,11 +47,12 @@
 <script>
   import Base from '@/components/form/NodeDirectory.vue';
   import EIcon from '@/components/modern/ui/EIcon.vue';
+  import HeightMeter from '@/components/modern/ui/HeightMeter.vue';
   import { reskin } from '@/components/modern/reskin';
   import { number, percent, flag, countryName } from '@/shared/nodeDirectory';
 
   export default reskin(Base, {
-    components: { EIcon },
+    components: { EIcon, HeightMeter },
     methods: {
       tone(n) {
         return n.state === 'healthy' && !n.awaitingPeers ? 'ok' : 'warn';

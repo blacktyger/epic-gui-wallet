@@ -437,20 +437,33 @@ describe.each(BOTH(Login, UnlockView))('Unlock after adding ($name)', ({ name, C
 
 /* ------------------------------------------------------------------ 4. Settings and Welcome */
 
-describe.each(BOTH(Account, SettingsAccount))('Settings › Wallet ($name)', ({ C }) => {
+//the Classic button says "Open wallet folder"; Modern's page is already "This wallet": just "Open folder"
+const OPEN_LABEL = { Classic: 'msg.wallets.open_this_folder', Modern: 'msg.modern.settings.open_folder' };
+
+describe.each(BOTH(Account, SettingsAccount))('Settings › Wallet ($name)', ({ name, C }) => {
   test.each([
     ['a wallet made here: <root>/wallets/<id>', W2, W2.dataDir],
     ['an imported wallet: the folder it lives in', W3, W3.dataDir],
-  ])('Open wallet folder opens the open wallet\'s own folder: %s', async (_, open, want) => {
+  ])('Open folder opens the open wallet\'s own folder: %s', async (_, open, want) => {
     window.openepichidden = { open: vi.fn(async () => true) };
     const s = setup(C, { configService: fakeConfig({ wallets: [W1, W2, W3], open: open.id }) });
     const button = s.wrapper.find('button[data-open=wallet]');
-    expect(button.text()).toBe(t('msg.wallets.open_this_folder'));
+    expect(button.text()).toBe(t(OPEN_LABEL[name]));
     await button.trigger('click');
     await flushPromises();
     expect(window.openepichidden.open).toHaveBeenCalledTimes(1);
     expect(window.openepichidden.open).toHaveBeenCalledWith(want);
     expect(s.$toast.error).not.toHaveBeenCalled();
+  });
+
+  test('Modern: the copy icon button copies the wallet folder path', async () => {
+    if (name !== 'Modern') return;
+    const s = setup(C, { configService: fakeConfig({ wallets: [W1, W2, W3], open: W2.id }) });
+    const copy = s.wrapper.find('button[aria-label="' + t('msg.wallets.copy_path') + ': ' + t('msg.wallets.wallet_folder') + '"]');
+    expect(copy.exists()).toBe(true);
+    await copy.trigger('click');
+    await flushPromises();
+    expect(window.clipboard.writeText).toHaveBeenCalledWith(W2.dataDir);
   });
 
   test('no wallet picker and no add buttons on this page', () => {

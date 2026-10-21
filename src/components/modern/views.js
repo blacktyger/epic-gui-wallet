@@ -20,7 +20,9 @@ import ReceiveView from '@/components/modern/views/ReceiveView.vue';
 import ImportView from '@/components/modern/views/ImportView.vue';
 import FinalizeView from '@/components/modern/views/FinalizeView.vue';
 import ContactsView from '@/components/modern/views/ContactsView.vue';
-import SettingsGeneral from '@/components/modern/views/settings/SettingsGeneral.vue';
+import SettingsNode from '@/components/modern/views/settings/SettingsNode.vue';
+import SettingsReceiving from '@/components/modern/views/settings/SettingsReceiving.vue';
+import SettingsAppearance from '@/components/modern/views/settings/SettingsAppearance.vue';
 import SettingsAccount from '@/components/modern/views/settings/SettingsAccount.vue';
 import SettingsWallets from '@/components/modern/views/settings/SettingsWallets.vue';
 import SettingsPhrase from '@/components/modern/views/settings/SettingsPhrase.vue';
@@ -45,7 +47,9 @@ export const MODERN_VIEWS = {
   importTransaction: { component: ImportView, layout: 'app', titleKey: 'msg.menu.import' },
   finalizeTransaction: { component: FinalizeView, layout: 'app', titleKey: 'msg.menu.finalize' },
   addressBook: { component: ContactsView, layout: 'app', titleKey: 'msg.modern.contacts' },
-  settings: { component: SettingsGeneral, layout: 'app', titleKey: 'msg.menu.settings' },
+  settings: { component: SettingsNode, layout: 'app', titleKey: 'msg.menu.settings' },
+  settingsReceiving: { component: SettingsReceiving, layout: 'app', titleKey: 'msg.menu.settings' },
+  settingsAppearance: { component: SettingsAppearance, layout: 'app', titleKey: 'msg.menu.settings' },
   account: { component: SettingsAccount, layout: 'app', titleKey: 'msg.menu.settings' },
   wallets: { component: SettingsWallets, layout: 'app', titleKey: 'msg.menu.settings' },
   mnemonic: { component: SettingsPhrase, layout: 'app', titleKey: 'msg.menu.settings' },

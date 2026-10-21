@@ -331,7 +331,7 @@ export default {
     menu_details: 'Podrobnosti',
     copy_epicbox: 'Kopírovat adresu Epicbox',
     copy_http: 'Kopírovat adresu HTTP',
-    pick_hint: 'Vyberte kontakt, kterému chcete odeslat platbu. Tlačítko … u každého kontaktu nabízí podrobnosti, „Upravit“ a „Smazat“.',
+    pick_hint: 'Vyberte kontakt, abyste viděli jeho údaje, poslali mu platbu, upravili ho nebo smazali.',
 
     //one contact
     epicbox_address: 'Adresa Epicbox',
@@ -340,6 +340,7 @@ export default {
     send: 'Odeslat',
     send_epicbox: 'Odeslat přes Epicbox',
     send_http: 'Odeslat přes HTTP',
+    send_via: 'Odeslat pomocí',
     copy: 'Kopírovat',
     copied: 'Zkopírováno',
     txs_title: 'Transakce s kontaktem {name}',

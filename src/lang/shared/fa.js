@@ -331,7 +331,7 @@ export default {
     menu_details: 'جزئیات',
     copy_epicbox: 'کپی آدرس Epicbox',
     copy_http: 'کپی آدرس HTTP',
-    pick_hint: 'برای ارسال به یک مخاطب، او را انتخاب کنید. دکمهٔ … کنار هر مخاطب شامل جزئیات، «ویرایش» و «پاک کردن» است.',
+    pick_hint: 'برای دیدن جزئیات، ارسال پرداخت، ویرایش یا حذف، یک مخاطب را انتخاب کنید.',
 
     //one contact
     epicbox_address: 'آدرس Epicbox',
@@ -340,6 +340,7 @@ export default {
     send: 'ارسال',
     send_epicbox: 'ارسال با Epicbox',
     send_http: 'ارسال با HTTP',
+    send_via: 'ارسال با',
     copy: 'کپی',
     copied: 'کپی شد',
     txs_title: 'تراکنش‌ها با مخاطب {name}',

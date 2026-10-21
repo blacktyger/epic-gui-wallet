@@ -1,5 +1,5 @@
 /*
- * Sidebar links (Modern): Node and Receiving open Settings › General at #node / #epicbox, the
+ * Sidebar links (Modern): Node opens Settings › Node (/settings#node), Receiving Settings › Receiving (/settings/receiving#epicbox), the
  * wallet row opens Settings › Wallet, and the section jump scrolls, flashes and focuses.
  */
 import { readFileSync } from 'node:fs';
@@ -16,7 +16,7 @@ const Blank = { template: '<div />' };
 function makeRouter() {
   return createRouter({
     history: createMemoryHistory(),
-    routes: ['/', '/settings', '/account'].map(path => ({ path, component: Blank })),
+    routes: ['/', '/settings', '/settings/receiving', '/account'].map(path => ({ path, component: Blank })),
   });
 }
 
@@ -30,12 +30,13 @@ async function mountStatus() {
 describe('sidebar service lines', () => {
   test('Node opens Settings at #node, Receiving at #epicbox, each with an "Open ... settings" label', async () => {
     const { wrapper, router } = await mountStatus();
-    const [node, rcv] = wrapper.findAll('button.e-svc');
+    const node = wrapper.find('[data-test=svc-node]');
+    const rcv = wrapper.find('[data-test=svc-rcv]');
     expect(node.attributes('aria-label')).toContain(t('msg.modern.svc_open_node'));
     expect(rcv.attributes('aria-label')).toContain(t('msg.modern.svc_open_epicbox'));
     await rcv.trigger('click');
     await flushPromises();
-    expect(router.currentRoute.value.fullPath).toBe('/settings#epicbox');
+    expect(router.currentRoute.value.fullPath).toBe('/settings/receiving#epicbox');
     await router.push('/');
     await node.trigger('click');
     await flushPromises();
@@ -44,10 +45,10 @@ describe('sidebar service lines', () => {
 
   test('with Settings already open the same link fires the jump event again', async () => {
     const { wrapper, router } = await mountStatus();
-    await router.push('/settings#epicbox');
+    await router.push('/settings/receiving#epicbox');
     const seen = vi.fn();
     window.addEventListener(JUMP_EVENT, seen);
-    await wrapper.findAll('button.e-svc')[1].trigger('click');
+    await wrapper.find('[data-test=svc-rcv]').trigger('click');
     await flushPromises();
     window.removeEventListener(JUMP_EVENT, seen);
     expect(seen).toHaveBeenCalledTimes(1);
@@ -56,19 +57,19 @@ describe('sidebar service lines', () => {
 
 describe('jumpTo', () => {
   function page() {
-    document.body.innerHTML = '<section id="stg-sec-epicbox"><input id="stg-relay"></section><section id="stg-sec-node"><h2 id="stg-node-h" tabindex="-1"></h2></section>';
+    document.body.innerHTML = '<section id="stg-sec-epicbox"><h2 id="stg-rcv-h" tabindex="-1"></h2></section><section id="stg-sec-node"><h2 id="stg-node-h" tabindex="-1"></h2></section>';
     const sec = document.getElementById('stg-sec-epicbox');
     sec.scrollIntoView = vi.fn();
     document.getElementById('stg-sec-node').scrollIntoView = vi.fn();
     return sec;
   }
 
-  test('#epicbox scrolls the section, flashes it and focuses the server field', () => {
+  test('#epicbox scrolls the section, flashes it and focuses the Receiving heading', () => {
     const sec = page();
     expect(jumpTo('#epicbox')).toBe(true);
     expect(sec.scrollIntoView).toHaveBeenCalled();
     expect(sec.classList.contains('e-jump-flash')).toBe(true);
-    expect(document.activeElement.id).toBe('stg-relay');
+    expect(document.activeElement.id).toBe('stg-rcv-h');
   });
 
   test('#node focuses the Node heading; an unknown hash does nothing', () => {
@@ -81,7 +82,7 @@ describe('jumpTo', () => {
 
 describe('jumpTo: content that loads above the section later', () => {
   function pushedDown() {
-    document.body.innerHTML = '<main><section id="stg-sec-epicbox"><input id="stg-relay"></section></main>';
+    document.body.innerHTML = '<main><section id="stg-sec-epicbox"><h2 id="stg-rcv-h" tabindex="-1"></h2></section></main>';
     const sec = document.getElementById('stg-sec-epicbox');
     sec.scrollIntoView = vi.fn();
     //the node list and details above it arrived: the section is 700 px down again

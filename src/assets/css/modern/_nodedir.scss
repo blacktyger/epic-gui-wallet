@@ -22,7 +22,6 @@
 .e-nodedir-row.e-is-on .e-nodedir-name b { color: var(--accent-text); }
 .e-nodedir-name small { color: var(--dim); font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .e-nodedir-meta { display: flex; align-items: center; gap: var(--sp-3); }
-.e-nodedir-lat { color: var(--dim); font-size: var(--fs-sm); min-width: 6ch; text-align: right; }
 
 .e-nodedir-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
 .e-nodedir-dot.e-ok { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }

@@ -8,15 +8,15 @@
     <div class="e-nodedir-list" role="radiogroup" :aria-labelledby="uid + '-h'" :aria-describedby="uid + '-n'">
       <label v-for="s in servers" :key="s.domain" class="e-nodedir-row" :class="{ 'e-is-on': selected && selected.domain === s.domain }">
         <input type="radio" :name="uid" :value="s.domain" :checked="!!selected && selected.domain === s.domain" :disabled="disabled" @change="pick($event.target)" />
-        <span class="e-nodedir-dot" :class="'e-' + tone(s)" aria-hidden="true"></span>
+        <span class="e-st" :class="{ ok: 'e-ok', warn: 'e-sync', risk: 'e-down' }[tone(s)] || 'e-off'" aria-hidden="true"></span>
         <span class="e-nodedir-name">
           <b class="e-mono" translate="no">{{ s.domain }}</b>
           <small v-if="s.operator || s.label" translate="no">{{ s.operator || s.label }}</small>
         </span>
         <span class="e-nodedir-meta">
-          <span v-if="s.isDefault" class="e-tag e-gold">{{ $t('msg.epicboxdir.default') }}</span>
-          <span class="e-tag" :class="tagClass(s)">{{ stateText(s) }}</span>
-          <span v-if="s.latencyMs !== null" class="e-num e-nodedir-lat">{{ $t('msg.epicboxdir.latency_ms', { n: fmt(s.latencyMs) }) }}</span>
+          <!-- the factory default as a tiny muted word (#58); the state word only when not online; no response time in the row -->
+          <span v-if="s.isDefault" class="e-def">{{ $t('msg.modern.settings.default_label') }}</span>
+          <span v-if="s.state !== 'healthy'" class="e-stword" :class="s.state === 'down' ? 'e-down' : 'e-sync'">{{ stateText(s) }}</span>
         </span>
       </label>
     </div>
@@ -32,9 +32,6 @@
     methods: {
       tone(s) {
         return s.state === 'healthy' ? 'ok' : s.state === 'down' ? 'risk' : s.state === 'degraded' ? 'warn' : 'none';
-      },
-      tagClass(s) {
-        return s.state === 'healthy' ? 'e-ok' : s.state === 'down' ? 'e-risk' : s.state === 'degraded' ? 'e-warn' : '';
       },
     },
   });

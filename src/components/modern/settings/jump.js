@@ -1,5 +1,5 @@
 /*
- * Sidebar links into Settings › General (#node, #epicbox). The hash names the section; the page
+ * Sidebar links into Settings › Node (#node) and Settings › Receiving (#epicbox). The hash names the section; the page
  * scrolls it into view, flashes it briefly and moves focus into it, also when Settings is already
  * open (the same hash again fires JUMP_EVENT, a repeated router push does nothing).
  */
@@ -8,7 +8,7 @@ export const JUMP_EVENT = 'e-settings-jump';
 //hash -> the section element and what takes focus inside it
 const TARGETS = {
   node: { section: 'stg-sec-node', focus: 'stg-node-h' },
-  epicbox: { section: 'stg-sec-epicbox', focus: 'stg-relay' },
+  epicbox: { section: 'stg-sec-epicbox', focus: 'stg-rcv-h' },
 };
 
 export function jumpTo(hash, doc = document) {

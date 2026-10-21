@@ -21,6 +21,8 @@
         <p>{{ $t('msg.node_not_synced_hint') }}{{ syncing ? ' ' + $t('msg.modern.send.sync_done', { p: syncPercent }) : '' }}</p>
       </div>
     </div>
+    <!-- our Epicbox server doesn't answer: the same words and one-click switch as Receive (#52) -->
+    <EpicboxDownNotice v-else-if="epicboxSelected && ebHealth.state == 'down'" class="e-send-notice" :health="ebHealth" :suggest="ebSuggest" :busy="ebSwitching" @switch="switchEpicbox" />
     <div v-else-if="epicboxSelected && !epicboxConnected" class="e-notice e-warn e-send-notice" role="status">
       <EIcon name="antenna" />
       <div>
@@ -88,9 +90,11 @@
         </div>
 
         <div class="e-field">
-          <label class="e-label" for="e-send-amt">{{ $t('msg.modern.send.amount') }}
-            <span class="e-aside">{{ $t('msg.modern.send.available') }} <MoneyText :value="store.state.summary.spendable" :updating="store.state.walletSync != 'synced'" /> EPIC</span>
-          </label>
+          <div class="e-label-row">
+            <label class="e-label" for="e-send-amt">{{ $t('msg.modern.send.amount') }}</label>
+            <button type="button" class="e-avail" :title="$t('msg.transaction.sendall')" :aria-describedby="'e-avail-what'" @click="$refs.amountField && $refs.amountField.sendAll()">{{ $t('msg.modern.send.available') }} <MoneyText :value="store.state.summary.spendable" :updating="store.state.walletSync != 'synced'" /> EPIC</button>
+            <span id="e-avail-what" class="e-sr-only">{{ $t('msg.transaction.sendall') }}</span>
+          </div>
           <AmountField ref="amountField" input-id="e-send-amt" />
           <p v-if="store.state.summary.unconfirmed > 0" class="e-help">{{ $t('msg.modern.send.unconfirmed_note', { n: unconfirmedText }) }}</p>
         </div>
@@ -218,18 +222,23 @@
   import { isOnionAddress } from '@/shared/sendForm';
   import { parseOnion } from '@/shared/onion';
   import { torStatus, torSendStepKey } from '@/shared/torUi';
+  import epicboxSwitch from '@/components/modern/epicboxSwitch';
+  import EpicboxDownNotice from '@/components/modern/form/EpicboxDownNotice.vue';
 
-  const HEAD = 6;
+  const HEAD = 5;
   /* how many decimals a typed amount or a number has, 4 to 8 */
   function decimalsOf(v) {
     const s = typeof v == 'number' ? v.toFixed(8).replace(/0+$/, '') : String(v || '').trim();
     const m = s.match(/[.,](\d*)$/);
     return Math.min(8, Math.max(4, m ? m[1].length : 0));
   }
-  const TAIL = 6;
+  const TAIL = 4;
 
   export default reskin(HttpSend, {
-    components: { EIcon, EDialog, MoneyText, AmountField, AddressField, ContactAvatar, ContactPicker },
+    components: { EIcon, EDialog, MoneyText, AmountField, AddressField, ContactAvatar, ContactPicker, EpicboxDownNotice },
+    mixins: [epicboxSwitch],
+    //a send that ends after the page was left doesn't take the user to Overview (#54)
+    beforeUnmount() { this.left = true; },
     data() {
       return {
         //the "Privacy" disclosure
@@ -400,6 +409,8 @@
         } finally {
           this.reviewOpen = false;
         }
+        //sent (Epicbox or HTTP, sendForm.js clearSendForm): to Overview, where it shows in Recent activity (#54)
+        if (this.sent && !this.left) this.$router.push({ name: 'dashboard' });
       },
     },
   });

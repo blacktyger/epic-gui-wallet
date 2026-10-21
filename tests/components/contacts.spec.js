@@ -73,17 +73,26 @@ async function openBook(ui, { book = fakeBook(), avatars = fakeAvatars(), txs = 
 }
 const rowNames = (w) => w.findAll('li button[aria-current], li .cbook-row, li .e-con-row').map((b) => b.find('b').text());
 const rowOf = (w, name) => w.findAll('.cbook-item, .e-con-item').find((li) => li.find('b').text().includes(name));
-/* a row's … menu: open it, then the item with this text */
-const menu = async (w, name, item) => {
-  await rowOf(w, name).find('.rmenu-btn').trigger('click');
+/* a contact's details: click its row */
+const pick = async (w, name) => {
+  await rowOf(w, name).find('.e-con-row').trigger('click');
   await flushPromises();
-  const it = rowOf(w, name).findAll('[role=menuitem]').find((b) => b.text() == item);
-  if (!it) throw new Error('no menu item ' + item + ' in: ' + rowOf(w, name).text());
+};
+/* an action in the contact's details panel: select the row, then Send via HTTP / copy / Edit / Delete */
+const menu = async (w, name, item) => {
+  await pick(w, name);
+  const acts = w.find('.e-con-actions');
+  let it;
+  if (item == t('msg.contacts.send_http')) {
+    await acts.findAll('.e-con-via button').find((b) => b.text() == t('msg.contacts.kind_http')).trigger('click');
+    it = acts.find('.e-con-send');
+  } else if (item == t('msg.contacts.copy_epicbox')) it = w.findAll('.e-con-copy')[0];
+  else if (item == t('msg.contacts.copy_http')) it = w.findAll('.e-con-copy')[1];
+  else it = acts.findAll('button').find((b) => b.text() == item);
+  if (!it) throw new Error('no action ' + item + ' in: ' + acts.text());
   await it.trigger('click');
   await flushPromises();
 };
-/* a contact's details, through its … menu */
-const pick = (w, name) => menu(w, name, t('msg.contacts.menu_details'));
 
 describe.each(BOOKS)('Contacts ($name)', (ui) => {
   test('the list: avatars with initials, the short address, the kinds; only this wallet\'s contacts', async () => {
@@ -94,7 +103,8 @@ describe.each(BOOKS)('Contacts ($name)', (ui) => {
     expect(mara.find('.cav').text()).toBe('MO');
     expect(mara.text()).toContain('esWVc4…2mNs@epicbox.epiccash.com');
     expect(mara.text()).toContain(t('msg.contacts.kind_epicbox'));
-    expect(mara.text()).toContain(t('msg.contacts.kind_http'));
+    //one small badge per row
+    expect(mara.findAll('.e-con-kind').length).toBe(1);
     expect(w.text()).not.toContain('Not mine');
     //the hidden Tor address is not shown anywhere
     expect(w.text()).not.toContain('.onion');
@@ -123,23 +133,33 @@ describe.each(BOOKS)('Contacts ($name)', (ui) => {
     w.vm.sort = 'recent';
     await flushPromises();
     expect(w.findAll('.cbook-row b, .e-con-row b').map((b) => b.text())).toEqual(['Old Friend', 'Café Lumen', 'Mara Okafor']);
-    expect(w.text()).toContain('yesterday');
   });
 
-  test('a click on a contact opens Send on it (its id and field, not the address); Epicbox first, HTTP from the menu', async () => {
+  test('the sort toggle and the count appear only with more than 6 contacts', async () => {
+    const { w } = await openBook(ui);
+    expect(w.find('.e-con-sort').exists()).toBe(false);
+    const list = rows();
+    for (let i = 0; i < 5; i++) list.push({ id: 20 + i, user_id: 1, name: 'Extra ' + i, country: '', city: '', onion: '', alwaysproof: false, proofaddr: '', externalOne: 'esX' + i + '@epicbox.epiccash.com', externalTwo: '', notice: '' });
+    const big = await openBook(ui, { book: fakeBook(list) });
+    expect(big.w.find('.e-con-sort').exists()).toBe(true);
+  });
+
+  test('a click selects a contact; its Send (Epicbox first, HTTP by the choice above it) opens Send by id and field, not the address', async () => {
     const { w, $router } = await openBook(ui);
-    const mara = rowOf(w, 'Mara').find('.cbook-row, .e-con-row');
-    //the row says what it does to a screen reader
-    expect(mara.text()).toContain(t('msg.contacts.row_send'));
-    await mara.trigger('click');
+    await pick(w, 'Mara');
+    expect($router.push).not.toHaveBeenCalled();
+    await w.find('.e-con-send').trigger('click');
     expect($router.push).toHaveBeenLastCalledWith({ name: 'httpSend', query: { contact: '4', use: 'externalOne' } });
-    await rowOf(w, 'Café').find('.cbook-row, .e-con-row').trigger('click');
-    expect($router.push).toHaveBeenLastCalledWith({ name: 'httpSend', query: { contact: '5', use: 'externalTwo' } });
     await menu(w, 'Mara', t('msg.contacts.send_http'));
     expect($router.push).toHaveBeenLastCalledWith({ name: 'httpSend', query: { contact: '4', use: 'externalTwo' } });
-    //no Send button on the contact's details any more
-    await pick(w, 'Mara');
-    expect(w.findAll('button').filter((b) => /^Send/.test(b.text().trim())).length).toBe(0);
+    //an HTTP-only contact has no choice, just Send
+    await pick(w, 'Café');
+    expect(w.find('.e-con-via').exists()).toBe(false);
+    await w.find('.e-con-send').trigger('click');
+    expect($router.push).toHaveBeenLastCalledWith({ name: 'httpSend', query: { contact: '5', use: 'externalTwo' } });
+    //a double-click on a row goes straight to Send
+    await rowOf(w, 'Mara').find('.e-con-row').trigger('dblclick');
+    expect($router.push).toHaveBeenLastCalledWith({ name: 'httpSend', query: { contact: '4', use: 'externalOne' } });
   });
 
   test('a contact with nothing to send to (an old Tor-only one) shows its details instead', async () => {
@@ -149,29 +169,11 @@ describe.each(BOOKS)('Contacts ($name)', (ui) => {
     await rowOf(w, 'Tor only').find('.cbook-row, .e-con-row').trigger('click');
     await flushPromises();
     expect($router.push).not.toHaveBeenCalled();
+    expect(w.find('.e-con-send').exists()).toBe(false);
     expect(w.find('h2').text()).toBe('Tor only');
   });
 
-  test('the … menu: keyboard (↓ opens on the first item, ↑/↓ move, Esc closes back to the button)', async () => {
-    const { w } = await openBook(ui);
-    const btn = rowOf(w, 'Mara').find('.rmenu-btn');
-    expect(btn.attributes('aria-label')).toBe(t('msg.contacts.menu_label', { name: 'Mara Okafor' }));
-    expect(btn.attributes('aria-haspopup')).toBe('menu');
-    await btn.trigger('keydown', { key: 'ArrowDown' });
-    await flushPromises();
-    expect(btn.attributes('aria-expanded')).toBe('true');
-    const items = rowOf(w, 'Mara').findAll('[role=menuitem]');
-    expect(items.map((i) => i.text())).toEqual([t('msg.contacts.menu_details'), t('msg.contacts.send_http'), t('msg.contacts.copy_epicbox'), t('msg.contacts.copy_http'), t('msg.edit'), t('msg.delete')]);
-    expect(document.activeElement).toBe(items[0].element);
-    await rowOf(w, 'Mara').find('[role=menu]').trigger('keydown', { key: 'ArrowUp' });
-    expect(document.activeElement).toBe(items[items.length - 1].element);
-    await rowOf(w, 'Mara').find('[role=menu]').trigger('keydown', { key: 'Escape' });
-    await flushPromises();
-    expect(rowOf(w, 'Mara').find('[role=menu]').exists()).toBe(false);
-    expect(document.activeElement).toBe(btn.element);
-  });
-
-  test('copy from the menu puts the address on the clipboard', async () => {
+  test('copy from the details puts the address on the clipboard', async () => {
     const { w } = await openBook(ui);
     await menu(w, 'Mara', t('msg.contacts.copy_http'));
     expect(window.clipboard.writeText).toHaveBeenCalledWith(HTTP);
@@ -306,7 +308,7 @@ describe.each(BOOKS)('Contacts ($name)', (ui) => {
     expect(avatars.set).not.toHaveBeenCalled();
   });
 
-  test('delete from the menu asks first, then removes', async () => {
+  test('delete from the details asks first, then removes', async () => {
     const { w, book } = await openBook(ui);
     await menu(w, 'Café', t('msg.delete'));
     expect(book.removeAddress).not.toHaveBeenCalled();

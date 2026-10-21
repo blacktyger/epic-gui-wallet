@@ -1,5 +1,32 @@
 # Release notes
 
+## 6.1.6
+
+Looks and small fixes in the BT Labs Theme interface; Classic is unchanged.
+
+**New**
+
+- Settings lists every section in its menu: Node, Receiving and Appearance are their own pages.
+- Settings › Node and Receiving: the node and the Epicbox server are each one field. Open it to pick from My nodes and the public nodes (with their status), or type an address: it is checked as you type, and ☆ keeps it in My nodes. A pick applies at once.
+- Epicbox says when its server isn't responding and offers the healthiest other server in one click. It never switches by itself. Send uses the same words.
+- The sidebar shows Node and Receiving as a dot and one word; hover for the details, click to open the right page.
+- After a send goes through, the wallet opens Overview, where the new transaction shows.
+
+**Changed**
+
+- Every Settings page uses the same row layout, with shorter descriptions and the buttons lined up.
+- The node's status is one icon (ready, syncing, not responding), its height with a small meter, and the time of the last block. The version only shows when it is too old.
+- "default" next to the factory default server is a small grey word, not a badge.
+- HTTP "Start with the wallet" is a small checkbox in the HTTP listener row. On Receive, HTTP off reads "Off · most payments come via Epicbox".
+- Payments a scan found without a record of their own show as "Found by scan" instead of "Restore".
+- Contacts: cleaner rows; Send, Edit and Delete are in the contact's details.
+- Send: the amount field is the same size as the other fields, and "Available" fills in the whole amount.
+- The start and end of an Epicbox address are marked the same way on Receive, Send and Contacts.
+
+**Fixed**
+
+- After an Epicbox server change, Epicbox sometimes stayed off when the node briefly said it was syncing. It now tries again.
+
 ## 6.1.5
 
 Everything since 6.1.2. The new features are in the BT Labs Theme interface; Classic gets fixes only.

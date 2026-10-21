@@ -69,7 +69,6 @@ export default {
   rcv_http_checking: 'Checking port {port}…',
   rcv_http_off: 'Not listening. Start the listener to use this address.',
   //the HTTP listener on demand (off unless turned on, or Settings › Start with wallet)
-  rcv_http_on_demand: 'Off. Most wallets send to your Epic address; turn this on only when someone pays you over HTTP.',
   //epic-wallet.toml listens on 127.0.0.1: other computers can't reach it, a forwarded port changes nothing
   rcv_http_local_only: 'Listening on this computer only (127.0.0.1): other computers can\'t reach this address, even with port {port} forwarded on your router.',
   rcv_http_turn_on: 'Turn on',
