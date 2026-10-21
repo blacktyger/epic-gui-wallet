@@ -69,7 +69,6 @@
           <!-- a Tor address: Tor off → Turn on Tor; on but not connected → where it stands, in place -->
           <div v-if="torHint" class="e-send-tor" role="status" data-test="send-tor">
             <template v-if="onionState == 'tor_off'">
-              <span class="e-small e-dim">{{ $t('msg.modern.settings.tor.send_off') }}</span>
               <button type="button" class="e-btn e-btn-sm" data-test="send-tor-on" :class="{ 'e-is-busy': torTurning }" :aria-busy="torTurning ? 'true' : null" @click="turnOnTor"><EIcon name="shield" size="sm" />{{ $t('msg.modern.settings.tor.send_turn_on') }}</button>
             </template>
             <template v-else>

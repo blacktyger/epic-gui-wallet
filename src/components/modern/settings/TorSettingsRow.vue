@@ -9,7 +9,7 @@
         <span>{{ $t(status.key, status.params) }}</span>
       </p>
       <p v-if="onion" class="e-stg-meta" data-test="tor-onion">
-        <code class="e-mono e-small" translate="no" dir="ltr">{{ onion }}</code>
+        <code class="e-mono e-small e-tor-onion" translate="no" dir="ltr">{{ onion }}</code>
       </p>
     </div>
     <div class="e-ctl">

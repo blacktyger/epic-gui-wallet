@@ -4,7 +4,7 @@
     <div>
       <b>{{ $t('msg.modern.settings.tor.address') }}</b>
       <div class="e-rcv-line">
-        <code v-if="onion" class="e-mono" translate="no" dir="ltr" data-test="tor-receive-onion">{{ onion }}</code>
+        <code v-if="onion" class="e-mono e-tor-onion" translate="no" dir="ltr" data-test="tor-receive-onion">{{ onion }}</code>
         <code v-else class="e-mono e-faint">…</code>
       </div>
       <p class="e-stg-meta" role="status" data-test="tor-receive-status">
