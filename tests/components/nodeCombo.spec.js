@@ -76,7 +76,7 @@ describe('NodeCombo', () => {
     expect(wrapper.vm.input).toBe(PUBLIC.endpoint);
   });
 
-  test.fails('BUG: after a pick from a focused row the list stays closed', async () => {
+  test('after a pick from a focused row the list stays closed', async () => {
     const { wrapper, input } = await setup();
     input.element.focus();
     await input.trigger('keydown.down');
@@ -117,9 +117,8 @@ describe('NodeCombo', () => {
     expect(wrapper.emitted('apply')).toBeUndefined();
   });
 
-  /* SUSPECTED BUG (src, not fixed here): collapse() closes the list and then escape()/pick() call
-     field.focus(), whose @focus handler (openList) opens it again when focus was on a row */
-  test.fails('BUG: Esc from a list row (reached with the arrow key) closes the list and focus goes back to the field', async () => {
+  /* escape() and pick() focus the field again (focusField): its @focus must not reopen the list */
+  test('Esc from a list row (reached with the arrow key) closes the list and focus goes back to the field', async () => {
     const { input, wrapper } = await setup();
     input.element.focus();
     await input.trigger('keydown.down');

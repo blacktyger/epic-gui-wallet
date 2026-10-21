@@ -105,7 +105,13 @@
     },
     methods: {
       open() {
-        if (!this.busy) this.expanded = true;
+        if (!this.busy && !this.quiet) this.expanded = true;
+      },
+      /* focus back on the field after a pick or Esc: its focus handler must not open the list again */
+      focusField() {
+        this.quiet = true;
+        this.$refs.field.focus();
+        this.quiet = false;
       },
       toggle() {
         if (this.expanded) this.collapse();
@@ -123,7 +129,7 @@
         if (!this.expanded) return;
         e.stopPropagation();
         this.collapse();
-        this.$refs.field.focus();
+        this.focusField();
       },
       onFocusOut(e) {
         const root = this.$refs.root;
@@ -159,7 +165,7 @@
       pick(domain) {
         if (this.busy) return;
         this.collapse();
-        this.$refs.field.focus();
+        this.focusField();
         if (domain !== this.current) this.$emit('pick', domain);
       },
       glyph(s) {

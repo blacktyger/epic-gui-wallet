@@ -148,8 +148,9 @@
       return { uid: 'e-nodecombo-' + (++seq), expanded: false, editing: false, query: '', publicDir: null, dirLoading: true, minVersion: MIN_NODE_VERSION };
     },
     computed: {
+      //what is typed, as the lists show hosts: no scheme, no trailing "/"
       q() {
-        return this.editing ? this.query.trim().toLowerCase() : '';
+        return this.editing ? this.hostOf(this.query.trim().toLowerCase()) : '';
       },
       shownText() {
         if (this.editing) return this.query;
@@ -212,12 +213,18 @@
         this.directoryLoaded(dir);
       },
       openList() {
-        if (this.busy) return;
+        if (this.busy || this.quiet) return;
         if (!this.expanded) {
           this.expanded = true;
           if (this.errors) this.errors.nodeaddress = null;
           if (!this.publicDir && !this.dirLoading) this.loadPublic();
         }
+      },
+      /* focus back on the field after a pick or Esc: its focus handler must not open the list again */
+      focusField() {
+        this.quiet = true;
+        this.$refs.field.focus();
+        this.quiet = false;
       },
       toggleList() {
         if (this.expanded) this.collapse();
@@ -238,7 +245,7 @@
         if (!this.expanded || this.myNodeDialog) return;
         e.stopPropagation();
         this.collapse();
-        this.$refs.field.focus();
+        this.focusField();
       },
       onFocusOut(e) {
         const root = this.$refs.root;
@@ -284,7 +291,7 @@
         this.input = address;
         this.nodeserverFieldChanged();
         this.expanded = false;
-        this.$refs.field.focus();
+        this.focusField();
         this.$emit('apply');
       },
       useBuiltin() {

@@ -56,14 +56,14 @@ describe('EpicboxCombo', () => {
     expect(wrapper.emitted('pick')).toBeUndefined();
   });
 
-  /* SUSPECTED BUG (src, not fixed here): pick() collapses and then focuses the field, whose @focus opens the list again */
-  test.fails('BUG: after a pick from a focused row the list stays closed', async () => {
+  /* pick() collapses and focuses the field again; its @focus must not reopen the list */
+  test('after a pick from a focused row the list stays closed', async () => {
     const { wrapper } = combo();
     const input = wrapper.find('input');
     input.element.focus();
     await input.trigger('keydown.down');
     await flushPromises();
-    const row = picks(wrapper)[1];
+    const row = picks(wrapper)[0];
     expect(document.activeElement).toBe(row.element);
     await row.trigger('click');
     await flushPromises();

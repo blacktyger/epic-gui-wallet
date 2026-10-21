@@ -41,14 +41,14 @@
         </div>
         <div class="e-set-row">
           <div>
-            <b id="stg-ui-l">{{ $t('msg.modern.interface') }}</b>
+            <label id="stg-ui-l" for="stg-ui"><b>{{ $t('msg.modern.interface') }}</b></label>
             <p id="stg-ui-h">{{ $t('msg.modern.settings.interface_row_hint') }}</p>
           </div>
           <div class="e-ctl">
-            <div class="e-seg" role="group" aria-labelledby="stg-ui-l" aria-describedby="stg-ui-h">
-              <button type="button" :aria-pressed="uiSelected == 'modern' ? 'true' : 'false'" @click="saveInterface('modern')">{{ $t('msg.modern.interface_modern') }}</button>
-              <button type="button" :aria-pressed="uiSelected == 'classic' ? 'true' : 'false'" @click="saveInterface('classic')">{{ $t('msg.modern.interface_classic') }}</button>
-            </div>
+            <select id="stg-ui" class="e-select" aria-labelledby="stg-ui-l" aria-describedby="stg-ui-h" :value="uiSelected" @change="(e) => saveInterface(e.target.value)">
+              <option value="modern">{{ $t('msg.modern.interface_modern') }}</option>
+              <option value="classic">{{ $t('msg.modern.interface_classic') }}</option>
+            </select>
           </div>
           <div v-if="uiRestartNeeded" class="e-notice e-gold e-stg-span" role="status">
             <EIcon name="info" />
