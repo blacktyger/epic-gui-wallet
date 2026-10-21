@@ -17,6 +17,7 @@ import { layout, netFromShort } from './appPaths.js';
 import { createSettingsStore, normalizeWallet, NETWORKS, WALLET_DEFAULTS, setServerDefaults, walletDefaults } from './settingsStore.js';
 import { planRemoval, removeFiles } from './walletRemoval.js';
 import { ownerApiPort } from './testPorts.js';
+import { listenInterface } from './directTx.js';
 import { renderWalletToml, renderNodeToml, networkPorts, walletMarkerText, WALLET_MARKER, tomlNetwork, localNodeUrl, isLocalNodeUrl } from './walletToml.js';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -393,7 +394,7 @@ class ConfigService {
     const file = this.path.join(wallet.configDir, WALLET_TOML);
     const text = renderWalletToml({
       template: this.template(WALLET_TOML), network: wallet.network, configDir: wallet.configDir, dataDir: wallet.dataDir,
-      nodeUrl, epicboxDomain: s.epicbox_domain || this.epicboxDomain,
+      nodeUrl, epicboxDomain: s.epicbox_domain || this.epicboxDomain, listenInterface: listenInterface(s),
       //the built-in node's secret only goes to a node on this machine, never to a public node
       //(the one used while the built-in node syncs, or one typed in)
       nodeApiSecretPath: s.nodeInternal && isLocalNodeUrl(nodeUrl) ? this.path.join(this.nodeDir(wallet.network), NODE_SECRET) : '',
@@ -402,6 +403,8 @@ class ConfigService {
     if (wallet.id === this.walletId) {
       this.walletTOMLPath = file;
       this.walletNodeAddr = nodeUrl;
+      //what the HTTP listener binds when it starts next (App.vue directRun compares it)
+      this.walletListenIface = listenInterface(s);
     }
     return file;
   }

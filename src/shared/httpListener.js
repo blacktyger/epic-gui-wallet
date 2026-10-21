@@ -24,12 +24,11 @@ export function listenerNodeDown(res) {
 
 export const HTTP_OFF = Object.freeze({ state: 'off', port: 0, reason: '' });
 
-/* does the HTTP listener start with the wallet (unlock, Receive › Start listener)? Modern: only with
-   the wallet's http_listener_autostart on (default off; turned on by hand otherwise). Classic is
-   frozen and starts it as it always did. config: the wallet's config; ui: 'modern' | 'classic' */
+/* does the HTTP listener start with Receive › Start listener and the unlock's listeners? Classic
+   (frozen) starts it as it always did. Modern: never there; it runs with Direct transactions
+   (Settings › Receiving, shared/directTx.js), which has its own Start with the wallet. */
 export function httpAutostart(config, ui) {
-  if (ui === 'classic') return true;
-  return !!(config && config.http_listener_autostart === true);
+  return ui === 'classic';
 }
 
 /* startListen's answer -> store.state.httpListener: {state: 'on'|'failed'|'off', port, reason: ''|'port_in_use'|'node'|'error'}

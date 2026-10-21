@@ -55,7 +55,8 @@
   import { nextNodePollDelay } from '@/shared/nodePoll';
   import { wantsRefresh, resumesListening } from '@/shared/epicboxListener';
   import { serverLabel } from '@/shared/epicboxConfig';
-  import { httpListenerState, httpAutostart } from '@/shared/httpListener';
+  import { httpListenerState } from '@/shared/httpListener';
+  import { directAtUnlock, directState, directPlan, directSteps } from '@/shared/directTx';
   import { kernelsDue, minHeightFor, fetchKernelHeight } from '@/shared/sendAllKernel';
   import { useI18n } from 'vue-i18n';
   import { withoutUserinfo, isLocal } from '@/shared/nodeVersion';
@@ -318,16 +319,13 @@
         if(config['walletlisten_on_startup'] && config['epicbox_domain'] != undefined && config['epicbox_domain'] != '' ){
           this.emitter.emit('app.startEpicbox');
         }
-        //Tor on (Modern only): it brings the HTTP listener itself (D6), whatever Start with wallet says
-        this.store.commit('tor', { enabled: !this.isClassic && config.tor_enabled === true });
-        if(!this.isClassic && config.tor_enabled === true){
-          this.emitter.emit('app.startTor');
-          return;
-        }
-        //Modern: the HTTP listener only with Start with wallet on (httpAutostart, default off): one
-        //epic-wallet process less asking the node every 10 s
-        if(!httpAutostart(config, this.store.state.ui)){
-          console.log('[login] http listener not started (Start with wallet is off)');
+        //Modern: Direct transactions (HTTP and/or Tor) only when on with Start with the wallet
+        //(shared/directTx.js): one epic-wallet process less asking the node every 10 s
+        if(!this.isClassic){
+          const on = directAtUnlock(config);
+          this.store.commit('direct', directState(config, on));
+          if(on) await this.directApply({});
+          else console.log('[login] direct transactions not started (off, or Start with the wallet is off)');
           return;
         }
         this.store.commit('listenerStarting', true);
@@ -361,53 +359,16 @@
       /* the wallet's tor (docs/plans/tor-616.md §5): at unlock with Tor on, Settings' Turn on, and Try
          again. The HTTP listener first (walletService.startTor), its state in the store as for the
          listener's own start; tor's own progress comes as tor-status events (created above) */
-      this.emitter.on('app.startTor', async () => {
-        const session = this.loginSession;
-        this.store.commit('tor', { enabled: true, state: 'starting', progress: 0, error: '', detail: '', step: '' });
-        this.store.commit('listenerStarting', true);
-        let r;
-        try {
-          //locked or switched meanwhile: the start stops only what it started (its wallet's tor, its
-          //own listener) and never touches the wallet open now (shared/torSession.js)
-          r = await this.$walletService.startTor({ isCurrent: () => session === this.loginSession,
-            //no saved onion: the wallet is asked, which waits behind a scan after a restore
-            onWaitWallet: () => { if(session === this.loginSession) this.store.commit('tor', { step: 'wallet' }); },
-            onStale: () => { if(session === this.loginSession && this.store.state.tor.enabled) this.emitter.emit('app.startTor'); } });
-        } finally {
-          if(session === this.loginSession) this.store.commit('listenerStarting', false);
-          if(session === this.loginSession) this.store.commit('tor', { step: '' });
-        }
-        if(r.stale || session !== this.loginSession) return;
-        if(r.listener){
-          this.store.commit('httpListener', httpListenerState(r.listener, this.configService.walletListenerPort));
-          if(r.listener.success) this.store.commit('walletListenerService', true);
-        }
-        if(r.onion) this.store.commit('tor', { onion: r.onion });
-        if(!r.ok){
-          const error = r.error === 'listener' || r.error === 'keys' ? r.error : 'start';
-          this.store.commit('tor', { state: 'failed', error, detail: error === 'start' ? String(r.error || '') : '' });
-        }else if(r.status){
-          this.store.commit('tor', { state: r.status.state, progress: r.status.progress, error: r.status.error, detail: r.status.detail });
-        }
-      });
-      /* Settings › Receiving › Tor (and Send's Turn on Tor): saved for this wallet, then started or
-         stopped; off gives the HTTP listener back to its own switch (stopped if Tor had started it) */
-      this.emitter.on('app.setTor', async (on) => {
+      this.emitter.on('app.startTor', () => this.startTorNow());
+      /* Send's Turn on Tor: Direct on with the Tor chip added (HTTP as it was while Direct ran) */
+      this.emitter.on('app.setTor', (on) => {
         if(!this.loggedIn || this.isClassic) return;
-        if(on){
-          this.configService.updateConfig({ tor_enabled: true });
-          this.emitter.emit('app.startTor');
-          return;
-        }
-        //Start with wallet on: the listener stays, it is the user's own switch (§6)
-        const keepListener = httpAutostart(this.configService.config || {}, this.store.state.ui);
-        const r = await this.$walletService.setTorEnabled(false, { keepListener });
-        this.store.commit('tor', { enabled: false, state: 'off', progress: 0, error: '', detail: '' });
-        if(r && r.listenerStopped){
-          this.store.commit('httpListener', null);
-          this.store.commit('walletListenerService', !!this.store.state.walletEpicboxService);
-        }
+        const d = this.store.state.direct;
+        if(on) this.directApply({ on: true, tor: true, http: d.on && d.http });
+        else this.directApply(d.http ? { tor: false } : { on: false });
       });
+      /* Settings › Receiving › Direct transactions: the switch, the chips, Reachable, Start with the wallet */
+      this.emitter.on('app.direct', (change) => this.directApply(change || {}));
 
       this.emitter.on('app.startRefreshNodeStatus', () => {
         this.stopRefreshNode();
@@ -544,6 +505,114 @@
 
     },
     methods: {
+      /* the wallet's tor (docs/plans/tor-616.md §5): Direct with the Tor chip, and Try again. The HTTP
+         listener first (walletService.startTor), its state in the store as for the listener's own start;
+         tor's own progress comes as tor-status events (created above) */
+      async startTorNow(){
+        const session = this.loginSession;
+        this.store.commit('tor', { enabled: true, state: 'starting', progress: 0, error: '', detail: '', step: '' });
+        this.store.commit('listenerStarting', true);
+        let r;
+        try {
+          //locked or switched meanwhile: the start stops only what it started (its wallet's tor, its
+          //own listener) and never touches the wallet open now (shared/torSession.js)
+          r = await this.$walletService.startTor({ isCurrent: () => session === this.loginSession,
+            //no saved onion: the wallet is asked, which waits behind a scan after a restore
+            onWaitWallet: () => { if(session === this.loginSession) this.store.commit('tor', { step: 'wallet' }); },
+            onStale: () => { if(session === this.loginSession && this.store.state.tor.enabled) this.emitter.emit('app.startTor'); } });
+        } finally {
+          if(session === this.loginSession) this.store.commit('listenerStarting', false);
+          if(session === this.loginSession) this.store.commit('tor', { step: '' });
+        }
+        if(r.stale || session !== this.loginSession) return;
+        if(r.listener){
+          this.store.commit('httpListener', httpListenerState(r.listener, this.configService.walletListenerPort));
+          if(r.listener.success) this.store.commit('walletListenerService', true);
+        }
+        if(r.onion) this.store.commit('tor', { onion: r.onion });
+        if(!r.ok){
+          const error = r.error === 'listener' || r.error === 'keys' ? r.error : 'start';
+          this.store.commit('tor', { state: 'failed', error, detail: error === 'start' ? String(r.error || '') : '' });
+        }else if(r.status){
+          this.store.commit('tor', { state: r.status.state, progress: r.status.progress, error: r.status.error, detail: r.status.detail });
+        }
+      },
+      /* Direct transactions (shared/directTx.js): a change of the switch (on), the chips (http, tor),
+         Reachable (public) or Start with the wallet (autostart) is saved for this wallet, then what runs
+         follows (directSteps). One change at a time: a change made meanwhile runs after this one. */
+      directApply(change){
+        if(!this.loggedIn || this.isClassic) return Promise.resolve();
+        const session = this.loginSession;
+        const run = () => (session === this.loginSession ? this.directRun(change) : null);
+        this.directQueue = (this.directQueue || Promise.resolve()).then(run, run).catch((e) => console.log('[direct] ' + (e && e.message)));
+        return this.directQueue;
+      },
+      async directRun(change){
+        const session = this.loginSession;
+        const prev = this.store.state.direct;
+        const save = {};
+        if('on' in change) save.direct_on = !!change.on;
+        if('http' in change || 'tor' in change){
+          const http = 'http' in change ? !!change.http : prev.http;
+          const tor = 'tor' in change ? !!change.tor : prev.tor;
+          //at least one way stays on (the chips refuse it too)
+          if(!http && !tor) return;
+          save.direct_http = http;
+          save.direct_tor = tor;
+        }
+        if('public' in change) save.direct_public = !!change.public;
+        if('autostart' in change) save.direct_autostart = !!change.autostart;
+        if(Object.keys(save).length && this.configService.updateConfig(save) === false){
+          this.$toast.error(this.t('msg.settings.error_save'));
+          return;
+        }
+        const settings = this.configService.config || {};
+        const on = 'on' in change ? !!change.on : prev.on;
+        this.store.commit('direct', { ...directState(settings, on), httpAddr: prev.httpAddr || '' });
+        const http = this.store.state.httpListener;
+        const now = { listener: !!http && http.state === 'on', tor: !!this.store.state.tor.enabled, iface: this.configService.walletListenIface || '' };
+        const steps = directSteps(now, directPlan(settings, on));
+        if(steps.length) console.log('[direct] ' + steps.join(', '));
+        for(const step of steps){
+          if(session !== this.loginSession) return;
+          if(step === 'stopTor'){
+            //the listener is Direct's: it stays unless the next step stops it
+            await this.$walletService.stopTor({ keepListener: true }).catch(() => {});
+            this.store.commit('tor', null);
+          }else if(step === 'stopListener'){
+            this.$walletService.cancelTorListener();
+            await this.$walletService.stopHttpListen();
+            this.store.commit('httpListener', null);
+            this.store.commit('walletListenerService', !!this.store.state.walletEpicboxService);
+          }else if(step === 'writeToml'){
+            try { this.configService.writeWalletToml(); } catch (e) { console.log('[direct] toml not written: ' + (e && e.message)); }
+          }else if(step === 'startTor'){
+            await this.startTorNow();
+          }else if(step === 'startListener'){
+            await this.directStartListener(session);
+          }
+        }
+        //an HTTP start that failed is retried with Try again (directApply({}))
+        if(session === this.loginSession && !on) this.store.commit('httpListener', null);
+      },
+      /* the HTTP listener for Direct (HTTP chip, or back under a running tor) */
+      async directStartListener(session){
+        this.store.commit('listenerStarting', true);
+        let res;
+        try {
+          res = await this.$walletService.startListen('http');
+        } finally {
+          if(session === this.loginSession) this.store.commit('listenerStarting', false);
+        }
+        if(session !== this.loginSession){
+          if(res && res.pid) await window.nodeChildProcess.kill(res.pid);
+          return;
+        }
+        console.log('[direct] http listener ' + (res && res.success ? 'started' : 'not started' + (res && res.portInUse ? ' (port ' + res.portInUse + ' in use)' : '')));
+        this.store.commit('httpListener', httpListenerState(res, this.configService.walletListenerPort));
+        if(res && res.success) this.store.commit('walletListenerService', true);
+        else if(res && res.portInUse) this.$toast.error(this.t('msg.login.port_in_use', [res.portInUse]));
+      },
 
       /* where the app opens: an error screen when settings.json can't be read (nothing is
          written then), the found screen once when an older Epic Wallet left wallets, else
@@ -636,6 +705,7 @@
         //the wallet's tor first: it would report its listener gone (stopAll stops the listener)
         await this.$walletService.stopTor({ keepListener: true, walletId: '' }).catch(() => {});
         this.store.commit('tor', null);
+        this.store.commit('direct', null);
         //one process scan for listener, wallet and node (walletService.stopAll)
         const started = performance.now();
         const cfg = this.configService.config || {};

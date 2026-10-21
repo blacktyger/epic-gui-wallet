@@ -806,6 +806,8 @@ contextBridge.exposeInMainWorld('api', {
     },
     //live public nodes from status.btlabs.uk, fetched by the main process (null when unavailable)
     nodeDirectory: (chain) => ipcRenderer.invoke('node-directory', chain),
+    //this computer's addresses for Receive from the internet: {lan: [ipv4], public: '' | ipv4}
+    directAddresses: () => ipcRenderer.invoke('direct-addresses'),
     //a node API call (shared/nodeFetch.js), sent by the main process: {url, method, headers, body,
     //redirect, timeoutMs} → {ok, status, text} | {error}
     nodeFetch: (req) => ipcRenderer.invoke('node-fetch', req),

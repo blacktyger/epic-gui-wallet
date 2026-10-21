@@ -6,6 +6,8 @@ import { menuTemplate, menuState } from './shared/appMenu'
 import { execFile, spawn } from 'child_process'
 import { pathToFileURL } from 'url'
 import { createDirectory } from './shared/nodeDirectory'
+import { createAddressLookup } from './shared/netAddresses'
+import { networkInterfaces } from 'os'
 import { createReleaseLink } from './shared/releaseLink'
 import { createProcessRegistry, createPidCheck } from './shared/processOwnership'
 import { createWinFindProcess } from './shared/winProcessList'
@@ -738,6 +740,17 @@ ipcMain.handle('node-directory', async (event, chain) => {
     return await nodeDirectory.get(String(chain));
   } catch (e) {
     return null;
+  }
+});
+
+//this computer's LAN and public address for Settings › Receiving › Receive from the internet
+//(shared/netAddresses.js): read-only; the public one from a fixed URL, cached
+const addressLookup = createAddressLookup({ fetch: (url, opts) => net.fetch(url, opts), interfaces: networkInterfaces });
+ipcMain.handle('direct-addresses', async () => {
+  try {
+    return await addressLookup.get();
+  } catch (e) {
+    return { lan: [], public: '' };
   }
 });
 

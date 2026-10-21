@@ -33,6 +33,7 @@
 
 import { localNodeUrl } from './walletToml.js';
 import { renameRetry } from './processOwnership.js';
+import { DIRECT_DEFAULTS, LEGACY_DIRECT_KEYS, migrateDirect } from './directTx.js';
 import { normalizeMyNodes, addMyNode, updateMyNode, removeMyNode } from './myNodes.js';
 
 export const SCHEMA = 1;
@@ -49,16 +50,14 @@ export const WALLET_DEFAULTS = Object.freeze({
   nodesynced: false,
   epicbox_domain: 'epicbox.epiccash.com',
   walletlisten_on_startup: true,
-  //the HTTP listener (port 3415) starts at unlock only if the user chose so (Modern: Settings › Node
-  //and receiving › Start with wallet); else only when turned on. Every epic-wallet process asks the
-  //node every 10 s, and most people receive with Epicbox (shared/httpListener.js httpAutostart)
-  http_listener_autostart: false,
   node_background: false,
   //an old Epicbox server still to be checked once (wss:// url; walletService.pendingEpicboxCheck)
   epicbox_check_pending: '',
-  //Tor (docs/plans/tor-616.md, D5): receive and send at the wallet's .onion address; off by default.
-  //While on, the HTTP listener runs too (D6). Added in 6.1.6 without a schema change
-  tor_enabled: false,
+  //Direct transactions (Settings › Receiving: HTTP and/or Tor, off by default; shared/directTx.js).
+  //They replace http_listener_autostart and tor_enabled (migrateDirect), without a schema change.
+  //Every epic-wallet process asks the node every 10 s and most people receive with Epicbox, so the
+  //HTTP listener runs only while Direct is on
+  ...DIRECT_DEFAULTS,
   //the wallet's onion ('<56>.onion') once known: derived from the wallet's key, so it never changes.
   //Tor starts with it at once instead of waiting for get_public_proof_address (behind a scan after a
   //restore that takes minutes); checked against the wallet in the background (walletService.startTor)
@@ -99,10 +98,12 @@ export function walletDefaults(network) {
 }
 
 /* settings older drafts stored that 6.1 no longer has: dropped on load and on save
-   (epicbox_background: the Epicbox listener always stops at lock, switch and quit) */
-const DROPPED_SETTINGS = ['epicbox_background'];
+   (epicbox_background: the Epicbox listener always stops at lock, switch and quit; 6.1.6's
+   http_listener_autostart and tor_enabled: migrated to direct_* by migrateDirect) */
+const DROPPED_SETTINGS = ['epicbox_background', ...LEGACY_DIRECT_KEYS];
 function cleanSettings(s, network) {
-  const out = { ...walletDefaults(network), ...(isObj(s) ? s : {}) };
+  //6.1.6's HTTP and Tor settings become Direct transactions (read before they are dropped)
+  const out = { ...walletDefaults(network), ...(isObj(s) ? s : {}), ...migrateDirect(s) };
   for (const k of DROPPED_SETTINGS) delete out[k];
   return out;
 }

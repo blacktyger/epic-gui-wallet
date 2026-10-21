@@ -495,14 +495,6 @@ class WalletService {
       return { listenerStopped: false };
     }
 
-    /* Settings › Receiving › Tor: saved for this wallet at once (tor_enabled), then started or stopped.
-       opts: startTor's (isCurrent), stopTor's (keepListener) */
-    async setTorEnabled(on, opts = {}){
-      this.configService.updateConfig({ tor_enabled: !!on });
-      console.log('[tor] turned ' + (on ? 'on' : 'off'));
-      return on ? this.startTor(opts) : this.stopTor(opts);
-    }
-
     /*
      * Send to a .onion address over the wallet's tor (shared/torSend.js: check_version, init_send_tx,
      * receive_tx over Tor, lock, finalize, post). txData: init_send_tx args (send_args is ignored);

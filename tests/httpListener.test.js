@@ -48,17 +48,9 @@ test('the status mentions HTTP only while it runs, says "failed" when it couldn\
   assert.equal(httpShown(undefined), 'off');
 });
 
-test('the HTTP listener is off by default: a new or older wallet does not start it at unlock (Modern)', () => {
-  assert.equal(WALLET_DEFAULTS.http_listener_autostart, false);
+test('Modern never starts the HTTP listener with Receive or the unlock listeners (Direct transactions does); Classic as before', () => {
   assert.equal(httpAutostart(WALLET_DEFAULTS, 'modern'), false);
-  //a wallet from before 6.1.6 has no such key: off
-  assert.equal(httpAutostart({ walletlisten_on_startup: true }, 'modern'), false);
+  assert.equal(httpAutostart({ http_listener_autostart: true }, 'modern'), false);
   assert.equal(httpAutostart(null, 'modern'), false);
-  assert.equal(httpAutostart({ http_listener_autostart: 'yes' }, 'modern'), false);
-});
-
-test('Start with wallet on: the HTTP listener starts at unlock; Classic (frozen) as before', () => {
-  assert.equal(httpAutostart({ http_listener_autostart: true }, 'modern'), true);
   assert.equal(httpAutostart({}, 'classic'), true);
-  assert.equal(httpAutostart({ http_listener_autostart: false }, 'classic'), true);
 });

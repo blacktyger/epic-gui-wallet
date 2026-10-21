@@ -132,14 +132,18 @@ export function setTomlKeys(text, section, values) {
  *   dataDir: the folder holding wallet_data (== configDir for wallets made in 6.1)
  *   nodeUrl: check_node_api_http_addr; nodeApiSecretPath: the built-in node's .api_secret, or
  *   empty for none (no node_api_secret_path in the toml)
+ *   listenInterface: '127.0.0.1' (default) | '0.0.0.0' (shared/directTx.js listenInterface)
  */
-export function renderWalletToml({ template, network, configDir, dataDir, nodeUrl, nodeApiSecretPath, epicboxDomain }) {
+export function renderWalletToml({ template, network, configDir, dataDir, nodeUrl, nodeApiSecretPath, epicboxDomain, listenInterface = '127.0.0.1' }) {
   const n = net(network);
   if (!configDir || !dataDir) throw new Error('wallet toml needs configDir and dataDir');
   const ports = networkPorts(network);
   let t = setTomlKeys(template, 'wallet', {
     chain_type: n.walletChain,
     api_listen_port: ports.walletListener,
+    //the HTTP listener (Direct transactions): this computer only, or every interface in Public mode
+    //(the CLI's --external; the listener serves /v2/foreign only, the owner API keeps its own 127.0.0.1)
+    api_listen_interface: listenInterface === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1',
     api_secret_path: joinPath(configDir, '.owner_api_secret'),
     //epic-wallet appends "/v2/foreign" as is: "https://node/" would ask the node for "//v2/foreign"
     check_node_api_http_addr: String(nodeUrl || '').trim().replace(/\/+$/, '') || 'http://127.0.0.1:' + ports.nodeApi,
@@ -237,6 +241,6 @@ export function renderTorKeysToml({ template, network, keysDir, dataDir, nodeUrl
   if (!Number.isInteger(socks) || socks < 1 || socks > 65535) throw new Error('torkeys toml needs the SOCKS port');
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('torkeys toml needs a listen port');
   let t = renderWalletToml({ template, network, configDir: keysDir, dataDir, nodeUrl, nodeApiSecretPath: '' });
-  t = setTomlKeys(t, 'wallet', { api_listen_port: port });
+  t = setTomlKeys(t, 'wallet', { api_listen_port: port, api_listen_interface: '127.0.0.1' });
   return setTomlKeys(t, 'tor', { use_tor_listener: true, socks_proxy_addr: '127.0.0.1:' + socks, send_config_dir: keysDir });
 }

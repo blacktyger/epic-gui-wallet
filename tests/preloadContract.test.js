@@ -18,7 +18,7 @@ const EXPOSED = ['api', 'clipboard', 'config', 'debug', 'explorer', 'log', 'node
   'nodePath', 'nodeQr', 'nodeSecp256k1', 'nodeWebUtils', 'openepichidden', 'openlink', 'support'];
 
 //ipcRenderer.invoke channels (each one has an ipcMain.handle: tests/ipcChannels.test.js)
-const INVOKED = ['app-relaunch', 'clipboard-copy-secret', 'clipboard-wipe-secret', 'clipboard-write-text', 'folder-lock', 'legacy-scan',
+const INVOKED = ['app-relaunch', 'clipboard-copy-secret', 'clipboard-wipe-secret', 'clipboard-write-text', 'direct-addresses', 'folder-lock', 'legacy-scan',
   'locale', 'lookup', 'node-directory', 'node-fetch', 'open-external', 'open-folder', 'pick-wallet-folder', 'pty-start',
   'quit', 'release-url', 'reload-ui', 'resize', 'session-password-clear', 'session-password-has', 'session-password-set',
   'show-open-dialog', 'show-save-dialog', 'support-preview', 'support-save', 'support-send', 'tor-foreign', 'tor-retry',
@@ -33,6 +33,7 @@ const UNCHECKED = {
   'locale': 'read-only: the system language',
   'version': 'read-only: the app version',
   'node-directory': 'read-only: the public node list (fixed URL in the main process)',
+  'direct-addresses': 'read-only: the LAN and public IPv4 address (fixed URL in the main process)',
   'session-password-clear': 'can only forget the password (a lock), never read or set it',
   //echoes: they reply to the sender with what it sent
   'scan-stdout': 'echo', 'firstscan-stdout': 'echo', 'scan-finish': 'echo', 'scan-error': 'echo',
