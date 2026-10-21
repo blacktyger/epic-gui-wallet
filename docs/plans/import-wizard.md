@@ -105,8 +105,8 @@ src/importer/
 - **Lazy**: the main process imports `src/importer/main` on the first `api.openImporter` or
   `importer:probe` call. The wizard's bundle is a separate page, never loaded by `index.html`.
 - **First-run probe**: `importer:probe` (main-window channel) returns `{wallets: n}` from `scan.js`
-  without the profile copy (under 1 s). Welcome uses it to add the line "We found N wallets from an
-  older Epic Wallet" under the Import row. Nothing else in the main app knows about old GUIs.
+  without the profile copy (under 1 s). Welcome no longer uses it: the wizard does the finding, so
+  scanning twice is pointless. Nothing else in the main app knows about old GUIs.
 
 ## The wizard
 
@@ -152,6 +152,9 @@ in any old folder has changed.
 - Continue needs at least one tick.
 
 ### 3. Check [w3, w3e]
+- **Automatic when nothing is in use**: if every ticked wallet is `free` (or `unknown`), the wizard goes
+  straight on to Copy without stopping. The step stays on screen only while something is `locked`.
+  Back from Copy skips this step the same way.
 - `folderLock.check('wallet', dir)` per wallet (`shared/folderLock.js`, feedback #33). It tries the locks
   epic-wallet holds:
   - SQLite's SHARED range on `epic.db` and the DMS byte of `epic.db-shm`, for 4.x wallets;
@@ -248,7 +251,7 @@ the old profile's User row, cleaned as `shared/importer.js` does today:
 - node (`cleanNodeAddress`; a testnet gets the local node);
 - Epicbox server (`epicbox.epic.tech` → `epicbox.epiccash.com`);
 - language (the first wallet with one sets the app's, unless the user chose one);
-- labels.
+- wallet labels (the names the user gave the wallets).
 Unticked items get `WALLET_DEFAULTS`.
 
 **Blockchain data** (a separate panel, unticked by default, decision 4) is shown when a usable chain was
@@ -265,12 +268,12 @@ again.
 ### 6. Done [w6, w6d, w6v]
 "Your wallets are in the app now."
 - Each wallet: "Copied and checked — unlock it once to finish".
-- Panel "Your old folders are no longer used", one row per old folder with [Delete…] and [Keep].
-  **Delete is enabled only for `verified` wallets.** Fresh imports show "Available after you unlock
-  this wallet once". After that unlock the main app shows a one-time "Finish moving Savings" prompt,
-  which reopens the wizard at Done for that wallet.
-- One warning line: "If you still use the older app or the epic program with that folder, it is now a
-  separate copy."
+- One short line, no choice here: "You can delete the old folder after you've unlocked the wallet once."
+  There is no Delete or Keep button on a fresh import and no "separate copy" warning. The Delete offer
+  comes after the first successful unlock: the main app shows a one-time "Finish moving Savings" prompt,
+  which reopens the wizard at Done for that wallet, with the panel "Your old folders are no longer used"
+  and one row per old folder with [Delete…] and [Keep]. **Delete is enabled only for `verified`
+  wallets.**
 - Primary: [Open my wallet]. It closes the wizard and shows Unlock with the first adopted wallet
   selected.
 
@@ -311,7 +314,7 @@ Wallets with `dataDir ≠ configDir` (origin `imported` or `opened`, 6.1.1–6.1
   1. The main window takes `ref` (the offline summary, output and tx counts, proof address) from the
      open wallet.
   2. The wallet **locks** (owner API, listeners and Tor stopped: the lock check would otherwise see
-     our own owner API).
+     the app's own owner API).
   3. Check, Copy and verify, and Settings (Settings is skipped: the wallet already has 6.1 settings,
      contacts and label).
   4. `adopt` in move mode updates the existing record: same id, `dataDir = configDir`,
@@ -528,6 +531,7 @@ contract are fixed (they are, above).
    b) Block it.
    **Pick: a.** A user may want a second copy, for example to test.
 9. **First-run hint.**
-   a) Welcome shows "We found N wallets from an older Epic Wallet" under *Import existing wallets…*.
+   a) Welcome shows "N wallets found" under *Import existing wallets…*.
    b) Open the wizard automatically when wallets are found.
-   **Pick: a.** It is calm, the user chooses, and it matches "only one entry".
+   c) No hint: the wizard does the finding.
+   **Pick: c.** Scanning twice has no use. *Import existing wallets…* stays the only entry.

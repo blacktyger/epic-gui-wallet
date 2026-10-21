@@ -607,6 +607,7 @@ const S = { theme: 'dark', w: 1280, mode: 'first', scan: 'several', demoOpen: in
 let W = null;       // the wizard, while open
 let DLG = null;     // the dialog on top, if any
 let nextId = 1;
+const DEMOPW = 'demo-password';
 let focusReq = null;
 const wal = (id) => S.wallets.find((w) => w.id === id);
 
@@ -617,7 +618,7 @@ function reset() {
   nextId = S.wallets.length + 1;
   S.cur = S.wallets[0] && S.wallets[0].id;
   S.view = S.mode === 'first' ? 'welcome' : 'unlock';
-  S.page = 'home'; S.tab = 'wallet'; S.pw = ''; S.unlockErr = '';
+  S.page = 'home'; S.tab = 'wallet'; S.pw = DEMOPW; S.unlockErr = '';
   render();
 }
 function scanList() {
@@ -675,14 +676,12 @@ function renderApp() {
   return homeView();
 }
 function welcome() {
-  const n = scanList().length;
   return `<div class="hero"><div class="hero-in">${tile()}<h1>Welcome to Epic Wallet</h1><p class="lead">Send and receive EPIC. Your keys stay on this computer.</p>
   <div class="opts">
     <button class="opt primary" data-act="stub" data-arg="Create a new wallet">${ic('plus')}<span class="t"><b>Create a new wallet</b><span>Get a new recovery phrase</span></span>${ic('chevr', 'go')}</button>
     <button class="opt" data-act="stub" data-arg="Restore from recovery phrase">${ic('key')}<span class="t"><b>Restore from recovery phrase</b><span>Use the 24 words you wrote down</span></span>${ic('chevr', 'go')}</button>
     <button class="opt" data-act="openImport" data-arg="welcome">${ic('folderopen')}<span class="t"><b>Import existing wallets…</b><span>Copy them from an older Epic Wallet or the epic program</span></span>${ic('chevr', 'go')}</button>
   </div>
-  ${n ? `<div class="opt-note probe" role="status">${ic('okc')}We found ${n} wallet${n > 1 ? 's' : ''} from an older Epic Wallet</div>` : ''}
   </div><div class="hero-foot">Epic Wallet 6.1.7</div></div>`;
 }
 function unlockView() {
@@ -696,7 +695,7 @@ function unlockView() {
    ${first ? `<p class="e-help" style="margin-top:12px">This wallet was just copied. The first unlock checks the copy.</p>` : ''}
    ${w && w.place === 'inplace' ? `<p class="e-help" style="margin-top:12px">Files in <span class="mono">${esc(w.dir)}</span></p>` : ''}
    <button class="e-btn e-btn-primary e-btn-lg" style="width:100%;margin-top:24px" type="submit" data-primary>Unlock</button></form>
-   <div class="hero-foot">Epic Wallet 6.1.7. Any password works in this prototype.</div></div>`;
+   <div class="hero-foot">Epic Wallet 6.1.7. The password is filled in for you. Just click Unlock.</div></div>`;
 }
 const NAV = [['home', 'home', 'Overview'], ['send', 'send', 'Send'], ['receive', 'receive', 'Receive'], ['activity', 'activity', 'Activity'], ['contacts', 'contacts', 'Contacts'], ['settings', 'settings', 'Settings']];
 function homeView() {
@@ -784,9 +783,9 @@ function footFor(k) {
 const chk = (key, on, extra = '') => `<input class="e-check" type="checkbox" data-chk="${key}" data-fk="${key}" ${on ? 'checked' : ''} ${extra}>`;
 const STEP = {
   find() {
-    const head = `<h2 id="wzh" tabindex="-1">Find your older wallets</h2><p class="lead">We look where older versions of Epic Wallet and the epic program keep their wallets. We only read. Nothing in them is changed.</p>`;
+    const head = `<h2 id="wzh" tabindex="-1">Find your older wallets</h2><p class="lead">Looking where older versions of Epic Wallet and the epic program keep their wallets. Nothing is changed.</p>`;
     if (W.scan !== 'done') {
-      const rows = [['Older Epic Wallet', 'wallet', 'Saved accounts and folders'], ['The epic program folder', 'node', '~/.epic'], ['Older app profiles', 'contacts', 'Names and contacts']];
+      const rows = [['Older Epic Wallet', 'wallet', 'Saved accounts and folders'], ['The epic program folder', 'node', '~/.epic'], ['Older app profiles', 'contacts', 'Labels and contacts']];
       return head + `<ul class="where" aria-label="Looking">${rows.map((r, i) => `<li>${ic(r[1])}<span class="t"><b>${r[0]}</b><span>${r[2]}</span></span><span class="st">${i < W.scanStep ? `${ic('okc', 'sm')} Done` : i === W.scanStep ? '<span class="e-spinner"></span> Looking…' : 'Waiting'}</span></li>`).join('')}</ul>
       <div class="e-progress" style="margin-top:16px" role="progressbar" aria-label="Looking for wallets"><i style="width:${Math.round((W.scanStep / 3) * 100)}%"></i></div>`;
     }
@@ -799,7 +798,7 @@ const STEP = {
       const items = W.found.filter((f) => f.src === g); if (!items.length) return '';
       return `<div class="grp"><div class="grp-h">${ic(GROUPS[g][1])}${GROUPS[g][0]}</div><div class="wl">${items.map((f) => `<div class="wrow"><span class="ic">${ic('wallet')}</span><div class="grow"><div class="nm">${esc(f.label)}${f.net !== 'main' ? '<span class="e-tag">Floonet</span>' : ''}</div><div class="fp" title="${esc(f.dir)}">${esc(f.dir)}</div></div><div class="end dim e-small">${fmt(f.size)}</div></div>`).join('')}</div></div>`;
     }).join('');
-    return head + `${msg}<div class="e-notice e-ok" style="margin-top:20px" role="status">${ic('okc')}<div><b>We found ${W.found.length} wallet${W.found.length > 1 ? 's' : ''}</b><p>You choose which ones to copy in the next step.</p></div><div></div></div>${groups}
+    return head + `${msg}<div class="e-notice e-ok" style="margin-top:20px" role="status">${ic('okc')}<div><b>Epic Wallet found ${W.found.length} wallet${W.found.length > 1 ? 's' : ''}</b><p>You choose which ones to copy in the next step.</p></div><div></div></div>${groups}
      <button class="pick-row" data-act="picker">${ic('folderopen')}<span class="t"><b>Choose a folder…</b><span>Not in the list? Pick the folder that holds a wallet.</span></span>${ic('chevr', 'sm')}</button>`;
   },
   choose() {
@@ -848,12 +847,12 @@ const STEP = {
     const chainW = sel.find((f) => f.chain);
     const T = W.set; const dis = W.busy ? 'disabled' : '';
     const row = (k, t, d, v) => `<label>${chk('set:' + k, T[k], dis)}<span class="t"><b>${t}</b><span>${d}</span></span><span class="v">${v}</span></label>`;
-    const chain = chainW ? `<div class="cd"><h3>${ic('node', 'sm')}Blockchain data <span class="e-tag">${fmt(chainW.chain)}</span></h3><p class="dim e-small" style="margin-top:4px">We found downloaded blockchain data in <span class="mono">${esc(chainW.dir)}</span>.</p>
+    const chain = chainW ? `<div class="cd"><h3>${ic('node', 'sm')}Blockchain data <span class="e-tag">${fmt(chainW.chain)}</span></h3><p class="dim e-small" style="margin-top:4px">Downloaded blockchain data is in <span class="mono">${esc(chainW.dir)}</span>.</p>
       <label>${chk('set:chain', T.chain, dis)}<span>Copy the blockchain data too</span></label>
       <div class="fine"><span>It is copied, not moved. The old folder stays as it is.</span><span>Only used if you turn on the built-in node.</span><span>Needs ${fmt(chainW.chain + 300)} free in the app's folder.</span></div></div>` : '';
     const busy = W.busy ? `<div class="cd" role="status"><h3>${W.busy.label}</h3><div class="e-progress" style="margin-top:12px"><i style="width:${W.busy.pct}%"></i></div><p class="dim e-small" style="margin-top:8px">${W.busy.detail}</p></div>` : '';
     return `<h2 id="wzh" tabindex="-1">Bring over your settings</h2><p class="lead">The wallets are copied. Choose what else to take from your older app.</p>
-     <div class="sck">${row('contacts', 'Contacts', 'Your address book', `${nc} contact${nc === 1 ? '' : 's'}`)}${row('node', 'Node', 'The node your older app used', 'node.example.net:3413')}${row('epicbox', 'Epicbox server', 'Renamed to its new address', 'epicbox.epiccash.com')}${row('lang', 'Language', 'From the first wallet that has one', 'Deutsch')}${row('labels', 'Wallet names', 'The names you gave them', sel.map((f) => esc(f.label)).join(', '))}</div>${chain}${busy}`;
+     <div class="sck">${row('contacts', 'Contacts', 'Your address book', `${nc} contact${nc === 1 ? '' : 's'}`)}${row('node', 'Node', 'The node your older app used', 'node.example.net:3413')}${row('epicbox', 'Epicbox server', 'Renamed to its new address', 'epicbox.epiccash.com')}${row('lang', 'Language', 'From the first wallet that has one', 'Deutsch')}${row('labels', 'Wallet labels', 'The labels you gave them', sel.map((f) => esc(f.label)).join(', '))}</div>${chain}${busy}`;
   },
   done() {
     const ws = W.doneIds.map(wal).filter(Boolean);
@@ -870,8 +869,7 @@ const STEP = {
     const brought = W.mode === 'import' && bl.length ? `<div class="tagrow" style="margin:12px 4px 0;align-items:center"><span class="e-small dim">Brought over:</span>${bl.map((t) => `<span class="e-tag e-ok">${ic('check')}${t}</span>`).join('')}</div>` : '';
     return `<div class="done-h">${ic('okc', 'okbig')}<div><h2 id="wzh" tabindex="-1">${h}</h2><p class="lead" style="margin-top:4px">${lead}</p></div></div>
      ${W.mode === 'finish' ? '' : `<div class="dpanel">${copied}</div>${brought}`}
-     <div class="dpanel"><h3>Your old folders are no longer used</h3><p>Deleting is your choice. It is never done for you.</p>${olds}
-      <div class="warnline">${ic('alert')}<span>If you still use the older app or the epic program with that folder, it is now a separate copy.</span></div></div>`;
+     ${W.mode !== 'finish' && ws.every((w) => w.move.state !== 'verified') ? `<p class="dim" style="margin:16px 4px 0">You can delete the old folder${ws.length > 1 ? 's' : ''} after you've unlocked the wallet${ws.length > 1 ? 's' : ''} once.</p>` : `<div class="dpanel"><h3>Your old folders are no longer used</h3><p>Deleting is your choice. It is never done for you.</p>${olds}</div>`}`;
   },
 };
 function copySteps(f, c) {
@@ -904,7 +902,7 @@ function renderDlg() {
     }
     case 'moveoffer': {
       const w = wal(d.id);
-      inner = `<h2 id="dt">Move ${esc(w.label)} into the app's folder?</h2><div class="body">Its files are in an older folder now (<span class="codeline">${esc(w.dir)}</span>). We copy them into the app's own folder and check the copy. Your old folder stays as it is until you decide.</div>
+      inner = `<h2 id="dt">Move ${esc(w.label)} into the app's folder?</h2><div class="body">Its files are in an older folder now (<span class="codeline">${esc(w.dir)}</span>). Epic Wallet copies them into the app's own folder and check the copy. Your old folder stays as it is until you decide.</div>
        ${foot(`<button class="e-btn" data-act="closeDlg">Not now</button><button class="e-btn e-btn-primary" data-act="startMove" data-arg="${w.id}" data-primary data-autofocus>Move it</button>`)}`; break;
     }
     case 'prep':
@@ -944,7 +942,7 @@ function pickerHtml(d) {
   const kids = node.kids || [];
   const sel = d.sel != null ? kids[d.sel] : null;
   const canOpen = sel && sel.kids && sel.kids.length;
-  return `<h2 id="dt">Choose a folder</h2><div class="body">Pick the folder that holds the wallet. We only read it.</div>
+  return `<h2 id="dt">Choose a folder</h2><div class="body">Pick the folder that holds the wallet. Epic Wallet only reads it.</div>
    <div class="pk-bar"><button class="e-btn e-btn-icon" data-act="pkUp" aria-label="Up one folder" ${d.path.length ? '' : 'disabled'}>${ic('arrowl')}</button><div class="pathbox" aria-label="Current folder">${esc(crumb)}</div></div>
    <div class="pk-list" role="group" aria-label="Folders">${kids.length ? kids.map((k, i) => `<button class="pk-row" data-act="pkSel" data-arg="${i}" data-fk="pk${i}" aria-pressed="${d.sel === i}">${ic('folder')}<span>${esc(k.name)}</span>${k.kids && k.kids.length ? ic('chevr', 'sm go') : ''}</button>`).join('') : '<div class="pk-empty">This folder is empty.</div>'}</div>
    <div class="dlg-foot"><span class="left faint">Double-click a folder to open it.</span><button class="e-btn" data-act="pkOpen" ${canOpen ? '' : 'disabled'}>Open</button><button class="e-btn" data-act="closeDlg">Cancel</button><button class="e-btn e-btn-primary" data-act="pkChoose" data-primary ${d.sel == null && !d.path.length ? 'disabled' : ''}>Choose</button></div>`;
@@ -993,7 +991,7 @@ const A = {
     const w = wal(id); w.move.old = 'trashed'; DLG = null; focusReq = 'head'; render(); toast(`${w.move.from} is in the Recycle Bin.`);
   },
   switchDlg() { openDlg({ type: 'switch' }); },
-  switchTo(id) { S.cur = id; S.view = 'unlock'; S.pw = ''; S.unlockErr = ''; DLG = null; focusReq = 'upw'; render(); },
+  switchTo(id) { S.cur = id; S.view = 'unlock'; S.pw = DEMOPW; S.unlockErr = ''; DLG = null; focusReq = 'upw'; render(); },
   finish(id) { const ids = S.wallets.filter((w) => w.move && w.move.state === 'verified' && !w.move.old).map((w) => w.id); openWizard('finish', { ids: ids.length ? ids : [id] }); },
   async startMove(id) {
     const w = wal(id); w.offered = true;
@@ -1010,7 +1008,7 @@ const A = {
   dupRemove(id) { S.wallets = S.wallets.filter((x) => x.id !== id); toast('The copy was removed.'); afterRemove(); },
 };
 function afterRemove() {
-  DLG = null; S.pw = ''; S.unlockErr = '';
+  DLG = null; S.pw = DEMOPW; S.unlockErr = '';
   if (!S.wallets.length) { S.view = 'welcome'; S.cur = null; focusReq = null; }
   else { const p = S.wallets.find((w) => w.move && w.move.state === 'pending'); S.view = 'unlock'; S.cur = (p || S.wallets[0]).id; focusReq = 'upw'; }
   render();
@@ -1025,12 +1023,12 @@ function openWizard(mode, o = {}) {
 }
 function closeWizard() {
   const had = W; W.run++; W = null; DLG = null;
-  if (had.mode !== 'finish' && had.adoptedIds.length) { S.view = 'unlock'; S.cur = had.adoptedIds[0]; S.pw = ''; focusReq = 'upw'; }
+  if (had.mode !== 'finish' && had.adoptedIds.length) { S.view = 'unlock'; S.cur = had.adoptedIds[0]; S.pw = DEMOPW; focusReq = 'upw'; }
   else if (had.mode === 'move') { S.view = 'unlock'; S.cur = had.found[0].id; focusReq = 'upw'; toast(`Nothing changed. ${had.found[0].label} still opens from its old folder.`); }
   else focusReq = had.ret || null;
   render();
 }
-function go(d) { W.run++; W.i += d; W.enter = true; W.busy = null; if (d < 0 && stepKey() === 'check') W.copy = {}; focusReq = 'head'; render(); enterStep(); }
+function go(d) { W.run++; W.i += d; if (d < 0 && stepKey() === 'check' && !selected().some((f) => W.lock[f.id] === 'locked' || W.lock[f.id] === 'skipped')) W.i += d; W.enter = true; W.busy = null; if (d < 0 && stepKey() === 'check') W.copy = {}; focusReq = 'head'; render(); enterStep(); }
 const alive = (run) => W && W.run === run;
 function enterStep() {
   const k = stepKey();
@@ -1051,6 +1049,7 @@ async function runLocks() {
   const run = ++W.run; const sel = selected();
   sel.forEach((f) => { if (W.lock[f.id] !== 'skipped') W.lock[f.id] = 'checking'; }); render();
   for (const f of sel) { if (W.lock[f.id] !== 'checking') continue; await sleep(650); if (!alive(run)) return; if (W.lock[f.id] === 'checking') W.lock[f.id] = lockResult(f); render(); }
+  if (alive(run) && stepKey() === 'check' && selected().every((f) => W.lock[f.id] === 'free' || W.lock[f.id] === 'skipped') && selected().some((f) => W.lock[f.id] === 'free')) advance();
 }
 async function checkLock(id) {
   const w = W; w.tok = w.tok || {}; const t = (w.tok[id] = (w.tok[id] || 0) + 1);
@@ -1148,12 +1147,12 @@ async function unlockNow() {
   passOpen(w);
 }
 function passOpen(w) {
-  w.move.state = 'verified'; DLG = null; S.view = 'home'; S.page = 'home'; S.cur = w.id; S.pw = '';
+  w.move.state = 'verified'; DLG = null; S.view = 'home'; S.page = 'home'; S.cur = w.id; S.pw = DEMOPW;
   if (w.move.ref) { DLG = { type: 'moveok', id: w.id, ret: '', fresh: true }; focusReq = 'dlg'; render(); }
   else { focusReq = null; render(); toast(`Moved from ${w.move.from}: ${w.bal} EPIC before refresh.`); }
 }
 function enterHome(w) {
-  S.view = 'home'; S.page = 'home'; S.pw = ''; focusReq = null; render();
+  S.view = 'home'; S.page = 'home'; S.pw = DEMOPW; focusReq = null; render();
   if (w.place === 'inplace' && !w.offered) { w.offered = true; setTimeout(() => { if (S.view === 'home' && !W && !DLG) openDlg({ type: 'moveoffer', id: w.id }, ''); }, RM ? 20 : 600); }
 }
 
@@ -1201,10 +1200,10 @@ function renderDemo() {
   const p = $('#demo'); p.dataset.open = S.demoOpen;
   const focused = document.activeElement && p.contains(document.activeElement) ? document.activeElement.dataset.d : null;
   p.innerHTML = `<header><b>DEMO</b><span>not part of the app</span><button class="tg" data-d="toggle" aria-expanded="${S.demoOpen}" aria-label="${S.demoOpen ? 'Collapse' : 'Expand'} demo panel">${S.demoOpen ? '–' : '+'}</button></header>
-  <div class="body"><h4>Start as</h4>${seg('mode', S.mode, [['first', 'First run'], ['existing', '6.1 user']])}
-  <small class="note">6.1 user: a wallet used in place, for the Move offer</small>
-  <h4>Old wallets found</h4>${seg('scan', S.scan, [['several', 'Several'], ['one', 'One'], ['none', 'None']])}
-  <h4>Problems</h4>${flag('locked', 'In use by another program', 'Check step. Stays on until you untick it.')}${flag('space', 'Not enough disk space', 'Copy step. Fires once.')}${flag('mismatch', 'Copy mismatch, rollback', 'Copy step, 2nd wallet. Fires once.')}${flag('openFail', 'Test open fails', 'First unlock of a copied wallet. Fires once.')}${flag('dupe', 'Same wallet twice', 'Adds a duplicate to the list.')}
+  <div class="body"><h4>Start as</h4>${seg('mode', S.mode, [['first', 'New install'], ['existing', 'Already using 6.1']])}
+  <small class="note">New install: no wallet yet. Already using 6.1: the wallet is still in its old folder, so the one-time “Move into the app's folder” offer shows.</small>
+  <h4>Older wallets on this computer</h4>${seg('scan', S.scan, [['several', 'Several'], ['one', 'One'], ['none', 'None']])}
+  <h4>Problems</h4>${flag('locked', 'In use by another program', 'Check step. Stays on until you untick it.')}${flag('space', 'Not enough disk space', 'Copy step. Fires once.')}${flag('mismatch', 'Copy does not match the original', 'Copy step, 2nd wallet. The copy is undone. Fires once.')}${flag('openFail', 'Wallet will not open after copy', 'First unlock of a copied wallet. Fires once.')}${flag('dupe', 'Same wallet found twice', 'Adds a duplicate to the list.')}
   <h4>Window</h4>${seg('theme', S.theme, [['dark', 'Dark'], ['light', 'Light']])}<div style="height:6px"></div>${seg('w', String(S.w), [['1280', '1280'], ['1044', '1044']])}
   <div class="row2"><button data-d="restart">Restart demo</button></div></div>`;
   if (focused) { const el = p.querySelector(`[data-d="${focused}"]`); if (el) el.focus(); }
