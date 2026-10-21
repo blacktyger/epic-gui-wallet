@@ -1,0 +1,82 @@
+/* ---------------------------------------------------------------- Direct transactions (Settings › Receiving)
+   6.1.6 mockups (direct-pay-mockups): the HTTP and Tor chips under the switch, address lines with the
+   service icon, a quiet Reachable control, collapsed Tor details; the Receive from the internet dialog;
+   the Direct addresses on Receive. Icons and dots: .e-ico (_status.scss). */
+.e-direct-main { min-width: 0; }
+.e-direct-desc { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.e-direct-info .e-tip { white-space: normal; width: max-content; max-width: 260px; }
+.e-direct-status { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-2); }
+.e-direct-status.e-err > span:not(.e-st) { color: var(--text); }
+.e-direct-bar { height: 3px; border-radius: 2px; background: var(--s3); margin-top: var(--sp-2); max-width: 260px; overflow: hidden; }
+.e-direct-bar i { display: block; height: 100%; background: var(--faint); transition: width var(--dur) var(--ease); }
+
+.e-direct-addr { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); min-width: 0; color: var(--dim); }
+.e-direct-addr code { font: 400 0.78rem var(--font-mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.e-direct-what { font-size: var(--fs-xs); color: var(--faint); flex: none; }
+.e-direct-note { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin-top: 2px; padding-inline-start: 28px; font-size: var(--fs-xs); color: var(--faint); }
+
+.e-direct-reach { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); flex-wrap: wrap; }
+.e-direct-reach-l { font-size: var(--fs-xs); color: var(--faint); }
+.e-seg2 { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--s2); }
+.e-seg2 button { height: 26px; padding: 0 10px; border: 0; border-radius: 4px; background: transparent; color: var(--dim); font: 500 var(--fs-xs) var(--font-ui); cursor: pointer; white-space: nowrap; }
+.e-seg2 button:hover { color: var(--text); }
+.e-seg2 button[aria-pressed='true'] { background: var(--s3); color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
+.e-seg2 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.e-direct-details { margin-top: var(--sp-2); font-size: var(--fs-sm); color: var(--dim); }
+.e-direct-details summary { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; color: var(--faint); cursor: pointer; list-style: none; border-radius: 2px; }
+.e-direct-details summary::-webkit-details-marker { display: none; }
+.e-direct-details summary::before { content: ''; width: 6px; height: 6px; margin-inline-end: 4px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform var(--dur-fast) var(--ease); }
+[dir='rtl'] .e-direct-details summary::before { transform: rotate(135deg); }
+.e-direct-details[open] summary::before { transform: rotate(45deg); }
+.e-direct-details summary:hover { color: var(--text); }
+.e-direct-details summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.e-direct-kv { display: grid; grid-template-columns: minmax(80px, max-content) 1fr; gap: 6px 12px; align-items: start; padding: 6px 0 2px 14px; }
+.e-direct-kv > span:nth-child(odd) { color: var(--faint); }
+.e-direct-kv code { font: 400 0.75rem/1.5 var(--font-mono); color: var(--text); overflow-wrap: anywhere; }
+.e-direct-auto { margin-top: var(--sp-2); }
+
+/* the control column: the switch, then the chips (each on its own; aria-pressed) */
+.e-set-row .e-ctl.e-direct-ctl { flex-direction: column; align-items: flex-end; gap: var(--sp-3); align-self: start; }
+.e-direct-chips { display: flex; gap: var(--sp-2); flex-wrap: wrap; justify-content: flex-end; }
+.e-chip { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px 0 10px; border-radius: var(--r-sm); border: 1px solid var(--line-field); background: transparent; color: var(--dim); font: 500 var(--fs-sm) var(--font-ui); cursor: pointer; white-space: nowrap; transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
+.e-chip:hover { background: var(--hover); color: var(--text); }
+.e-chip[aria-pressed='true'] { background: var(--s3); color: var(--text); border-color: var(--dim); box-shadow: inset 0 -2px 0 var(--accent); }
+.e-chip[aria-disabled='true'] { cursor: default; }
+.e-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.e-chip .e-ico > .e-st { box-shadow: 0 0 0 2px var(--s1); }
+.e-chip[aria-pressed='true'] .e-ico > .e-st.e-ok { box-shadow: 0 0 0 2px var(--s3); }
+.e-chip-box { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; margin-inline-start: 2px; border: 1.5px solid var(--line-field); border-radius: 3px; }
+.e-chip[aria-pressed='true'] .e-chip-box { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.e-chip-box .e-icon { width: 11px; height: 11px; stroke-width: 3; }
+
+/* the Receive from the internet dialog */
+.e-pub-dialog { width: min(600px, calc(100vw - 32px)); }
+.e-pub-dialog .e-dialog-body { color: var(--dim); font-size: var(--fs-sm); }
+.e-pub-dialog p { margin: 3px 0; }
+.e-pub-dia { display: block; width: 100%; height: auto; margin: 2px 0 18px; color: var(--dim); }
+.e-pub-dia text { font-family: var(--font-ui); }
+.e-pub-dia .e-pub-hl { fill: var(--accent-text); }
+.e-pub-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.e-pub-opt { border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 10px 12px; }
+.e-pub-opt.e-on { background: var(--s3); box-shadow: inset 0 -2px 0 var(--accent); }
+.e-pub-opt b, .e-pub-steps b { color: var(--text); font-weight: 600; }
+.e-pub-tag { margin-inline-start: 6px; font-size: var(--fs-xs); font-weight: 400; color: var(--faint); }
+.e-pub-steps { list-style: none; margin: 0; padding: 0; }
+.e-pub-steps li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.e-pub-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 1px solid var(--line-field); border-radius: 50%; font: 500 0.7rem var(--font-mono); color: var(--dim); }
+.e-pub-go { margin-top: var(--sp-2); }
+.e-pub-addr { display: flex; align-items: center; gap: var(--sp-2); margin-top: 6px; padding: 4px 4px 4px 10px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--s2); min-width: 0; }
+.e-pub-addr code { flex: 1; min-width: 0; font: 400 0.78rem var(--font-mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e-pub-alt { display: flex !important; gap: 10px; align-items: center; margin-top: 6px !important; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--s2); }
+.e-pub-alt > .e-icon { flex: none; color: var(--dim); }
+.e-pub-alt b { color: var(--text); }
+.e-pub-note { margin-top: 12px !important; font-size: var(--fs-xs); color: var(--faint); }
+@media (max-width: 640px) { .e-pub-two { grid-template-columns: 1fr; } }
+
+/* Receive: the Direct addresses under the Epic address */
+.e-rcv-direct { list-style: none; margin: var(--sp-2) 0 0; padding: var(--sp-3) 0 0; border-top: 1px solid var(--line); display: grid; gap: var(--sp-2); }
+.e-rcv-direct li { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; color: var(--dim); font-size: var(--fs-sm); }
+.e-rcv-direct-l { flex: none; color: var(--dim); }
+.e-rcv-direct code { min-width: 0; font: 400 0.78rem var(--font-mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e-rcv-direct-act { display: inline-flex; gap: 2px; flex: none; }

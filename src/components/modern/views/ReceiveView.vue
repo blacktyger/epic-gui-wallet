@@ -50,6 +50,19 @@
             </p>
             <EpicboxDownNotice class="e-rcv-ebdown" :health="ebHealth" :suggest="ebSuggest" :busy="ebSwitching" @switch="switchEpicbox" />
           </div>
+          <!-- Direct transactions (Settings › Receiving): the Tor and HTTP addresses next to the Epic address -->
+          <ul v-if="directLines.length" class="e-rcv-direct" data-test="rcv-direct">
+            <li v-for="d in directLines" :key="d.key" :data-test="'rcv-direct-' + d.key">
+              <span class="e-ico"><EIcon :name="d.icon" /><span class="e-st" :class="'e-' + d.dot" aria-hidden="true"></span></span>
+              <span class="e-rcv-direct-l">{{ d.label }}</span>
+              <code v-if="d.addr" translate="no" dir="ltr" :data-test="d.key == 'tor' ? 'tor-receive-onion' : null">{{ d.addr }}</code>
+              <span v-else class="e-faint" role="status">{{ d.status }}</span>
+              <span v-if="d.addr" class="e-rcv-direct-act">
+                <button type="button" class="e-icon-btn e-inline" :aria-label="d.copyLabel" :title="d.copyLabel" @click="copy(d.addr)"><EIcon name="o-copy" /></button>
+                <button type="button" class="e-icon-btn e-inline" :aria-label="d.qrLabel" :title="d.qrLabel" :aria-pressed="addressTypeHeader == d.qrType ? 'true' : 'false'" @click="showQr(d.addr, d.qrType)"><EIcon name="qr" /></button>
+              </span>
+            </li>
+          </ul>
         </div>
         <div class="e-rcv-qrbox">
           <!-- the Epic address works while the listener is stopped, so its QR code stays scannable -->
@@ -67,26 +80,16 @@
           <div class="e-section-head"><h2>{{ $t('msg.modern.send.rcv_other') }}</h2></div>
           <div class="e-set-list">
 
-            <div class="e-set-row e-rcv-row">
+            <!-- Direct transactions: its addresses are in the panel above while it runs; here, how to turn it on -->
+            <div class="e-set-row e-rcv-row" data-test="rcv-direct-row">
               <div>
-                <b>{{ $t('msg.modern.send.rcv_http') }}</b>
-                <div class="e-rcv-line"><code class="e-mono" :class="{ 'e-faint': !httpOn }" translate="no">{{ localAddress || '…' }}</code></div>
-                <!-- one short muted line (#60): didn't start (why; Epicbox goes on, QA W01), on, or off.
-                     The wallet's toml listens on 127.0.0.1 only: no port check, no "forward the port" (it would not help) -->
-                <p v-if="httpFailed" class="e-stg-meta e-one" role="status"><span class="e-st e-down" aria-hidden="true"></span><span><b>{{ $t('msg.modern.send.rcv_http_failed') }}</b> {{ httpFailed.reason == 'port_in_use' ? $t('msg.modern.send.rcv_http_failed_port', { port: httpFailed.port }) : $t(httpFailed.reason == 'node' ? 'msg.modern.send.rcv_http_failed_node' : 'msg.modern.send.rcv_http_failed_error') }}</span></p>
-                <p v-else-if="httpOn" class="e-stg-meta e-one" role="status" :title="$t('msg.modern.send.rcv_http_local_only', { port })"><span class="e-st e-ok" aria-hidden="true"></span><span>{{ $t('msg.modern.settings.http_on', { port }) }}</span><span class="e-sr-only">{{ $t('msg.modern.send.rcv_http_local_only', { port }) }}</span></p>
-                <p v-else class="e-stg-meta e-one" role="status"><span class="e-st e-off" aria-hidden="true"></span><span>{{ $t('msg.modern.settings.http_off') }}</span></p>
+                <b>{{ $t('msg.modern.settings.direct.title') }}</b>
+                <p class="e-stg-meta e-one"><span class="e-st" :class="store.state.direct.on ? 'e-ok' : 'e-off'" aria-hidden="true"></span><span>{{ $t(store.state.direct.on ? 'msg.modern.send.rcv_direct_on' : 'msg.modern.send.rcv_direct_off') }}</span></p>
               </div>
               <div class="e-ctl">
-                <button v-if="httpFailed" type="button" class="e-btn e-btn-sm" :class="{ 'e-is-busy': httpRetrying }" :aria-busy="httpRetrying ? 'true' : null" @click="httpRetrying || retryHttp()"><EIcon name="refresh" />{{ $t('msg.httpReceive.http_retry') }}</button>
-                <button v-if="httpOn || httpFailed" type="button" class="e-btn e-btn-sm" :class="{ 'e-is-busy': httpSwitching }" :aria-busy="httpSwitching ? 'true' : null" @click="httpSwitching || httpTurnOff()"><EIcon name="stop" />{{ $t('msg.modern.send.rcv_http_turn_off') }}</button>
-                <button v-else type="button" class="e-btn e-btn-sm" :class="{ 'e-is-busy': httpSwitching }" :aria-busy="httpSwitching ? 'true' : null" @click="httpSwitching || httpTurnOn()"><EIcon name="antenna" />{{ $t('msg.modern.send.rcv_http_turn_on') }}</button>
-                <button type="button" class="e-icon-btn" :disabled="!httpOn || !localAddress" :aria-label="httpOn ? $t('msg.modern.send.rcv_copy_http') : $t('msg.modern.send.rcv_copy_http_off')" @click="copy(localAddress)"><EIcon name="copy" size="sm" /></button>
-                <button type="button" class="e-icon-btn" :disabled="!httpOn || !localAddress" :aria-label="$t('msg.modern.send.rcv_qr_http')" @click="showQr(localAddress, 'local')"><EIcon name="qr" size="sm" /></button>
+                <router-link class="e-btn-inline" data-test="rcv-direct-open" :to="{ path: '/settings/receiving', hash: '#direct' }">{{ $t('msg.modern.overview.receive_options') }}</router-link>
               </div>
             </div>
-
-            <TorReceiveRow @copy="copy" @qr="(a) => showQr(a, 'tor')" />
 
           </div>
         </div>
@@ -116,7 +119,7 @@
               <div class="e-set-row">
                 <div>
                   <b>{{ $t('msg.modern.send.rcv_on') }}</b>
-                  <p>{{ $t(httpOn ? 'msg.modern.send.rcv_listener_on_text' : 'msg.modern.send.rcv_listener_on_epicbox') }}</p>
+                  <p>{{ $t(directLines.some((d) => d.key == 'http' && d.addr) ? 'msg.modern.send.rcv_listener_on_text' : 'msg.modern.send.rcv_listener_on_epicbox') }}</p>
                 </div>
                 <div class="e-ctl"><button type="button" class="e-btn e-btn-sm" :class="{ 'e-is-busy': isLoading }" :aria-busy="isLoading ? 'true' : null" @click="isLoading || stop()"><EIcon name="stop" />{{ $t('msg.modern.send.rcv_stop') }}</button></div>
               </div>
@@ -132,14 +135,14 @@
   import HttpReceive from '@/components/HttpReceive.vue';
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
-  import httpListenerSwitch from '@/components/modern/httpListenerSwitch';
-  import TorReceiveRow from '@/components/modern/receive/TorReceiveRow.vue';
+  import { httpOffered, torOffered } from '@/shared/directTx';
+  import { torPhase, torStatus } from '@/shared/torUi';
   import epicboxSwitch from '@/components/modern/epicboxSwitch';
   import EpicboxDownNotice from '@/components/modern/form/EpicboxDownNotice.vue';
 
   export default reskin(HttpReceive, {
-    components: { EIcon, EpicboxDownNotice, TorReceiveRow },
-    mixins: [httpListenerSwitch, epicboxSwitch],
+    components: { EIcon, EpicboxDownNotice },
+    mixins: [epicboxSwitch],
     data() {
       return {
         //the user picked a QR code; until then the Epic address is shown
@@ -157,6 +160,27 @@
       //the HTTP address's QR code while nothing listens on it (its button is disabled then; a QR code picked before)
       qrOff() { return !this.listening && !!this.addressTypeHeader && this.addressTypeHeader != 'epicbox'; },
       port() { return this.configService.walletListenerPort; },
+      /* the Direct addresses (Tor first, then HTTP): {key, icon, dot, label, addr | status, copyLabel, qrLabel, qrType} */
+      directLines() {
+        const st = this.store.state;
+        const out = [];
+        if (torOffered(st.direct)) {
+          const phase = torPhase(st.tor);
+          const s = torStatus(st.tor);
+          const ready = phase == 'ready' && !!st.tor.onion;
+          out.push({ key: 'tor', icon: 'svc-tor', dot: ready ? 'ok' : phase == 'failed' ? 'down' : 'busy', label: this.$t('msg.modern.settings.tor.address'),
+            addr: ready ? st.tor.onion : '', status: s ? this.$t(s.key, s.params) : '', qrType: 'tor',
+            copyLabel: this.$t('msg.modern.settings.tor.copy_onion'), qrLabel: this.$t('msg.modern.settings.tor.rcv_qr') });
+        }
+        if (httpOffered(st.direct)) {
+          const h = st.httpListener || {};
+          const addr = st.direct.public ? st.direct.httpAddr : 'http://127.0.0.1:' + this.port;
+          out.push({ key: 'http', icon: 'svc-http', dot: h.state == 'on' ? 'ok' : h.state == 'failed' ? 'down' : 'busy', label: this.$t(st.direct.public ? 'msg.modern.send.rcv_http_public' : 'msg.modern.send.rcv_http'),
+            addr: h.state == 'on' ? addr : '', status: h.state == 'failed' ? this.$t('msg.modern.send.rcv_http_failed') : this.$t('msg.modern.settings.direct.st_starting'), qrType: 'local',
+            copyLabel: this.$t('msg.modern.send.rcv_copy_http'), qrLabel: this.$t('msg.modern.send.rcv_qr_http') });
+        }
+        return out;
+      },
       //the Epic address split for reading out: first five and last four characters of the key
       epicKey() { return String(this.epicboxAddress || '').split('@')[0]; },
       epicDomain() { return this.epicboxAddress ? this.epicboxAddress.slice(this.epicKey.length) : ''; },
@@ -169,13 +193,6 @@
       showQr(text, type) {
         this.qrChosen = true;
         this.qrcode(text, type);
-      },
-      /* HTTP receiving turned off here: its QR code, if shown, gives way to the Epic address's */
-      httpTurnedOff() {
-        if (this.addressTypeHeader == 'local') {
-          if (this.epicShown) this.qrcode(this.epicboxAddress, 'epicbox');
-          else this.addressTypeHeader = '';
-        }
       },
     },
   });

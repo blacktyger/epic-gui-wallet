@@ -57,8 +57,8 @@ export default {
   svc_no_answer: 'no answer',
   svc_tor_starting: 'starting… {n} %',
   svc_tor_publishing: 'publishing…',
-  svc_http_tip_local: 'Direct payments over HTTP · this computer only',
-  svc_http_tip_public: 'Direct payments over HTTP · reachable from other computers',
+  svc_http_tip_local: 'Direct transactions over HTTP · this computer only',
+  svc_http_tip_public: 'Direct transactions over HTTP · reachable from the internet',
   //Epicbox status (#52): our listener's state, the reason, and the switch offered when it doesn't answer
   eb_listening: 'Listening',
   eb_connecting: 'Connecting…',

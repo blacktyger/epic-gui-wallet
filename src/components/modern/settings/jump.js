@@ -9,6 +9,7 @@ export const JUMP_EVENT = 'e-settings-jump';
 const TARGETS = {
   node: { section: 'stg-sec-node', focus: 'stg-node-h' },
   epicbox: { section: 'stg-sec-epicbox', focus: 'stg-rcv-h' },
+  direct: { section: 'stg-direct', focus: 'stg-direct-sw' },
 };
 
 export function jumpTo(hash, doc = document) {

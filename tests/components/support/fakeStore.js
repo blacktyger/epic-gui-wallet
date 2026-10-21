@@ -16,6 +16,7 @@ export function baseState() {
     walletListenerService: false,
     walletEpicboxService: false,
     httpListener: { state: 'off', port: 0, reason: '' },
+    direct: { on: false, http: false, tor: true, public: false, wantPublic: false },
     epicbox: { state: '', server: '', address: '', checking: '', pid: 0 },
     loginStage: '',
     nodeType: '',

@@ -1,14 +1,13 @@
 /*
- * Tor in the Modern screens (spec docs/plans/tor-616.md §6): the Settings › Receiving row, the
- * Receive row, Send to a Tor address (Tor on and off, a typo, progress, errors) and the Contacts
+ * Tor in the Modern screens (spec docs/plans/tor-616.md §6): the Direct transactions block in
+ * Settings › Receiving, the Direct addresses on Receive, Send to a Tor address (Tor on and off, a typo, progress, errors) and the Contacts
  * Tor address field. The backend is faked: store.state.tor, the app.setTor / app.startTor events and walletService /
  * sendOverTor.
  */
 import { describe, test, expect, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import { flushPromises } from '@vue/test-utils';
-import TorSettingsRow from '@/components/modern/settings/TorSettingsRow.vue';
-import TorReceiveRow from '@/components/modern/receive/TorReceiveRow.vue';
+import DirectTxRow from '@/components/modern/settings/DirectTxRow.vue';
 import ReceiveView from '@/components/modern/views/ReceiveView.vue';
 import SendView from '@/components/modern/views/SendView.vue';
 import ContactsView from '@/components/modern/views/ContactsView.vue';
@@ -37,93 +36,73 @@ const OFF = { enabled: false, state: 'off', progress: 0, onion: '', error: '', d
 const tor = (o) => ({ enabled: true, state: 'starting', progress: 0, onion: '', error: '', detail: '', ...o });
 const k = (key) => 'msg.modern.settings.tor.' + key;
 
-describe('Settings › Receiving › Tor row', () => {
-  function row(state, wallet = {}) {
-    const store = makeStore({ tor: state });
-    const services = { $walletService: { setTorEnabled: vi.fn(async () => ({ ok: true })), ...wallet } };
-    return { ...mountView(TorSettingsRow, { store, services }), services };
+describe('Settings › Receiving › Direct transactions', () => {
+  const D = (o) => ({ on: false, http: false, tor: true, public: false, wantPublic: false, ...o });
+  function row(direct, torState = OFF, extra = {}) {
+    const store = makeStore({ direct: D(direct), tor: torState, ...extra });
+    const services = { configService: { config: { direct_autostart: true }, walletListenerPort: 3415 } };
+    return mountView(DirectTxRow, { store, services });
   }
 
-  test('off: the title, what it does, a switch that is off, no status', () => {
-    const { wrapper } = row(OFF);
-    expect(wrapper.text()).toContain(t(k('title')));
-    expect(wrapper.text()).toContain(t(k('text')));
-    expect(wrapper.find('[data-test=tor-switch]').element.checked).toBe(false);
-    expect(wrapper.find('[data-test=tor-status]').exists()).toBe(false);
-    expect(wrapper.find('[data-test=tor-onion]').exists()).toBe(false);
+  test('off: only the title, the text with its info tip and the switch', () => {
+    const { wrapper } = row({ on: false });
+    expect(wrapper.text()).toContain(t('msg.modern.settings.direct.title'));
+    expect(wrapper.text()).toContain(t('msg.modern.settings.direct.text'));
+    expect(wrapper.find('[data-test=direct-info]').exists()).toBe(true);
+    expect(wrapper.find('[data-test=direct-switch]').element.checked).toBe(false);
+    for (const s of ['direct-chips', 'direct-status', 'direct-autostart', 'direct-tor-details', 'direct-reach']) expect(wrapper.find('[data-test=' + s + ']').exists()).toBe(false);
   });
 
-  test('turning it on asks the wallet', async () => {
-    const { wrapper, emitter } = row(OFF);
-    const input = wrapper.find('[data-test=tor-switch]');
+  test('the switch asks for Direct on', async () => {
+    const { wrapper, emitter } = row({ on: false });
+    const input = wrapper.find('[data-test=direct-switch]');
     input.element.checked = true;
     await input.trigger('change');
-    await flushPromises();
-    expect(emitter.emit).toHaveBeenCalledWith('app.setTor', true);
+    expect(emitter.emit).toHaveBeenCalledWith('app.direct', { on: true });
   });
 
-  test('starting: "Connecting to Tor… 45 %"', () => {
-    const { wrapper } = row(tor({ progress: 45 }));
-    expect(wrapper.find('[data-test=tor-switch]').element.checked).toBe(true);
-    expect(wrapper.find('[data-test=tor-status]').text()).toBe(t(k('connecting'), { n: 45 }));
-    expect(wrapper.find('[data-test=tor-status]').text()).toContain('45');
+  test('on with Tor only: the chips, starting progress, Tor details, Start with the wallet; the last chip stays on', async () => {
+    const { wrapper, emitter } = row({ on: true, tor: true }, tor({ progress: 45 }));
+    expect(wrapper.find('[data-test=direct-chip-tor]').attributes('aria-pressed')).toBe('true');
+    expect(wrapper.find('[data-test=direct-chip-http]').attributes('aria-pressed')).toBe('false');
+    expect(wrapper.find('[data-test=direct-status]').text()).toContain(t(k('connecting'), { n: 45 }));
+    expect(wrapper.find('[data-test=direct-tor-details]').exists()).toBe(true);
+    expect(wrapper.find('[data-test=direct-autostart]').exists()).toBe(true);
+    //no HTTP address or Reachable with Tor alone
+    expect(wrapper.find('[data-test=direct-reach]').exists()).toBe(false);
+    await wrapper.find('[data-test=direct-chip-tor]').trigger('click');
+    expect(emitter.emit).not.toHaveBeenCalledWith('app.direct', expect.anything());
+    await wrapper.find('[data-test=direct-chip-http]').trigger('click');
+    expect(emitter.emit).toHaveBeenCalledWith('app.direct', { http: true, tor: true });
   });
 
-  test('publishing, then ready with the address and a copy button', async () => {
-    const pub = row(tor({ state: 'publishing', progress: 100 }));
-    expect(pub.wrapper.find('[data-test=tor-status]').text()).toBe(t(k('publishing')));
-    const { wrapper } = row(tor({ state: 'ready', progress: 100, onion: ONION }));
-    expect(wrapper.find('[data-test=tor-status]').text()).toBe(t(k('ready')));
+  test('Tor ready: the onion address with copy', () => {
+    const { wrapper } = row({ on: true, tor: true }, tor({ state: 'ready', progress: 100, onion: ONION }));
+    expect(wrapper.find('[data-test=direct-onion]').exists()).toBe(true);
     expect(wrapper.find('[data-test=tor-onion]').text()).toBe(ONION);
-    await wrapper.find('[data-test=tor-copy]').trigger('click');
-    expect(window.clipboard.writeText).toHaveBeenCalledWith(ONION);
+    expect(wrapper.find('[data-test=direct-status]').text()).toContain(t('msg.modern.settings.direct.st_tor'));
   });
 
-  test.each([
-    ['missing', ''], ['start', 'bad config'], ['network', ''], ['clock', ''], ['keys', ''], ['listener', ''],
-  ])('error %s: its message and Try again', async (error, detail) => {
-    const { wrapper, emitter } = row(tor({ state: 'failed', error, detail }));
-    expect(wrapper.find('[data-test=tor-status]').text()).toBe(t(k('err_' + error), { detail, msg: detail }));
-    await button(wrapper, t(k('retry'))).trigger('click');
-    expect(emitter.emit).toHaveBeenCalledWith('app.startTor');
-  });
-
-  test('the network error while the automatic restarts go on: says so, Try again still there', () => {
-    const { wrapper } = row(tor({ state: 'failed', error: 'network', retrying: true }));
-    expect(wrapper.find('[data-test=tor-status]').text()).toBe(t(k('err_network'), { detail: '', msg: '' }) + ' ' + t(k('still_trying')));
-    expect(button(wrapper, t(k('retry'))).exists()).toBe(true);
+  test('HTTP on: the local address, Reachable Local only, and a port-busy error with an inline Retry', () => {
+    const on = row({ on: true, http: true, tor: false }, OFF, { httpListener: { state: 'on', port: 3415, reason: '' } });
+    expect(on.wrapper.find('[data-test=direct-http-addr]').text()).toContain('http://127.0.0.1:3415');
+    expect(on.wrapper.find('[data-test=direct-reach-local]').attributes('aria-pressed')).toBe('true');
+    const busy = row({ on: true, http: true, tor: false }, OFF, { httpListener: { state: 'failed', port: 3415, reason: 'port_in_use' } });
+    expect(busy.wrapper.find('[data-test=direct-status]').text()).toContain(t('msg.modern.settings.direct.port_busy', { port: 3415 }));
+    expect(busy.wrapper.find('[data-test=direct-retry]').classes()).toContain('e-btn-inline');
   });
 });
 
-describe('Receive › Tor address', () => {
-  test('hidden while Tor is off', () => {
-    const { wrapper } = mountView(TorReceiveRow, { store: makeStore({ tor: OFF }) });
-    expect(wrapper.find('[data-test=tor-receive]').exists()).toBe(false);
-  });
-
-  test('shown with the address, Copy and QR while Tor is on', async () => {
-    const { wrapper } = mountView(TorReceiveRow, { store: makeStore({ tor: tor({ state: 'ready', onion: ONION }) }) });
-    expect(wrapper.find('[data-test=tor-receive-onion]').text()).toBe(ONION);
-    await wrapper.find('[data-test=tor-receive-copy]').trigger('click');
-    await wrapper.find('[data-test=tor-receive-qr]').trigger('click');
-    expect(wrapper.emitted('copy')[0]).toEqual([ONION]);
-    expect(wrapper.emitted('qr')[0]).toEqual([ONION]);
-  });
-
-  test('before the address is known, Copy and QR are disabled', () => {
-    const { wrapper } = mountView(TorReceiveRow, { store: makeStore({ tor: tor({ progress: 20 }) }) });
-    expect(wrapper.find('[data-test=tor-receive-copy]').element.disabled).toBe(true);
-    expect(wrapper.find('[data-test=tor-receive]').text()).toContain(t(k('connecting'), { n: 20 }));
-  });
-
-  test('the Receive screen shows the row only with Tor on', async () => {
+describe('Receive › Direct addresses', () => {
+  test('the onion shows next to the Epic address only while Tor is ready', async () => {
     const services = { $walletService: { getEpicboxAddress: vi.fn(async () => ({})) }, configService: { config: {}, epicboxDomain: 'x', walletListenerPort: 3415 } };
     const off = mountView(ReceiveView, { store: makeStore({ ui: 'modern', tor: OFF }), services });
     await flushPromises();
-    expect(off.wrapper.find('[data-test=tor-receive]').exists()).toBe(false);
-    const on = mountView(ReceiveView, { store: makeStore({ ui: 'modern', tor: tor({ state: 'ready', onion: ONION }) }), services });
+    expect(off.wrapper.find('[data-test=rcv-direct]').exists()).toBe(false);
+    const direct = { on: true, http: false, tor: true, public: false, wantPublic: false };
+    const on = mountView(ReceiveView, { store: makeStore({ ui: 'modern', direct, tor: tor({ state: 'ready', onion: ONION }) }), services });
     await flushPromises();
-    expect(on.wrapper.find('[data-test=tor-receive]').exists()).toBe(true);
+    expect(on.wrapper.find('[data-test=tor-receive-onion]').text()).toBe(ONION);
   });
 });
 

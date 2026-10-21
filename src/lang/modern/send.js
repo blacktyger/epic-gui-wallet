@@ -62,6 +62,9 @@ export default {
   rcv_show_qr: 'Show QR code',
   rcv_other: 'Other ways to receive',
   rcv_http: 'HTTP address',
+  rcv_http_public: 'HTTP address (internet)',
+  rcv_direct_on: 'On · its addresses are shown above',
+  rcv_direct_off: 'Off · turn it on to receive over HTTP or Tor',
   rcv_http_open: 'Port {port} is reachable from the internet.',
   rcv_http_open_text: ' Wallets anywhere can send here.',
   rcv_http_closed: 'Port {port} is not reachable from the internet.',
@@ -70,12 +73,8 @@ export default {
   rcv_http_off: 'Not listening. Start the listener to use this address.',
   //the HTTP listener on demand (off unless turned on, or Settings › Start with wallet)
   //epic-wallet.toml listens on 127.0.0.1: other computers can't reach it, a forwarded port changes nothing
-  rcv_http_local_only: 'Listening on this computer only (127.0.0.1): other computers can\'t reach this address, even with port {port} forwarded on your router.',
-  rcv_http_turn_on: 'Turn on',
-  rcv_http_turn_off: 'Turn off',
   //the HTTP listener couldn't start while Epicbox runs (QA W01): the bold part, then the reason
   rcv_http_failed: 'HTTP is not receiving.',
-  rcv_http_failed_port: ' Port {port} is used by another program. Close that program, then try again.',
   rcv_http_failed_error: ' The HTTP listener could not start. Try again, or stop and start receiving.',
   //the reason in the Overview line (after "HTTP failed: ")
   rcv_http_failed_port_short: 'port {port} is used by another program',
@@ -84,7 +83,6 @@ export default {
   rcv_http_failed_node_short: 'the node did not answer',
   rcv_check_again: 'Check again',
   rcv_copy_http: 'Copy HTTP address',
-  rcv_copy_http_off: 'Copy HTTP address (not listening)',
   rcv_qr_http: 'Show QR code of the HTTP address',
   rcv_qr_epicbox: 'Show QR code of the Epic address',
   rcv_files: 'Transaction files',

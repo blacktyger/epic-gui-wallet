@@ -44,63 +44,6 @@ function setup({ http = { state: 'off', port: 0, reason: '' }, config = {}, wall
   return { ...m, configService, $walletService };
 }
 
-describe('Settings › Receiving › HTTP listener (Modern)', () => {
-  test('off by default: the switch is off and says so, Start with the wallet is off', async () => {
-    const { wrapper } = setup();
-    await flushPromises();
-    expect(wrapper.text()).toContain(t('msg.modern.settings.http_l'));
-    expect(wrapper.find('[data-test=http-switch]').element.checked).toBe(false);
-    expect(wrapper.find('[data-test=http-row]').text()).toContain(t('msg.modern.settings.http_off'));
-    expect(wrapper.find('[data-test=http-autostart]').attributes('type')).toBe('checkbox');
-    expect(wrapper.find('[data-test=http-autostart]').element.checked).toBe(false);
-  });
-
-  test('the switch starts the HTTP listener now, and stops only it', async () => {
-    const { wrapper, store, $walletService, configService } = setup();
-    await flushPromises();
-    const sw = wrapper.find('[data-test=http-switch]');
-    sw.element.checked = true;
-    await sw.trigger('change');
-    await flushPromises();
-    expect($walletService.startListen).toHaveBeenCalledWith('http');
-    expect(store.state.httpListener.state).toBe('on');
-    expect(wrapper.find('[data-test=http-switch]').element.checked).toBe(true);
-    expect(wrapper.text()).toContain(t('msg.modern.settings.http_on', { port: 3415 }));
-    sw.element.checked = false;
-    await sw.trigger('change');
-    await flushPromises();
-    expect($walletService.stopHttpListen).toHaveBeenCalledTimes(1);
-    expect($walletService.stopListen).not.toHaveBeenCalled();
-    expect(store.state.httpListener).toBe(null);
-    expect(store.state.walletListenerService).toBe(true);
-    //on/off now is not a setting: nothing saved
-    expect(configService.updateConfig).not.toHaveBeenCalled();
-  });
-
-  test('port 3415 busy: the switch stays off and says why', async () => {
-    const { wrapper } = setup({ wallet: { startListen: vi.fn(async () => ({ success: false, portInUse: 3415 })) } });
-    await flushPromises();
-    const sw = wrapper.find('[data-test=http-switch]');
-    sw.element.checked = true;
-    await sw.trigger('change');
-    await flushPromises();
-    expect(wrapper.find('[data-test=http-switch]').element.checked).toBe(false);
-    expect(wrapper.text()).toContain(t('msg.modern.send.rcv_http_failed_port', { port: 3415 }).trim());
-  });
-
-  test('Start with the wallet is saved at once (http_listener_autostart) and shows the saved value', async () => {
-    const { wrapper, configService } = setup();
-    await flushPromises();
-    const auto = wrapper.find('[data-test=http-autostart]');
-    auto.element.checked = true;
-    await auto.trigger('change');
-    expect(configService.updateConfig).toHaveBeenCalledWith({ http_listener_autostart: true });
-    const on = setup({ config: { http_listener_autostart: true } });
-    await flushPromises();
-    expect(on.wrapper.find('[data-test=http-autostart]').element.checked).toBe(true);
-  });
-});
-
 describe('Settings › Receiving › Epicbox', () => {
   test('Start Epicbox with the wallet saves at once; the status line says Connecting while it starts', async () => {
     const { wrapper, configService } = setup();

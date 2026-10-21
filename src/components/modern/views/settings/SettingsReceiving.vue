@@ -10,9 +10,16 @@
             <label class="e-srv-label" for="stg-eb-in">{{ $t('msg.modern.settings.eb_server') }}</label>
             <EpicboxCombo input-id="stg-eb-in" describedby="stg-eb-st" :servers="ebServers" :live="ebLive" :current="ebShownServer" :current-glyph="ebGlyph" :busy="ebSwitching" @pick="switchEpicbox" />
             <p id="stg-eb-st" class="e-stg-meta e-node-status" role="status" data-test="epicbox-status">
-              <span class="e-stword" :class="'e-' + ebGlyph" :title="ebWhy || null">{{ ebWord }}</span>
-              <span class="e-sep" aria-hidden="true">·</span>
-              <span>{{ ebLine }}</span>
+              <!-- listening: the domain only (6.1.6 mockups), the full host in the tooltip -->
+              <template v-if="ebHealth.state == 'listening'">
+                <span class="e-st e-ok" aria-hidden="true"></span>
+                <span :title="ebShownServer" data-test="epicbox-domain">{{ $t('msg.modern.settings.eb_listening_on', { domain: ebDomainLabel }) }}</span>
+              </template>
+              <template v-else>
+                <span class="e-stword" :class="'e-' + ebGlyph" :title="ebWhy || null">{{ ebWord }}</span>
+                <span class="e-sep" aria-hidden="true">·</span>
+                <span>{{ ebLine }}</span>
+              </template>
             </p>
             <EpicboxDownNotice class="e-stg-notice" :health="ebHealth" :suggest="ebSuggest" :busy="ebSwitching" @switch="switchEpicbox" />
           </div>
@@ -29,28 +36,9 @@
             </label>
           </div>
         </div>
-        <!-- the HTTP listener on demand (modern/httpListenerSwitch.js): on or off now; "start with the wallet" inside the row (#56) -->
-        <div class="e-set-row" data-test="http-row">
-          <div>
-            <b id="stg-http-l">{{ $t('msg.modern.settings.http_l') }}</b>
-            <p id="stg-http-h">{{ $t('msg.modern.settings.http_text') }}</p>
-            <p class="e-stg-meta e-one" role="status">
-              <template v-if="httpFailed"><span class="e-st e-down" aria-hidden="true"></span><span><b>{{ $t('msg.modern.send.rcv_http_failed') }}</b> {{ httpFailed.reason == 'port_in_use' ? $t('msg.modern.send.rcv_http_failed_port', { port: httpFailed.port }) : $t(httpFailed.reason == 'node' ? 'msg.modern.send.rcv_http_failed_node' : 'msg.modern.send.rcv_http_failed_error') }}</span></template>
-              <template v-else-if="httpOn"><span class="e-st e-ok" aria-hidden="true"></span><span>{{ $t('msg.modern.settings.http_on', { port: configService.walletListenerPort }) }}<template v-if="torHoldsHttp"> · {{ $t('msg.modern.settings.tor.http_used') }}</template></span></template>
-              <template v-else><span class="e-st e-off" aria-hidden="true"></span><span>{{ $t('msg.modern.settings.http_off') }}</span></template>
-            </p>
-            <label class="e-check"><input type="checkbox" data-test="http-autostart" :checked="httpAutostartOn" @change="(e) => saveHttpAutostart(e.target.checked)" />{{ $t('msg.modern.settings.http_auto_l') }}</label>
-          </div>
-          <div class="e-ctl">
-            <label class="e-switch">
-              <input type="checkbox" data-test="http-switch" :checked="httpOn" :disabled="httpSwitching || (torHoldsHttp && httpOn)" :aria-busy="httpSwitching ? 'true' : null" aria-labelledby="stg-http-l" aria-describedby="stg-http-h" @change="httpSwitchChanged" />
-              <span class="e-track"></span>
-            </label>
-          </div>
-        </div>
       </div>
-      <!-- Tor (6.1.6): off by default, at the bottom (TorSettingsRow, docs/plans/tor-616.md §6) -->
-      <div class="e-set-list"><TorSettingsRow /></div>
+      <!-- Direct transactions (6.1.6): HTTP and Tor in one block, off by default (DirectTxRow, shared/directTx.js) -->
+      <div class="e-set-list"><DirectTxRow /></div>
     </section>
 
   </SettingsFrame>
@@ -61,24 +49,24 @@
   import EpicboxCombo from '@/components/modern/form/EpicboxCombo.vue';
   import EpicboxDownNotice from '@/components/modern/form/EpicboxDownNotice.vue';
   import SettingsFrame from '@/components/modern/settings/SettingsFrame.vue';
-  import TorSettingsRow from '@/components/modern/settings/TorSettingsRow.vue';
+  import DirectTxRow from '@/components/modern/settings/DirectTxRow.vue';
   import { jumpTo, JUMP_EVENT } from '@/components/modern/settings/jump';
-  import httpListenerSwitch from '@/components/modern/httpListenerSwitch';
   import epicboxSwitch from '@/components/modern/epicboxSwitch';
   import { epicboxGlyph } from '@/components/modern/serviceRows';
+  import { epicboxDomainLabel } from '@/shared/directTx';
 
-  /* Settings › Receiving: Epicbox (the server field, its status, the not-responding notice) and the HTTP
-     listener. Every control applies at once; there is no Save bar. */
+  /* Settings › Receiving: Epicbox (the server field, its status, the not-responding notice) and Direct
+     transactions (HTTP, Tor). Every control applies at once; there is no Save bar. */
   export default {
     name: 'SettingsReceiving',
-    components: { EpicboxCombo, EpicboxDownNotice, SettingsFrame, TorSettingsRow },
-    mixins: [httpListenerSwitch, epicboxSwitch],
+    components: { DirectTxRow, EpicboxCombo, EpicboxDownNotice, SettingsFrame },
+    mixins: [epicboxSwitch],
     setup() {
       return { store: useStore() };
     },
     data() {
       const c = this.configService.config || {};
-      return { listenOnStartup: !!c.walletlisten_on_startup, httpAutostartOn: !!c.http_listener_autostart };
+      return { listenOnStartup: !!c.walletlisten_on_startup };
     },
     computed: {
       ebGlyph() {
@@ -86,6 +74,9 @@
       },
       ebShownServer() {
         return this.ebHealth.server || this.ebDomain;
+      },
+      ebDomainLabel() {
+        return epicboxDomainLabel(this.ebShownServer);
       },
       ebWord() {
         return this.$t('msg.modern.eb_' + this.ebHealth.state);
@@ -95,7 +86,6 @@
       },
       ebLine() {
         const s = this.ebHealth.state;
-        if (s == 'listening') return this.$t('msg.modern.settings.eb_delivers');
         if (s == 'down') return this.$t('msg.modern.settings.eb_down_line');
         if (s == 'paused') return this.$t('msg.modern.settings.eb_paused_line');
         if (s == 'off') return this.$t(this.listenOnStartup ? 'msg.modern.settings.eb_off_unlock' : 'msg.modern.settings.eb_off');
@@ -121,11 +111,6 @@
       saveListenOnStartup(on) {
         this.listenOnStartup = !!on;
         if (this.configService.updateConfig({ walletlisten_on_startup: !!on }) === false) this.$toast.error(this.$t('msg.settings.error_save'));
-      },
-      /* Start with the wallet for the HTTP listener: saved at once (config http_listener_autostart) */
-      saveHttpAutostart(on) {
-        this.httpAutostartOn = !!on;
-        this.configService.updateConfig({ http_listener_autostart: !!on });
       },
     },
   };

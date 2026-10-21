@@ -57,6 +57,7 @@
   import { serverLabel } from '@/shared/epicboxConfig';
   import { httpListenerState } from '@/shared/httpListener';
   import { directAtUnlock, directState, directPlan, directSteps } from '@/shared/directTx';
+  import { httpUrl } from '@/shared/netAddresses';
   import { kernelsDue, minHeightFor, fetchKernelHeight } from '@/shared/sendAllKernel';
   import { useI18n } from 'vue-i18n';
   import { withoutUserinfo, isLocal } from '@/shared/nodeVersion';
@@ -568,7 +569,8 @@
         }
         const settings = this.configService.config || {};
         const on = 'on' in change ? !!change.on : prev.on;
-        this.store.commit('direct', { ...directState(settings, on), httpAddr: prev.httpAddr || '' });
+        const st = directState(settings, on);
+        this.store.commit('direct', { ...st, httpAddr: st.public ? prev.httpAddr || '' : '' });
         const http = this.store.state.httpListener;
         const now = { listener: !!http && http.state === 'on', tor: !!this.store.state.tor.enabled, iface: this.configService.walletListenIface || '' };
         const steps = directSteps(now, directPlan(settings, on));
@@ -594,6 +596,12 @@
         }
         //an HTTP start that failed is retried with Try again (directApply({}))
         if(session === this.loginSession && !on) this.store.commit('httpListener', null);
+        //Public mode: the address senders use (Receive, the Status card)
+        if(session === this.loginSession && this.store.state.direct.public && !this.store.state.direct.httpAddr){
+          const a = await window.api.directAddresses().catch(() => null);
+          const addr = httpUrl(a && a.public, this.configService.walletListenerPort);
+          if(addr && session === this.loginSession) this.store.commit('direct', { ...this.store.state.direct, httpAddr: addr });
+        }
       },
       /* the HTTP listener for Direct (HTTP chip, or back under a running tor) */
       async directStartListener(session){
