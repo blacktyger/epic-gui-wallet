@@ -1,11 +1,11 @@
 /*
- * Settings › Node's details block (modern/form/CurrentNodeInfo.vue): status word, version (a warning
- * only when too old), height with the network-gap meter, and the last block's time. The time is asked
+ * Settings › Node's details block (modern/form/NodeStatus.vue): status word, height with the network-gap meter (gap in its
+ * tooltip), the last block's time, the version only when too old. The time is asked
  * from nodeService.lastBlockTime only while the block is shown, once per new tip height.
  */
 import { describe, test, expect, vi, afterEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
-import CurrentNodeInfo from '@/components/modern/form/CurrentNodeInfo.vue';
+import NodeStatus from '@/components/modern/form/NodeStatus.vue';
 import { mountView, t } from './support/mountView.js';
 import { makeStore } from './support/fakeStore.js';
 
@@ -13,30 +13,29 @@ const status = (extra = {}) => ({ sync_status: 'no_sync', ready_for_txs: true, u
 
 function setup(nodeStatus, lastBlockTime = vi.fn(async () => Date.now() - 40000)) {
   const store = makeStore({ nodeStatus });
-  const m = mountView(CurrentNodeInfo, { store, services: { $nodeService: { lastBlockTime } } });
+  const m = mountView(NodeStatus, { store, services: { $nodeService: { lastBlockTime } } });
   return { ...m, lastBlockTime };
 }
 
 afterEach(() => vi.useRealTimers());
 
-describe('CurrentNodeInfo', () => {
-  test('online: status word, version line, height with a level meter, last block time with the exact time as title', async () => {
+describe('NodeStatus', () => {
+  test('online: status word, height with a level meter, last block time with the exact time as title, no version line', async () => {
     const { wrapper, lastBlockTime } = setup(status());
     await flushPromises();
     const text = wrapper.text();
     expect(text).toContain(t('msg.mynodes.state_online'));
-    expect(text).toContain('4.1.0');
+    expect(text).not.toContain('4.1.0');
     expect(text).toContain('3,100,000');
-    expect(text).not.toMatch(/at tip|behind| ms|Last checked|Response|Address/);
+    expect(text).not.toMatch(/at tip| ms|Last checked|Response|Address/);
     expect(text).not.toContain(t('msg.mynodes.version_old', { min: '4.1.0' }));
     const meter = wrapper.find('.e-hmeter');
-    expect(meter.attributes('role')).toBe('img');
-    expect(meter.attributes('aria-label')).toBe(t('msg.mynodes.height_level'));
+    expect(wrapper.find('[role=tooltip]').text()).toBe(t('msg.mynodes.height_level'));
     expect(meter.classes()).toContain('e-ok');
     expect(lastBlockTime).toHaveBeenCalledTimes(1);
     expect(lastBlockTime).toHaveBeenCalledWith(3100000);
     expect(text).toContain('40 sec. ago');
-    expect(wrapper.find('dd[title]').attributes('title')).toMatch(/\d/);
+    expect(wrapper.find('span[title]:not(.e-stword)').attributes('title')).toMatch(/\d/);
     wrapper.unmount();
   });
 
@@ -44,7 +43,7 @@ describe('CurrentNodeInfo', () => {
     const near = setup(status({ network_height: 3100010 }));
     await flushPromises();
     expect(near.wrapper.find('.e-hmeter').classes()).toContain('e-warn');
-    expect(near.wrapper.find('.e-hmeter').attributes('aria-label')).toBe(t('msg.mynodes.height_behind', { n: '10' }));
+    expect(near.wrapper.find('[role=tooltip]').text()).toBe(t('msg.mynodes.height_behind', { n: '10' }));
     near.wrapper.unmount();
     const far = setup(status({ network_height: 3100500 }));
     await flushPromises();
@@ -53,7 +52,7 @@ describe('CurrentNodeInfo', () => {
     const unknown = setup(status({ network_height: 0 }));
     await flushPromises();
     expect(unknown.wrapper.find('.e-hmeter').classes()).not.toContain('e-ok');
-    expect(unknown.wrapper.find('.e-hmeter').attributes('aria-label')).toBe(t('msg.mynodes.height_unknown'));
+    expect(unknown.wrapper.find('[role=tooltip]').text()).toBe(t('msg.mynodes.height_unknown'));
     unknown.wrapper.unmount();
   });
 
@@ -69,7 +68,8 @@ describe('CurrentNodeInfo', () => {
     const { wrapper, lastBlockTime } = setup({ error: true, reason: 'not reachable' });
     await flushPromises();
     expect(wrapper.text()).toContain(t('msg.mynodes.state_offline'));
-    expect(wrapper.find('dl').exists()).toBe(false);
+    expect(wrapper.find('.e-h').exists()).toBe(false);
+    expect(wrapper.find('.e-stword').classes()).toContain('e-down');
     expect(lastBlockTime).not.toHaveBeenCalled();
     wrapper.unmount();
   });

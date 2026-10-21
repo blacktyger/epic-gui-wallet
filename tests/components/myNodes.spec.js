@@ -1,16 +1,17 @@
 /*
- * The node address field's live check and My nodes in Modern SettingsGeneral.vue
- * (modern/form/NodeserverField.vue; the logic is the Classic base's, form/nodeserverField.vue). Logic:
- * form/myNodesField.js, shared/nodeCheck.js, shared/myNodes.js. The checks go to
+ * The node field's live check and My nodes in Modern Settings › Node (SettingsNode.vue, the combobox
+ * modern/form/NodeCombo.vue; the logic is the Classic base's, form/nodeserverField.vue). Logic:
+ * form/myNodesField.js, shared/nodeCheck.js, shared/myNodes.js. A typed address is a row at the top
+ * of the list with its live status; the star keeps it in My nodes. The checks go to
  * $nodeService.probeNode (faked here); the list lives in configService.settings (faked in memory with
  * the real list functions).
  */
 import { describe, test, expect, vi } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
-import SettingsGeneral from '@/components/modern/views/settings/SettingsGeneral.vue';
+import SettingsNode from '@/components/modern/views/settings/SettingsNode.vue';
 import { mountView, t } from './support/mountView.js';
 import { makeStore } from './support/fakeStore.js';
-import { button } from './support/dom.js';
+import { button, pressEnter } from './support/dom.js';
 import { addMyNode, updateMyNode, removeMyNode } from '@/shared/myNodes';
 import { createCheckCache } from '@/shared/nodeCheck';
 
@@ -33,7 +34,8 @@ function fakeSettings(initial = []) {
   };
 }
 
-function setup(Component, { probe = async (a) => ONLINE(a), nodes = [] } = {}) {
+function setup(Component, { probe = async (a) => ONLINE(a), nodes = [], directory = null } = {}) {
+  window.api.nodeDirectory = vi.fn(async () => directory);
   const settings = fakeSettings(nodes);
   const configService = {
     langs: { en: 'English' },
@@ -42,12 +44,13 @@ function setup(Component, { probe = async (a) => ONLINE(a), nodes = [] } = {}) {
     defaultAccountNetwork: 'mainnet',
     walletId: 'w1',
     wallet: { label: 'Main' },
-    updateConfig: vi.fn(() => true),
+    updateConfig: vi.fn((form) => { Object.assign(configService.config, form); return true; }),
     getNodeFallBack: () => SAVED_NODE,
     localNodeUrl: () => 'http://127.0.0.1:3413',
   };
   const $nodeService = {
     checkNodeVersion: vi.fn(async () => ({ ok: true })),
+    lastBlockTime: vi.fn(async () => 0),
     probeNode: vi.fn(probe),
     checkCache: createCheckCache(),
   };
@@ -60,31 +63,22 @@ function setup(Component, { probe = async (a) => ONLINE(a), nodes = [] } = {}) {
       $userService: { ensureUser: vi.fn(async () => ({ id: 1 })) },
       $importer: { scanChains: vi.fn(async () => []) },
     },
-    stubs: { NodeDirectory: true, EpicboxServers: true },
   });
   return { ...m, configService, settings, $nodeService };
 }
 
-/* the public node list has answered (the stub stands in for it) */
-async function listLoaded(wrapper, dir = null) {
-  const stub = wrapper.findAllComponents({ name: 'NodeDirectory' })[0] || wrapper.findAllComponents({ name: 'ModernNodeDirectory' })[0];
-  stub.vm.$emit('loaded', dir);
-  await flushPromises();
-}
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const dialog = () => document.querySelector('dialog[open]');
+const input = (w) => w.find('input[data-test=node-combo]');
+//the list under the field, opened as a click into the field does
+const open = async (w) => { await input(w).trigger('focus'); await flushPromises(); };
+const typedRow = (w) => w.find('[data-test=node-list] .e-opt');
+const rowButton = (w, label) => w.findAll('[data-test=node-list] button').find(b => b.attributes('aria-label') === label);
 
-//Modern only: Classic is no longer tested (the user's call, 2026-10-20); it shares this logic
-const INTERFACES = [
-  { name: 'Modern', Component: SettingsGeneral, addressInput: (w) => w.find('input[id^="e-nodeserverField-"]') },
-];
-
-describe.each(INTERFACES)('Node address live check ($name)', (ui) => {
+describe('Node address live check', () => {
   test('the saved address is checked once the public list says it is not one of its nodes', async () => {
-    const { wrapper, $nodeService } = setup(ui.Component);
+    const { wrapper, $nodeService } = setup(SettingsNode);
     await flushPromises();
-    expect($nodeService.probeNode).not.toHaveBeenCalled();
-    await listLoaded(wrapper);
     await wait(700);
     await flushPromises();
     expect($nodeService.probeNode).toHaveBeenCalledTimes(1);
@@ -93,73 +87,71 @@ describe.each(INTERFACES)('Node address live check ($name)', (ui) => {
   });
 
   test('a node of the public list is not checked again: the list shows its status', async () => {
-    const { wrapper, $nodeService } = setup(ui.Component);
+    const { wrapper, $nodeService } = setup(SettingsNode, { directory: { nodes: [{ endpoint: SAVED_NODE, host: 'node.epiccash.com:3413', operator: 'Epic Cash', state: 'healthy', height: 2500000, tipLag: 0, latencyMs: 80, uptime30d: 0.99, awaitingPeers: false }] } });
     await flushPromises();
-    await listLoaded(wrapper, { nodes: [{ endpoint: SAVED_NODE, host: 'node.epiccash.com:3413' }] });
     await wait(700);
     expect($nodeService.probeNode).not.toHaveBeenCalled();
+    await open(wrapper);
+    expect(wrapper.find('[data-test=node-list]').text()).toContain('node.epiccash.com:3413');
     wrapper.unmount();
   });
 
-  test('typing: one check ~600 ms after the last key, then a compact status under the field', async () => {
-    const { wrapper, $nodeService } = setup(ui.Component);
+  test('typing: one check ~600 ms after the last key, then a status row at the top of the list', async () => {
+    const { wrapper, $nodeService } = setup(SettingsNode);
     await flushPromises();
-    await listLoaded(wrapper);
-    const input = ui.addressInput(wrapper);
+    await wait(700);
+    $nodeService.probeNode.mockClear();
     for (const s of ['m', 'my', 'my.node.example.co', 'my.node.example.com']) {
-      await input.setValue(s);
+      await input(wrapper).setValue(s);
       await wait(100);
     }
     expect($nodeService.probeNode).not.toHaveBeenCalled();
     await wait(650);
     await flushPromises();
     expect($nodeService.probeNode.mock.calls.map(c => c[0])).toEqual(['https://my.node.example.com']);
-    const text = wrapper.text();
-    expect(text).toContain(t('msg.mynodes.state_online'));
-    //the height with its meter (level: the gap only in the tooltip); no "at tip", no ms, no version when it is fine
-    expect(text).toContain('2,500,000');
-    expect(wrapper.find('.e-nodecheck .e-hmeter').attributes('aria-label')).toBe(t('msg.mynodes.height_level'));
-    expect(wrapper.find('.e-nodecheck .e-hmeter').attributes('role')).toBe('img');
-    expect(wrapper.find('.e-nodecheck').text()).not.toMatch(/ms|at tip|replied|4\.1\.0/);
+    const row = typedRow(wrapper).text();
+    expect(row).toContain(t('msg.mynodes.state_online'));
+    //the height with its meter and the version; no "at tip", no ms
+    expect(row).toContain('2,500,000');
+    expect(row).toContain('4.1.0');
+    expect(typedRow(wrapper).find('.e-hmeter').exists()).toBe(true);
+    expect(row).not.toMatch(/ms|at tip|replied/);
     wrapper.unmount();
   });
 
-  test('a paste is checked at once; a failure explains itself and never blocks Save', async () => {
-    const { wrapper, $nodeService, configService } = setup(ui.Component, { probe: async (a) => NOT_EPIC(a) });
+  test('a paste is checked at once; a failure explains itself and does not stop the pick', async () => {
+    const { wrapper, $nodeService, configService } = setup(SettingsNode, { probe: async (a) => NOT_EPIC(a) });
     await flushPromises();
-    await listLoaded(wrapper);
-    const input = ui.addressInput(wrapper);
-    await input.trigger('paste');
-    await input.setValue('https://example.org:8080');
+    $nodeService.probeNode.mockClear();
+    await input(wrapper).trigger('paste');
+    await input(wrapper).setValue('https://example.org:8080');
     await flushPromises();
     expect($nodeService.probeNode).toHaveBeenCalledTimes(1);
-    expect(wrapper.text()).toContain(t('msg.mynodes.state_not_epic'));
-    expect(wrapper.text()).toContain(t('msg.mynodes.problem_not_epic'));
-    expect(wrapper.text()).toContain(t('msg.mynodes.hint_port'));
-    expect(input.element.disabled).toBe(false);
-    await button(wrapper, t('msg.save')).trigger('click');
+    expect(typedRow(wrapper).text()).toContain(t('msg.mynodes.state_not_epic'));
+    expect(wrapper.text()).toContain(t('msg.modern.settings.node_check_port'));
+    expect(input(wrapper).element.disabled).toBe(false);
+    await pressEnter(input(wrapper));
     await flushPromises();
-    //Save keeps its own check (checkNodeVersion), as before
+    //the page's save keeps its own check (checkNodeVersion)
     expect($nodeService.checkNodeVersion).toHaveBeenCalledWith('https://example.org:8080');
     expect(configService.updateConfig).toHaveBeenCalledTimes(1);
     wrapper.unmount();
   });
 
-  test('no list until a node is saved; Add opens the dialog with the address, Save adds it with its label', async () => {
-    const { wrapper, settings } = setup(ui.Component);
+  test('no My nodes group until a node is kept; the star opens the dialog with the address, Save adds it with its label', async () => {
+    const { wrapper, settings } = setup(SettingsNode);
     await flushPromises();
-    await listLoaded(wrapper);
     expect(wrapper.text()).not.toContain(t('msg.mynodes.title'));
-    const input = ui.addressInput(wrapper);
-    await input.trigger('paste');
-    await input.setValue('192.168.1.5:3413/');
-    await button(wrapper, t('msg.mynodes.add')).trigger('click');
+    await input(wrapper).trigger('paste');
+    await input(wrapper).setValue('192.168.1.5:3413');
+    await flushPromises();
+    await rowButton(wrapper, t('msg.mynodes.add')).trigger('click');
     await flushPromises();
     const d = dialog();
     expect(d).not.toBeNull();
     expect(d.textContent).toContain(t('msg.mynodes.add_title'));
     const [addr, label] = d.querySelectorAll('input');
-    expect(addr.value).toBe('192.168.1.5:3413/');
+    expect(addr.value).toBe('192.168.1.5:3413');
     label.value = 'Home node';
     label.dispatchEvent(new Event('input'));
     await flushPromises();
@@ -171,20 +163,17 @@ describe.each(INTERFACES)('Node address live check ($name)', (ui) => {
     expect(dialog()).toBeNull();
     expect(wrapper.text()).toContain(t('msg.mynodes.title'));
     expect(wrapper.text()).toContain('Home node');
-    //the field's address is in the list now: the button says so
-    const inList = button(wrapper, t('msg.mynodes.in_list'), { partial: true });
-    expect(inList.attributes('aria-disabled')).toBe('true');
-    await inList.trigger('click');
-    expect(dialog()).toBeNull();
+    //it is in the list now: no second star for the same address
+    expect(rowButton(wrapper, t('msg.mynodes.add'))).toBeUndefined();
     wrapper.unmount();
   });
 
   test('an offline address can still be added', async () => {
-    const { wrapper, settings } = setup(ui.Component, { probe: async (a) => ({ ...NOT_EPIC(a), state: 'offline', problem: 'unreachable' }) });
+    const { wrapper, settings } = setup(SettingsNode, { probe: async (a) => ({ ...NOT_EPIC(a), state: 'offline', problem: 'unreachable' }) });
     await flushPromises();
-    await listLoaded(wrapper);
-    await ui.addressInput(wrapper).setValue('https://down.example.com');
-    await button(wrapper, t('msg.mynodes.add')).trigger('click');
+    await input(wrapper).setValue('https://down.example.com');
+    await flushPromises();
+    await rowButton(wrapper, t('msg.mynodes.add')).trigger('click');
     await flushPromises();
     expect(dialog().textContent).toContain(t('msg.mynodes.state_offline'));
     dialog().querySelector('button[type=submit]').click();
@@ -193,31 +182,25 @@ describe.each(INTERFACES)('Node address live check ($name)', (ui) => {
     wrapper.unmount();
   });
 
-  test('the list: entries checked lightly, Use fills the field, Edit refuses a duplicate, Remove asks quietly', async () => {
+  test('the list: entries checked lightly, a row applies at once, Edit refuses a duplicate, the star removes', async () => {
     const nodes = [
       { address: 'https://a.example.com:3413', label: 'Alpha', addedAt: '' },
       { address: 'http://10.0.0.2:3413', label: '', addedAt: '' },
     ];
-    const { wrapper, settings, $nodeService } = setup(ui.Component, { nodes });
+    const { wrapper, settings, $nodeService, configService } = setup(SettingsNode, { nodes });
     await flushPromises();
     await wait(50);
     await flushPromises();
     //both entries checked when the field opens, from then on from the cache
     const asked = $nodeService.probeNode.mock.calls.map(c => c[0]);
     expect(asked).toEqual(expect.arrayContaining(['https://a.example.com:3413', 'http://10.0.0.2:3413']));
-    expect(wrapper.text()).toContain('Alpha');
-    expect(wrapper.find('.e-mynodes').text()).not.toMatch(/\d+ ms|Online/);
-    const dots = wrapper.findAll('.e-mynodes .e-nodedir-dot');
-    expect(dots[0].attributes('aria-label')).toBe(t('msg.mynodes.state_online') + ', ' + t('msg.mynodes.height_level'));
-    expect(dots[0].attributes('title')).toBe(dots[0].attributes('aria-label'));
-
-    await button(wrapper, t('msg.mynodes.use'), { partial: false }).trigger('click');
-    expect(ui.addressInput(wrapper).element.value).toBe('https://a.example.com:3413');
-    expect(wrapper.text()).toContain(t('msg.mynodes.selected'));
+    const list = wrapper.find('[data-test=node-list]');
+    expect(list.text()).toContain('Alpha');
+    expect(list.text()).not.toMatch(/\d+ ms|Online/);
+    expect(list.findAll('.e-st')[0].classes()).toContain('e-ok');
 
     //Edit the second entry to the first one's address: refused with a short note
-    const edits = wrapper.findAll('button').filter(b => b.attributes('aria-label') === t('msg.mynodes.edit_named', { name: '10.0.0.2:3413' }));
-    await edits[0].trigger('click');
+    await rowButton(wrapper, t('msg.mynodes.edit_named', { name: '10.0.0.2:3413' }).replace('10.0.0.2:3413', 'http://10.0.0.2:3413')).trigger('click');
     await flushPromises();
     const [addr] = dialog().querySelectorAll('input');
     expect(addr.value).toBe('http://10.0.0.2:3413');
@@ -231,26 +214,26 @@ describe.each(INTERFACES)('Node address live check ($name)', (ui) => {
     expect(dialog()).toBeNull();
     expect(settings.updateMyNode).not.toHaveBeenCalled();
 
-    //Remove: Keep first, then Remove
-    const removeBtn = () => wrapper.findAll('button').find(b => b.attributes('aria-label') === t('msg.mynodes.remove_named', { name: 'Alpha' }));
-    await removeBtn().trigger('click');
-    expect(wrapper.text()).toContain(t('msg.mynodes.remove_ask', { name: 'Alpha' }));
-    await button(wrapper, t('msg.mynodes.remove_keep')).trigger('click');
-    expect(settings.removeMyNode).not.toHaveBeenCalled();
-    await removeBtn().trigger('click');
-    await button(wrapper, t('msg.mynodes.remove_yes')).trigger('click');
+    //a row applies the node at once
+    await rowButton(wrapper, t('msg.modern.settings.node_use', { node: 'Alpha' })).trigger('click');
+    await flushPromises();
+    expect($nodeService.checkNodeVersion).toHaveBeenCalledWith('https://a.example.com:3413');
+    expect(configService.updateConfig.mock.calls[0][0]).toMatchObject({ check_node_api_http_addr: 'https://a.example.com:3413', nodeInternal: false });
+
+    //the star takes an entry out of My nodes
+    await rowButton(wrapper, t('msg.modern.settings.node_remove_mine', { node: 'Alpha' })).trigger('click');
     expect(settings.removeMyNode).toHaveBeenCalledWith('mainnet', 'https://a.example.com:3413');
-    expect(wrapper.text()).not.toContain('Alpha');
+    expect(wrapper.find('[data-test=node-list]').text()).not.toContain('Alpha');
     wrapper.unmount();
   });
 
-  test('a text selection dragged out of the dialog does not close it; a real backdrop click does; Keep gives focus back', async () => {
+  test('a text selection dragged out of the dialog does not close it; a real backdrop click does', async () => {
     const nodes = [{ address: 'https://a.example.com:3413', label: 'Alpha', addedAt: '' }];
-    const { wrapper } = setup(ui.Component, { nodes });
+    const { wrapper } = setup(SettingsNode, { nodes });
     await flushPromises();
-    await listLoaded(wrapper);
-    await ui.addressInput(wrapper).setValue('https://b.example.com');
-    await button(wrapper, t('msg.mynodes.add')).trigger('click');
+    await input(wrapper).setValue('https://b.example.com');
+    await flushPromises();
+    await rowButton(wrapper, t('msg.mynodes.add')).trigger('click');
     await flushPromises();
     const d = dialog();
     d.querySelector('input').dispatchEvent(new Event('pointerdown', { bubbles: true }));
@@ -261,20 +244,14 @@ describe.each(INTERFACES)('Node address live check ($name)', (ui) => {
     d.dispatchEvent(new Event('click', { bubbles: true }));
     await flushPromises();
     expect(dialog()).toBeNull();
-
-    const removeBtn = wrapper.findAll('button').find(b => b.attributes('aria-label') === t('msg.mynodes.remove_named', { name: 'Alpha' }));
-    await removeBtn.trigger('click');
-    await button(wrapper, t('msg.mynodes.remove_keep')).trigger('click');
-    await flushPromises();
-    expect(document.activeElement && document.activeElement.getAttribute('aria-label')).toBe(t('msg.mynodes.remove_named', { name: 'Alpha' }));
     wrapper.unmount();
   });
 
   test('without the list in the settings service (an older one), the field works as before', async () => {
-    const { wrapper } = setup(ui.Component);
+    const { wrapper } = setup(SettingsNode);
     delete wrapper.vm.configService.settings.myNodes;
     await flushPromises();
-    expect(ui.addressInput(wrapper).exists()).toBe(true);
+    expect(input(wrapper).exists()).toBe(true);
     wrapper.unmount();
   });
 });

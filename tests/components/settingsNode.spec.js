@@ -1,37 +1,39 @@
 /*
- * The node address in Settings, both interfaces: Classic Settings.vue with form/nodeserverField.vue,
- * Modern SettingsGeneral.vue with modern/form/NodeserverField.vue. The field keeps the text exactly
- * as typed (6.1.4: a "/" of "http://" vanished while typing); Save checks the address, asks the
- * node for its version and saves the normalised address (scheme added, trailing "/" dropped).
+ * The node in Modern Settings › Node (SettingsNode.vue with the combobox field form/NodeCombo.vue,
+ * the logic of Classic form/nodeserverField.vue). The field keeps the text exactly as typed (6.1.4: a
+ * "/" of "http://" vanished while typing); a pick (Enter on a typed address, a list row, the
+ * built-in node) is applied at once through Settings.vue save(): the address is checked, the node
+ * is asked for its version and the normalised address (scheme added, trailing "/" dropped) is saved.
+ * There is no Save bar any more.
  */
 import { describe, test, expect, vi } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
-import Settings from '@/components/Settings.vue';
-import SettingsGeneral from '@/components/modern/views/settings/SettingsGeneral.vue';
+import SettingsNode from '@/components/modern/views/settings/SettingsNode.vue';
 import { mountView, t } from './support/mountView.js';
 import { makeStore } from './support/fakeStore.js';
-import { button } from './support/dom.js';
+import { button, pressEnter } from './support/dom.js';
 
 const SAVED_NODE = 'https://node.epiccash.com:3413';
 
 function fakeConfig() {
-  return {
+  const configService = {
     langs: { en: 'English', de: 'Deutsch' },
     config: { locale: 'en', epicbox_domain: 'epicbox.epiccash.com', walletlisten_on_startup: false, node_background: false, check_node_api_http_addr: SAVED_NODE },
     settings: { nodeChainDir: () => '', setChainOffer: vi.fn(() => true) },
     defaultAccountNetwork: 'mainnet',
     walletId: 'w1',
     wallet: { label: 'Main' },
-    updateConfig: vi.fn(() => true),
+    updateConfig: vi.fn((form) => { Object.assign(configService.config, form); return true; }),
     getNodeFallBack: () => SAVED_NODE,
     localNodeUrl: () => 'http://127.0.0.1:3413',
   };
+  return configService;
 }
 
-function setup(Component, { nodeInternal = false, check = async () => ({ ok: true }) } = {}) {
+function setup({ nodeInternal = false, check = async () => ({ ok: true }) } = {}) {
   const configService = fakeConfig();
-  const $nodeService = { checkNodeVersion: vi.fn(check) };
-  const m = mountView(Component, {
+  const $nodeService = { checkNodeVersion: vi.fn(check), lastBlockTime: vi.fn(async () => 0) };
+  const m = mountView(SettingsNode, {
     store: makeStore({ user: { id: 1, account: 'w1', nodeInternal } }),
     services: {
       configService,
@@ -40,54 +42,37 @@ function setup(Component, { nodeInternal = false, check = async () => ({ ok: tru
       $userService: { ensureUser: vi.fn(async () => ({ id: 1 })) },
       $importer: { scanChains: vi.fn(async () => []) },
     },
-    stubs: { NodeDirectory: true, EpicboxServers: true },
   });
   return { ...m, configService, $nodeService };
 }
 
-const INTERFACES = [
-  {
-    name: 'Classic',
-    Component: Settings,
-    addressInput: (w) => w.find('input[type=nodeaddress]'),
-    async choose(w, kind) { await w.find('select').setValue(kind); },
-    async save(w) {
-      await button(w, t('msg.save')).trigger('click');
-      await flushPromises();
-    },
-  },
-  {
-    name: 'Modern',
-    Component: SettingsGeneral,
-    addressInput: (w) => w.find('input[id^="e-nodeserverField-"]'),
-    async choose(w, kind) { await w.find('input[type=radio][value=' + kind + ']').setValue(true); },
-    /* the save bar appears once something differs from what is saved */
-    async save(w) {
-      await button(w, t('msg.save')).trigger('click');
-      await flushPromises();
-    },
-  },
-];
+const input = (w) => w.find('input[data-test=node-combo]');
+const typeAndEnter = async (w, text) => {
+  await input(w).setValue(text);
+  await pressEnter(input(w));
+  await flushPromises();
+};
 
-describe.each(INTERFACES)('Settings node address ($name)', (ui) => {
-  test('shows the saved external node address', async () => {
-    const { wrapper } = setup(ui.Component);
+describe('Settings › Node address', () => {
+  test('shows the saved external node, no Save bar', async () => {
+    const { wrapper } = setup();
     await flushPromises();
-    expect(ui.addressInput(wrapper).element.value).toBe(SAVED_NODE);
+    expect(input(wrapper).element.value).toBe('node.epiccash.com:3413');
+    expect(() => button(wrapper, t('msg.save'))).toThrow();
+    expect(wrapper.text()).not.toContain(t('msg.modern.settings.unsaved'));
   });
 
   test('typing "http://" key by key keeps both slashes, and the rest of the address as typed', async () => {
-    const { wrapper } = setup(ui.Component);
+    const { wrapper } = setup();
     await flushPromises();
-    const input = ui.addressInput(wrapper);
-    await input.setValue('');
+    await input(wrapper).setValue('');
     const typed = 'http://192.168.1.5:3413/';
     let value = '';
     for (const ch of typed) {
       value += ch;
-      await input.setValue(value);
+      await input(wrapper).setValue(value);
       await flushPromises();
-      expect(ui.addressInput(wrapper).element.value).toBe(value);
+      expect(input(wrapper).element.value).toBe(value);
     }
   });
 
@@ -96,66 +81,61 @@ describe.each(INTERFACES)('Settings node address ($name)', (ui) => {
     ['node.example.com', 'https://node.example.com'],
     ['  http://node.example.com:3413// ', 'http://node.example.com:3413'],
     ['https://node.example.com:3413', 'https://node.example.com:3413'],
-  ])('Save of %j checks and saves %j, the field keeps what was typed', async (typed, saved) => {
-    const { wrapper, configService, $nodeService } = setup(ui.Component);
+  ])('Enter on the typed %j checks and saves %j at once', async (typed, saved) => {
+    const { wrapper, configService, $nodeService } = setup();
     await flushPromises();
-    await ui.addressInput(wrapper).setValue(typed);
-    await ui.save(wrapper);
+    await typeAndEnter(wrapper, typed);
     expect($nodeService.checkNodeVersion).toHaveBeenCalledWith(saved);
     expect(configService.updateConfig).toHaveBeenCalledTimes(1);
     expect(configService.updateConfig.mock.calls[0][0]).toMatchObject({ check_node_api_http_addr: saved, nodeInternal: false });
-    expect(ui.addressInput(wrapper).element.value).toBe(typed);
   });
 
-  test.each(['http://', 'not a node', 'https://my node.example'])('Save of the invalid address %j says so and saves nothing', async (typed) => {
-    const { wrapper, configService, $nodeService } = setup(ui.Component);
+  test('an invalid address says so and saves nothing', async () => {
+    const { wrapper, configService, $nodeService } = setup();
     await flushPromises();
-    await ui.addressInput(wrapper).setValue(typed);
-    await ui.save(wrapper);
+    await typeAndEnter(wrapper, 'http://');
     expect(wrapper.text()).toContain(t('msg.validators.http_address'));
     expect($nodeService.checkNodeVersion).not.toHaveBeenCalled();
     expect(configService.updateConfig).not.toHaveBeenCalled();
   });
 
-  test('an address that is not an Epic node is named in the error and not saved', async () => {
-    const { wrapper, configService } = setup(ui.Component, { check: async () => ({ ok: false, reason: 'no answer' }) });
+  test('something that is no address (spaces) is not offered and Enter saves nothing', async () => {
+    const { wrapper, configService } = setup();
     await flushPromises();
-    await ui.addressInput(wrapper).setValue('https://example.org');
-    await ui.save(wrapper);
-    expect(wrapper.text()).toContain(t('msg.validators.not_epic_node', ['https://example.org (no answer)']));
+    await typeAndEnter(wrapper, 'not a node');
     expect(configService.updateConfig).not.toHaveBeenCalled();
   });
 
-  test('the built-in node is saved as the local node, without asking any external node', async () => {
-    const { wrapper, configService, $nodeService, $toast } = setup(ui.Component);
+  test('an address that is not an Epic node is named in the error, stays in the field and is not saved', async () => {
+    const { wrapper, configService } = setup({ check: async () => ({ ok: false, reason: 'no answer' }) });
     await flushPromises();
-    await ui.choose(wrapper, 'internal');
-    expect(ui.addressInput(wrapper).exists()).toBe(false);
-    await ui.save(wrapper);
+    await typeAndEnter(wrapper, 'https://example.org');
+    expect(wrapper.text()).toContain(t('msg.validators.not_epic_node', ['https://example.org (no answer)']));
+    expect(configService.updateConfig).not.toHaveBeenCalled();
+    expect(input(wrapper).element.value).toBe('example.org');
+  });
+
+  test('the built-in node row saves the local node, without asking any external node', async () => {
+    const { wrapper, configService, $nodeService, $toast } = setup();
+    await flushPromises();
+    await input(wrapper).trigger('focus');
+    await wrapper.find('[data-test=node-use-builtin]').trigger('click');
+    await flushPromises();
     expect($nodeService.checkNodeVersion).not.toHaveBeenCalled();
     expect(configService.updateConfig.mock.calls[0][0]).toMatchObject({ check_node_api_http_addr: 'http://127.0.0.1:3413', nodeInternal: true });
     expect($toast.success).toHaveBeenCalledWith(t('msg.settings.settings_saved'));
   });
 
-  test('switching from the built-in node to external fills in the default node', async () => {
-    const { wrapper } = setup(ui.Component, { nodeInternal: true });
+  test('"Sync in background" only for the built-in node, and it saves at once', async () => {
+    const remote = setup();
     await flushPromises();
-    expect(ui.addressInput(wrapper).exists()).toBe(false);
-    await ui.choose(wrapper, 'external');
-    expect(ui.addressInput(wrapper).element.value).toBe(SAVED_NODE);
-  });
-});
-
-describe('Settings node address (Modern save bar)', () => {
-  test('no save bar until something changes; Discard brings the saved address back', async () => {
-    const { wrapper } = setup(SettingsGeneral);
+    expect(remote.wrapper.text()).not.toContain(t('msg.modern.settings.node_bg_label'));
+    remote.wrapper.unmount();
+    const { wrapper, configService } = setup({ nodeInternal: true });
     await flushPromises();
-    expect(() => button(wrapper, t('msg.save'))).toThrow();
-    const input = INTERFACES[1].addressInput(wrapper);
-    await input.setValue('https://other.example');
-    expect(wrapper.text()).toContain(t('msg.modern.settings.unsaved'));
-    await button(wrapper, t('msg.modern.settings.discard')).trigger('click');
-    expect(INTERFACES[1].addressInput(wrapper).element.value).toBe(SAVED_NODE);
-    expect(wrapper.text()).not.toContain(t('msg.modern.settings.unsaved'));
+    expect(input(wrapper).element.value).toBe(t('msg.modern.settings.node_builtin'));
+    expect(wrapper.text()).toContain(t('msg.modern.settings.node_bg_label'));
+    await wrapper.find('.e-switch input').setValue(true);
+    expect(configService.updateConfig).toHaveBeenCalledWith({ node_background: true });
   });
 });
