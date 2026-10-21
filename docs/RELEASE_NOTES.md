@@ -17,7 +17,7 @@ Tor is back as part of the new Direct transactions, plus a new Status card, thin
 - The sidebar shows Node and Receiving with their icon, a status dot and one word; hover for the details, click to open the right page.
 - Overview › Status: one aligned row per service (node, Epicbox, and HTTP and Tor while they are on) with new thin outline icons; colour is only in the small status dot, details are in the tooltips, and one "Receive options" button opens Settings › Receiving.
 - The Epicbox server shows as its domain only (stackwallet.com) in the Status card, the sidebar card and Settings › Receiving; the full name is in the tooltip, the picker and your address.
-- The node and Epicbox pickers show each server's latency on the right, as measured by status.btlabs.uk ("Status and latency from status.btlabs.uk").
+- The node and Epicbox pickers show each server's latency on the right, as measured by the server status site, not from your computer.
 - After a send goes through, the wallet opens Overview, where the new transaction shows.
 
 **Changed**
