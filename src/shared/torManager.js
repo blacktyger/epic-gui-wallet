@@ -1,0 +1,423 @@
+/*
+ * The wallet's own tor (tor-616 §4, D1): one per open wallet, started by the main process on
+ * private `auto` ports with a control port, so the app knows when it is ready and why it isn't.
+ *
+ *   off → starting (progress 0-100) → publishing → ready, or failed {error, detail} from any of them
+ *   ready: bootstrap 100 % and the first HS_DESC UPLOADED of the wallet's onion. Sending needs only
+ *   the bootstrap (canSend); republishing is tor's job, a later HS_DESC FAILED is only logged.
+ *
+ * Errors (§4): missing (no binary), start (tor exited before its control file appeared: its last
+ * [err]/[warn] line), network (progress stuck 60 s, or no 100 % after 120 s: restarted after 5 s,
+ * 30 s, 2 min, then left failed), clock (CLOCK_SKEW before the bootstrap), keys (no key for the
+ * onion, or tor published another one), listener (the wallet's HTTP listener doesn't answer).
+ *
+ * Start (start()): torrc in <configDir>/tor, data in <configDir>/tor/data (0700); `tor -f <torrc>
+ * --defaults-torrc <empty>`, no shell; cookie auth; TAKEOWNERSHIP (tor exits when the app's
+ * control connection closes, and with __OwningControllerProcess when the app is gone); the key
+ * (ensureKey: the one-shot epic-wallet run when the key file is missing), expanded in memory
+ * (onion.js keyForTor), never written or logged; ADD_ONION port 80 → 127.0.0.1:<listener port>.
+ * Stop (stop()): DEL_ONION, SIGNAL SHUTDOWN, a kill after 5 s.
+ *
+ * Plain ESM with every I/O passed in (tests/torManager.test.js):
+ *   spawn (child_process.spawn), connect (net.connect), fs (sync calls), join (path.join),
+ *   sha512(bytes) → bytes, kill(pid) → Promise, record(pid, cmd, args) / forget(pid) (the process
+ *   registry), torBin() → the tor executable or '' (missing), libDir: LD_LIBRARY_PATH on Linux,
+ *   win, ownerPid (this process), checkPort(port) → Promise<bool>, onStatus(status), log {info, warn}
+ */
+import { parseOnion, readOnionKeyFile, keyForTor, onionKeyPath, ONION_LEN } from './onion.js';
+import { createTorControl, parseControlFile } from './torControl.js';
+
+export const STATES = ['off', 'starting', 'publishing', 'ready', 'failed'];
+export const ERRORS = ['missing', 'start', 'network', 'clock', 'keys', 'listener'];
+
+export const TIMINGS = Object.freeze({
+  controlFileMs: 30000,
+  stallMs: 60000,
+  bootMs: 120000,
+  backoffMs: [5000, 30000, 120000],
+  stopKillMs: 5000,
+  listenerCheckMs: 15000,
+});
+
+/* a torrc value: quoted, with tor's C-style escapes (Windows backslashes, spaces) */
+function q(v) {
+  return JSON.stringify(String(v));
+}
+
+/* the files of a wallet's tor, all in <configDir>/tor */
+export function torPaths(configDir, join) {
+  const dir = join(configDir, 'tor');
+  return { dir, torrc: join(dir, 'torrc'), defaults: join(dir, 'torrc-defaults'), data: join(dir, 'data'),
+    controlFile: join(dir, 'control.txt'), cookie: join(dir, 'control.cookie') };
+}
+
+export function buildTorrc({ paths, ownerPid }) {
+  if (!(Number(ownerPid) > 0)) throw new Error('torrc needs the owner pid');
+  return [
+    'SocksPort auto ExtendedErrors IsolateSOCKSAuth',
+    'ControlPort auto',
+    'ControlPortWriteToFile ' + q(paths.controlFile),
+    'CookieAuthentication 1',
+    'CookieAuthFile ' + q(paths.cookie),
+    'DataDirectory ' + q(paths.data),
+    '__OwningControllerProcess ' + Number(ownerPid),
+    'Log notice stdout',
+    'AvoidDiskWrites 1',
+    '',
+  ].join('\n');
+}
+
+/* the args tor is started with (processOwnership records them, role tor) */
+export function torArgs(paths) {
+  return ['-f', paths.torrc, '--defaults-torrc', paths.defaults];
+}
+
+/* tor's own log line → '' or the message of an [err]/[warn] line */
+export function torProblem(line) {
+  const m = /\[(err|warn)\]\s*(.*)$/.exec(String(line || ''));
+  return m ? m[2].trim().slice(0, 300) : '';
+}
+
+const OFF = Object.freeze({ state: 'off', progress: 0, onion: '', error: '', detail: '' });
+
+export function createTorManager({ spawn, connect, fs, join, sha512, kill, record = () => {}, forget = () => {},
+  torBin, libDir = '', win = false, ownerPid, checkPort = async () => true, onStatus = () => {}, log = {},
+  env = {}, timings = {}, setTimer = setTimeout, clearTimer = clearTimeout, now = () => Date.now() }) {
+  const t = Object.assign({}, TIMINGS, timings);
+  const info = log.info || (() => {});
+  const warn = log.warn || (() => {});
+
+  let status = Object.assign({}, OFF);
+  //the current run: everything async checks it is still the current one (gen)
+  let run = null;
+  let gen = 0;
+  //what start() was given, for retry and the automatic restarts
+  let target = null;
+  let restarts = 0;
+  let restartTimer = null;
+
+  function emit(patch) {
+    status = Object.assign({}, status, patch);
+    try { onStatus(Object.assign({ walletId: target ? target.walletId : '' }, status)); } catch (e) { /* the window is gone */ }
+  }
+
+  function timer(fn, ms) {
+    const h = setTimer(fn, ms);
+    if (h && typeof h.unref === 'function') h.unref();
+    return h;
+  }
+
+  function clearRunTimers(r) {
+    for (const k of ['stall', 'boot', 'listener', 'controlPoll']) {
+      if (r[k]) clearTimer(r[k]);
+      r[k] = null;
+    }
+  }
+
+  /* end the current tor (no state change): DEL_ONION, SHUTDOWN, a kill after stopKillMs */
+  async function teardown(r) {
+    if (!r) return;
+    r.dead = true;
+    clearRunTimers(r);
+    const proc = r.proc;
+    const exited = new Promise((resolve) => {
+      if (!proc || r.exited) return resolve();
+      r.onExit.push(resolve);
+    });
+    if (r.control && !r.control.closed) {
+      if (r.serviceId) await r.control.delOnion(r.serviceId).catch(() => {});
+      await r.control.signal('SHUTDOWN').catch(() => {});
+      r.control.close();
+    }
+    if (proc && !r.exited) {
+      const k = timer(() => { if (!r.exited) Promise.resolve(kill(proc.pid)).catch(() => {}); }, t.stopKillMs);
+      await exited;
+      clearTimer(k);
+    }
+    if (proc && proc.pid) forget(proc.pid);
+  }
+
+  function fail(r, error, detail) {
+    if (r.dead || r !== run) return;
+    info('tor: failed, ' + error + (detail ? ' (' + String(detail).slice(0, 200) + ')' : ''));
+    const auto = error === 'network' && restarts < t.backoffMs.length;
+    teardown(r).catch(() => {});
+    run = null;
+    emit({ state: 'failed', progress: status.progress, error, detail: detail ? String(detail).slice(0, 300) : '' });
+    if (auto) {
+      const wait = t.backoffMs[restarts++];
+      info('tor: restarting in ' + Math.round(wait / 1000) + ' s');
+      restartTimer = timer(() => { restartTimer = null; if (target && !run) launch(); }, wait);
+    }
+  }
+
+  /* the stall and boot watchdogs: progress unchanged for stallMs, or no 100 % after bootMs */
+  function watchProgress(r) {
+    if (r.stall) clearTimer(r.stall);
+    if (r.bootstrapped) return;
+    r.stall = timer(() => fail(r, 'network', 'stuck at ' + status.progress + ' %'), t.stallMs);
+  }
+
+  function onEvent(r, e) {
+    if (r.dead || r !== run) return;
+    if (e.type === 'bootstrap') {
+      if (e.progress !== r.progress) {
+        r.progress = e.progress;
+        watchProgress(r);
+      }
+      if (e.progress >= 100 && !r.bootstrapped) {
+        r.bootstrapped = true;
+        clearTimer(r.boot);
+        clearTimer(r.stall);
+        info('tor: bootstrapped in ' + ((now() - r.started) / 1000).toFixed(1) + ' s');
+      }
+      if (e.warning) info('tor: bootstrap warning: ' + String(e.warning).slice(0, 200));
+      advance(r);
+    } else if (e.type === 'clock_skew') {
+      if (!r.bootstrapped) fail(r, 'clock', String(e.skew));
+      else warn('tor: clock skew ' + e.skew + ' s');
+    } else if (e.type === 'hs_desc' && r.serviceId && e.service === r.serviceId) {
+      if (e.action === 'UPLOADED' && !r.uploaded) {
+        r.uploaded = true;
+        info('tor: onion published in ' + ((now() - r.started) / 1000).toFixed(1) + ' s');
+        advance(r);
+      } else if (e.action === 'FAILED') {
+        info('tor: descriptor upload failed at one directory' + (e.reason ? ' (' + e.reason + ')' : ''));
+      }
+    }
+  }
+
+  /* the visible state from what is known */
+  function advance(r) {
+    if (r.dead || r !== run) return;
+    if (r.bootstrapped && r.serviceId && r.uploaded) {
+      if (status.state !== 'ready') {
+        emit({ state: 'ready', progress: 100, error: '', detail: '' });
+        restarts = 0;
+        watchListener(r);
+      }
+    } else if (r.bootstrapped && r.serviceId) {
+      if (status.state !== 'publishing') emit({ state: 'publishing', progress: 100, error: '', detail: '' });
+    } else if (status.state !== 'starting' || status.progress !== r.progress) {
+      emit({ state: 'starting', progress: r.progress || 0, error: '', detail: '' });
+    }
+  }
+
+  function watchListener(r) {
+    if (r.listener) return;
+    const check = async () => {
+      r.listener = null;
+      if (r.dead || r !== run) return;
+      const ok = await Promise.resolve(checkPort(target.listenerPort)).catch(() => false);
+      if (r.dead || r !== run) return;
+      if (!ok) return fail(r, 'listener', '');
+      r.listener = timer(check, t.listenerCheckMs);
+    };
+    r.listener = timer(check, t.listenerCheckMs);
+  }
+
+  function readFile(p) {
+    try { return fs.readFileSync(p); } catch (e) { return null; }
+  }
+
+  /* the control file appears once tor listens on its control port */
+  function waitControlFile(r, paths) {
+    return new Promise((resolve) => {
+      const until = now() + t.controlFileMs;
+      const poll = () => {
+        r.controlPoll = null;
+        if (r.dead || r.exited) return resolve(null);
+        const addr = parseControlFile(String(readFile(paths.controlFile) || ''));
+        if (addr) return resolve(addr);
+        if (now() > until) return resolve(null);
+        r.controlPoll = timer(poll, 100);
+      };
+      poll();
+    });
+  }
+
+  function openControl(r, addr) {
+    return new Promise((resolve, reject) => {
+      const sock = connect({ host: addr.host, port: addr.port });
+      const onErr = (e) => reject(e);
+      sock.once('error', onErr);
+      sock.once('connect', () => {
+        sock.removeListener('error', onErr);
+        resolve(createTorControl({ socket: sock, onEvent: (e) => onEvent(r, e),
+          onClose: () => { if (!r.dead && r === run) fail(r, 'start', 'tor stopped'); } }));
+      });
+    });
+  }
+
+  /* begin() never throws to its caller: an unexpected error is a failed start */
+  function launch() {
+    begin().catch((e) => { if (run) fail(run, 'start', e && e.message); });
+  }
+
+  async function begin() {
+    const g = ++gen;
+    const tgt = target;
+    const r = { gen: g, proc: null, control: null, exited: false, onExit: [], progress: 0, bootstrapped: false,
+      serviceId: '', uploaded: false, dead: false, started: now(), lastProblem: '' };
+    run = r;
+    emit({ state: 'starting', progress: 0, onion: tgt.onion, error: '', detail: '' });
+
+    const bin = torBin();
+    if (!bin) return fail(r, 'missing', '');
+    const paths = torPaths(tgt.configDir, join);
+    try {
+      fs.mkdirSync(paths.data, { recursive: true, mode: 0o700 });
+      if (!win) fs.chmodSync(paths.data, 0o700);
+      fs.writeFileSync(paths.torrc, buildTorrc({ paths, ownerPid }), { mode: 0o600 });
+      fs.writeFileSync(paths.defaults, '', { mode: 0o600 });
+      for (const f of [paths.controlFile, paths.cookie]) {
+        try { fs.unlinkSync(f); } catch (e) { /* not there */ }
+      }
+    } catch (e) {
+      return fail(r, 'start', 'files: ' + (e.code || e.message));
+    }
+
+    const args = torArgs(paths);
+    const childEnv = Object.assign({}, env);
+    if (!win && libDir) childEnv.LD_LIBRARY_PATH = libDir;
+    let proc;
+    try {
+      proc = spawn(bin, args, { shell: false, windowsHide: true, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (e) {
+      return fail(r, 'start', e.code || e.message);
+    }
+    r.proc = proc;
+    if (proc.pid) record(proc.pid, bin, args);
+    let partial = '';
+    const onOut = (d) => {
+      const lines = (partial + String(d)).split(/\r?\n/);
+      partial = lines.pop();
+      for (const line of lines) {
+        const p = torProblem(line);
+        if (p) {
+          r.lastProblem = p;
+          info('tor: ' + p);
+        }
+      }
+    };
+    if (proc.stdout) proc.stdout.on('data', onOut);
+    if (proc.stderr) proc.stderr.on('data', onOut);
+    proc.on('error', (e) => {
+      r.lastProblem = r.lastProblem || (e && e.code) || 'spawn failed';
+      if (!r.exited) { r.exited = true; r.onExit.splice(0).forEach(f => f()); }
+      fail(r, 'start', r.lastProblem);
+    });
+    proc.on('exit', (code) => {
+      r.exited = true;
+      r.onExit.splice(0).forEach(f => f());
+      if (proc.pid) forget(proc.pid);
+      if (!r.dead && r === run) fail(r, 'start', r.lastProblem || 'tor exited (' + code + ')');
+    });
+
+    const addr = await waitControlFile(r, paths);
+    if (r.dead || r !== run) return;
+    if (!addr) return fail(r, 'start', r.lastProblem || 'no control port');
+    try {
+      r.control = await openControl(r, addr);
+      if (r.dead || r !== run) return r.control.close();
+      const cookie = readFile(paths.cookie);
+      if (!cookie || cookie.length !== 32) throw new Error('no control cookie');
+      await r.control.authenticate(Buffer.from(cookie).toString('hex'));
+      await r.control.takeOwnership();
+      await r.control.setEvents(['STATUS_CLIENT', 'STATUS_GENERAL', 'HS_DESC']);
+      r.socksPort = await r.control.socksPort();
+      if (!r.socksPort) throw new Error('no SOCKS port');
+    } catch (e) {
+      return fail(r, 'start', e && e.message);
+    }
+    if (r.dead || r !== run) return;
+    r.boot = timer(() => fail(r, 'network', 'no bootstrap after ' + Math.round(t.bootMs / 1000) + ' s'), t.bootMs);
+    watchProgress(r);
+    //the phase tor is already in (events only come for changes)
+    r.control.bootstrapPhase().then((e) => onEvent(r, e)).catch(() => {});
+
+    //the key: the file epic-wallet writes, made by the one-shot run when it is missing
+    const keyPath = onionKeyPath(tgt.dataDir, tgt.onion, join);
+    let file = readOnionKeyFile(readFile(keyPath));
+    if (!file && tgt.ensureKey) {
+      const made = await Promise.resolve(tgt.ensureKey({ socksPort: r.socksPort })).catch((e) => ({ ok: false, detail: e && e.message }));
+      if (r.dead || r !== run) return;
+      if (!made || !made.ok) return fail(r, 'keys', made && made.detail);
+      file = readOnionKeyFile(readFile(keyPath));
+    }
+    if (!file) return fail(r, 'keys', 'no key file');
+    const k = keyForTor(file.key, tgt.onion, sha512);
+    file.key.fill(0);
+    if (k.error) return fail(r, 'keys', 'the key file is not this wallet\'s');
+
+    const listening = await Promise.resolve(checkPort(tgt.listenerPort)).catch(() => false);
+    if (r.dead || r !== run) { k.key.fill(0); return; }
+    if (!listening) { k.key.fill(0); return fail(r, 'listener', ''); }
+
+    const b64 = Buffer.from(k.key).toString('base64');
+    k.key.fill(0);
+    try {
+      r.serviceId = await r.control.addOnion(b64, tgt.listenerPort);
+    } catch (e) {
+      return fail(r, 'keys', 'ADD_ONION: ' + (e && e.code ? e.code : e && e.message));
+    }
+    if (r.serviceId !== parseOnion(tgt.onion).host.slice(0, ONION_LEN)) {
+      return fail(r, 'keys', 'tor published another address');
+    }
+    info('tor: onion service added (' + k.format + ' key), waiting for the network');
+    advance(r);
+  }
+
+  return {
+    /*
+     * start({walletId, configDir, dataDir, onion, listenerPort, ensureKey}) for the open wallet;
+     * a tor of another wallet is stopped first. ensureKey({socksPort}) → {ok, detail}: the one-shot.
+     */
+    async start(opts) {
+      const p = parseOnion(opts && opts.onion);
+      if (!p.valid) throw new Error('not a valid onion');
+      if (!opts.configDir || !opts.dataDir || !(opts.listenerPort > 0)) throw new Error('start needs the wallet\'s dirs and port');
+      const same = target && run && target.walletId === opts.walletId && target.onion === p.host
+        && target.listenerPort === opts.listenerPort;
+      if (same && status.state !== 'failed') return status;
+      await this.stop({ quiet: true });
+      target = Object.assign({}, opts, { onion: p.host });
+      restarts = 0;
+      launch();
+      return status;
+    },
+    /* Try again: the same wallet, from the start, backoff reset */
+    async retry() {
+      if (!target) return status;
+      const keep = target;
+      await this.stop({ quiet: true });
+      target = keep;
+      restarts = 0;
+      launch();
+      return status;
+    },
+    /* stop tor (lock, switch, Tor off, quit, removal) */
+    async stop({ quiet = false } = {}) {
+      if (restartTimer) clearTimer(restartTimer);
+      restartTimer = null;
+      const r = run;
+      run = null;
+      gen++;
+      const had = target;
+      target = null;
+      await teardown(r);
+      status = Object.assign({}, OFF);
+      //quiet: a start or retry follows at once (no flash of "off")
+      if (!quiet) {
+        try { onStatus(Object.assign({ walletId: had ? had.walletId : '' }, status)); } catch (e) { /* gone */ }
+      }
+      return status;
+    },
+    status: () => Object.assign({ walletId: target ? target.walletId : '' }, status),
+    /* the SOCKS port once tor is bootstrapped (sending needs no more), else 0 */
+    socksPort: () => (run && run.bootstrapped && run.socksPort ? run.socksPort : 0),
+    /* the SOCKS port as soon as tor answers (the one-shot key run needs it before the bootstrap) */
+    rawSocksPort: () => (run && run.socksPort) || 0,
+    pid: () => (run && run.proc && !run.exited ? run.proc.pid : 0),
+  };
+}
