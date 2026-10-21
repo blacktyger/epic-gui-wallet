@@ -52,3 +52,14 @@
 .e-combo-list .e-opt-name > .e-srv-host { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .e-lat { min-width: 0; color: var(--faint); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 .e-combo-note { overflow-wrap: anywhere; }
+
+/* 6.1.6 shots: the sidebar icon keeps a gap to its word; the hover card lists the detail lines only for a
+   service with a problem (the mockup's card: icon, name, value) */
+.e-sbA-row { column-gap: 10px; }
+.e-hcard-row:has(> .e-ico .e-st.e-ok) > small { display: none; }
+/* a narrow picker (1044 px window at 150 %): the height column gives way to the server name */
+.e-combo-list .e-opt-name > span:first-child { white-space: nowrap; }
+@container (max-width: 520px) {
+  .e-combo-list .e-opt > .e-h { display: none; }
+  .e-combo-list .e-opt.e-has-lat { grid-template-columns: 16px minmax(0, 1fr) auto 36px; }
+}

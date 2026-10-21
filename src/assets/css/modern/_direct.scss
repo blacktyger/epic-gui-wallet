@@ -80,3 +80,15 @@
 .e-rcv-direct-l { flex: none; color: var(--dim); }
 .e-rcv-direct code { min-width: 0; font: 400 0.78rem var(--font-mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .e-rcv-direct-act { display: inline-flex; gap: 2px; flex: none; }
+
+/* narrow (a 1044 px window at 150 %): the info icon follows the text, the chips stay on one row, the
+   address keeps its room (the "this computer only" note gives way first) */
+.e-direct-desc { display: block; }
+.e-direct-desc .e-direct-info { vertical-align: middle; margin-inline-start: 2px; }
+.e-direct-chips { flex-wrap: nowrap; }
+.e-direct-addr code { flex: 0 1 auto; min-width: 12ch; }
+.e-direct-what { flex: 0 2 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 760px) {
+  .e-set-row.e-direct { gap: var(--sp-4); }
+  .e-chip { height: 32px; padding: 0 8px 0 7px; gap: 6px; }
+}
