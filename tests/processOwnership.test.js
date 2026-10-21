@@ -567,3 +567,47 @@ test('S4: stopping one wallet leaves another wallet\'s processes and Tor alone; 
   //killEpicProcess for w2: the owner API and http listener of any wallet (their ports), not w1's Epicbox
   assert.deepEqual(pids({ dir: W2, anyDirRoles: ['owner_api', 'listen'], torDirs: [OLD] }), [10, 11, 13, 20, 21, 22, 23, 30]);
 });
+
+// --- 6.1.6: the app's own tor (shared/torManager.js) ---
+
+test('6.1.6: our tor is recorded as role tor (bundled tor, -f <configDir>/tor/torrc), and only that tor', () => {
+  const TOR = '/opt/EpicWallet/resources/bin/linux/tor-bundle/tor';
+  const args = ['-f', DIR + '/tor/torrc', '--defaults-torrc', DIR + '/tor/torrc-defaults'];
+  const e = describeSpawn(TOR, args);
+  assert.deepEqual(e, { role: 'tor', bin: TOR, dir: DIR + '/tor/torrc', network: 'mainnet' });
+  assert.equal(validEntry({ pid: 9, ...e }), true);
+  //tor is allowed for role tor only, and an epic binary never as tor
+  assert.equal(validEntry({ pid: 9, ...e, role: 'listen' }), false);
+  assert.equal(validEntry({ pid: 9, ...e, bin: BIN }), false);
+  assert.equal(describeSpawn(TOR, ['-f', '/etc/tor/torrc2']), null, 'not a torrc of ours');
+  assert.equal(describeSpawn('/usr/bin/torsocks', args), null);
+  //Windows
+  const WTOR = 'C:\\Program Files\\EpicWallet\\resources\\bin\\win\\tor-bundle\\tor.exe';
+  const we = describeSpawn(WTOR, ['-f', WDIR + '\\tor\\torrc', '--defaults-torrc', WDIR + '\\tor\\torrc-defaults']);
+  assert.equal(validEntry({ pid: 9, ...we }, true), true);
+  assert.equal(cmdMatchesEntry(we, `"${WTOR}" -f "${WDIR}\\tor\\torrc" --defaults-torrc "${WDIR}\\tor\\torrc-defaults"`, true), true);
+
+  const entry = { pid: 40, at: 1, ...e };
+  const procs = [
+    proc(40, `${TOR} -f ${DIR}/tor/torrc --defaults-torrc ${DIR}/tor/torrc-defaults`),
+    proc(41, `/usr/bin/tor -f /etc/tor/torrc`),
+  ];
+  //quit (all roles), wallet removal / start (roles without tor, opts.tor and the wallet's config dir)
+  assert.deepEqual(findOwned([entry], procs).owned.map(p => [p.pid, p.role]), [[40, 'tor']]);
+  assert.deepEqual(findOwned([entry], procs, { roles: ['listen'], tor: true, dir: DIR }).owned.map(p => p.pid), [40]);
+  assert.deepEqual(findOwned([entry], procs, { roles: ['listen'], tor: true, dir: '/home/u/other' }).owned.map(p => p.pid), []);
+  assert.deepEqual(findOwned([entry], procs, { roles: ['listen'] }).owned.map(p => p.pid), []);
+  //a reused pid running something else is not ours
+  assert.deepEqual(findOwned([entry], [proc(40, '/usr/bin/tor -f /etc/tor/torrc')]).owned, []);
+});
+
+test('the one-shot key run (torKeys) is recorded as a listener of <configDir>/tor-keys, found by that dir only', () => {
+  const keys = DIR + '/tor-keys';
+  const args = ['--offline_mode', '-t', DIR, '-c', keys, 'listen', '--method', 'http'];
+  const d = describeSpawn(BIN, args);
+  assert.deepEqual([d.role, d.dir, d.topDir], ['listen', keys, DIR]);
+  const entry = { pid: 40, at: 1, ...d };
+  const procs = [proc(40, `${BIN} ${args.join(' ')}`)];
+  assert.deepEqual(findOwned([entry], procs, { roles: ['listen'], dir: keys }).owned.map(p => p.pid), [40]);
+  assert.deepEqual(findOwned([entry], procs, { roles: ['listen'], dir: DIR }).owned, [], 'not the wallet\'s own listener');
+});

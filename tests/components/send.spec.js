@@ -90,10 +90,12 @@ describe.each(INTERFACES)('Send form ($name)', (ui) => {
     const s = setup(ui);
     await s.address.setValue('http://' + 'a'.repeat(56) + '.onion');
     await flushPromises();
-    expect(s.wrapper.text()).toContain(t('msg.validators.onion_address'));
+    //Modern takes Tor addresses (tor.spec.js): this one is only a typo
+    const refusal = ui.name == 'Modern' ? t('msg.modern.settings.tor.send_typo') : t('msg.validators.onion_address');
+    expect(s.wrapper.text()).toContain(refusal);
     await s.amount.setValue('1');
     await ui.submit(s.wrapper);
-    expect(s.wrapper.text()).toContain(t('msg.validators.onion_address'));
+    expect(s.wrapper.text()).toContain(refusal);
     expect(s.wallet.sends()).toHaveLength(0);
   });
 

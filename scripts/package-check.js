@@ -7,7 +7,7 @@
  *
  *   node scripts/package-check.js --platform linux|win --dir <extracted app> [--artifact <file>]
  *        [--version 6.1.3] [--budgets scripts/package-budgets.json] [--report out.json]
- *        [--waive <rule>]...
+ *        [--waive <rule>]... [--tor-pin <tor-bundle.json>]
  *
  * Rules (ids are what --waive takes; a waived rule is still run and reported, it just doesn't fail):
  *   required        app.asar, its index.js/preload.js/index.html/package.json, the helper binaries,
@@ -22,7 +22,10 @@
  *                   other platform's prebuilds
  *   locales         locales/*.pak is exactly LOCALES (vue.config.js ELECTRON_LANGUAGES)
  *   stripped        Linux: no ELF in resources/bin/linux has a .symtab
- *   no-tor          no tor files at all (tor*, its DLLs)
+ *   tor-bundle      resources/bin/<plat>/tor-bundle/ holds exactly the files pinned in
+ *                   resources/tor/tor-bundle.json (+ VERSION, LICENSE.tor.txt), each with its SHA-256;
+ *                   no other tor file anywhere (tor-gencert, pluggable transports, lyrebird, conjure,
+ *                   the old 32-bit DLLs, torrc*, geoip*, a tor/ next to epic-wallet)
  *   build-paths     no /home/<user>/ or C:\Users\<user> path in any file except the upstream
  *                   helper binaries (UPSTREAM)
  *   size            artifact, extracted folder and app.asar within the budgets
@@ -42,10 +45,12 @@ const HELPERS = {
   linux: ['resources/bin/linux/epic', 'resources/bin/linux/epic-wallet'],
   win: ['resources/bin/win/epic.exe', 'resources/bin/win/epic-wallet.exe'],
 };
-//tor and the 32-bit DLLs only tor.exe imports
-const TOR_FILE = /^(tor([-.].*)?|libevent.*\.dll|libssl-1_1\.dll|libcrypto-1_1\.dll|libssp-0\.dll|libwinpthread-1\.dll|libgcc_s_dw2-1\.dll|zlib1\.dll|torrc.*|geoip6?)$/i;
+//tor, its tools, pluggable transports and the 32-bit DLLs only the old tor.exe imported
+const TOR_FILE = /^(tor([-.].*)?|lyrebird.*|conjure.*|libevent.*\.(dll|so[.\d]*|dylib)|libssl-1_1\.dll|libcrypto-1_1\.dll|libssp-0\.dll|libwinpthread-1\.dll|libgcc_s_dw2-1\.dll|zlib1\.dll|torrc.*|geoip6?)$/i;
 //a /home/<user>/ path (not a URL's /Home/ or host/home/), or C:\Users\ (any case, \ or /)
 const BUILD_PATH = /(?<![\w.-])\/home\/[\w.-]+\/|(?<![\w])[a-z]:[\\/]+users[\\/]+[\w.-]+/gi;
+
+const sha256 = (file) => require('crypto').createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 
 function parseArgs(argv) {
   const a = { waive: [] };
@@ -59,6 +64,7 @@ function parseArgs(argv) {
     else if (k === '--budgets') a.budgets = v();
     else if (k === '--report') a.report = v();
     else if (k === '--waive') a.waive.push(v());
+    else if (k === '--tor-pin') a.torPin = v();
     else throw new Error('unknown argument ' + k);
   }
   if (!['linux', 'win'].includes(a.platform)) throw new Error('--platform linux|win');
@@ -285,10 +291,25 @@ function main() {
     rule('stripped', p);
   }
 
-  //no-tor
+  //tor-bundle
   {
-    const tor = files.filter((f) => TOR_FILE.test(path.basename(f)) && !f.startsWith('locales/'));
-    rule('no-tor', tor.length ? ['tor files: ' + tor.join(', ')] : []);
+    const p = [];
+    const pin = JSON.parse(fs.readFileSync(a.torPin || path.join(__dirname, '..', 'resources', 'tor', 'tor-bundle.json'), 'utf8'));
+    const spec = pin.platforms[plat];
+    const base = 'resources/bin/' + plat + '/tor-bundle/';
+    const allowed = new Set([base + 'VERSION', base + 'LICENSE.tor.txt', ...Object.keys(spec.files).map((f) => base + f)]);
+    for (const f of Object.keys(spec.files)) {
+      const rel = base + f;
+      if (!files.includes(rel)) p.push(rel + ' missing');
+      else if (sha256(path.join(dir, rel)) !== spec.files[f]) p.push(rel + ' does not match the pinned SHA-256');
+    }
+    if (!files.includes(base + 'LICENSE.tor.txt')) p.push(base + 'LICENSE.tor.txt missing');
+    else if (sha256(path.join(dir, base + 'LICENSE.tor.txt')) !== spec.license) p.push(base + 'LICENSE.tor.txt does not match the pinned SHA-256');
+    if (!files.includes(base + 'VERSION')) p.push(base + 'VERSION missing');
+    const stray = files.filter((f) => !allowed.has(f) && !f.startsWith('locales/')
+      && (f.startsWith(base) || /(^|\/)(pluggable_transports|tor)\//i.test(f) || TOR_FILE.test(path.basename(f))));
+    if (stray.length) p.push('tor files that are not the pinned bundle: ' + stray.join(', '));
+    rule('tor-bundle', p, { bundleVersion: pin.bundleVersion, tor: pin.tor });
   }
 
   //build-paths

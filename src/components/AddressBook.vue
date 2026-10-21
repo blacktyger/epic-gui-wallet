@@ -203,6 +203,7 @@ const FIELD_ERRORS = {
   name: [['name', 'msg.contacts.err_name']],
   externalOne: [['onionBox', 'msg.contacts.err_onion'], ['epicbox', 'msg.contacts.err_epicbox'], ['address', 'msg.contacts.err_address']],
   externalTwo: [['onionWeb', 'msg.contacts.err_onion'], ['http', 'msg.contacts.err_http']],
+  onion: [['torTypo', 'msg.modern.settings.tor.send_typo'], ['torFormat', 'msg.modern.settings.tor.err_invalid']],
 };
 
 export default {
@@ -305,16 +306,20 @@ export default {
   },
   computed: {
     locale(){ return (this.$i18n && this.$i18n.locale) || 'en'; },
+    /* Tor addresses are contacts' addresses too (Modern; Classic is frozen without Tor) */
+    torAware(){ return false; },
+    //the options the contact helpers take for it
+    torOpts(){ return { tor: this.torAware, keepOnion: this.isEditAddress && this.selectedAddress ? this.selectedAddress.onion : '' }; },
     avatarStore(){ return this.$contactAvatars || contactAvatars(); },
     activity(){ return contactActivity(this.store.state.txs); },
     /* what the list shows: the search, then the chosen order */
     shownList(){
-      return sortContacts(searchContacts(this.addressList, this.keyword), this.sort, this.activity, this.locale);
+      return sortContacts(searchContacts(this.addressList, this.keyword, this.torOpts), this.sort, this.activity, this.locale);
     },
     /* the detail or the form is open (on a narrow window it takes the place of the list) */
     paneOpen(){ return this.addressLoaded || this.isEditAddress || this.isNewAddress; },
     problems(){
-      const p = contactProblems(this.formFields());
+      const p = contactProblems(this.formFields(), this.torOpts);
       //a Tor address gets its own message, under the field that holds it
       if (isOnionAddress(this.externalOne)) p.onionBox = true;
       if (isOnionAddress(this.externalTwo)) p.onionWeb = true;
@@ -322,9 +327,9 @@ export default {
     },
     //Classic's detail (frozen) still shows them
     place(){ return [this.city, this.country].filter(Boolean).join(', '); },
-    selectedAddresses(){ return contactAddresses(this.selectedAddress); },
+    selectedAddresses(){ return contactAddresses(this.selectedAddress, this.torOpts); },
     /* the ones a Send button is offered for (not a Tor address) */
-    selectedSendable(){ return sendableAddresses(this.selectedAddress); },
+    selectedSendable(){ return sendableAddresses(this.selectedAddress, this.torOpts); },
     selectedTxs(){ return contactTransactions(this.store.state.txs, this.selectedAddress && this.selectedAddress.id).slice(0, 5); },
     selectedLast(){ return this.selectedAddress && this.selectedAddress.id ? this.lastOf(this.selectedAddress) : ''; },
   },
@@ -347,9 +352,9 @@ export default {
       if (this.selectedAddress && this.selectedAddress.id && !this.formImageChanged) this.formImage = this.avatars[this.selectedAddress.id] || '';
     },
     avatarOf(c){ return (c && this.avatars[c.id]) || ''; },
-    kindsOf(c){ return contactAddresses(c).map(a => a.kind); },
+    kindsOf(c){ return contactAddresses(c, this.torOpts).map(a => a.kind); },
     shortOf(c){
-      const a = contactAddresses(c)[0];
+      const a = contactAddresses(c, this.torOpts)[0];
       return a ? shortAddress(a.address) : '';
     },
     /* "Last transaction: yesterday" from the newest linked transaction, or '' */
@@ -386,6 +391,7 @@ export default {
     errorOf(field){
       if (!this.tried && !this.touched[field]) return null;
       const hit = (FIELD_ERRORS[field] || []).find(([k]) => this.problems[k]);
+      if (hit && this.torAware && hit[1] == 'msg.contacts.err_onion') return 'msg.modern.settings.tor.err_field';
       return hit ? hit[1] : null;
     },
     touch(field){
@@ -437,19 +443,19 @@ export default {
       clearTimeout(this.copiedTimer);
       this.copiedTimer = setTimeout(() => { this.copied = ''; }, 1600);
     },
-    sendableOf(c){ return sendableAddresses(c); },
+    sendableOf(c){ return sendableAddresses(c, this.torOpts); },
     /* a row: Send on this contact's address; a contact with nothing to send to (an old Tor-only one)
        shows its details instead */
     openContact(c){
-      if (sendableAddresses(c).length) this.sendTo(null, c);
+      if (sendableAddresses(c, this.torOpts).length) this.sendTo(null, c);
       else this.callAddress(c);
     },
     /* the row's … menu: details, copy each address, Send via HTTP (the row uses Epicbox first), edit, delete */
     menuItems(c){
       const items = [{ key: 'details', label: this.$t('msg.contacts.menu_details') }];
-      const send = sendableAddresses(c);
-      if (send.length > 1) items.push({ key: 'send:' + send[1].field, label: this.$t('msg.contacts.send_' + send[1].kind) });
-      for (const a of contactAddresses(c)) items.push({ key: 'copy:' + a.field, label: this.$t('msg.contacts.copy_' + a.kind) });
+      const send = sendableAddresses(c, this.torOpts);
+      if (send.length > 1) items.push({ key: 'send:' + send[1].field, label: send[1].kind == 'tor' ? this.$t('msg.modern.settings.tor.menu_send') : this.$t('msg.contacts.send_' + send[1].kind) });
+      for (const a of contactAddresses(c, this.torOpts)) items.push({ key: 'copy:' + a.field, label: a.kind == 'tor' ? this.$t('msg.modern.settings.tor.copy_onion') : this.$t('msg.contacts.copy_' + a.kind) });
       items.push({ key: 'edit', label: this.$t('msg.edit') });
       items.push({ key: 'delete', label: this.$t('msg.delete'), danger: true });
       return items;
@@ -466,7 +472,7 @@ export default {
     sendTo(field, contact){
       const c = contact || this.selectedAddress;
       if (!c || !c.id) return;
-      const use = field || (sendableAddresses(c)[0] || {}).field;
+      const use = field || (sendableAddresses(c, this.torOpts)[0] || {}).field;
       if (!use) return;
       this.$router.push({ name: 'httpSend', query: { contact: String(c.id), use } });
     },
@@ -622,9 +628,9 @@ export default {
     //which field, and the first one gets the focus
     contactOk(){
       this.tried = true;
-      const field = ['name', 'externalOne', 'externalTwo'].find(f => this.errorOf(f));
+      const field = ['name', 'externalOne', 'externalTwo', 'onion'].find(f => this.errorOf(f));
       if(field){
-        const ids = { name: ['cb-f-name', 'con-f-name'], externalOne: ['cb-f-box', 'con-f-box'], externalTwo: ['cb-f-ext', 'con-f-ext'] }[field];
+        const ids = { name: ['cb-f-name', 'con-f-name'], externalOne: ['cb-f-box', 'con-f-box'], externalTwo: ['cb-f-ext', 'con-f-ext'], onion: ['cb-f-onion', 'con-f-onion'] }[field];
         this.$nextTick(() => {
           //by id: the Modern view has two root nodes, so $el is not an element there
           const el = ids.map(i => document.getElementById(i)).find(Boolean);

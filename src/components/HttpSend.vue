@@ -91,6 +91,8 @@ import AmountField from "@/components/form/amountField";
 import AddressField from "@/components/form/addressField";
 import useFormValidation from "@/modules/useFormValidation";
 import { clearSendForm, inputAfterSend, sendMethod, isOnionAddress } from "@/shared/sendForm";
+import { parseOnion } from "@/shared/onion";
+import { onionVerdict, torSendError, torErrorText } from "@/shared/torUi";
 import { sendableAddresses, sendQuery } from "@/shared/contacts.js";
 import { contactAvatars } from "@/shared/contactAvatars.js";
 import ContactPickerModal from "@/components/ContactPickerModal.vue";
@@ -110,6 +112,10 @@ export default {
       pickerContacts: [],
       pickerAvatars: {},
       pickerLoading: false,
+      //a send over Tor is under way: connect | sign | post
+      torStep: '',
+      //"Turn on Tor" was pressed and the setting is being saved
+      torTurning: false,
     };
   },
 
@@ -143,24 +149,19 @@ export default {
       //after a send the form is clear and Send disabled until something new is typed
       'amountField.input': function (newVal) { inputAfterSend(this, newVal); },
       message: function (newVal) { inputAfterSend(this, newVal); },
+      //Tor came on, went off or failed while a Tor address is in the field
+      onionState: function () { this.showOnionMessage(); },
       'addressField.input': function (newVal) {
         inputAfterSend(this, newVal);
-        //a Tor address: said at once, not only on Send (no Tor in this wallet)
-        const onionMsg = this.$t("msg.validators.onion_address");
-        if(this.addressField && this.addressField.errors){
-          if(isOnionAddress(newVal)){
-            this.addressField.errors.address = onionMsg;
-          }else if(this.addressField.errors.address == onionMsg){
-            this.addressField.errors.address = null;
-          }
-        }
+        //a Tor address: said at once, not only on Send
+        this.showOnionMessage();
         if(newVal == ''){
           this.addressSelected = false;
           this.foundAddress = [];
           this.method = 'http';
           this.address = {};
 
-        }else if(this.addressSelected && ![this.address.externalOne, this.address.externalTwo].some(x => x && String(x).trim() == String(newVal).trim())){
+        }else if(this.addressSelected && ![this.address.externalOne, this.address.externalTwo, this.address.onion].some(x => x && String(x).trim() == String(newVal).trim())){
           //the picked contact's address was edited away: its method (Epicbox) no longer applies
           this.addressSelected = false;
           this.method = 'http';
@@ -206,6 +207,14 @@ export default {
 
   },
   computed: {
+    /* Tor addresses are sent to (Modern Send; Classic has no Tor and refuses them) */
+    torAware(){
+      return false;
+    },
+    /* what the recipient text is to Tor (shared/torUi.js onionVerdict): none | typo | tor_off | wait | failed | ok */
+    onionState(){
+      return this.torAware ? onionVerdict(this.addressField && this.addressField.input, this.store.state.tor) : 'none';
+    },
     /* sending needs a synced node; unknown or unreachable counts as not synced */
     nodeSynced(){
       const s = this.store.state.nodeStatus;
@@ -221,10 +230,59 @@ export default {
   },
   methods: {
 
+    /* the message for a Tor address in the recipient field: the refusal without Tor (Classic), or what
+       Tor needs first / the typo (Modern); null when it can be sent */
+    onionMessage(){
+      if(!this.torAware) return this.$t("msg.validators.onion_address");
+      const tor = this.store.state.tor;
+      switch(this.onionState){
+        case 'typo': return this.$t('msg.modern.settings.tor.send_typo');
+        case 'tor_off': return this.$t('msg.modern.settings.tor.send_off');
+        case 'failed': return torErrorText((...a) => this.$t(...a), tor.error, tor.detail);
+        default: return null;
+      }
+    },
+    /* shows that message, and takes one of ours away when it no longer applies */
+    showOnionMessage(){
+      const f = this.addressField;
+      if(!f || !f.errors) return;
+      const ours = [this.$t("msg.validators.onion_address"), this.$t('msg.modern.settings.tor.send_typo'), this.$t('msg.modern.settings.tor.send_off')];
+      const msg = isOnionAddress(f.input) ? this.onionMessage() : null;
+      if(msg){
+        f.errors.address = msg;
+      }else if(ours.includes(f.errors.address)){
+        f.errors.address = null;
+      }
+    },
+    /* the recipient field's check: a Tor address by the Tor rules (Modern), anything else as before */
+    validAddress(){
+      const f = this.addressField;
+      if(this.torAware && isOnionAddress(f.input)){
+        f.defaultValue = String(f.input).trim();
+        const msg = this.onionMessage();
+        if(msg) f.errors.address = msg;
+        return !msg;
+      }
+      return f.validInput();
+    },
+    /* "Turn on Tor" next to a Tor address (Modern Send): the progress shows in place */
+    async turnOnTor(){
+      if(this.torTurning) return;
+      this.torTurning = true;
+      try{
+        this.emitter.emit('app.setTor', true);
+      }finally{
+        this.torTurning = false;
+      }
+    },
+    async retryTor(){
+      this.emitter.emit('app.startTor');
+    },
+
     /* the picker (or Contacts › Send) chose a contact: its address (field, or the first it has: Epicbox
        before HTTP) goes into the recipient field, with the contact's send method. false: nothing to use */
     pickContact(contact, field){
-      const ok = sendableAddresses(contact);
+      const ok = sendableAddresses(contact, { tor: this.torAware });
       const use = (ok.find(a => a.field == field) || ok[0] || {}).field;
       if(!use || !this.addressField) return false;
       this.addressSelected = false;
@@ -278,6 +336,9 @@ export default {
         }else if(type == 'externalTwo'){
           this.addressField.setValue(address.externalTwo.trim());
           this.method = 'http';
+        }else if(type == 'onion'){
+          this.addressField.setValue(address.onion.trim());
+          this.method = 'http';
         }
         this.addressSelected = true;
         this.foundAddress = [];
@@ -290,11 +351,11 @@ export default {
 
         if(value != ''){
 
-          let found = await this.$addressBookService.findAddress(this.store.state.user.id, value);
+          let found = await this.$addressBookService.findAddress(this.store.state.user.id, value, { tor: this.torAware });
           //a contact picked while the search was on its way: no list over it
           if(this.addressSelected) return;
           //only entries with an address that can be sent to (Epicbox or HTTP)
-          this.foundAddress = found.filter(a => a.externalOne || a.externalTwo);
+          this.foundAddress = found.filter(a => a.externalOne || a.externalTwo || (this.torAware && a.onion));
         }else{
           this.foundAddress = [];
         }
@@ -410,6 +471,37 @@ export default {
       }
     },
 
+    /* a send to an onion address: progress through torStep, then the same finish as any send */
+    async sendTor(tx_data, onion){
+      this.torStep = 'connecting';
+      let res;
+      try{
+        res = await this.$walletService.sendOverTor(tx_data, onion, (step) => { this.torStep = step; },
+          { fluff: this.dandelion && this.dandelion.checked ? false : true });
+      }finally{
+        this.torStep = '';
+      }
+      if(res && res.ok){
+        await this.$addressTransactionsService.addAddress({
+          user_id: this.store.state.user.id,
+          slateid: res.slate && res.slate.id,
+          type: 'tor',
+          address: this.address ? this.address.id : null
+        });
+        this.$toast.success(this.$t("msg.httpSend.success"));
+        clearSendForm(this);
+        this.emitter.emit('app.update');
+      }else{
+        const text = torSendError((...a) => this.$t(...a), res);
+        this.store.commit('updates', {
+          "status": "is-danger",
+          "text":   text,
+          "icon":   "information"
+        });
+        this.$toast.error(text);
+      }
+    },
+
     async sendNow(){
       this.resetFormErrors();
       let isFormAllValid = [];
@@ -420,7 +512,7 @@ export default {
         amountValid = false;
       }
       isFormAllValid.push(amountValid);
-      isFormAllValid.push(this.addressField.validInput());
+      isFormAllValid.push(this.validAddress());
 
       let method = sendMethod(this.method, this.addressField.defaultValue);
 
@@ -449,6 +541,13 @@ export default {
 
         //the coins the fee was worked out for (after "All": every coin, no change)
         }, this.amountField.txSelection());
+
+        //over Tor the GUI exchanges the slate itself (walletService.sendOverTor)
+        if(this.torAware && isOnionAddress(this.addressField.defaultValue)){
+          tx_data.send_args = null;
+          await this.sendTor(tx_data, parseOnion(this.addressField.defaultValue).host);
+          return;
+        }
 
         let res = await this.$walletService.issueSendTransaction(tx_data)
 

@@ -1,7 +1,7 @@
 /* Help topics (English), the source for every language: Settings › Help in the Modern interface. Task-based
  * topics for people new to Epic Cash; each opens with a one-line answer (short), the detail is behind a fold
  * (body). [[key]] is a place in the app, from terms. Facts as of 6.1.5: 3 confirmations, the default node is a
- * public one, nothing cancels by itself, no Tor, the wallet asks for no payment proofs. See topics.js. */
+ * public one, nothing cancels by itself, the wallet asks for no payment proofs. See topics.js. */
 const messages = {
   ui: {
     lede: 'Short answers to common questions. Search, or open a topic.',
@@ -62,6 +62,7 @@ const messages = {
     wallet_files: 'Settings › This wallet › Wallet folder',
     node_settings: 'Settings › Node and receiving',
     epicbox_setting: 'Settings › Node and receiving › Receiving',
+    tor_setting: 'Settings › Receiving › Tor',
     report: 'Settings › Help › Report a problem',
     confirming_label: 'Confirming',
     locked_label: 'Locked in sends',
@@ -93,7 +94,8 @@ const messages = {
         <p>Your wallet starts receiving by itself after you unlock it, once the node is synced. If the wallet is closed when
         someone pays you, Epicbox holds the payment, and your wallet collects it the next time you unlock it.</p>
         <p>A new payment first waits for the sender's wallet to finish it, then shows as confirming. After 3 confirmations,
-        about 3 minutes, you can spend it.</p>`,
+        about 3 minutes, you can spend it.</p>
+        <p>You can also receive over Tor: turn it on in <b>[[tor_setting]]</b>.</p>`,
     },
     {
       id: 'send',
@@ -270,6 +272,15 @@ const messages = {
         address. With the field empty, Epicbox is off and you can still use files.</p>
         <p>Other Epic Cash wallets use Epicbox too, so you can pay between them. Epicbox does not hide your IP address from
         the server: use a VPN if that matters to you.</p>`,
+    },
+    {
+      id: 'tor',
+      section: 'network',
+      title: 'Tor',
+      short: 'Tor lets two wallets pay each other privately at a .onion address, without opening any ports. It is off by default.',
+      body: `<p>Turn it on in <b>[[tor_setting]]</b>. Your wallet then gets a permanent Tor address (it ends in <b>.onion</b>) that others can pay, and in <b>[[send]]</b> you can pay other people's Tor addresses. It takes longer to connect, and the recipient's wallet must be open with Tor on at that moment.</p>
+        <p>Tor hides both wallets' IP addresses while they exchange the transaction. The finished transaction still goes to your node as usual. Epicbox, node checks and the built-in node don't use Tor.</p>
+        <p>Your Tor address comes from your wallet's key and never changes. Anyone who has it can see when your wallet is online with Tor on.</p>`,
     },
     {
       id: 'troubleshooting',

@@ -59,6 +59,7 @@ const messages = {
     wallet_files: 'Einstellungen › Diese Wallet › Wallet-Ordner',
     node_settings: 'Einstellungen › Netzwerkknoten und Empfang',
     epicbox_setting: 'Einstellungen › Netzwerkknoten und Empfang › Empfangen',
+    tor_setting: 'Einstellungen › Empfangen › Tor',
     report: 'Einstellungen › Hilfe › Problem melden',
     confirming_label: 'Wird bestätigt',
     locked_label: 'In ausgehenden Zahlungen gebunden',
@@ -92,7 +93,8 @@ const messages = {
         ist. Ist die Wallet geschlossen, wenn jemand Sie bezahlt, hält Epicbox die Zahlung bereit, und Ihre Wallet holt sie beim
         nächsten Entsperren ab.</p>
         <p>Eine neue Zahlung wartet zuerst, bis die Wallet des Absenders sie abgeschlossen hat, und wird dann als „Wird bestätigt“
-        angezeigt. Nach 3 Bestätigungen, also nach etwa 3 Minuten, können Sie sie ausgeben.</p>`,
+        angezeigt. Nach 3 Bestätigungen, also nach etwa 3 Minuten, können Sie sie ausgeben.</p>
+        <p>Du kannst auch über Tor empfangen: Schalte es in <b>[[tor_setting]]</b> ein.</p>`,
     },
     {
       id: 'send',
@@ -278,6 +280,15 @@ const messages = {
         leer, ist Epicbox aus, und Sie können weiterhin Dateien verwenden.</p>
         <p>Andere Epic-Cash-Wallets nutzen Epicbox ebenfalls, daher können Sie zwischen diesen Wallets bezahlen. Epicbox verbirgt Ihre IP-Adresse
         nicht vor dem Server: Nutzen Sie ein VPN, wenn Ihnen das wichtig ist.</p>`,
+    },
+    {
+      id: 'tor',
+      section: 'network',
+      title: 'Tor',
+      short: 'Mit Tor bezahlen zwei Wallets einander privat über eine .onion-Adresse, ohne dass Ports geöffnet werden. Standardmäßig ist Tor aus.',
+      body: `<p>Schalte es in <b>[[tor_setting]]</b> ein. Deine Wallet bekommt dann eine feste Tor-Adresse (sie endet auf <b>.onion</b>), an die andere zahlen können, und in <b>[[send]]</b> kannst du an fremde Tor-Adressen zahlen. Der Verbindungsaufbau dauert länger, und die Wallet des Empfängers muss in diesem Moment mit aktiviertem Tor geöffnet sein.</p>
+        <p>Tor verbirgt die IP-Adressen beider Wallets, während sie die Transaktion austauschen. Die fertige Transaktion geht wie gewohnt an deinen Node. Epicbox, Node-Prüfungen und der eingebaute Node nutzen Tor nicht.</p>
+        <p>Deine Tor-Adresse stammt aus dem Schlüssel deiner Wallet und ändert sich nie. Wer sie kennt, sieht, wann deine Wallet mit aktiviertem Tor online ist.</p>`,
     },
     {
       id: 'troubleshooting',

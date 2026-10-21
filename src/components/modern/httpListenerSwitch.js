@@ -20,6 +20,11 @@ export default {
       const h = this.store.state.httpListener;
       return !!(h && h.state == 'on');
     },
+    //Tor is on: it receives through this listener, so it stays on until Tor is off (tor-616 D6)
+    torHoldsHttp() {
+      const t = this.store.state.tor;
+      return !!(t && t.enabled);
+    },
     //it did not start: {port, reason} (shared/httpListener.js), else null
     httpFailed() {
       const h = this.store.state.httpListener;
@@ -54,7 +59,7 @@ export default {
       }
     },
     async httpTurnOff() {
-      if (this.httpSwitching) return;
+      if (this.httpSwitching || this.torHoldsHttp) return;
       this.httpSwitching = true;
       try {
         await this.$walletService.stopHttpListen();

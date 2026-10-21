@@ -163,6 +163,13 @@
       });
       //Help › Get help / Report a problem…: the report dialog, wherever the user is (locked or not)
       window.support.onOpen(() => this.emitter.emit('open-support'));
+      //Tor (docs/plans/tor-616.md §7): every state change of the open wallet's tor (main process)
+      window.api.tor.onStatus((s) => {
+        if (s.walletId && s.walletId !== this.configService.walletId) return;
+        //off at lock or Tor off: enabled stays what the setting says
+        this.store.commit('tor', { state: s.state, progress: s.progress, onion: s.onion || this.store.state.tor.onion,
+          error: s.error || '', detail: s.detail || '' });
+      });
 
       //the window hidden or minimized polls less (nodePoll.js, walletSync.js); shown again, the node
       //is asked at once if the last poll is older than a visible poll would be
@@ -306,6 +313,12 @@
         if(config['walletlisten_on_startup'] && config['epicbox_domain'] != undefined && config['epicbox_domain'] != '' ){
           this.emitter.emit('app.startEpicbox');
         }
+        //Tor on (Modern only): it brings the HTTP listener itself (D6), whatever Start with wallet says
+        this.store.commit('tor', { enabled: !this.isClassic && config.tor_enabled === true });
+        if(!this.isClassic && config.tor_enabled === true){
+          this.emitter.emit('app.startTor');
+          return;
+        }
         //Modern: the HTTP listener only with Start with wallet on (httpAutostart, default off): one
         //epic-wallet process less asking the node every 10 s
         if(!httpAutostart(config, this.store.state.ui)){
@@ -337,6 +350,53 @@
             await window.nodeChildProcess.kill(isListen.pid);
           }
           return;
+        }
+      });
+
+      /* the wallet's tor (docs/plans/tor-616.md §5): at unlock with Tor on, Settings' Turn on, and Try
+         again. The HTTP listener first (walletService.startTor), its state in the store as for the
+         listener's own start; tor's own progress comes as tor-status events (created above) */
+      this.emitter.on('app.startTor', async () => {
+        const session = this.loginSession;
+        this.store.commit('tor', { enabled: true, state: 'starting', progress: 0, error: '', detail: '' });
+        this.store.commit('listenerStarting', true);
+        let r;
+        try {
+          //locked or switched meanwhile: the start stops only what it started (its wallet's tor, its
+          //own listener) and never touches the wallet open now (shared/torSession.js)
+          r = await this.$walletService.startTor({ isCurrent: () => session === this.loginSession });
+        } finally {
+          if(session === this.loginSession) this.store.commit('listenerStarting', false);
+        }
+        if(r.stale || session !== this.loginSession) return;
+        if(r.listener){
+          this.store.commit('httpListener', httpListenerState(r.listener, this.configService.walletListenerPort));
+          if(r.listener.success) this.store.commit('walletListenerService', true);
+        }
+        if(r.onion) this.store.commit('tor', { onion: r.onion });
+        if(!r.ok){
+          const error = r.error === 'listener' || r.error === 'keys' ? r.error : 'start';
+          this.store.commit('tor', { state: 'failed', error, detail: error === 'start' ? String(r.error || '') : '' });
+        }else if(r.status){
+          this.store.commit('tor', { state: r.status.state, progress: r.status.progress, error: r.status.error, detail: r.status.detail });
+        }
+      });
+      /* Settings › Receiving › Tor (and Send's Turn on Tor): saved for this wallet, then started or
+         stopped; off gives the HTTP listener back to its own switch (stopped if Tor had started it) */
+      this.emitter.on('app.setTor', async (on) => {
+        if(!this.loggedIn || this.isClassic) return;
+        if(on){
+          this.configService.updateConfig({ tor_enabled: true });
+          this.emitter.emit('app.startTor');
+          return;
+        }
+        //Start with wallet on: the listener stays, it is the user's own switch (§6)
+        const keepListener = httpAutostart(this.configService.config || {}, this.store.state.ui);
+        const r = await this.$walletService.setTorEnabled(false, { keepListener });
+        this.store.commit('tor', { enabled: false, state: 'off', progress: 0, error: '', detail: '' });
+        if(r && r.listenerStopped){
+          this.store.commit('httpListener', null);
+          this.store.commit('walletListenerService', !!this.store.state.walletEpicboxService);
         }
       });
 
@@ -564,6 +624,9 @@
           immature: 0,
           locked: 0,
         });
+        //the wallet's tor first: it would report its listener gone (stopAll stops the listener)
+        await this.$walletService.stopTor({ keepListener: true, walletId: '' }).catch(() => {});
+        this.store.commit('tor', null);
         //one process scan for listener, wallet and node (walletService.stopAll)
         const started = performance.now();
         const cfg = this.configService.config || {};

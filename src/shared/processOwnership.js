@@ -8,11 +8,13 @@
  * that crashed, is still known after a restart; a recorded pid only counts while its command line is
  * still the one the app started (same executable, same dir, same role), so a reused pid is never touched.
  *
- * Tor: 6.1.3 has none (every listener runs with --no_tor). An older version's http listener started
- * one, which can outlive it (a crash) and keep publishing the wallet's onion service. opts.tor finds
- * such a leftover, at the start, on wallet removal and on quit: a Tor process counts as ours when its
- * torrc is in the top level dir (-t, the wallet's data dir) of one of our listeners, or in torDirs,
- * and its parent is ours or no epic-wallet at all (orphaned).
+ * Tor: 6.1.6 runs its own tor per open wallet (shared/torManager.js), recorded like the others with
+ * role `tor` (the bundled tor, `-f <configDir>/tor/torrc`; dir is that torrc). Every listener still
+ * runs with --no_tor. An older version's http listener started one of its own, which can outlive it
+ * (a crash) and keep publishing the wallet's onion service. opts.tor finds both, at the start, on
+ * wallet removal and on quit: our recorded tor (whatever roles were asked for), and a leftover one
+ * whose torrc is in the top level dir (-t, the wallet's data dir) of one of our listeners, or in
+ * torDirs, and whose parent is ours or no epic-wallet at all (orphaned).
  *
  * Also: redaction of passwords in command lines, for anything that is logged.
  *
@@ -20,7 +22,7 @@
  * so it runs under `node --test` (tests/processOwnership.test.js).
  */
 
-export const ROLES = ['owner_api', 'listen', 'epicbox', 'scan', 'node'];
+export const ROLES = ['owner_api', 'listen', 'epicbox', 'scan', 'node', 'tor'];
 
 //one scan for everything we may own: wallet and node binaries (and cmd.exe wrappers of them) and an
 //older version's Tor
@@ -38,8 +40,11 @@ export function isEpicboxCheckDir(dir) {
   return String(dir || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop() === EPICBOX_CHECK_DIR;
 }
 
-//the only executables a record may name
+//the only executables a record may name: the wallet and node binaries, and tor for role tor only
 const BIN_NAME = /^(epic|epic-wallet)(\.exe)?$/i;
+const TOR_BIN = /^tor(\.exe)?$/i;
+//our torrc: <configDir>/tor/torrc (torManager.torPaths)
+const OUR_TORRC = /[\\/]tor[\\/]torrc$/;
 
 /* `--pass X` / `-p X` / `--pass=X` → `--pass <redacted>`, for any command line that is logged */
 export function redactCmd(cmd) {
@@ -104,6 +109,11 @@ function argAfter(args, flag) {
 export function describeSpawn(cmd, args) {
   const a = stripPassArgs(Array.isArray(args) ? args : []);
   const plain = a.map(unquote);
+  if (TOR_BIN.test(baseName(cmd))) {
+    //our tor (torManager.torArgs): -f <configDir>/tor/torrc --defaults-torrc <file>
+    const torrc = argAfter(a, '-f');
+    return torrc && OUR_TORRC.test(torrc) ? { role: 'tor', bin: unquote(cmd), dir: torrc, network: 'mainnet' } : null;
+  }
   let role = null;
   if (plain.includes('owner_api')) role = 'owner_api';
   else if (plain.includes('listen')) role = argAfter(a, '--method') === 'epicbox' ? 'epicbox' : 'listen';
@@ -128,7 +138,8 @@ function networkOf(plainArgs) {
 export function validEntry(e, win) {
   return !!e && typeof e === 'object' && Number.isInteger(Number(e.pid)) && Number(e.pid) > 0
     && ROLES.includes(e.role) && typeof e.bin === 'string' && typeof e.dir === 'string'
-    && isAbsPath(e.bin, win) && isAbsPath(e.dir, win) && BIN_NAME.test(baseName(e.bin))
+    && isAbsPath(e.bin, win) && isAbsPath(e.dir, win)
+    && (e.role === 'tor' ? TOR_BIN.test(baseName(e.bin)) && OUR_TORRC.test(e.dir) : BIN_NAME.test(baseName(e.bin)))
     && (e.topDir === undefined || (typeof e.topDir === 'string' && isAbsPath(e.topDir, win)));
 }
 
@@ -185,6 +196,7 @@ const ROLE_TEST = {
   epicbox: c => hasArg(c, 'listen') && /\s--method\s+epicbox(\s|$)/.test(c),
   scan: c => hasArg(c, 'scan'),
   node: c => hasArg(c, 'server') && hasArg(c, 'run'),
+  tor: c => hasArg(c, '--defaults-torrc'),
 };
 
 /* the arguments of a live command line, password redacted (so it can't pass as a role or a dir),
@@ -196,7 +208,7 @@ function liveArgs(cmd, bin, win) {
 
 function dirMatches(c, entry, win) {
   const dir = norm(entry.dir, win);
-  const flags = entry.role === 'node' ? ['--config_file'] : ['-c', '-t'];
+  const flags = entry.role === 'node' ? ['--config_file'] : entry.role === 'tor' ? ['-f'] : ['-c', '-t'];
   return flags.some(f => hasArg(c, f + ' ' + dir));
 }
 
@@ -232,15 +244,19 @@ export function torrcPaths(dir, win) {
  */
 export function findOwned(entries, procs, opts = {}) {
   const win = !!opts.win;
-  const roles = opts.roles || ROLES;
+  //opts.tor: our own tor too, whichever roles were asked for
+  const roles = opts.tor && opts.roles ? [...opts.roles, 'tor'] : (opts.roles || ROLES);
   const list = Array.isArray(procs) ? procs : [];
   const recorded = Array.isArray(entries) ? entries : [];
   const owned = [];
   const live = [];
   const seen = new Set();
   const anyDir = Array.isArray(opts.anyDirRoles) ? opts.anyDirRoles : [];
+  //our tor: its torrc is inside the wallet's config dir
+  const torIn = (entry) => entry.role === 'tor'
+    && norm(entry.dir, win).startsWith(norm(opts.dir, win).replace(/[\\/]+$/, '') + (win ? '\\' : '/'));
   const dirOk = (entry) => !opts.dir || entry.role === 'node' || anyDir.includes(entry.role)
-    || norm(entry.dir, win) === norm(opts.dir, win);
+    || norm(entry.dir, win) === norm(opts.dir, win) || torIn(entry);
 
   for (const entry of recorded) {
     const self = list.find(p => p.pid == entry.pid);

@@ -86,10 +86,10 @@ for (const lang of LANGS) {
   });
 }
 
-test('en: only what 6.1.5 does — no Tor, no payment proofs, never a photo or screenshot of the phrase as advice', () => {
+test('en: only what 6.1.6 does — no payment proofs, never a photo or screenshot of the phrase as advice', () => {
   for (const t of EN.topics) {
     const text = [t.title, t.short, plainText(t.body)].join(' ');
-    assert.doesNotMatch(text, /\bTor\b|onion|payment proof/i, t.id);
+    assert.doesNotMatch(text, /payment proof/i, t.id);
     for (const m of text.matchAll(/[^.]*\b(screenshot|photo)[^.]*\./gi)) {
       assert.match(m[0], /\b(never|not|don't|no)\b/i, `${t.id}: "${m[0].trim()}"`);
     }

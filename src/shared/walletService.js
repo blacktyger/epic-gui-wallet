@@ -8,6 +8,9 @@ import { ownerApiArgs, listenArgs, epicboxArgs as buildEpicboxArgs, initArgs, st
 import { walletApiOrigin, isWalletApiUrl } from '@/shared/security';
 import { ownerApiPort as findOwnerApiPort } from '@/shared/testPorts';
 import { isAddrInUse } from '@/shared/httpListener';
+import { onionFromPubkeyHex } from '@/shared/onion';
+import { sendOverTor as torSend } from '@/shared/torSend';
+import { startTorFor } from '@/shared/torSession';
 const Buffer = require('buffer').Buffer;
 
 require('promise.prototype.finally').shim();
@@ -69,6 +72,7 @@ class WalletService {
       this.token = undefined;
       this.walletIsListen = false;
       this.walletIsEpicbox = false;
+      this.torListener = null;
       //lock, logout, wallet switch: the main process forgets the session password, and an Epicbox
       //job of the last session stops
       this.epicboxSession++;
@@ -342,13 +346,14 @@ class WalletService {
         }, false));
     }
 
-    async postTransaction(tx){
+    /* fluff: false sends it with Dandelion (the Send form's switch); default true as before */
+    async postTransaction(tx, fluff = true){
       return this.logTx('post to the node', '', await this.jsonRPC(
         'post_tx',
         {
           token: this.token,
           tx: tx,
-          fluff: true
+          fluff: fluff !== false
         }, false));
     }
 
@@ -371,6 +376,92 @@ class WalletService {
           "token": this.token,
           "derivation_index": 0
         }, false);
+    }
+
+    /* ---- Tor (docs/plans/tor-616.md §5, §7) ---- */
+
+    /* the wallet's onion address ('<56>.onion'): its payment-proof address (derivation index 0) as
+       onion v3, the address `epic-wallet address` prints; '' when the wallet doesn't answer */
+    async torAddress(){
+      const res = await this.jsonRPC('get_public_proof_address', { token: this.token, derivation_index: 0 }, false);
+      const hex = res && res.result && res.result.Ok;
+      try {
+        return typeof hex === 'string' ? onionFromPubkeyHex(hex) + '.onion' : '';
+      } catch (e) {
+        return '';
+      }
+    }
+
+    /* start the wallet's tor (unlock with Tor on, Turn on, Try again). D6: Tor needs the HTTP listener,
+       so it is started first (and kept while Tor is on); the main process then starts tor for this
+       wallet (window.api.tor.start). isCurrent(): still the session that asked (App.vue's
+       loginSession); a start that outlives it stops only what it started (shared/torSession.js).
+       -> {ok, status, onion, listener} | {ok: false, error, listener?} | {stale: true}
+       error: listener | keys | the main process's refusal (locked, no wallet, invalid) */
+    async startTor({ isCurrent = () => true } = {}){
+      const walletId = this.configService.walletId;
+      const r = await startTorFor({
+        walletId,
+        isCurrent: () => isCurrent() && this.configService.walletId === walletId,
+        startListen: () => this.startListen('http'),
+        torAddress: () => this.torAddress(),
+        start: (w, onion) => window.api.tor.start(w, onion),
+        stop: (w) => window.api.tor.stop(w),
+        stopPid: (pid) => window.nodeChildProcess.stopPids([pid]),
+        log: (m) => console.log(m),
+      });
+      //a listener started for Tor (none was running) is stopped again when Tor is turned off
+      if(!r.stale && r.listenerPid) this.torListener = { walletId, pid: r.listenerPid };
+      return r;
+    }
+
+    /* stop the wallet's tor; listenerStopped: the HTTP listener Tor had started was stopped too
+       (it goes back to its own switch). keepListener: lock and switch, where stopAll stops it anyway,
+       and Tor off with Start with wallet on. walletId: whose tor ('' at lock and switch: whatever runs) */
+    async stopTor({ keepListener = false, walletId = this.configService.walletId } = {}){
+      await window.api.tor.stop(walletId).catch(() => {});
+      const own = this.torListener;
+      if(!own || (walletId && own.walletId !== walletId)) return { listenerStopped: false };
+      this.torListener = null;
+      if(own.pid && !keepListener){
+        await window.nodeChildProcess.stopPids([own.pid]).catch(() => {});
+        return { listenerStopped: true };
+      }
+      return { listenerStopped: false };
+    }
+
+    /* Settings › Receiving › Tor: saved for this wallet at once (tor_enabled), then started or stopped.
+       opts: startTor's (isCurrent), stopTor's (keepListener) */
+    async setTorEnabled(on, opts = {}){
+      this.configService.updateConfig({ tor_enabled: !!on });
+      console.log('[tor] turned ' + (on ? 'on' : 'off'));
+      return on ? this.startTor(opts) : this.stopTor(opts);
+    }
+
+    /*
+     * Send to a .onion address over the wallet's tor (shared/torSend.js: check_version, init_send_tx,
+     * receive_tx over Tor, lock, finalize, post). txData: init_send_tx args (send_args is ignored);
+     * onStep('connecting' | 'signing' | 'posting'); opts.fluff (false: Dandelion), opts.torReady.
+     * -> {ok, slate, slateId} | {ok: false, code, detail, slateId?}. The address book entry (type tor)
+     * is the caller's, as for the other methods.
+     */
+    async sendOverTor(txData, onion, onStep = () => {}, opts = {}){
+      //one circuit per send (IsolateSOCKSAuth)
+      const isolation = 'send-' + Buffer.from(crypto.getRandomValues(new Uint8Array(8))).toString('hex');
+      const r = await torSend({
+        api: {
+          initSend: (a) => this.issueSendTransaction(a),
+          lockOutputs: (slate) => this.lock_outputs(slate),
+          finalize: (slate) => this.finalizeTransaction(slate),
+          post: (tx, fluff) => this.postTransaction(tx, fluff),
+          cancel: (id) => this.cancelTransactions(null, id),
+        },
+        foreign: (method, params) => window.api.tor.foreign(onion, method, params, isolation),
+        torReady: typeof opts.torReady === 'function' ? opts.torReady : () => true,
+        txData, onion, fluff: opts.fluff !== false, onStep,
+      });
+      console.log('[tx] send over Tor' + (r.slateId ? ' ' + r.slateId : '') + ': ' + (r.ok ? 'ok' : 'failed: ' + r.code + (r.detail ? ' (' + String(r.detail).slice(0, 200) + ')' : '')));
+      return r;
     }
 
     async getMnemonic(password){
@@ -1002,6 +1093,7 @@ class WalletService {
         console.log('[epicbox] old server check stopped: ' + procList(res.stopped));
 
     }
+
 
 }
 

@@ -24,6 +24,7 @@
   import { openSettingsSection } from '@/components/modern/settings/jump';
   import { nodeBadge, nodeBadgeText } from '@/components/modern/nodeBadge';
   import { httpShown } from '@/shared/httpListener';
+  import { torCardLine } from '@/shared/torUi';
   import epicboxSwitch from '@/components/modern/epicboxSwitch';
 
   let seq = 0;
@@ -71,10 +72,12 @@
         if (h.state == 'off' && http == 'on') { glyph = 'ok'; word = t('msg.modern.svc_http_only_word'); }
         if (h.state == 'listening' && http == 'failed') glyph = 'sync';
         if (this.store.state.listenerStarting && h.state == 'off') { glyph = 'sync'; word = t('msg.modern.eb_connecting'); }
+        //Tor: one more line, only while it is on
+        const tor = torCardLine(this.store.state.tor, t);
+        const lines = tor ? [epicLine, httpLine, tor] : [epicLine, httpLine];
         return {
           key: 'rcv', name: t('msg.modern.svc_receiving'), to: { path: '/settings/receiving', hash: '#epicbox' }, open: t('msg.modern.svc_open_epicbox'),
-          glyph, word, lines: [epicLine, httpLine],
-          //tor: one more line here ("Tor: connected / starting"), only while Tor is on (6.1.6 Tor work)
+          glyph, word, lines,
         };
       },
       rows() {

@@ -59,6 +59,7 @@ const messages = {
     wallet_files: 'Nastavení › Tato peněženka › Složka peněženky',
     node_settings: 'Nastavení › Uzel a příjem',
     epicbox_setting: 'Nastavení › Uzel a příjem › Příjem',
+    tor_setting: 'Nastavení › Příjem › Tor',
     report: 'Nastavení › Nápověda › Nahlásit problém',
     confirming_label: 'Potvrzuje se',
     locked_label: 'Uzamčeno v odchozích platbách',
@@ -91,7 +92,8 @@ const messages = {
         <p>Vaše peněženka začne přijímat sama po odemčení, jakmile je uzel synchronizován. Pokud je peněženka zavřená, když vám
         někdo platí, Epicbox platbu podrží a vaše peněženka si ji vyzvedne při příštím odemčení.</p>
         <p>Nová platba nejdřív čeká, až ji peněženka odesílatele dokončí, potom se potvrzuje. Po 3 potvrzeních, asi po 3 minutách,
-        ji můžete utratit.</p>`,
+        ji můžete utratit.</p>
+        <p>Přijímat můžete i přes Tor: zapněte ho v <b>[[tor_setting]]</b>.</p>`,
     },
     {
       id: 'send',
@@ -262,6 +264,15 @@ const messages = {
         vaši starou adresu. Když je pole prázdné, Epicbox je vypnutý a soubory můžete dál používat.</p>
         <p>Epicbox používají i jiné peněženky Epic Cash, takže si mezi sebou můžete platit. Epicbox před serverem neskrývá vaši
         IP adresu: pokud vám na tom záleží, použijte VPN.</p>`,
+    },
+    {
+      id: 'tor',
+      section: 'network',
+      title: 'Tor',
+      short: 'Tor umožňuje dvěma peněženkám platit si soukromě na adresu .onion, bez otevírání portů. Ve výchozím stavu je vypnutý.',
+      body: `<p>Zapnete ho v <b>[[tor_setting]]</b>. Vaše peněženka pak dostane stálou adresu Tor (končí na <b>.onion</b>), na kterou vám mohou ostatní platit, a v <b>[[send]]</b> můžete platit na cizí adresy Tor. Připojení trvá déle a peněženka příjemce musí být v tu chvíli otevřená se zapnutým Tor.</p>
+        <p>Tor skrývá IP adresy obou peněženek, zatímco si vyměňují transakci. Hotová transakce jde na váš node jako obvykle. Epicbox, kontroly nodu a vestavěný node Tor nepoužívají.</p>
+        <p>Vaše adresa Tor vychází z klíče peněženky a nikdy se nemění. Kdo ji zná, vidí, kdy je vaše peněženka online se zapnutým Tor.</p>`,
     },
     {
       id: 'troubleshooting',
