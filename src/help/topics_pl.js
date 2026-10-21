@@ -59,6 +59,7 @@ const messages = {
     wallet_files: 'Ustawienia › Ten portfel › Folder portfela',
     node_settings: 'Ustawienia › Node i odbieranie',
     epicbox_setting: 'Ustawienia › Node i odbieranie › Odbieranie',
+    tor_setting: 'Ustawienia › Odbieranie › Tor',
     report: 'Ustawienia › Pomoc › Zgłoś problem',
     confirming_label: 'Potwierdzanie',
     locked_label: 'Zablokowane w wysyłanych transakcjach',
@@ -91,7 +92,8 @@ const messages = {
         <p>Po odblokowaniu portfel sam zaczyna odbierać płatności, gdy tylko node zostanie zsynchronizowany. Jeśli ktoś Ci
         zapłaci, gdy portfel jest zamknięty, Epicbox przechowa płatność, a portfel odbierze ją przy następnym odblokowaniu.</p>
         <p>Nowa płatność najpierw czeka, aż portfel nadawcy ją dokończy, a potem jest potwierdzana. Po 3 potwierdzeniach,
-        czyli po około 3 minutach, możesz ją wydać.</p>`,
+        czyli po około 3 minutach, możesz ją wydać.</p>
+        <p>Możesz też odbierać przez Tor: włącz go w <b>[[tor_setting]]</b>.</p>`,
     },
     {
       id: 'send',
@@ -272,6 +274,15 @@ const messages = {
         wyłączony, a z plików nadal możesz korzystać.</p>
         <p>Z Epicbox korzystają też inne portfele Epic Cash, więc można przesyłać płatności między nimi. Epicbox nie ukrywa
         Twojego adresu IP przed serwerem: jeśli Ci na tym zależy, użyj VPN.</p>`,
+    },
+    {
+      id: 'tor',
+      section: 'network',
+      title: 'Tor',
+      short: 'Tor pozwala dwóm portfelom płacić sobie prywatnie na adres .onion, bez otwierania portów. Domyślnie jest wyłączony.',
+      body: `<p>Włączysz go w <b>[[tor_setting]]</b>. Portfel dostanie wtedy stały adres Tor (kończy się na <b>.onion</b>), na który inni mogą płacić, a w <b>[[send]]</b> zapłacisz na cudze adresy Tor. Łączenie trwa dłużej, a portfel odbiorcy musi być w tym czasie otwarty z włączonym Tor.</p>
+        <p>Tor ukrywa adresy IP obu portfeli podczas wymiany transakcji. Gotowa transakcja trafia do Twojego node’a jak zwykle. Epicbox, sprawdzanie node’a i wbudowany node nie korzystają z Tor.</p>
+        <p>Twój adres Tor wynika z klucza portfela i nigdy się nie zmienia. Kto go zna, widzi, kiedy Twój portfel jest online z włączonym Tor.</p>`,
     },
     {
       id: 'troubleshooting',

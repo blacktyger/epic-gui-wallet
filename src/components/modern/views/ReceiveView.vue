@@ -85,6 +85,8 @@
               </div>
             </div>
 
+            <TorReceiveRow @copy="copy" @qr="(a) => showQr(a, 'tor')" />
+
           </div>
         </div>
 
@@ -130,9 +132,10 @@
   import { reskin } from '@/components/modern/reskin';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import httpListenerSwitch from '@/components/modern/httpListenerSwitch';
+  import TorReceiveRow from '@/components/modern/receive/TorReceiveRow.vue';
 
   export default reskin(HttpReceive, {
-    components: { EIcon },
+    components: { EIcon, TorReceiveRow },
     mixins: [httpListenerSwitch],
     data() {
       return {

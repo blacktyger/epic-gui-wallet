@@ -4,6 +4,7 @@
  */
 
 import { isEpicboxAddress, isOnionAddress, isUnknownRecipient } from './sendForm.js';
+import { parseOnion } from './onion.js';
 
 //every text column of a contact; NOT NULL in the stored schema, so never null or undefined. onion
 //(a Tor address) and proofaddr (a payment proof address), with alwaysproof: what an older version
@@ -29,11 +30,13 @@ const fold = (s) => String(s == null ? '' : s).toLocaleLowerCase();
 
 /* the contacts (one wallet's, as getAddress gives them) that contain keyword in any searched column,
    ignoring case; the keyword is plain text (no wildcards or patterns). An empty keyword: all of them */
-export function searchContacts(list, keyword) {
+export function searchContacts(list, keyword, { tor = false } = {}) {
   const all = Array.isArray(list) ? list : [];
   const q = fold(keyword).trim();
   if (!q) return all;
-  return all.filter((c) => c && SEARCH_FIELDS.some((k) => fold(c[k]).includes(q)));
+  //with Tor (the Modern screens): the Tor address is searched too
+  const fields = tor ? [...SEARCH_FIELDS, 'onion'] : SEARCH_FIELDS;
+  return all.filter((c) => c && fields.some((k) => fold(c[k]).includes(q)));
 }
 
 /* what is wrong with a contact before it is saved, or null: 'name' (no name), 'address' (no address to
@@ -58,18 +61,22 @@ export const ADDRESS_FIELDS = ['externalOne', 'externalTwo'];
 /* the field → the kind the screens name ('epicbox' | 'http') */
 export const FIELD_KIND = { externalOne: 'epicbox', externalTwo: 'http' };
 
-/* the addresses of a contact that can be sent to: [{ field, kind, address }] (Epicbox first) */
-export function contactAddresses(c) {
+/* the addresses of a contact that can be sent to: [{ field, kind, address }] (Epicbox first). With
+   tor (the Modern screens), its Tor address (the onion column) comes last, kind 'tor' */
+export function contactAddresses(c, { tor = false } = {}) {
   if (!c) return [];
-  return ADDRESS_FIELDS
+  const out = ADDRESS_FIELDS
     .map((field) => ({ field, kind: FIELD_KIND[field], address: String(c[field] == null ? '' : c[field]).trim() }))
     .filter((a) => a.address);
+  const onion = String(c.onion == null ? '' : c.onion).trim();
+  if (tor && onion) out.push({ field: 'onion', kind: 'tor', address: onion });
+  return out;
 }
 
 /* the addresses Send can use: a Tor address an older version kept in the HTTP field is left out
-   (Send refuses it: the wallet has no Tor) */
-export function sendableAddresses(c) {
-  return contactAddresses(c).filter((a) => !isOnionAddress(a.address));
+   (it belongs in the Tor address field); with tor, a good Tor address from the onion column is in */
+export function sendableAddresses(c, { tor = false } = {}) {
+  return contactAddresses(c, { tor }).filter((a) => a.field == 'onion' ? parseOnion(a.address).valid : !isOnionAddress(a.address));
 }
 
 /* "esM4kz…8tQz@epicbox.epiccash.com" for an Epicbox address (the key is what tells two apart: its
@@ -91,7 +98,7 @@ const HTTP_URL = /^(ftp|http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\
 /* what is wrong with each field of a contact form, as the form shows it while you type:
    { name, address, epicbox, http, onion } with true where a problem is. A Tor address in either
    field is refused (no Tor in this wallet), with its own message (onion) */
-export function contactProblems(c = {}) {
+export function contactProblems(c = {}, { tor = false, keepOnion = '' } = {}) {
   const f = contactFields(c);
   const v = (k) => f[k].trim();
   const out = {};
@@ -105,6 +112,16 @@ export function contactProblems(c = {}) {
     if (!ok || isOnionAddress(web)) out.http = true;
   }
   if (isOnionAddress(box) || isOnionAddress(web)) out.onion = true;
+  if (tor) {
+    //the Tor address field: empty is fine; one given must be good, and counts as an address to send to
+    //(a value an older version stored is left as it is: only a changed one is judged)
+    const onion = v('onion');
+    if (onion && onion !== String(keepOnion || '').trim()) {
+      const p = parseOnion(onion);
+      if (!p.valid) out[isOnionAddress(onion) ? 'torTypo' : 'torFormat'] = true;
+      else delete out.address;
+    }
+  }
   return out;
 }
 
@@ -147,8 +164,8 @@ export function sortContacts(list, sort = 'name', activity = new Map(), locale) 
 }
 
 /* the contacts the Send picker lists: those with an address to send to, matching the search */
-export function pickableContacts(list, keyword) {
-  return searchContacts(list, keyword).filter((c) => sendableAddresses(c).length);
+export function pickableContacts(list, keyword, { tor = false } = {}) {
+  return searchContacts(list, keyword, { tor }).filter((c) => sendableAddresses(c, { tor }).length);
 }
 
 /* the Send screen opened from a contact (Contacts › Send): its route query → { id, field } or null.
@@ -156,6 +173,6 @@ export function pickableContacts(list, keyword) {
 export function sendQuery(query = {}) {
   const id = Number(query && query.contact);
   if (!Number.isInteger(id) || id <= 0) return null;
-  const field = ADDRESS_FIELDS.includes(query && query.use) ? query.use : null;
+  const field = [...ADDRESS_FIELDS, 'onion'].includes(query && query.use) ? query.use : null;
   return { id, field };
 }

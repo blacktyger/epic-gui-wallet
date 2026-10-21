@@ -59,7 +59,7 @@
               </span>
               <span class="e-con-row-meta">
                 <span class="e-con-kinds">
-                  <span v-for="k in kindsOf(c)" :key="k" class="e-tag e-con-kind" :class="{ 'e-gold': k == 'epicbox' }">{{ $t('msg.contacts.kind_' + k) }}</span>
+                  <span v-for="k in kindsOf(c)" :key="k" class="e-tag e-con-kind" :class="{ 'e-gold': k == 'epicbox' }">{{ k == 'tor' ? $t('msg.modern.settings.tor.kind') : $t('msg.contacts.kind_' + k) }}</span>
                 </span>
                 <small v-if="lastShort(c)">{{ lastShort(c) }}</small>
               </span>
@@ -110,6 +110,12 @@
             <p v-if="errorOf('externalTwo')" id="con-f-ext-e" class="e-error-msg"><EIcon name="alertc" />{{ $t(errorOf('externalTwo')) }}</p>
             <p id="con-f-ext-h" class="e-help">{{ $t('msg.contacts.hint_http') }}</p>
           </div>
+          <!-- Tor: when Tor is on, or this contact already has a Tor address -->
+          <div v-if="onionShown" class="e-field" data-test="con-onion">
+            <label class="e-label" for="con-f-onion">{{ $t('msg.modern.settings.tor.address') }} <span class="e-opt">{{ $t('msg.contacts.optional') }}</span></label>
+            <input id="con-f-onion" v-model="onion" class="e-input e-mono" type="text" spellcheck="false" autocomplete="off" translate="no" dir="ltr" :aria-invalid="errorOf('onion') ? 'true' : null" :aria-describedby="errorOf('onion') ? 'con-f-onion-e' : null" @blur="touch('onion')" />
+            <p v-if="errorOf('onion')" id="con-f-onion-e" class="e-error-msg"><EIcon name="alertc" />{{ $t(errorOf('onion')) }}</p>
+          </div>
           <div class="e-field">
             <label class="e-label" for="con-f-note">{{ $t('msg.contacts.note') }} <span class="e-opt">{{ $t('msg.modern.settings.notice_optional') }}</span></label>
             <textarea id="con-f-note" v-model="notice" class="e-textarea" rows="3"></textarea>
@@ -139,10 +145,10 @@
 
         <dl class="e-con-facts">
           <div v-for="a in selectedAddresses" :key="a.field">
-            <dt><EIcon :name="a.kind == 'epicbox' ? 'antenna' : 'web'" size="sm" />{{ $t('msg.contacts.' + a.kind + '_address') }}</dt>
+            <dt><EIcon :name="a.kind == 'epicbox' ? 'antenna' : a.kind == 'tor' ? 'shield' : 'web'" size="sm" />{{ kindName(a.kind) }}</dt>
             <dd class="e-addr">
               <code translate="no">{{ a.address }}</code>
-              <button type="button" class="e-btn e-btn-ghost e-btn-sm e-con-copy" :class="{ 'e-is-copied': copied == a.field }" :aria-label="$t('msg.modern.settings.copy_field', { what: $t('msg.contacts.' + a.kind + '_address') })" @click="copy(a.address, a.field)">
+              <button type="button" class="e-btn e-btn-ghost e-btn-sm e-con-copy" :class="{ 'e-is-copied': copied == a.field }" :aria-label="$t('msg.modern.settings.copy_field', { what: kindName(a.kind) })" @click="copy(a.address, a.field)">
                 <EIcon :name="copied == a.field ? 'check' : 'copy'" size="sm" /><span aria-hidden="true">{{ copied == a.field ? $t('msg.contacts.copied') : $t('msg.contacts.copy') }}</span>
               </button>
             </dd>
@@ -189,15 +195,23 @@
   import ContactAvatar from '@/components/ContactAvatar.vue';
   import ContactTx from '@/components/modern/activity/ContactTx.vue';
   import RowMenu from '@/components/RowMenu.vue';
+  import { showOnionField } from '@/shared/torUi';
 
   export default reskin(AddressBook, {
     components: { EIcon, EDialog, ContactAvatar, ContactTx, RowMenu },
     computed: {
+      //Tor addresses are contacts' addresses (the Send, search and copy helpers include the onion column)
+      torAware() { return true; },
+      //the Tor field: Tor is on, or this contact already has a Tor address
+      onionShown() { return showOnionField(this.store.state.tor, { onion: this.onion }); },
       showEmpty() {
         return this.listReady && !this.addressList.length && !this.isNewAddress;
       },
     },
     methods: {
+      kindName(kind) {
+        return kind == 'tor' ? this.$t('msg.modern.settings.tor.address') : this.$t('msg.contacts.' + kind + '_address');
+      },
       /* the list's right column: "yesterday", "12 Oct" (the detail says "Last transaction: …") */
       lastShort(c) {
         const a = this.activity.get(Number(c && c.id));

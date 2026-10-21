@@ -159,3 +159,6 @@ html[data-ui='modern'][data-theme='light'] .e-stg-btl-logo .e-btl-light { displa
 /* Epicbox: the server the listener is really on, and the password prompt after a server change */
 .e-stg-relay-now { display: grid; grid-template-columns: 16px 1fr; gap: var(--sp-2); align-items: start; margin-top: var(--sp-2); overflow-wrap: anywhere; }
 .e-stg-relay-now .e-icon { margin-top: 2px; }
+
+/* the Tor address (62 characters) breaks anywhere rather than overflowing a narrow row */
+.e-tor-onion { font-size: 0.75rem; overflow-wrap: anywhere; line-height: 1.4; }
