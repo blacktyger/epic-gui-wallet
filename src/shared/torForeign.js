@@ -71,16 +71,24 @@ export function parseHttpResponse(buf) {
   }
   let body = buf.subarray(end + 4);
   if (/chunked/i.test(headers['transfer-encoding'] || '')) {
+    //only hex sizes (a peer's "-6" must never move `at` backwards and loop the main process),
+    //every chunk moves forward, the total stays within REPLY_MAX
     const parts = [];
     let at = 0;
+    let total = 0;
     for (;;) {
       const nl = body.indexOf('\r\n', at);
       if (nl < 0) return null;
-      const size = parseInt(body.subarray(at, nl).toString('latin1'), 16);
-      if (!Number.isFinite(size)) return null;
+      const field = body.subarray(at, nl).toString('latin1').split(';')[0].trim();
+      if (!/^[0-9a-f]{1,8}$/i.test(field)) return null;
+      const size = parseInt(field, 16);
       if (size === 0) break;
+      total += size;
+      if (total > REPLY_MAX) return null;
+      const next = nl + 2 + size + 2;
+      if (next > body.length) return null;
       parts.push(body.subarray(nl + 2, nl + 2 + size));
-      at = nl + 2 + size + 2;
+      at = next;
     }
     body = Buffer.concat(parts);
   } else if (headers['content-length'] !== undefined) {

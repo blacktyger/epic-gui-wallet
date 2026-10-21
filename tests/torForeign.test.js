@@ -165,3 +165,29 @@ test('parseHttpResponse refuses what isn\'t HTTP', () => {
   assert.equal(parseHttpResponse(Buffer.from('garbage')), null);
   assert.equal(parseHttpResponse(Buffer.from('SSH-2.0\r\n\r\n')), null);
 });
+
+test('parseHttpResponse: a negative or non-hex chunk size is an incomplete answer, never a loop', () => {
+  const head = 'HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n';
+  assert.equal(parseHttpResponse(Buffer.from(head + '-6\r\nabcdef\r\n0\r\n\r\n')), null);
+  assert.equal(parseHttpResponse(Buffer.from(head + '+6\r\nabcdef\r\n0\r\n\r\n')), null);
+  assert.equal(parseHttpResponse(Buffer.from(head + '0x6\r\nabcdef\r\n0\r\n\r\n')), null);
+  assert.equal(parseHttpResponse(Buffer.from(head + '\r\nabcdef\r\n0\r\n\r\n')), null);
+  //too long a size, or a chunk past the end of what arrived
+  assert.equal(parseHttpResponse(Buffer.from(head + 'fffffffff\r\nab\r\n0\r\n\r\n')), null);
+  assert.equal(parseHttpResponse(Buffer.from(head + '10\r\nab\r\n0\r\n\r\n')), null);
+  assert.equal(parseHttpResponse(Buffer.from(head + '400001\r\nab\r\n0\r\n\r\n')), null);
+});
+
+test('parseHttpResponse: chunk extensions and upper-case hex are fine', () => {
+  const head = 'HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n';
+  const r = parseHttpResponse(Buffer.from(head + '3;name=x\r\nabc\r\nA\r\n0123456789\r\n0\r\n\r\n'));
+  assert.deepEqual(r, { status: 200, body: 'abc0123456789' });
+});
+
+test('foreignCall: a 200 chunked reply with chunk size -6 ends as broken, not a hang', async () => {
+  const f = await fakeSocks({ http: () => 'HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n-6\r\nabcdef\r\n0\r\n\r\n' });
+  const r = await call(f.port, { replyTimeoutMs: 5000 });
+  await f.close();
+  assert.equal(r.ok, false);
+  assert.equal(r.code, 'broken');
+});
