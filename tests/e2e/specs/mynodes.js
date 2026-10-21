@@ -208,7 +208,7 @@ H.runCase('mynodes', async (t) => {
       .filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.className + ' ' + e.scrollWidth + '>' + e.clientWidth));
     if (over.length) throw new Error('overflow: ' + over.join('; '));
     return 'nothing overflows';
-  }, { knownBug: 'E2E-2' });   //6.1.6: at 1044 px / 150 % the Settings pane is ~130 px wide (sub-nav beside it): the combobox list and the status line overflow it
+  });   //E2E-2 (fixed): at 1044 px / 150 % the section menu goes above the page and the controls under the text
   await t.step('back to a desktop window', async () => {
     await t.app.evaluate(({ BrowserWindow }) => { const b = BrowserWindow.getAllWindows()[0]; b.webContents.setZoomFactor(1); b.setSize(1200, 860); });
     await w.waitForTimeout(400);

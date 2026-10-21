@@ -115,3 +115,17 @@ html[data-ui='modern'][data-theme='light'] .e-stg-btl-logo .e-btl-light { displa
 
 /* the Tor address (62 characters) breaks anywhere rather than overflowing a narrow row */
 .e-tor-onion { font-size: 0.75rem; overflow-wrap: anywhere; line-height: 1.4; }
+
+/* narrow windows (the smallest window at 150 % zoom is ~700 px wide): the section menu goes above the
+   page as one wrapping row, and each row puts its control under the text, so fields and lists keep
+   their width (E2E-2) */
+@media (max-width: 959px) {
+  .e-stg-layout { grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
+  .e-stg-nav { position: static; flex-direction: row; flex-wrap: wrap; gap: 2px var(--sp-1); }
+  .e-stg-nav a { min-height: 34px; }
+  .e-stg-nav-sep { display: none; }
+}
+@media (max-width: 759px) {
+  .e-stg-panes .e-set-row { grid-template-columns: minmax(0, 1fr); }
+  .e-stg-panes .e-set-row .e-ctl { justify-content: flex-start; }
+}
