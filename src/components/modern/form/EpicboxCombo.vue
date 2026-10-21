@@ -23,6 +23,8 @@
         :aria-busy="busy ? 'true' : null"
         :readonly="busy"
         :value="editing ? query : current"
+        :title="editing ? null : current || null"
+        :style="fieldBasis(editing ? query : current)"
         @focus="open"
         @click="open"
         @input="typed($event.target.value)"
@@ -106,6 +108,10 @@
       },
     },
     methods: {
+      /* the field as wide as its text (mono: 1ch a character): the operator label gives way first */
+      fieldBasis(text) {
+        return { flexBasis: (String(text || '').length + 1) + 'ch' };
+      },
       open() {
         if (!this.busy && !this.quiet) this.expanded = true;
       },
