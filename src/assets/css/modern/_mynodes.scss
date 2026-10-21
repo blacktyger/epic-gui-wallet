@@ -46,7 +46,7 @@
 .e-mynodes-row.e-is-on .e-mynodes-line b { color: var(--accent-text); }
 .e-mynodes-meta { flex: none; display: inline-flex; align-items: center; gap: var(--sp-2); }
 .e-mynodes-meta .e-tag { white-space: nowrap; }
-.e-mynodes-meta .e-nodedir-lat { min-width: 0; text-align: start; font-variant-numeric: tabular-nums; }
+
 .e-mynodes-acts { display: flex; align-items: center; gap: 2px; }
 .e-mynodes-acts .e-btn { margin-inline-end: 4px; }
 .e-mynodes-sel { display: inline-flex; align-items: center; gap: 4px; margin-inline-end: 6px; color: var(--accent-text); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
@@ -75,7 +75,6 @@
   .e-nodecheck, .e-mynodes { animation: none; }
   .e-nodedir-dot.e-wait { animation: none; }
 }
-
 
 /* the height meter (ui/HeightMeter.vue): a 28 px bar, empty when the network tip is unknown, dashed when the node is down */
 .e-hmeter { position: relative; display: inline-block; width: 28px; height: 4px; border-radius: 2px; background: var(--line-strong); overflow: hidden; flex: none; vertical-align: middle; }

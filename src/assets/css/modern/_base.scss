@@ -137,23 +137,6 @@ html[data-ui='modern'] { -webkit-text-size-adjust: 100%; }
 
 .e-side-foot { margin-top: auto; padding: var(--sp-3); border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--sp-2); }
 
-/* Connection status: one line per service, always in the same place. */
-.e-svc {
-  display: grid; grid-template-columns: 20px 1fr; column-gap: var(--sp-2); align-items: center;
-  padding: 6px var(--sp-2); border-radius: var(--r-sm);
-  font-size: var(--fs-sm); color: var(--dim);
-  background: none; border: 0; text-align: left; width: 100%;
-}
-button.e-svc:hover { background: var(--hover); }
-.e-svc b { color: var(--text); font-weight: 500; }
-.e-svc small { grid-column: 2; color: var(--faint); font-size: var(--fs-xs); }
-.e-svc small.e-svc-act { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
-.e-svc .e-icon { width: 16px; height: 16px; }
-.e-svc.e-is-ok .e-icon { color: var(--ok); }
-.e-svc.e-is-warn .e-icon { color: var(--warn); }
-.e-svc.e-is-risk .e-icon { color: var(--risk); }
-.e-svc.e-is-busy .e-icon { color: var(--accent-text); animation: e-spin 1.2s linear infinite; }
-
 /* the name gets what the avatar and the two buttons leave: "Portfel 2" fits at the 224px sidebar */
 .e-account {
   display: flex; align-items: center; gap: var(--sp-2);
@@ -479,7 +462,6 @@ button.e-svc:hover { background: var(--hover); }
 .e-trace.e-is-syncing path,
 .e-spinner,
 .e-btn.e-is-busy::before,
-.e-svc.e-is-busy .e-icon { animation: none; }
   .e-ring.e-is-wait .e-arc { stroke-dasharray: 3 3 !important; }
 }
 

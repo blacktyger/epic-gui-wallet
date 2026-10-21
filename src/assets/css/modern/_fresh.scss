@@ -100,9 +100,6 @@
 .e-fs-text { margin-top: var(--sp-4); color: var(--dim); }
 .e-fs-actions { margin-top: var(--sp-6); gap: var(--sp-2); }
 
-/* ---------------------------------------------------------------- Settings › Wallet */
-.e-stg-paths { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.e-stg-folder-btns { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-2); }
 .e-wlist { list-style: none; margin: 0; padding: 0; min-width: 0; }
 .e-wlist li > .e-btn { flex: none; }
 .e-wlist li { display: flex; align-items: center; gap: var(--sp-3); }
@@ -172,5 +169,4 @@
 
 /* Settings: the line under a group, and Settings › Wallet's pointer to All wallets */
 .e-stg-sub { color: var(--dim); font-size: var(--fs-sm); margin: 0 0 var(--sp-3); }
-.e-stg-more { color: var(--dim); font-size: var(--fs-sm); margin-top: var(--sp-4); }
-.e-stg-more a { color: var(--accent-text); }
+
