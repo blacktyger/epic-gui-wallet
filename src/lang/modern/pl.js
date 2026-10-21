@@ -705,7 +705,7 @@ export default {
         s3_title: 'Podaj swój publiczny adres',
         s3_text: 'Nadawcy używają tego adresu (to Twój adres IP w internecie; może się zmieniać).',
         copy_public: 'Kopiuj adres publiczny',
-        looking: 'Szukanie…',
+        looking: 'Szukam…',
         not_found: 'Nie znaleziono. Sprawdź połączenie z internetem.',
         alt_title: 'Bez konfigurowania routera?',
         alt_text: 'Tor działa z każdego miejsca, bez przekierowywania portów.',

@@ -698,7 +698,7 @@ export default {
         s1_text: 'Aplikace nastaví adresu naslouchání na {ip} v souboru {file}. K portu {port} v tomto počítači se pak dostanou další zařízení i internet; firewall se může zeptat. Platí, dokud se nevrátíte zpět.',
         s1_windows: 'Brána Windows Firewall se zeptá, zda smí epic-wallet přijímat připojení: povolte to.',
         s1_btn: 'Zveřejnit',
-        s1_back: 'Zpět na Jen lokálně',
+        s1_back: 'Zpět na „Jen lokálně“',
         s2_title: 'Přesměrujte port na routeru',
         s2_text: 'Otevřete stránku routeru (často {router}) a najděte Přesměrování portů. Přesměrujte TCP {port} na tento počítač:',
         copy_lan: 'Kopírovat adresu LAN',
