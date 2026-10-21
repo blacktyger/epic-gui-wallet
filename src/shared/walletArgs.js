@@ -6,7 +6,8 @@
  * secrets, log), and dataDir, the folder holding wallet_data (the same folder for wallets made in
  * 6.1, an older GUI's folder for imported ones). -c is always configDir, so the toml 6.1 rendered
  * is read and the secrets are made there; -t (the top level dir) is dataDir. The process record
- * names the wallet by its -c dir. Every listener runs with --no_tor (6.1.3 has no Tor).
+ * names the wallet by its -c dir. Every long-running listener runs with --no_tor: the app runs its own
+ * tor (shared/torManager.js). Only the one-shot `torkeys` run (torKeysArgs) goes without it.
  *
  * The owner API gets no password: it starts with -t a dir that holds no wallet (inside configDir,
  * never in an imported dataDir; epic-wallet does not create it), so it does not open (or ask for)
@@ -51,6 +52,15 @@ export function epicboxArgs({ network, configDir, dataDir }) {
   return [...networkArgs(network), '-t', dataDir, '-c', configDir, 'listen', '--method', 'epicbox', '--no_tor'];
 }
 
+/* the one-shot run that makes the wallet's onion key (tor-616 §4): a listener with its own toml in
+   <configDir>/tor-keys (use_tor_listener = true, our tor's SOCKS), stopped once the key file is
+   there; --offline_mode, no --no_tor. Asks for the password */
+export function torKeysArgs({ network, keysDir, dataDir }) {
+  need({ keysDir, dataDir }, 'keysDir', 'dataDir');
+  if (keysDir === dataDir) throw new Error('torkeys needs its own config dir');
+  return [...networkArgs(network), '--offline_mode', '-t', dataDir, '-c', keysDir, 'listen', '--method', 'http'];
+}
+
 /* init, or init -r (recover): asks for the new password twice (and first the recovery phrase).
    A new wallet only (configDir == dataDir): 4.1.0's init refuses a folder that already has an
    epic-wallet.toml and writes its own default there, so it runs on the empty folder and 6.1
@@ -65,6 +75,7 @@ export function initArgs({ network, configDir, recover }) {
 export const PTY_KINDS = {
   listen: { passwords: 1, phrase: false },
   epicbox: { passwords: 1, phrase: false },
+  torkeys: { passwords: 1, phrase: false },
   init: { passwords: 2, phrase: false },
   recover: { passwords: 2, phrase: true },
 };
@@ -81,6 +92,7 @@ export function hasPassArg(args) {
 const PTY_COMMANDS = {
   listen: [['listen', '--method', 'http', '--no_tor']],
   epicbox: [['listen', '--method', 'epicbox', '--no_tor']],
+  torkeys: [['listen', '--method', 'http']],
   init: [['init']],
   recover: [['init', '-r']],
 };
@@ -101,6 +113,9 @@ export function checkPtyArgs(kind, args) {
   if (hasPassArg(args)) throw new Error('args must not carry a password');
   let i = 0;
   if (args[i] === '--floonet' || args[i] === '--usernet') i++;
+  //torkeys only, and always: it must never reach the node or start more than the key
+  if ((args[i] === '--offline_mode') !== (kind === 'torkeys')) throw new Error('not a ' + kind + ' command');
+  if (kind === 'torkeys') i++;
   const dirs = {};
   while (args[i] === '-t' || args[i] === '-c') {
     const flag = args[i];
@@ -111,7 +126,7 @@ export function checkPtyArgs(kind, args) {
   }
   const rest = args.slice(i);
   if (!cmds.some(c => c.length === rest.length && c.every((x, j) => x === rest[j]))) throw new Error('not a ' + kind + ' command');
-  const listener = kind === 'listen' || kind === 'epicbox';
+  const listener = kind === 'listen' || kind === 'epicbox' || kind === 'torkeys';
   if (listener ? !(dirs['-t'] && dirs['-c']) : !dirs['-c']) throw new Error('missing dir');
   return { dir: dirs['-t'] || dirs['-c'] };
 }

@@ -198,3 +198,21 @@ test('checkSpawnArgs: the owner API and the node exactly as the app starts them'
     assert.throws(() => checkSpawnArgs(role, args), undefined, JSON.stringify(args));
   }
 });
+
+test('6.1.6: the torkeys one-shot: --offline_mode, its own -c dir, no --no_tor; nothing else passes as torkeys', async () => {
+  const { torKeysArgs } = await import('../src/shared/walletArgs.js');
+  const a = torKeysArgs({ network: 'mainnet', keysDir: '/w/c/tor-keys', dataDir: '/w/d' });
+  assert.deepEqual(a, ['--offline_mode', '-t', '/w/d', '-c', '/w/c/tor-keys', 'listen', '--method', 'http']);
+  assert.deepEqual(torKeysArgs({ network: 'floonet', keysDir: '/k', dataDir: '/d' }).slice(0, 2), ['--floonet', '--offline_mode']);
+  assert.throws(() => torKeysArgs({ network: 'mainnet', keysDir: '/d', dataDir: '/d' }));
+  assert.deepEqual(PTY_KINDS.torkeys, { passwords: 1, phrase: false });
+  assert.deepEqual(checkPtyArgs('torkeys', a), { dir: '/w/d' });
+  //without --offline_mode, or with another command, or --offline_mode on another kind
+  assert.throws(() => checkPtyArgs('torkeys', a.slice(1)));
+  assert.throws(() => checkPtyArgs('torkeys', [...a.slice(0, 5), 'listen', '--method', 'epicbox']));
+  assert.throws(() => checkPtyArgs('torkeys', [...a, '--no_tor']));
+  assert.throws(() => checkPtyArgs('listen', ['--offline_mode', '-t', '/w/d', '-c', '/w/c', 'listen', '--method', 'http', '--no_tor']));
+  //the long-running listeners keep --no_tor
+  assert.ok(listenArgs({ network: 'mainnet', configDir: '/w/c', dataDir: '/w/d' }).includes('--no_tor'));
+  assert.ok(epicboxArgs({ network: 'mainnet', configDir: '/w/c', dataDir: '/w/d' }).includes('--no_tor'));
+});

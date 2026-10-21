@@ -8,6 +8,8 @@ import { ownerApiArgs, listenArgs, epicboxArgs as buildEpicboxArgs, initArgs, st
 import { walletApiOrigin, isWalletApiUrl } from '@/shared/security';
 import { ownerApiPort as findOwnerApiPort } from '@/shared/testPorts';
 import { isAddrInUse } from '@/shared/httpListener';
+import { onionFromPubkeyHex } from '@/shared/onion';
+import { sendOverTor as torSend } from '@/shared/torSend';
 const Buffer = require('buffer').Buffer;
 
 require('promise.prototype.finally').shim();
@@ -69,6 +71,7 @@ class WalletService {
       this.token = undefined;
       this.walletIsListen = false;
       this.walletIsEpicbox = false;
+      this.torListenerPid = 0;
       //lock, logout, wallet switch: the main process forgets the session password, and an Epicbox
       //job of the last session stops
       this.epicboxSession++;
@@ -342,13 +345,14 @@ class WalletService {
         }, false));
     }
 
-    async postTransaction(tx){
+    /* fluff: false sends it with Dandelion (the Send form's switch); default true as before */
+    async postTransaction(tx, fluff = true){
       return this.logTx('post to the node', '', await this.jsonRPC(
         'post_tx',
         {
           token: this.token,
           tx: tx,
-          fluff: true
+          fluff: fluff !== false
         }, false));
     }
 
@@ -371,6 +375,88 @@ class WalletService {
           "token": this.token,
           "derivation_index": 0
         }, false);
+    }
+
+    /* ---- Tor (docs/plans/tor-616.md §5, §7) ---- */
+
+    /* the wallet's onion address ('<56>.onion'): its payment-proof address (derivation index 0) as
+       onion v3, the address `epic-wallet address` prints; '' when the wallet doesn't answer */
+    async torAddress(){
+      const res = await this.jsonRPC('get_public_proof_address', { token: this.token, derivation_index: 0 }, false);
+      const hex = res && res.result && res.result.Ok;
+      try {
+        return typeof hex === 'string' ? onionFromPubkeyHex(hex) + '.onion' : '';
+      } catch (e) {
+        return '';
+      }
+    }
+
+    /* start the wallet's tor (unlock with Tor on, Turn on, Try again). D6: Tor needs the HTTP listener,
+       so it is started first (and kept while Tor is on); the main process then starts tor for this
+       wallet (window.api.tor.start). -> {ok, status, onion, listener} | {ok: false, error, listener?}
+       error: listener | keys | the main process's refusal (locked, no wallet, invalid) */
+    async startTor(){
+      const listener = await this.startListen('http');
+      if(!listener || !listener.success){
+        console.log('[tor] not started: the http listener did not start');
+        return { ok: false, error: 'listener', listener };
+      }
+      //a listener started for Tor (none was running) is stopped again when Tor is turned off
+      if(listener.pid) this.torListenerPid = listener.pid;
+      const onion = await this.torAddress();
+      if(!onion){
+        console.log('[tor] not started: no proof address from the wallet');
+        return { ok: false, error: 'keys', listener };
+      }
+      const r = await window.api.tor.start(this.configService.walletId, onion);
+      console.log('[tor] start: ' + (r && r.ok ? (r.status && r.status.state) : 'refused (' + (r && r.error) + ')'));
+      return Object.assign({ listener, onion }, r || { ok: false, error: 'start' });
+    }
+
+    /* stop the wallet's tor; listenerStopped: the HTTP listener Tor had started was stopped too
+       (it goes back to its own switch). keepListener: lock and switch, where stopAll stops it anyway */
+    async stopTor({ keepListener = false } = {}){
+      await window.api.tor.stop().catch(() => {});
+      const pid = this.torListenerPid;
+      this.torListenerPid = 0;
+      if(pid && !keepListener){
+        await window.nodeChildProcess.stopPids([pid]).catch(() => {});
+        return { listenerStopped: true };
+      }
+      return { listenerStopped: false };
+    }
+
+    /* Settings › Receiving › Tor: saved for this wallet at once (tor_enabled), then started or stopped */
+    async setTorEnabled(on){
+      this.configService.updateConfig({ tor_enabled: !!on });
+      console.log('[tor] turned ' + (on ? 'on' : 'off'));
+      return on ? this.startTor() : this.stopTor();
+    }
+
+    /*
+     * Send to a .onion address over the wallet's tor (shared/torSend.js: check_version, init_send_tx,
+     * receive_tx over Tor, lock, finalize, post). txData: init_send_tx args (send_args is ignored);
+     * onStep('connecting' | 'signing' | 'posting'); opts.fluff (false: Dandelion), opts.torReady.
+     * -> {ok, slate, slateId} | {ok: false, code, detail, slateId?}. The address book entry (type tor)
+     * is the caller's, as for the other methods.
+     */
+    async sendOverTor(txData, onion, onStep = () => {}, opts = {}){
+      //one circuit per send (IsolateSOCKSAuth)
+      const isolation = 'send-' + Buffer.from(crypto.getRandomValues(new Uint8Array(8))).toString('hex');
+      const r = await torSend({
+        api: {
+          initSend: (a) => this.issueSendTransaction(a),
+          lockOutputs: (slate) => this.lock_outputs(slate),
+          finalize: (slate) => this.finalizeTransaction(slate),
+          post: (tx, fluff) => this.postTransaction(tx, fluff),
+          cancel: (id) => this.cancelTransactions(null, id),
+        },
+        foreign: (method, params) => window.api.tor.foreign(onion, method, params, isolation),
+        torReady: typeof opts.torReady === 'function' ? opts.torReady : () => true,
+        txData, onion, fluff: opts.fluff !== false, onStep,
+      });
+      console.log('[tx] send over Tor' + (r.slateId ? ' ' + r.slateId : '') + ': ' + (r.ok ? 'ok' : 'failed: ' + r.code + (r.detail ? ' (' + String(r.detail).slice(0, 200) + ')' : '')));
+      return r;
     }
 
     async getMnemonic(password){

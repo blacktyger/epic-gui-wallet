@@ -60,6 +60,10 @@ export const store = createStore({
     kernelHeights: {},
     /* the HTTP listener on its own (shared/httpListener.js, QA W01): {state: 'off'|'on'|'failed', port, reason} */
     httpListener: {state: 'off', port: 0, reason: ''},
+    /* Tor (docs/plans/tor-616.md §7): enabled = the wallet's tor_enabled; state from the main process's
+       tor-status events: 'off'|'starting'|'publishing'|'ready'|'failed', progress 0-100, onion
+       '' | '<56>.onion', error '' | missing|start|network|clock|keys|listener, detail */
+    tor: {enabled: false, state: 'off', progress: 0, onion: '', error: '', detail: ''},
     /* our Epicbox listener, from its own output (App.onEpicboxEvent) and walletService:
        state: '' | starting | connecting | listening | paused | switching | checking_old | off;
        server: the wss:// url it connected to (or is starting on); checking: the old server being
@@ -131,6 +135,17 @@ export const store = createStore({
       state.kernelHeights = payload ? Object.assign({}, state.kernelHeights, {[payload.id]: payload.height}) : {};
     },
     /* null resets it (logout, stopped) */
+    /* a change of the Tor state (null: reset, at lock); only the known keys are taken */
+    tor(state, payload){
+      const off = {enabled: false, state: 'off', progress: 0, onion: '', error: '', detail: ''};
+      if(!payload){
+        state.tor = off;
+        return;
+      }
+      const next = Object.assign({}, state.tor);
+      for(const k of Object.keys(off)) if(payload[k] !== undefined) next[k] = payload[k];
+      state.tor = next;
+    },
     httpListener(state, payload){
       state.httpListener = payload ? Object.assign({state: 'off', port: 0, reason: ''}, payload) : {state: 'off', port: 0, reason: ''};
     },
