@@ -180,7 +180,14 @@ html[data-ui='modern'] { -webkit-text-size-adjust: 100%; }
 .e-wide-only { display: none; }
 @media (min-width: 1280px) { .e-wide-only { display: block; } }
 
-/* ------------------------------------------------------------------ buttons */
+/* ------------------------------------------------------------------ buttons
+   Three sizes, one rule (6.1.7): no big button next to simple text.
+   - Small inline action: .e-btn-inline (icon + short label) or .e-icon-btn.e-inline (icon only, with an
+     aria-label and a tooltip), 24 px: the height of the text line it sits on. Next to status lines,
+     notices, toasts and inside rows: Retry, Copy, Change, Show, Open folder, Try again.
+   - Regular: .e-btn.e-btn-sm (36 px), a row's control in the settings control column.
+   - Large primary: .e-btn.e-btn-primary (44 px) or .e-btn-lg (52 px), only for the big actions (Send,
+     Create wallet, Unlock, Make it public, Save in a dialog). */
 .e-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
   height: var(--ctl); padding: 0 var(--sp-5);
@@ -224,6 +231,23 @@ html[data-ui='modern'] { -webkit-text-size-adjust: 100%; }
 .e-icon-btn:hover { background: var(--hover); color: var(--text); }
 .e-icon-btn[aria-pressed='true'] { color: var(--accent-text); }
 .e-icon-btn.e-sm { width: 36px; height: 36px; }
+
+/* the small inline action (see the size rule above the buttons) */
+.e-btn-inline {
+  display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;
+  height: 24px; padding: 0 6px; margin: 0 -2px;
+  border: 0; border-radius: var(--r-sm);
+  background: transparent; color: var(--accent-text);
+  font: inherit; font-size: var(--fs-sm); font-weight: 600; line-height: 1;
+  text-decoration: none; white-space: nowrap; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.e-btn-inline:hover:not(:disabled) { background: var(--hover); }
+.e-btn-inline:disabled { color: var(--faint); cursor: default; }
+.e-btn-inline .e-icon { width: 14px; height: 14px; }
+.e-btn-inline.e-is-busy { cursor: progress; opacity: 0.7; }
+.e-icon-btn.e-inline { width: 24px; height: 24px; vertical-align: middle; }
+.e-icon-btn.e-inline .e-icon { width: 16px; height: 16px; }
 
 /* Busy: the label stays, a spinner takes the icon slot. The width does not jump. */
 .e-btn.e-is-busy { cursor: progress; }
