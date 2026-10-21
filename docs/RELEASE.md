@@ -27,7 +27,7 @@ for the user that builds.
 
 1. Clones the repo (`--no-checkout`) into `~/epic-gui-releases/.work/…` and checks out the
    commit. The version comes from that commit's `package.json`.
-2. `npm ci`, then `node scripts/fetch-tor.mjs --platform linux,win --gpg required` (see Tor below), then the pre-build gate `scripts/test-gate.sh` (= `npm run test:gate`: lint, unit tests, the
+2. `npm ci`, then `node scripts/fetch-tor.mjs --platform linux,win --gpg required` (see Tor below), then the pre-build gate `scripts/test-gate.sh` (`--quick-gate`: its quick checks only, without e2e; the manifest's `gate` says which) (= `npm run test:gate`: lint, unit tests, the
    IPC/preload contract, i18n, component tests, the e2e smoke in a network-less sandbox; see docs/TESTING.md).
    Any failure stops the run before anything is built.
 3. Linux: `vue-cli-service electron:build --linux AppImage --publish never`. The `afterPack` hook

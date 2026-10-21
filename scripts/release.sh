@@ -4,15 +4,17 @@
 # package check (scripts/package-check.js) on the files a user downloads, SHA-256 files and a
 # manifest. It never publishes anything. See docs/RELEASE.md.
 #
-#   scripts/release.sh <commit> [--linux | --windows] [--out DIR] [--repo URL] [--waive RULE]...
+#   scripts/release.sh <commit> [--linux | --windows] [--out DIR] [--repo URL] [--waive RULE]... [--quick-gate]
+#
+#   --quick-gate  the pre-build gate without its e2e run (test-gate.sh --quick); the manifest says so
 #
 # Env: RELEASE_REPO (default the fork on GitHub), WIN_HOST (ssh host, default win-desktop),
 #      WIN_ROOT (default C:\EpicRig), RELEASE_ROOT (default ~/epic-gui-releases)
 set -euo pipefail
 
-usage() { sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 
-COMMIT=""; DO_LINUX=1; DO_WIN=1; OUT=""; WAIVE=()
+COMMIT=""; DO_LINUX=1; DO_WIN=1; OUT=""; WAIVE=(); GATE=full
 REPO="${RELEASE_REPO:-https://github.com/blacktyger/epic-gui-wallet.git}"
 WIN_HOST="${WIN_HOST:-win-desktop}"
 WIN_ROOT="${WIN_ROOT:-C:\\EpicRig}"
@@ -24,6 +26,7 @@ while [ $# -gt 0 ]; do
     --out) OUT="$2"; shift ;;
     --repo) REPO="$2"; shift ;;
     --waive) WAIVE+=("$2"); shift ;;
+    --quick-gate) GATE=quick ;;
     -h|--help) usage ;;
     -*) echo "unknown option $1" >&2; usage ;;
     *) [ -z "$COMMIT" ] || usage; COMMIT="$1" ;;
@@ -70,8 +73,9 @@ timeout 1200 node scripts/fetch-tor.mjs --platform linux,win --gpg required || d
 # the pre-build gate (scripts/test-gate.sh, docs/TESTING.md): lint, unit, IPC/preload contract, i18n,
 # component tests and the e2e smoke in a network-less sandbox. No binaries are built unless it passes
 [ -f scripts/test-gate.sh ] || die "$SHA has no scripts/test-gate.sh: release a commit that has the pre-build gate"
-log "pre-build gate"
-timeout 1800 bash scripts/test-gate.sh || die "the pre-build gate failed (logs: $SRC/tests/out/gate/): nothing built"
+log "pre-build gate ($GATE)"
+if [ "$GATE" = quick ]; then GATE_ARGS=(--quick); else GATE_ARGS=(); fi
+timeout 1800 bash scripts/test-gate.sh "${GATE_ARGS[@]}" || die "the pre-build gate failed (logs: $SRC/tests/out/gate/): nothing built"
 
 ARTIFACTS=()   # "platform|file|extracted dir"
 
@@ -168,8 +172,8 @@ console.log(JSON.stringify(o));
 EOF
 )"
 WIN_NODE="$(grep -m1 '^v[0-9]' "$OUT/windows-build.log" 2>/dev/null | tr -d '\r' || true)"
-node - "$OUT/manifest.json" "$VERSION" "$SHA" "$REPO" "$ELECTRON" "$BUILDER" "$(node -v)" "$WIN_NODE" "$FAILED" "${WAIVE[*]:-}" "$TOR_JSON" "${ENTRIES[@]}" <<'EOF'
-const [out, version, commit, repo, electron, builder, node, winNode, failed, waived, torJson, ...entries] = process.argv.slice(2);
+node - "$OUT/manifest.json" "$VERSION" "$SHA" "$REPO" "$ELECTRON" "$BUILDER" "$(node -v)" "$WIN_NODE" "$FAILED" "${WAIVE[*]:-}" "$TOR_JSON" "$GATE" "${ENTRIES[@]}" <<'EOF'
+const [out, version, commit, repo, electron, builder, node, winNode, failed, waived, torJson, gate, ...entries] = process.argv.slice(2);
 const fs = require('fs');
 const path = require('path');
 const artifacts = entries.map((e) => {
@@ -182,7 +186,7 @@ const artifacts = entries.map((e) => {
     waived: waived ? waived.split(' ') : [] };
 });
 const m = { name: 'Epic GUI Wallet', version, commit, repo, builtAt: new Date().toISOString(),
-  electron, electronBuilder: builder, tor: JSON.parse(torJson), node: { linux: node, windows: winNode || null },
+  electron, electronBuilder: builder, tor: JSON.parse(torJson), gate, node: { linux: node, windows: winNode || null },
   releaseBuild: failed === '0' && !waived, artifacts };
 fs.writeFileSync(out, JSON.stringify(m, null, 2) + '\n');
 EOF
