@@ -26,6 +26,7 @@ import { SUPPORT_PUBLIC_KEY, supportUrl } from './shared/supportKey'
 import { sanitizeText, KNOWN_PUBLIC_HOSTS } from './shared/logSanitize'
 import { createTorManager } from './shared/torManager'
 import { ensureOnionKey, KEYS_DIR } from './shared/torKeys'
+import { torTimingsFromEnv } from './shared/torTestTimings'
 import { checkForeignRequest, foreignCall } from './shared/torForeign'
 import { parseOnion } from './shared/onion'
 import { networkPorts } from './shared/walletToml'
@@ -236,6 +237,8 @@ const torManager = createTorManager({
   sha512: (b) => nodeCrypto.createHash('sha512').update(b).digest(),
   kill, record: (pid, cmd, args) => ownProcesses.record(pid, cmd, args), forget: (pid) => ownProcesses.forget(pid),
   torBin, libDir: torBundleDir, win: isWin, ownerPid: process.pid, checkPort: portAnswers, env: process.env,
+  //test runs only (EPIC_GUI_TEST=1): shorter watchdogs for the e2e gate; {} otherwise
+  timings: torTimingsFromEnv(process.env),
   onStatus: (s) => { if (win && !win.isDestroyed()) win.webContents.send('tor-status', s); },
   log: { info: (m) => log.info(m), warn: (m) => log.warn(m) },
 });
