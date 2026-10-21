@@ -5,14 +5,21 @@
  * began it (isCurrent); if not, it stops only what it started itself (its own listener pid, the
  * tor of its own walletId) and touches nothing of the wallet now open.
  *
+ * A listener that can't start because the node doesn't answer (httpListener.js listenerNodeDown)
+ * does not stop Tor: tor starts with waitListener (sending works, the error says `node` once
+ * bootstrapped, the onion is added when the listener runs) and the caller retries the listener
+ * (waitListener: true in the answer). Any other listener failure is `listener`, as before.
+ *
  *   startTorFor({walletId, isCurrent, startListen, torAddress, start, stop, stopPid, log})
  *     startListen() → the listener result ({success, pid?}: a pid only when this call started it)
- *     torAddress() → '<56>.onion' | ''; start(walletId, onion) → main's answer; stop(walletId):
- *     the main process's per-wallet stop; stopPid(pid)
- *   → {ok, status, onion, listener, listenerPid} | {ok: false, error, listener?} | {stale: true}
+ *     torAddress() → '<56>.onion' | ''; start(walletId, onion, {waitListener}) → main's answer;
+ *     stop(walletId): the main process's per-wallet stop; stopPid(pid)
+ *   → {ok, status, onion, listener, listenerPid, waitListener} | {ok: false, error, listener?} | {stale: true}
  *
  * Plain ESM: tests/torSession.test.js.
  */
+import { listenerNodeDown } from './httpListener.js';
+
 export async function startTorFor({ walletId, isCurrent, startListen, torAddress, start, stop, stopPid, log = () => {} }) {
   const current = () => { try { return !!isCurrent(); } catch (e) { return false; } };
   let listener = null;
@@ -27,18 +34,20 @@ export async function startTorFor({ walletId, isCurrent, startListen, torAddress
 
   listener = await startListen();
   if (!current()) return abandon(false);
-  if (!listener || !listener.success) {
+  const waitListener = listenerNodeDown(listener);
+  if ((!listener || !listener.success) && !waitListener) {
     log('[tor] not started: the http listener did not start');
     return { ok: false, error: 'listener', listener };
   }
+  if (waitListener) log('[tor] the http listener waits for the node: tor starts for sending');
   const onion = await torAddress();
   if (!current()) return abandon(false);
   if (!onion) {
     log('[tor] not started: no proof address from the wallet');
     return { ok: false, error: 'keys', listener };
   }
-  const r = await start(walletId, onion);
+  const r = await start(walletId, onion, { waitListener });
   if (!current()) return abandon(true);
   log('[tor] start: ' + (r && r.ok ? (r.status && r.status.state) : 'refused (' + (r && r.error) + ')'));
-  return Object.assign({ listener, onion, listenerPid: ownPid() }, r || { ok: false, error: 'start' });
+  return Object.assign({ listener, onion, listenerPid: ownPid(), waitListener }, r || { ok: false, error: 'start' });
 }

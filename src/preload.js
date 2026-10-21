@@ -822,11 +822,12 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.removeAllListeners('menu-lock');
       ipcRenderer.on('menu-lock', () => func());
     },
-    //Tor for the unlocked wallet (background.js, docs/plans/tor-616.md §4/§7): start(walletId, onion) →
-    //{ok, status} | {ok: false, error}; stop(), retry() → status; foreign(onion, method, params, isolation)
+    //Tor for the unlocked wallet (background.js, docs/plans/tor-616.md §4/§7): start(walletId, onion, {waitListener}) →
+    //{ok, status} | {ok: false, error} (waitListener: the node keeps the listener down, tor waits for it); stop(), retry() → status; foreign(onion, method, params, isolation)
     //→ {ok, result} | {ok: false, code, detail}; onStatus(func): one listener for every status change
     tor: {
-      start: (walletId, onion) => ipcRenderer.invoke('tor-start', { walletId: String(walletId || ''), onion: String(onion || '') }),
+      start: (walletId, onion, opts) => ipcRenderer.invoke('tor-start', { walletId: String(walletId || ''), onion: String(onion || ''),
+        waitListener: !!(opts && opts.waitListener) }),
       //walletId: only that wallet's tor ('' : whatever runs, at lock and switch)
       stop: (walletId) => ipcRenderer.invoke('tor-stop', { walletId: String(walletId || '') }),
       retry: () => ipcRenderer.invoke('tor-retry'),

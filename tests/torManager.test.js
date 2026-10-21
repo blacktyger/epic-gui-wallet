@@ -362,6 +362,34 @@ test('listener: not running at the start, or stops later', async () => {
   assert.equal(t.m.status().error, 'listener');
 });
 
+test('node: with waitListener, tor bootstraps without the listener (sending works), shows node, and adds the onion once the listener answers', async () => {
+  let up = false;
+  const t = harness({ listener: () => up, timings: { listenerWaitMs: 20 } });
+  await t.m.start(START(walletDir(), { waitListener: true }));
+  await t.until(() => t.logs.some(l => l.includes('sending only')));
+  //before the bootstrap: still starting (the bootstrap's own progress or network error is what counts)
+  assert.equal(t.m.status().state, 'starting');
+  t.event('STATUS_CLIENT NOTICE BOOTSTRAP PROGRESS=100 TAG=done SUMMARY="Done"');
+  await t.until(() => t.m.status().error === 'node');
+  assert.equal(t.m.status().state, 'failed');
+  assert.equal(t.m.socksPort(), 39111, 'sending works while the listener waits');
+  assert.ok(!t.sent.some(c => c.startsWith('ADD_ONION')));
+  up = true;
+  await t.until(() => t.m.status().state === 'publishing');
+  assert.ok(t.sent.some(c => c.startsWith('ADD_ONION')));
+  t.event('HS_DESC UPLOADED ' + ONION + ' UNKNOWN $A');
+  await t.until(() => t.m.status().state === 'ready');
+  await t.m.stop();
+});
+
+test('node: no network while waiting for the listener ends in network, not node', async () => {
+  const t = harness({ listener: () => false, timings: { listenerWaitMs: 20, stallMs: 150, backoffMs: [] } });
+  await t.m.start(START(walletDir(), { waitListener: true }));
+  await t.until(() => t.m.status().state === 'failed', 3000);
+  assert.equal(t.m.status().error, 'network');
+  assert.equal(t.m.socksPort(), 0);
+});
+
 test('a start for another wallet stops the first tor; the same wallet again is a no-op', async () => {
   const t = harness();
   const a = walletDir();

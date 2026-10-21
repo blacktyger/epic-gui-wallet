@@ -688,6 +688,7 @@ export default {
       err_clock: 'Zegar w Twoim komputerze źle chodzi. Tor wymaga prawidłowej godziny.',
       err_keys: 'Nie udało się utworzyć adresu Tor tego portfela.',
       err_listener: 'Tor jest włączony, ale odbiornik portfela przestał działać. Spróbuj ponownie.',
+      err_node: 'Dopóki Twój node nie odpowie, inni nie mogą Ci płacić przez Tor. Sprawdź Ustawienia › Node.',
       err_tor_off: 'Tor jest wyłączony. Włącz go, aby wysłać na ten adres.',
       err_other: 'Tor przestał działać. Spróbuj ponownie.',
       err_finalize_pending: 'Nie udało się dokończyć płatności ani jej anulować. Nadal oczekuje: anuluj ją w sekcji Aktywność, aby odblokować monety.',

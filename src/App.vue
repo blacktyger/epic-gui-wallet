@@ -300,6 +300,11 @@
       /* what our Epicbox listener does (walletService: its stdout, shared/epicboxListener.js) */
       this.emitter.on('epicbox.state', (st) => this.store.commit('epicbox', st));
       this.emitter.on('epicbox.event', (ev) => this.onEpicboxEvent(ev));
+      /* Tor's HTTP listener tried again while the node kept it down (walletService.retryTorListener) */
+      this.emitter.on('tor.listener', (res) => {
+        this.store.commit('httpListener', httpListenerState(res, this.configService.walletListenerPort));
+        if(res && res.success) this.store.commit('walletListenerService', true);
+      });
 
       /* after login, in the background: the HTTP listener, and Epicbox alongside (it waits for the node to sync) */
       this.emitter.on('app.startListeners', async () => {
@@ -888,7 +893,10 @@
 
           //sync_status as nodeHealth.js assessed it (at the network tip is synced); a node behind the tip
           //only gets the "N blocks behind" line, it holds back neither Epicbox nor sending
+          const wasSynced = window.nodeSynced;
           window.nodeSynced = !!(respNode.tip && respNode.tip.height > 0 && respNode.sync_status === 'no_sync');
+          //Tor waiting for the HTTP listener because of the node: try it now, not at the next 30 s retry
+          if(window.nodeSynced && !wasSynced && this.loggedIn) this.$walletService.retryTorListener();
 
           if(this.store.state.user.nodeInternal && this.configService.config.nodesynced == false){
             if(respNode.tip && respNode.tip.height > 0 && respNode.sync_status === 'no_sync'){

@@ -62,3 +62,20 @@ test('failures: no listener, no address', async () => {
   assert.equal(r.error, 'keys');
   assert.deepEqual(h.calls, ['listen', 'address']);
 });
+
+test('a listener the node keeps down: tor still starts (waitListener), the caller retries the listener', async () => {
+  const seen = [];
+  const r = await startTorFor({
+    walletId: 'A', isCurrent: () => true,
+    startListen: async () => ({ success: false, msg: 'node not synced' }),
+    torAddress: async () => ONION_A,
+    start: async (w, onion, opts) => { seen.push(opts); return { ok: true, status: { state: 'starting' } }; },
+    stop: async () => {}, stopPid: async () => {},
+  });
+  assert.equal(r.ok, true);
+  assert.equal(r.waitListener, true);
+  assert.deepEqual(seen, [{ waitListener: true }]);
+  //a listener up: no waiting
+  const r2 = await fake().run();
+  assert.equal(r2.waitListener, false);
+});

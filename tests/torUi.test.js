@@ -87,6 +87,9 @@ test('onionVerdict: what Send does with the recipient', () => {
   assert.equal(onionVerdict(GOOD, tor({ state: 'publishing' })), 'ok');
   assert.equal(onionVerdict(GOOD, tor({ state: 'ready' })), 'ok');
   assert.equal(onionVerdict(GOOD, tor({ state: 'failed' })), 'failed');
+  //tor runs, only the listener waits for the node: sending works
+  assert.equal(onionVerdict(GOOD, tor({ state: 'failed', error: 'node' })), 'ok');
+  assert.equal(onionVerdict(GOOD, tor({ state: 'failed', error: 'network' })), 'failed');
 });
 
 test('send steps map to their progress lines', () => {

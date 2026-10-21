@@ -175,6 +175,7 @@ export default {
     err_clock: 'Your computer\'s clock is off. Tor needs the correct time.',
     err_keys: 'Couldn\'t create this wallet\'s Tor address.',
     err_listener: 'Tor is on, but the wallet\'s receiver stopped. Try again.',
+    err_node: 'Others can\'t pay you over Tor until your node answers. Check Settings › Node.',
     err_tor_off: 'Tor is off. Turn it on to send to this address.',
     err_other: 'Tor stopped working. Try again.',
     err_finalize_pending: 'The payment couldn\'t be completed, and cancelling it failed too. It\'s still pending: cancel it in Activity to free your coins.',

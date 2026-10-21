@@ -688,6 +688,7 @@ export default {
       err_clock: 'Die Uhr deines Computers geht falsch. Tor braucht die richtige Uhrzeit.',
       err_keys: 'Die Tor-Adresse dieser Wallet konnte nicht erstellt werden.',
       err_listener: 'Tor ist an, aber der Empfänger der Wallet wurde beendet. Versuche es erneut.',
+      err_node: 'Andere können dich erst über Tor bezahlen, wenn dein Netzwerkknoten antwortet. Prüfe Einstellungen › Netzwerkknoten.',
       err_tor_off: 'Tor ist aus. Schalte es ein, um an diese Adresse zu senden.',
       err_other: 'Tor funktioniert nicht mehr. Versuche es erneut.',
       err_finalize_pending: 'Die Zahlung konnte nicht abgeschlossen und auch nicht abgebrochen werden. Sie ist noch offen: Brich sie unter Aktivität ab, um deine Coins freizugeben.',

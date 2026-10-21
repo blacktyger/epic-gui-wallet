@@ -688,6 +688,7 @@ export default {
       err_clock: 'Hodiny v počítači jdou špatně. Tor potřebuje správný čas.',
       err_keys: 'Adresu Tor této peněženky se nepodařilo vytvořit.',
       err_listener: 'Tor je zapnutý, ale příjem peněženky se zastavil. Zkuste to znovu.',
+      err_node: 'Ostatní vám nemohou platit přes Tor, dokud váš uzel neodpoví. Zkontrolujte Nastavení › Uzel.',
       err_tor_off: 'Tor je vypnutý. Zapněte ho, abyste mohli poslat na tuto adresu.',
       err_other: 'Tor přestal fungovat. Zkuste to znovu.',
       err_finalize_pending: 'Platbu se nepodařilo dokončit ani zrušit. Stále čeká: zrušte ji v Aktivitě, aby se vaše mince uvolnily.',
