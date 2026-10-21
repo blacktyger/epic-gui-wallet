@@ -34,6 +34,10 @@ function sourceStamp() {
     h.update(f);
     h.update(fs.readFileSync(path.join(ROOT, f)));
   }
+  //the Tor bundle (scripts/fetch-tor.mjs) is ignored by git but goes into the build: fetched later,
+  //the build is made again (names and sizes are enough: the fetch checks the hashes)
+  const bundle = path.join(ROOT, 'resources', 'bin', 'linux', 'tor-bundle');
+  for (const f of (fs.existsSync(bundle) ? fs.readdirSync(bundle).sort() : [])) h.update('tor-bundle/' + f + ':' + fs.statSync(path.join(bundle, f)).size);
   return h.digest('hex');
 }
 

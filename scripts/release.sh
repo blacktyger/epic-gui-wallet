@@ -63,6 +63,10 @@ WAIVE_ARGS=(); for w in "${WAIVE[@]}"; do WAIVE_ARGS+=(--waive "$w"); done
 cd "$SRC"
 log "npm ci"
 timeout 1800 npm ci --no-audit --no-fund
+# the pinned Tor Expert Bundle (resources/tor/tor-bundle.json) into resources/bin/<plat>/tor-bundle/; GPG
+# is required here (signature of sha256sums-signed-build.txt). Windows gets this verified copy below
+log "fetch the Tor bundle (GPG required)"
+timeout 1200 node scripts/fetch-tor.mjs --platform linux,win --gpg required || die "fetch-tor failed: nothing built"
 # the pre-build gate (scripts/test-gate.sh, docs/TESTING.md): lint, unit, IPC/preload contract, i18n,
 # component tests and the e2e smoke in a network-less sandbox. No binaries are built unless it passes
 [ -f scripts/test-gate.sh ] || die "$SHA has no scripts/test-gate.sh: release a commit that has the pre-build gate"
@@ -100,6 +104,9 @@ git clone -q --no-checkout $REPO src >> %LOG% 2>&1 || exit /b 11
 cd /d $WDIR\\src
 git checkout -q --detach $SHA >> %LOG% 2>&1 || exit /b 12
 for /f %%h in ('git rev-parse HEAD') do if not "%%h"=="$SHA" exit /b 13
+rem the Tor bundle fetched and GPG-verified on Linux (release.sh copied it to $WDIR\\tor-bundle)
+xcopy /e /i /y /q "$WDIR\\tor-bundle" resources\\bin\\win\\tor-bundle >> %LOG% 2>&1 || exit /b 17
+if not exist resources\\bin\\win\\tor-bundle\\tor.exe exit /b 17
 node -v >> %LOG% 2>&1
 call npm ci --no-audit --no-fund >> %LOG% 2>&1 || exit /b 14
 rem no npm test here: the suite's fixtures are POSIX paths (it runs on Linux, step 2)
@@ -111,6 +118,9 @@ EOF
   timeout 60 ssh -o BatchMode=yes "$WIN_HOST" "cmd /c \"if exist $WDIR (exit 1) else (mkdir $WDIR)\"" \
     || die "$WIN_HOST: $WDIR exists or can't be made (a build of this commit is there: remove it first)"
   timeout 120 scp -q -o BatchMode=yes "$CMD" "$WIN_HOST:$WDIR_FWD/build.cmd"
+  # the verified Tor bundle (Windows needs no gpg); build.cmd copies it into the fresh clone
+  timeout 300 scp -q -r -o BatchMode=yes "$SRC/resources/bin/win/tor-bundle" "$WIN_HOST:$WDIR_FWD/tor-bundle" \
+    || die "could not copy the Tor bundle to $WIN_HOST:$WDIR"
   set +e
   timeout 3600 ssh -o BatchMode=yes "$WIN_HOST" "cmd /c $WDIR\\build.cmd"
   WEXIT=$?
@@ -145,9 +155,21 @@ done
 
 ELECTRON="$(node -p "require('$SRC/node_modules/electron/package.json').version")"
 BUILDER="$(node -p "require('$SRC/node_modules/app-builder-lib/package.json').version")"
+TOR_JSON="$(node - "$SRC" <<'EOF'
+const [src] = process.argv.slice(2);
+const fs = require('fs'), path = require('path'), crypto = require('crypto');
+const p = require(path.join(src, 'resources/tor/tor-bundle.json'));
+const o = { bundleVersion: p.bundleVersion, tor: p.tor, files: {} };
+for (const plat of ['linux', 'win']) {
+  o.files[plat] = Object.fromEntries(Object.keys(p.platforms[plat].files).map((f) =>
+    [f, crypto.createHash('sha256').update(fs.readFileSync(path.join(src, 'resources/bin', plat, 'tor-bundle', f))).digest('hex')]));
+}
+console.log(JSON.stringify(o));
+EOF
+)"
 WIN_NODE="$(grep -m1 '^v[0-9]' "$OUT/windows-build.log" 2>/dev/null | tr -d '\r' || true)"
-node - "$OUT/manifest.json" "$VERSION" "$SHA" "$REPO" "$ELECTRON" "$BUILDER" "$(node -v)" "$WIN_NODE" "$FAILED" "${WAIVE[*]:-}" "${ENTRIES[@]}" <<'EOF'
-const [out, version, commit, repo, electron, builder, node, winNode, failed, waived, ...entries] = process.argv.slice(2);
+node - "$OUT/manifest.json" "$VERSION" "$SHA" "$REPO" "$ELECTRON" "$BUILDER" "$(node -v)" "$WIN_NODE" "$FAILED" "${WAIVE[*]:-}" "$TOR_JSON" "${ENTRIES[@]}" <<'EOF'
+const [out, version, commit, repo, electron, builder, node, winNode, failed, waived, torJson, ...entries] = process.argv.slice(2);
 const fs = require('fs');
 const path = require('path');
 const artifacts = entries.map((e) => {
@@ -160,7 +182,7 @@ const artifacts = entries.map((e) => {
     waived: waived ? waived.split(' ') : [] };
 });
 const m = { name: 'Epic GUI Wallet', version, commit, repo, builtAt: new Date().toISOString(),
-  electron, electronBuilder: builder, node: { linux: node, windows: winNode || null },
+  electron, electronBuilder: builder, tor: JSON.parse(torJson), node: { linux: node, windows: winNode || null },
   releaseBuild: failed === '0' && !waived, artifacts };
 fs.writeFileSync(out, JSON.stringify(m, null, 2) + '\n');
 EOF

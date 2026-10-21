@@ -822,6 +822,21 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.removeAllListeners('menu-lock');
       ipcRenderer.on('menu-lock', () => func());
     },
+    //Tor for the unlocked wallet (background.js, docs/plans/tor-616.md §4/§7): start(walletId, onion) →
+    //{ok, status} | {ok: false, error}; stop(), retry() → status; foreign(onion, method, params, isolation)
+    //→ {ok, result} | {ok: false, code, detail}; onStatus(func): one listener for every status change
+    tor: {
+      start: (walletId, onion) => ipcRenderer.invoke('tor-start', { walletId: String(walletId || ''), onion: String(onion || '') }),
+      //walletId: only that wallet's tor ('' : whatever runs, at lock and switch)
+      stop: (walletId) => ipcRenderer.invoke('tor-stop', { walletId: String(walletId || '') }),
+      retry: () => ipcRenderer.invoke('tor-retry'),
+      foreign: (onion, method, params, isolation) => ipcRenderer.invoke('tor-foreign', { onion: String(onion || ''), method: String(method || ''),
+        params: params === undefined ? [] : params, isolation: isolation === undefined ? undefined : String(isolation) }),
+      onStatus: (func) => {
+        ipcRenderer.removeAllListeners('tor-status');
+        ipcRenderer.on('tor-status', (_e, s) => func(s && typeof s === 'object' ? s : {}));
+      },
+    },
     //the window was minimized or hidden (true), or shown again (false): one listener (App.vue)
     onWindowHidden: (func) => {
       ipcRenderer.removeAllListeners('window-hidden');

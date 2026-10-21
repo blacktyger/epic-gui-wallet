@@ -2,10 +2,13 @@
 
 ## 6.1.6
 
-Looks and small fixes in the BT Labs Theme interface; Classic is unchanged.
+Tor is back, plus looks and small fixes in the BT Labs Theme interface; Classic is unchanged.
 
 **New**
 
+- Tor, rebuilt from the ground up (it was removed in 6.1.3 because it never worked with epic-wallet 4.x). Turn it on in Settings › Receiving › Tor (off by default, per wallet). Your wallet then gets a private .onion address: other wallets can pay you there without opening any ports, and you can send to theirs. Receive shows the Tor address only while Tor is on; Contacts keep a Tor address again; Send accepts one and offers "Turn on Tor" when it's off. Connecting takes about 15–30 seconds; progress and any problem are shown in plain words.
+- The wallet runs its own Tor 0.4.9.14 (Tor Expert Bundle 15.0.25), checked against Tor's signing key when the app is built, on private ports, so a Tor already running on your computer doesn't get in the way. Your Tor address is the same one the epic-wallet CLI shows and stays the same after a restore from your recovery phrase.
+- Over Tor, the wallet passes the transaction to the other wallet itself and then sends it to your node as usual. Epicbox, node checks and the built-in node don't use Tor.
 - Settings lists every section in its menu: Node, Receiving and Appearance are their own pages.
 - Settings › Node and Receiving: the node and the Epicbox server are each one field. Open it to pick from My nodes and the public nodes (with their status), or type an address: it is checked as you type, and ☆ keeps it in My nodes. A pick applies at once.
 - Epicbox says when its server isn't responding and offers the healthiest other server in one click. It never switches by itself. Send uses the same words.

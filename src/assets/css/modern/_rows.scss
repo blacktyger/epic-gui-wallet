@@ -103,7 +103,7 @@ html[data-ui='modern'] { --ctl-col: 224px; }
 
 /* the down notice (#52): one line and one button */
 .e-eb-down { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); padding: 10px var(--sp-3) 10px var(--sp-4); border-radius: var(--r-sm); background: var(--risk-soft); border: 1px solid color-mix(in srgb, var(--risk) 35%, transparent); font-size: var(--fs-sm); }
-.e-eb-down > span { flex: 1 1 260px; min-width: 0; }
+.e-eb-down > span:not(.e-st) { flex: 1 1 260px; min-width: 0; }
 .e-eb-down b { font-weight: 600; }
 .e-eb-down .e-btn { flex: none; }
 .e-set-row .e-eb-down { grid-column: 1 / -1; }
@@ -150,7 +150,7 @@ html[data-ui='modern'] { --ctl-col: 224px; }
 .e-sbA-row small.e-sync { color: var(--warn); }
 /* the hover card: to the right of the sidebar, never over the menu */
 .e-hcard {
-  position: absolute; z-index: 30; left: calc(100% + 10px); bottom: 0; width: 280px; padding: 10px 12px;
+  position: fixed; z-index: 60; left: 234px; bottom: 8px; width: 280px; padding: 10px 12px;
   background: var(--s4); border: 1px solid var(--line-strong); border-radius: var(--r-sm); box-shadow: var(--shadow-pop);
   display: grid; grid-template-columns: 10px 1fr; gap: 4px 10px; align-items: center;
   font-size: var(--fs-sm); color: var(--text);
@@ -169,5 +169,7 @@ html[data-ui='modern'] { --ctl-col: 224px; }
 .e-wlist-acts { display: flex; gap: var(--sp-1); }
 .e-wlist-acts .e-icon-btn { width: 40px; height: 40px; }
 .e-wlist-gap { width: 40px; flex: none; }
-/* the hover cards open over the main column: the sidebar paints above it */
-.e-side { position: relative; z-index: 5; }
+
+/* one status with its words: the dot stays on the first line, the words wrap beside it */
+.e-stg-meta.e-one { flex-wrap: nowrap; align-items: flex-start; }
+.e-stg-meta.e-one > .e-st { margin-top: 4px; }

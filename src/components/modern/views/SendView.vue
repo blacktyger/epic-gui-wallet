@@ -53,6 +53,12 @@
                   <span class="e-mono e-dim e-truncate" translate="no">{{ found.externalOne }}</span>
                 </button>
               </li>
+              <li v-if="found.onion">
+                <button type="button" class="e-found-item" @click="fillAddressField(found, 'onion')">
+                  <b>{{ found.name }}</b><span class="e-tag"><EIcon name="shield" />{{ $t('msg.modern.settings.tor.kind') }}</span>
+                  <span class="e-mono e-dim e-truncate" translate="no">{{ found.onion }}</span>
+                </button>
+              </li>
               <li v-if="found.externalTwo">
                 <button type="button" class="e-found-item" @click="fillAddressField(found, 'externalTwo')">
                   <b>{{ found.name }}</b><span class="e-tag"><EIcon name="web" />{{ $t('msg.modern.send.kind_http') }}</span>
@@ -62,12 +68,23 @@
             </template>
           </ul>
 
+          <!-- a Tor address: Tor off → Turn on Tor; on but not connected → where it stands, in place -->
+          <div v-if="torHint" class="e-send-tor" role="status" data-test="send-tor">
+            <template v-if="onionState == 'tor_off'">
+              <button type="button" class="e-btn e-btn-sm" data-test="send-tor-on" :class="{ 'e-is-busy': torTurning }" :aria-busy="torTurning ? 'true' : null" @click="turnOnTor"><EIcon name="shield" size="sm" />{{ $t('msg.modern.settings.tor.send_turn_on') }}</button>
+            </template>
+            <template v-else>
+              <span class="e-stg-meta"><span class="e-st" :class="torDot" aria-hidden="true"></span><span>{{ torHint }}</span></span>
+              <button v-if="onionState == 'failed'" type="button" class="e-btn e-btn-sm" data-test="send-tor-retry" @click="retryTor"><EIcon name="refresh" size="sm" />{{ $t('msg.modern.settings.tor.retry') }}</button>
+            </template>
+          </div>
+
           <p v-if="recipientKind" class="e-resolved">
             <template v-if="contact">
               <ContactAvatar :name="contact.name" :image="pickerAvatars[contact.id] || ''" size="sm" />
               <span><b>{{ contact.name }}</b> {{ $t('msg.modern.send.from_contacts') }}</span>
             </template>
-            <span class="e-tag" :class="{ 'e-gold': recipientKind == 'epicbox' }"><EIcon :name="kindIcon" />{{ $t('msg.modern.send.kind_' + recipientKind) }}</span>
+            <span class="e-tag" :class="{ 'e-gold': recipientKind == 'epicbox' }"><EIcon :name="kindIcon" />{{ kindText(recipientKind) }}</span>
             <span v-if="recipientKind == 'epicbox'" class="e-faint e-small">{{ $t('msg.modern.send.offline_ok') }}</span>
           </p>
         </div>
@@ -161,7 +178,7 @@
           </span>
         </dd>
         <dt>{{ $t('msg.modern.send.via') }}</dt>
-        <dd>{{ $t('msg.modern.send.via_' + rv.kind) }}</dd>
+        <dd>{{ rv.kind == 'tor' ? $t('msg.modern.settings.tor.via') : $t('msg.modern.send.via_' + rv.kind) }}</dd>
         <dt>{{ $t('msg.modern.send.fee') }}</dt>
         <dd class="e-mono"><MoneyText v-if="rv.fee > 0" :value="rv.fee" :decimals="rv.dec" unit /><template v-else>—</template></dd>
         <dt>{{ $t('msg.modern.send.total') }}</dt>
@@ -171,7 +188,7 @@
           <dd>{{ rv.message }}</dd>
         </template>
       </dl>
-      <p v-if="isLoadingSend" class="e-help e-send-sending" role="status"><span class="e-spinner" aria-hidden="true"></span>{{ $t('msg.modern.send.sending_status') }}</p>
+      <p v-if="isLoadingSend" class="e-help e-send-sending" role="status"><span class="e-spinner" aria-hidden="true"></span>{{ torStep ? $t(torStepKey) : $t('msg.modern.send.sending_status') }}</p>
     </template>
     <template #foot>
       <button type="button" class="e-btn e-btn-ghost" autofocus :disabled="isLoadingSend" @click="reviewOpen = false">{{ $t('msg.modern.send.back') }}</button>
@@ -203,6 +220,8 @@
   import { formatEpic, nodeSyncPercent } from '@/components/modern/format';
   import { epicToNano, nanoToEpic } from '@/shared/sendMath';
   import { isOnionAddress } from '@/shared/sendForm';
+  import { parseOnion } from '@/shared/onion';
+  import { torStatus, torSendStepKey } from '@/shared/torUi';
   import epicboxSwitch from '@/components/modern/epicboxSwitch';
   import EpicboxDownNotice from '@/components/modern/form/EpicboxDownNotice.vue';
 
@@ -246,6 +265,19 @@
     },
     computed: {
       locale() { return this.$i18n ? this.$i18n.locale : 'en'; },
+      //Send takes Tor addresses (shared/torUi.js)
+      torAware() { return true; },
+      torStepKey() { return torSendStepKey(this.torStep); },
+      /* the line under the field for a Tor address that cannot go yet, else '' */
+      torHint() {
+        const s = this.onionState;
+        if (s == 'tor_off') return this.$t('msg.modern.settings.tor.send_off');
+        if (this.torTurning) return this.$t('msg.modern.settings.tor.send_turning_on');
+        if (s != 'wait' && s != 'failed') return '';
+        const st = torStatus(this.store.state.tor);
+        return st ? this.$t(st.key, st.params) : '';
+      },
+      torDot() { return { busy: 'e-busy', ok: 'e-ok', warn: 'e-down' }[(torStatus(this.store.state.tor) || {}).tone] || 'e-off'; },
       /* what the user typed, as the Classic code sees it */
       toValue() { return ((this.addressField && this.addressField.input) || '').trim(); },
       /* the summary works in nanoepic (exact) and shows EPIC */
@@ -294,18 +326,19 @@
          field's error refuses) */
       recipientKind() {
         const v = this.toValue;
-        if (!v || isOnionAddress(v)) return '';
+        if (!v) return '';
+        if (isOnionAddress(v)) return parseOnion(v).valid ? 'tor' : '';
         if (this.epicboxSelected) return 'epicbox';
         if (/^https?:/i.test(v)) return 'http';
         return '';
       },
-      kindIcon() { return { epicbox: 'antenna', http: 'web' }[this.recipientKind] || 'web'; },
+      kindIcon() { return { epicbox: 'antenna', http: 'web', tor: 'shield' }[this.recipientKind] || 'web'; },
       /* the address book entry the field still holds the address of */
       contact() {
         const a = this.address;
         const v = this.toValue;
         if (!this.addressSelected || !a || !a.name || !v) return null;
-        return [a.externalOne, a.externalTwo].some(x => x && String(x).trim() === v) ? a : null;
+        return [a.externalOne, a.externalTwo, a.onion].some(x => x && String(x).trim() === v) ? a : null;
       },
       advState() {
         return this.$t('msg.modern.send.' + (this.dandelionOn ? 'adv_dandelion' : 'adv_none'));
@@ -315,6 +348,9 @@
       dec() { return Math.max(decimalsOf(this.amountField && this.amountField.input), decimalsOf(this.feeNum)); },
     },
     methods: {
+      kindText(kind) {
+        return kind == 'tor' ? this.$t('msg.modern.settings.tor.kind') : this.$t('msg.modern.send.kind_' + kind);
+      },
       clearError(field, key) {
         if (field && field.errors && field.errors[key]) field.errors[key] = null;
       },
@@ -336,10 +372,11 @@
         } finally {
           this.reviewing = false;
         }
-        valid.push(this.addressField.validInput());
+        valid.push(this.validAddress());
         if (valid.includes(false)) return;
-        const to = this.addressField.defaultValue;
-        const kind = (this.epicboxSelected) ? 'epicbox' : 'http';
+        const onion = isOnionAddress(this.addressField.defaultValue) ? parseOnion(this.addressField.defaultValue).host : '';
+        const to = onion || this.addressField.defaultValue;
+        const kind = onion ? 'tor' : (this.epicboxSelected) ? 'epicbox' : 'http';
         const amountNano = this.amountField.amountNano;
         const feeNano = this.amountField.feeNano > 0 ? this.amountField.feeNano : 0;
         const amount = nanoToEpic(amountNano);

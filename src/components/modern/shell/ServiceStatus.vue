@@ -3,13 +3,13 @@
        with one word; the details in a hover card; a click opens that service's Settings page. Nothing
        here is cut off at the 224 px sidebar: server names are only in the card. -->
   <div class="e-sbA">
-    <div v-for="row in rows" :key="row.key" class="e-sbA-wrap" :class="{ 'e-is-dismissed': dismissed == row.key }" @keydown.esc="dismissed = row.key" @mouseleave="dismissed = ''" @focusout="dismissed = ''">
+    <div v-for="row in rows" :key="row.key" class="e-sbA-wrap" :class="{ 'e-is-dismissed': dismissed == row.key }" @keydown.esc="dismissed = row.key" @mouseenter="place($event)" @focusin="place($event)" @mouseleave="dismissed = ''" @focusout="dismissed = ''">
       <button type="button" class="e-sbA-row" :data-test="'svc-' + row.key" :aria-label="row.open + ': ' + row.word" :aria-describedby="uid + '-' + row.key" @click="go(row.to)">
         <span class="e-st" :class="'e-' + row.glyph" aria-hidden="true"></span>
         <b>{{ row.name }}</b>
         <small :class="'e-' + row.glyph">{{ row.word }}</small>
       </button>
-      <div :id="uid + '-' + row.key" class="e-hcard" role="tooltip">
+      <div :id="uid + '-' + row.key" class="e-hcard" role="tooltip" :style="cardAt">
         <span class="e-st" :class="'e-' + row.glyph" aria-hidden="true"></span>
         <b>{{ row.name }} · {{ row.word }}</b>
         <small v-for="(line, i) in row.lines" :key="i" translate="no">{{ line }}</small>
@@ -24,6 +24,7 @@
   import { openSettingsSection } from '@/components/modern/settings/jump';
   import { nodeBadge, nodeBadgeText } from '@/components/modern/nodeBadge';
   import { httpShown } from '@/shared/httpListener';
+  import { torCardLine } from '@/shared/torUi';
   import epicboxSwitch from '@/components/modern/epicboxSwitch';
 
   let seq = 0;
@@ -37,7 +38,8 @@
     },
     data() {
       //Esc hides that row's card until the pointer or the focus leaves (WCAG 1.4.13)
-      return { uid: 'e-svc-' + (++seq), dismissed: '' };
+      //cardAt: where the card opens, next to its row (fixed: the sidebar scrolls, so it would clip it)
+      return { uid: 'e-svc-' + (++seq), dismissed: '', cardAt: null };
     },
     computed: {
       node() {
@@ -70,10 +72,12 @@
         if (h.state == 'off' && http == 'on') { glyph = 'ok'; word = t('msg.modern.svc_http_only_word'); }
         if (h.state == 'listening' && http == 'failed') glyph = 'sync';
         if (this.store.state.listenerStarting && h.state == 'off') { glyph = 'sync'; word = t('msg.modern.eb_connecting'); }
+        //Tor: one more line, only while it is on
+        const tor = torCardLine(this.store.state.tor, t);
+        const lines = tor ? [epicLine, httpLine, tor] : [epicLine, httpLine];
         return {
           key: 'rcv', name: t('msg.modern.svc_receiving'), to: { path: '/settings/receiving', hash: '#epicbox' }, open: t('msg.modern.svc_open_epicbox'),
-          glyph, word, lines: [epicLine, httpLine],
-          //tor: one more line here ("Tor: connected / starting"), only while Tor is on (6.1.6 Tor work)
+          glyph, word, lines,
         };
       },
       rows() {
@@ -81,6 +85,10 @@
       },
     },
     methods: {
+      place(e) {
+        const r = e.currentTarget.getBoundingClientRect();
+        this.cardAt = { left: Math.round(r.right + 10) + 'px', bottom: Math.max(8, Math.round(window.innerHeight - r.bottom)) + 'px' };
+      },
       go(to) {
         openSettingsSection(this.$router, to);
       },

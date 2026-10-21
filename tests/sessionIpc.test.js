@@ -116,3 +116,11 @@ test('review: the password needs a wallet dir; another window can neither ask no
   call('session-password-clear', other);
   assert.equal(session.has(), false);
 });
+
+test('6.1.6: the page can\'t start the one-shot onion key run (torkeys), not even with the session', () => {
+  const { call, started } = setup();
+  call('session-password-set', PASS, DIR);
+  const r = call('pty-start', { token: 't9', cmd: BIN, args: ['--offline_mode', '-t', DIR, '-c', DIR + '/tor-keys', 'listen', '--method', 'http'], kind: 'torkeys', password: 'x' });
+  assert.deepEqual(r, { ok: false, error: 'refused' });
+  assert.equal(started.length, 0);
+});

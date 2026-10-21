@@ -5,9 +5,7 @@
   <div v-if="health.state == 'down'" class="e-eb-down" role="status" data-test="epicbox-down-notice">
     <span class="e-st e-down" aria-hidden="true"></span>
     <span>
-      <b>{{ $t('msg.modern.eb_down_title') }}</b>
-      <template v-if="suggest"> {{ $t('msg.modern.eb_switch_q', { server: suggest.domain }) }}</template>
-      <template v-else> {{ $t('msg.modern.eb_down_wait') }}</template>
+      <b>{{ $t('msg.modern.eb_down_title') }}</b>{{ ' ' + (suggest ? $t('msg.modern.eb_switch_q', { server: suggest.domain }) : $t('msg.modern.eb_down_wait')) }}
     </span>
     <button v-if="suggest" type="button" class="e-btn e-btn-sm" data-test="epicbox-switch" :class="{ 'e-is-busy': busy }" :aria-busy="busy ? 'true' : null" :disabled="busy" @click="$emit('switch', suggest.domain)"><EIcon name="swap" />{{ $t('msg.modern.eb_switch') }}</button>
   </div>

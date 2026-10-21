@@ -162,7 +162,8 @@ test('a Tor address an older version kept in the HTTP field is shown but never o
 test('Contacts › Send passes only a contact id and a field name', () => {
   assert.deepEqual(sendQuery({ contact: '4', use: 'externalTwo' }), { id: 4, field: 'externalTwo' });
   assert.deepEqual(sendQuery({ contact: '4' }), { id: 4, field: null });
-  assert.deepEqual(sendQuery({ contact: '4', use: 'onion' }), { id: 4, field: null });
+  assert.deepEqual(sendQuery({ contact: '4', use: 'onion' }), { id: 4, field: 'onion' });
+  assert.deepEqual(sendQuery({ contact: '4', use: 'proofaddr' }), { id: 4, field: null });
   assert.equal(sendQuery({ contact: 'x' }), null);
   assert.equal(sendQuery({ contact: '-1' }), null);
   assert.equal(sendQuery({}), null);

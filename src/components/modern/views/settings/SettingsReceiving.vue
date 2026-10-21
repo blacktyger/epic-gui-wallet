@@ -34,22 +34,23 @@
           <div>
             <b id="stg-http-l">{{ $t('msg.modern.settings.http_l') }}</b>
             <p id="stg-http-h">{{ $t('msg.modern.settings.http_text') }}</p>
-            <p class="e-stg-meta" role="status">
+            <p class="e-stg-meta e-one" role="status">
               <template v-if="httpFailed"><span class="e-st e-down" aria-hidden="true"></span><span><b>{{ $t('msg.modern.send.rcv_http_failed') }}</b> {{ httpFailed.reason == 'port_in_use' ? $t('msg.modern.send.rcv_http_failed_port', { port: httpFailed.port }) : $t(httpFailed.reason == 'node' ? 'msg.modern.send.rcv_http_failed_node' : 'msg.modern.send.rcv_http_failed_error') }}</span></template>
-              <template v-else-if="httpOn"><span class="e-st e-ok" aria-hidden="true"></span><span>{{ $t('msg.modern.settings.http_on', { port: configService.walletListenerPort }) }}</span></template>
+              <template v-else-if="httpOn"><span class="e-st e-ok" aria-hidden="true"></span><span>{{ $t('msg.modern.settings.http_on', { port: configService.walletListenerPort }) }}<template v-if="torHoldsHttp"> · {{ $t('msg.modern.settings.tor.http_used') }}</template></span></template>
               <template v-else><span class="e-st e-off" aria-hidden="true"></span><span>{{ $t('msg.modern.settings.http_off') }}</span></template>
             </p>
             <label class="e-check"><input type="checkbox" data-test="http-autostart" :checked="httpAutostartOn" @change="(e) => saveHttpAutostart(e.target.checked)" />{{ $t('msg.modern.settings.http_auto_l') }}</label>
           </div>
           <div class="e-ctl">
             <label class="e-switch">
-              <input type="checkbox" data-test="http-switch" :checked="httpOn" :disabled="httpSwitching" :aria-busy="httpSwitching ? 'true' : null" aria-labelledby="stg-http-l" aria-describedby="stg-http-h" @change="httpSwitchChanged" />
+              <input type="checkbox" data-test="http-switch" :checked="httpOn" :disabled="httpSwitching || (torHoldsHttp && httpOn)" :aria-busy="httpSwitching ? 'true' : null" aria-labelledby="stg-http-l" aria-describedby="stg-http-h" @change="httpSwitchChanged" />
               <span class="e-track"></span>
             </label>
           </div>
         </div>
       </div>
-      <!-- tor: an "Advanced" group with the Tor row goes here (6.1.6 Tor work) -->
+      <!-- Tor (6.1.6): off by default, at the bottom (TorSettingsRow, docs/plans/tor-616.md §6) -->
+      <div class="e-set-list"><TorSettingsRow /></div>
     </section>
 
   </SettingsFrame>
@@ -60,6 +61,7 @@
   import EpicboxCombo from '@/components/modern/form/EpicboxCombo.vue';
   import EpicboxDownNotice from '@/components/modern/form/EpicboxDownNotice.vue';
   import SettingsFrame from '@/components/modern/settings/SettingsFrame.vue';
+  import TorSettingsRow from '@/components/modern/settings/TorSettingsRow.vue';
   import { jumpTo, JUMP_EVENT } from '@/components/modern/settings/jump';
   import httpListenerSwitch from '@/components/modern/httpListenerSwitch';
   import epicboxSwitch from '@/components/modern/epicboxSwitch';
@@ -68,7 +70,7 @@
      listener. Every control applies at once; there is no Save bar. */
   export default {
     name: 'SettingsReceiving',
-    components: { EpicboxCombo, EpicboxDownNotice, SettingsFrame },
+    components: { EpicboxCombo, EpicboxDownNotice, SettingsFrame, TorSettingsRow },
     mixins: [httpListenerSwitch, epicboxSwitch],
     setup() {
       return { store: useStore() };

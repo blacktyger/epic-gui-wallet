@@ -56,7 +56,7 @@
                 <b>{{ c.name }}</b>
                 <small class="e-con-row-addr" translate="no">{{ shortOf(c) }}</small>
               </span>
-              <span v-if="kindsOf(c).length" class="e-tag e-con-kind" :class="{ 'e-gold': kindsOf(c)[0] == 'epicbox' }">{{ $t('msg.contacts.kind_' + kindsOf(c)[0]) }}</span>
+              <span v-if="kindsOf(c).length" class="e-tag e-con-kind" :class="{ 'e-gold': kindsOf(c)[0] == 'epicbox' }">{{ kindTag(kindsOf(c)[0]) }}</span>
             </button>
           </li>
         </ul>
@@ -103,6 +103,12 @@
             <p v-if="errorOf('externalTwo')" id="con-f-ext-e" class="e-error-msg"><EIcon name="alertc" />{{ $t(errorOf('externalTwo')) }}</p>
             <p id="con-f-ext-h" class="e-help">{{ $t('msg.contacts.hint_http') }}</p>
           </div>
+          <!-- Tor: when Tor is on, or this contact already has a Tor address -->
+          <div v-if="onionShown" class="e-field" data-test="con-onion">
+            <label class="e-label" for="con-f-onion">{{ $t('msg.modern.settings.tor.address') }} <span class="e-opt">{{ $t('msg.contacts.optional') }}</span></label>
+            <input id="con-f-onion" v-model="onion" class="e-input e-mono" type="text" spellcheck="false" autocomplete="off" translate="no" dir="ltr" :aria-invalid="errorOf('onion') ? 'true' : null" :aria-describedby="errorOf('onion') ? 'con-f-onion-e' : null" @blur="touch('onion')" />
+            <p v-if="errorOf('onion')" id="con-f-onion-e" class="e-error-msg"><EIcon name="alertc" />{{ $t(errorOf('onion')) }}</p>
+          </div>
           <div class="e-field">
             <label class="e-label" for="con-f-note">{{ $t('msg.contacts.note') }} <span class="e-opt">{{ $t('msg.modern.settings.notice_optional') }}</span></label>
             <textarea id="con-f-note" v-model="notice" class="e-textarea" rows="3"></textarea>
@@ -128,9 +134,9 @@
         <div class="e-con-actions">
           <template v-if="selectedSendable.length">
             <div v-if="selectedSendable.length > 1" class="e-seg e-con-via" role="group" :aria-label="$t('msg.contacts.send_via')">
-              <button v-for="a in selectedSendable" :key="a.field" type="button" :aria-pressed="sendField == a.field ? 'true' : 'false'" @click="sendUse = a.field">{{ $t('msg.contacts.kind_' + a.kind) }}</button>
+              <button v-for="a in selectedSendable" :key="a.field" type="button" :aria-pressed="sendField == a.field ? 'true' : 'false'" @click="sendUse = a.field">{{ kindTag(a.kind) }}</button>
             </div>
-            <button type="button" class="e-btn e-btn-primary e-con-send" @click="sendTo(sendField)"><EIcon name="send" />{{ selectedSendable.length > 1 ? $t('msg.contacts.send_' + sendKind) : $t('msg.contacts.send') }}</button>
+            <button type="button" class="e-btn e-btn-primary e-con-send" @click="sendTo(sendField)"><EIcon name="send" />{{ selectedSendable.length > 1 ? sendLabel(sendKind) : $t('msg.contacts.send') }}</button>
           </template>
           <div class="e-con-more">
             <button type="button" class="e-btn e-btn-ghost" @click="edit()"><EIcon name="pencil" />{{ $t('msg.edit') }}</button>
@@ -140,10 +146,10 @@
 
         <dl class="e-con-facts">
           <div v-for="a in selectedAddresses" :key="a.field">
-            <dt><EIcon :name="a.kind == 'epicbox' ? 'antenna' : 'web'" size="sm" />{{ $t('msg.contacts.' + a.kind + '_address') }}</dt>
+            <dt><EIcon :name="a.kind == 'epicbox' ? 'antenna' : a.kind == 'tor' ? 'shield' : 'web'" size="sm" />{{ kindName(a.kind) }}</dt>
             <dd class="e-addr">
               <code translate="no"><template v-if="a.kind == 'epicbox' && addressParts(a.address).mid"><span class="e-hl">{{ addressParts(a.address).head }}</span>{{ addressParts(a.address).mid }}<span class="e-hl">{{ addressParts(a.address).tail }}</span>{{ addressParts(a.address).rest }}</template><template v-else>{{ a.address }}</template></code>
-              <button type="button" class="e-btn e-btn-ghost e-btn-sm e-con-copy" :class="{ 'e-is-copied': copied == a.field }" :aria-label="$t('msg.modern.settings.copy_field', { what: $t('msg.contacts.' + a.kind + '_address') })" @click="copy(a.address, a.field)">
+              <button type="button" class="e-btn e-btn-ghost e-btn-sm e-con-copy" :class="{ 'e-is-copied': copied == a.field }" :aria-label="$t('msg.modern.settings.copy_field', { what: kindName(a.kind) })" @click="copy(a.address, a.field)">
                 <EIcon :name="copied == a.field ? 'check' : 'copy'" size="sm" /><span aria-hidden="true">{{ copied == a.field ? $t('msg.contacts.copied') : $t('msg.contacts.copy') }}</span>
               </button>
             </dd>
@@ -189,6 +195,7 @@
   import EDialog from '@/components/modern/ui/EDialog.vue';
   import ContactAvatar from '@/components/ContactAvatar.vue';
   import ContactTx from '@/components/modern/activity/ContactTx.vue';
+  import { showOnionField } from '@/shared/torUi';
   import { addressParts } from '@/components/modern/format';
 
   export default reskin(AddressBook, {
@@ -196,8 +203,24 @@
     data() {
       return { sendUse: '' };
     },
-    methods: { addressParts },
+    methods: {
+      addressParts,
+      //the short kind word (row tag, "Send using" toggle) and the Send button: Tor's keys are in the tor block
+      kindTag(kind) {
+        return kind == 'tor' ? this.$t('msg.modern.settings.tor.kind') : this.$t('msg.contacts.kind_' + kind);
+      },
+      sendLabel(kind) {
+        return kind == 'tor' ? this.$t('msg.modern.settings.tor.menu_send') : this.$t('msg.contacts.send_' + kind);
+      },
+      kindName(kind) {
+        return kind == 'tor' ? this.$t('msg.modern.settings.tor.address') : this.$t('msg.contacts.' + kind + '_address');
+      },
+    },
     computed: {
+      //Tor addresses are contacts' addresses (the Send, search and copy helpers include the onion column)
+      torAware() { return true; },
+      //the Tor field: Tor is on, or this contact already has a Tor address
+      onionShown() { return showOnionField(this.store.state.tor, { onion: this.onion }); },
       /* the sort toggle and the count only earn their place in a long list */
       longList() {
         return this.addressList.length > 6;

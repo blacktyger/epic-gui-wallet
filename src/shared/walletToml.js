@@ -224,3 +224,19 @@ export function walletMarkerText({ id, label, network, createdAt, dataDir, confi
   ];
   return lines.join(eol) + eol;
 }
+
+/*
+ * The toml of the one-shot onion key run (tor-616 §4, walletArgs.torKeysArgs): the wallet's own
+ * toml rendered for <configDir>/tor-keys (its secret and log there), changed only where the run
+ * needs it: [tor] use_tor_listener = true with our tor's SOCKS port (so epic-wallet starts no tor of
+ * its own), and a free api_listen_port (the wallet's listener may hold its usual one). The main
+ * toml keeps use_tor_listener = false.
+ */
+export function renderTorKeysToml({ template, network, keysDir, dataDir, nodeUrl, socksPort, listenPort }) {
+  const socks = Number(socksPort), port = Number(listenPort);
+  if (!Number.isInteger(socks) || socks < 1 || socks > 65535) throw new Error('torkeys toml needs the SOCKS port');
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('torkeys toml needs a listen port');
+  let t = renderWalletToml({ template, network, configDir: keysDir, dataDir, nodeUrl, nodeApiSecretPath: '' });
+  t = setTomlKeys(t, 'wallet', { api_listen_port: port });
+  return setTomlKeys(t, 'tor', { use_tor_listener: true, socks_proxy_addr: '127.0.0.1:' + socks, send_config_dir: keysDir });
+}

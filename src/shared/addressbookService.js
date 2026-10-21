@@ -40,8 +40,8 @@ class AddressbookService extends BaseService {
 
     /* the wallet's contacts that contain value (plain text, any case): searched here, not by a JsStore
        'like' (which makes a RegExp of the text and looks at every wallet's contacts) */
-    async findAddress(user_id, value) {
-        return searchContacts(await this.getAddress(user_id), value);
+    async findAddress(user_id, value, opts) {
+        return searchContacts(await this.getAddress(user_id), value, opts);
     }
 
     getAddressById(id) {

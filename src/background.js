@@ -24,6 +24,12 @@ import { portOffset, ownerApiPort } from './shared/testPorts'
 import { createSupport, intakeResult } from './shared/supportReport'
 import { SUPPORT_PUBLIC_KEY, supportUrl } from './shared/supportKey'
 import { sanitizeText, KNOWN_PUBLIC_HOSTS } from './shared/logSanitize'
+import { createTorManager } from './shared/torManager'
+import { ensureOnionKey, KEYS_DIR } from './shared/torKeys'
+import { torTimingsFromEnv } from './shared/torTestTimings'
+import { checkForeignRequest, foreignCall } from './shared/torForeign'
+import { parseOnion } from './shared/onion'
+import { networkPorts } from './shared/walletToml'
 
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -184,11 +190,88 @@ const ptyHost = createPtyHost({
   env: process.env,
 });
 
+/* ---- Tor (docs/plans/tor-616.md): the open wallet's own tor, run by this process (shared/torManager.js) ----
+   The bundle is in resources/bin/<platform>/tor-bundle (scripts/fetch-tor.mjs); without it the
+   state is failed: missing. Paths and ports come from the wallet's record in settings.json, never
+   from the page. */
+const isWin = process.platform === 'win32';
+const binPlatform = isWin ? 'win' : process.platform === 'darwin' ? (process.arch === 'arm64' ? 'macsilicon' : 'mac') : 'linux';
+const torBundleDir = path.join(bundledBinDir, binPlatform, 'tor-bundle');
+const nodeNet = require('net');
+const nodeCrypto = require('crypto');
+function torBin(){
+  const f = path.join(torBundleDir, isWin ? 'tor.exe' : 'tor');
+  try { return fs.statSync(f).isFile() ? f : ''; } catch (e) { return ''; }
+}
+/* does something answer on 127.0.0.1:port (the wallet's HTTP listener) */
+function portAnswers(port){
+  return new Promise((resolve) => {
+    const s = nodeNet.connect({ host: '127.0.0.1', port });
+    const done = (ok) => { s.destroy(); resolve(ok); };
+    s.setTimeout(3000, () => done(false));
+    s.once('connect', () => done(true));
+    s.once('error', () => done(false));
+  });
+}
+function freePort(){
+  return new Promise((resolve, reject) => {
+    const srv = nodeNet.createServer();
+    srv.once('error', reject);
+    srv.listen(0, '127.0.0.1', () => { const p = srv.address().port; srv.close(() => resolve(p)); });
+  });
+}
+/* a wallet as settings.json records it, or null */
+function walletRecord(walletId){
+  try {
+    const s = JSON.parse(fs.readFileSync(appLayout.settingsFile, 'utf8'));
+    const w = (Array.isArray(s && s.wallets) ? s.wallets : []).find(x => x && x.id === walletId);
+    if (!w || typeof w.configDir !== 'string' || typeof w.dataDir !== 'string' || !path.isAbsolute(w.configDir)
+      || !path.isAbsolute(w.dataDir) || !['mainnet', 'floonet', 'usernet'].includes(w.network)) return null;
+    return w;
+  } catch (e) {
+    return null;
+  }
+}
+const torManager = createTorManager({
+  spawn, connect: (o) => nodeNet.connect(o), fs, join: path.join,
+  sha512: (b) => nodeCrypto.createHash('sha512').update(b).digest(),
+  kill, record: (pid, cmd, args) => ownProcesses.record(pid, cmd, args), forget: (pid) => ownProcesses.forget(pid),
+  torBin, libDir: torBundleDir, win: isWin, ownerPid: process.pid, checkPort: portAnswers, env: process.env,
+  //test runs only (EPIC_GUI_TEST=1): shorter watchdogs for the e2e gate; {} otherwise
+  timings: torTimingsFromEnv(process.env),
+  onStatus: (s) => { if (win && !win.isDestroyed()) win.webContents.send('tor-status', s); },
+  log: { info: (m) => log.info(m), warn: (m) => log.warn(m) },
+});
+
+/* what a one-shot key run (shared/torKeys.js) left after a crash: its epic-wallet (recorded, role
+   listen in <configDir>/tor-keys; quit stops it with the other listeners) and its toml with
+   use_tor_listener = true. walletId: only that wallet's, else every wallet's (the app's start) */
+async function cleanTorKeysLeftovers(walletId){
+  let wallets = [];
+  try {
+    const s = JSON.parse(fs.readFileSync(appLayout.settingsFile, 'utf8'));
+    wallets = (Array.isArray(s && s.wallets) ? s.wallets : []).filter(w => w && typeof w.configDir === 'string'
+      && path.isAbsolute(w.configDir) && (!walletId || w.id === walletId));
+  } catch (e) { /* no settings yet */ }
+  for (const w of wallets) {
+    const keysDir = path.join(w.configDir, KEYS_DIR);
+    try {
+      const left = await ownProcesses.list(['listen'], { dir: keysDir });
+      if (left.length) {
+        await ownProcesses.stop(left);
+        log.info('tor keys: stopped a leftover key run ' + left.map(p => p.pid).join(', '));
+      }
+    } catch (e) { /* the scan failed */ }
+    try { fs.unlinkSync(path.join(keysDir, 'epic-wallet.toml')); } catch (e) { /* not there */ }
+  }
+}
+
 /* on quit: stop the wallet, listener (and the short-lived one that checks an old Epicbox server),
-   scan and node processes the app started, except the node when it runs in the background, and a
-   Tor an older version's listener left. Nothing the app did not start. */
+   scan and node processes the app started, except the node when it runs in the background, the
+   wallet's tor, and a Tor an older version's listener left. Nothing the app did not start. */
 async function stopOwnProcesses(){
   sessionSecret.wipe();
+  await torManager.stop().catch(() => {});
   const roles = ['owner_api', 'listen', 'scan', 'epicbox',
     ...(noderuninbackground ? [] : ['node'])];
   try{
@@ -318,6 +401,8 @@ async function createWindow() {
 
   //a reload (the interface switch) or a crashed renderer: that session is over
   wipeWithWindow(win.webContents, sessionSecret);
+  //and its tor: the page that turned it on is gone
+  for (const e of ['did-navigate', 'render-process-gone', 'destroyed']) win.webContents.on(e, () => { torManager.stop().catch(() => {}); });
 
   //minimized or hidden: the page polls the node less (shared/nodePoll.js). The window's own events,
   //because the page's document.hidden does not change on every desktop (Linux: QA lanes, some WMs)
@@ -457,6 +542,7 @@ app.on('ready', async (event) => {
   //a temp copy of an old profile that couldn't be removed at quit (Windows file locks: the reading
   //session holds its leveldb until the app exits); a scan waits for this, so a retry never meets a new copy
   leftoverImportCleanup = cleanLeftoverImport({ fs, path, root: appLayout.root, log: (m) => log.info(m) }).catch(() => false);
+  cleanTorKeysLeftovers().catch(() => {});
   //console.log('app', noderuninbackground);
   console.log('noderuninbackground', noderuninbackground);
 
@@ -784,6 +870,68 @@ ipcMain.handle('open-folder', async (event, dir) => {
   }
   const err = await shell.openPath(target);
   return !err;
+});
+
+/* Tor for the unlocked wallet (docs/plans/tor-616.md §4):
+     tor-start {walletId, onion}: only the wallet whose password the session holds; its dirs, network
+       and listener port from settings.json; the onion from the page (get_public_proof_address), which
+       only selects which of the wallet's own key files is used (torManager checks the key is that
+       onion's). → {ok, status} | {ok: false, error}
+     tor-stop {walletId} (only that wallet's tor; '' any), tor-retry → status; 'tor-status' events carry every change
+     tor-foreign {onion, method, params, isolation}: check_version / receive_tx to the onion's
+       /v2/foreign over the wallet's tor (shared/torForeign.js) → {ok, result} | {ok: false, code, detail} */
+ipcMain.handle('tor-start', async (event, req) => {
+  if (!fromAppWindow(event) || !req || typeof req !== 'object') return { ok: false, error: 'refused' };
+  const wallet = walletRecord(String(req.walletId || ''));
+  if (!wallet) return { ok: false, error: 'no wallet' };
+  if (!sessionSecret.has() || path.resolve(sessionSecret.dir()) !== path.resolve(wallet.dataDir)) return { ok: false, error: 'locked' };
+  const onion = parseOnion(req.onion);
+  if (!onion.valid) return { ok: false, error: 'invalid' };
+  //a tor this wallet's earlier session left (a crash): it holds the data dir's lock
+  try {
+    const left = (await ownProcesses.list(['tor'], { dir: wallet.configDir })).filter(p => p.pid !== torManager.pid());
+    if (left.length) {
+      await ownProcesses.stop(left);
+      log.info('tor: stopped a leftover tor ' + left.map(p => p.pid).join(', '));
+    }
+  } catch (e) { /* the scan failed: tor says so itself if its data dir is busy */ }
+  await cleanTorKeysLeftovers(wallet.id).catch(() => {});
+  const settings = wallet.settings || {};
+  const nodeUrl = /^https?:\/\//.test(String(settings.check_node_api_http_addr || '')) ? settings.check_node_api_http_addr : '';
+  let template = '';
+  try { template = fs.readFileSync(path.join(bundledBinDir, '..', 'epic-wallet.toml'), 'utf8'); } catch (e) { /* keys fail with the reason */ }
+  const status = await torManager.start({
+    walletId: wallet.id, configDir: wallet.configDir, dataDir: wallet.dataDir, onion: onion.host,
+    listenerPort: networkPorts(wallet.network).walletListener,
+    ensureKey: ({ socksPort, signal }) => ensureOnionKey({ ptyHost, password: () => sessionSecret.copy(), signal,
+      record: (pid, cmd, args) => ownProcesses.record(pid, cmd, args), forget: (pid) => ownProcesses.forget(pid),
+      bin: path.join(bundledBinDir, binPlatform, isWin ? 'epic-wallet.exe' : 'epic-wallet'), fs, join: path.join, freePort,
+      template, wallet: { network: wallet.network, configDir: wallet.configDir, dataDir: wallet.dataDir, nodeUrl }, onion: onion.host, socksPort,
+      log: (m) => log.info(m) }),
+  });
+  return { ok: true, status };
+});
+ipcMain.handle('tor-stop', async (event, req) => {
+  if (!fromAppWindow(event)) return null;
+  //a late stop of a wallet that is no longer open leaves the open one's tor alone
+  return torManager.stop({ walletId: String((req && req.walletId) || '') });
+});
+ipcMain.handle('tor-retry', async (event) => {
+  if (!fromAppWindow(event)) return null;
+  return torManager.retry();
+});
+ipcMain.handle('tor-foreign', async (event, req) => {
+  if (!fromAppWindow(event)) return { ok: false, code: 'refused', detail: '' };
+  if (!sessionSecret.has()) return { ok: false, code: 'tor_off', detail: 'locked' };
+  const r = checkForeignRequest(req);
+  if (r.error) return { ok: false, code: r.error === 'invalid' ? 'invalid' : 'refused', detail: r.error };
+  const started = Date.now();
+  const res = await foreignCall({ connect: (o) => nodeNet.connect(o), socksPort: torManager.socksPort(), onion: r.onion, body: r.body,
+    user: r.user || 'epic-' + nodeCrypto.randomBytes(8).toString('hex') });
+  //the method and the outcome only: never the slate, never the address
+  log.info('tor: ' + req.method + ' ' + (res.ok ? 'answered' : 'failed: ' + res.code + (res.detail ? ' (' + res.detail + ')' : ''))
+    + ' in ' + ((Date.now() - started) / 1000).toFixed(1) + ' s');
+  return res;
 });
 
 //a node API call for the page (shared/nodeFetch.js; what may be sent: shared/security.js
