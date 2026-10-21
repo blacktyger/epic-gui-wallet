@@ -71,3 +71,13 @@ Use `H.runCase(name, async (t) => { ... })`, `t.step(name, fn, { fatal, knownBug
 log a password or recovery words: create passwords with `H.newPassword()`, add words with
 `H.addSecrets`; every case checks its own output for them. Files here must not be named `*.test.js`
 (that is `npm test`'s pattern).
+
+## 6.1.6 Settings and Contacts (notes for spec authors)
+
+Settings is split: `/settings` (Node), `/settings/receiving`, `/settings/appearance`; nothing has a Save bar.
+`lib/ui.js`: `typeNodeAddress` types key by key into `[data-test=node-combo]` (the live-check row appears in
+`[data-test=node-list]`), `saveNode` presses Enter and checks the field (host form) and, given `t`, the stored
+address in settings.json; `setNode` fills and applies in one go; `setLanguage` uses Settings › Appearance.
+Contacts: a row only selects; Send (Epicbox, or HTTP by the `.e-con-via` choice), Edit and Delete are in the detail
+panel. Sidebar: `[data-test=svc-node]` and `[data-test=svc-rcv]`. The Tor spec needs the tor bundle in the build
+(`node scripts/fetch-tor.mjs --platform linux`).

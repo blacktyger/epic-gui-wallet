@@ -1,7 +1,6 @@
 /*
  * Contacts (6.1.6), Modern only (Classic is no longer tested): add (with live checks), a contact's own picture (made safe:
- * re-encoded, metadata gone, an SVG refused), edit, search, sort, copy, a click on a contact opens
- * Send on it, the row's … menu (also by keyboard), the Send screen's picker (tester item #38), delete. No node is needed: nothing is sent.
+ * re-encoded, metadata gone, an SVG refused), edit, search, sort, copy, a click on a contact selects it, its detail has Send (Epicbox, or HTTP by the choice), Edit and Delete, the Send screen's picker (tester item #38), delete. No node is needed: nothing is sent.
  * E2E_CONTACT_SHOTS=1 also takes the screenshots for the release notes (desktop and a narrow
  * window at 150 % text; Modern also light), in the case's shots/ folder.
  */
@@ -57,18 +56,16 @@ H.runCase('contacts', async (t) => {
 
   const size = (width, height) => t.app.evaluate(({ BrowserWindow }, [a, b]) => { const win = BrowserWindow.getAllWindows()[0]; win.setSize(a, b); }, [width, height]);
   const shot = async (name) => { if (SHOTS) { await w.waitForTimeout(350); await t.screenshot(name); } };
-  //a row sends; its details are the first item of its … menu
+  //6.1.6: a row selects the contact; Send, Edit and Delete are in the detail panel (no … menu)
   const item = (name) => w.locator(m ? '.e-con-item' : '.cbook-item').filter({ has: w.locator('b', { hasText: name }) }).first();
   //a narrow window shows the list or one contact: back to the list first
   const listUp = async () => { const b = w.getByRole('button', { name: 'All contacts' }); if (await b.count() && await b.first().isVisible()) { await b.first().click(); await w.waitForTimeout(200); } };
-  const menuPick = async (name, i) => {
+  const openRow = async (name) => {
     await listUp();
-    await item(name).locator('.rmenu-btn').click();
-    const items = item(name).locator('[role=menuitem]');
-    await (typeof i === 'number' ? items.nth(i) : items.filter({ hasText: i }).first()).click();
+    await item(name).locator(row).click();
+    await w.locator('.e-con-actions').waitFor({ timeout: 5000 });
     await w.waitForTimeout(200);
   };
-  const openRow = (name) => menuPick(name, 0);
   const toValue = () => w.locator('input[placeholder="Recipient\'s address"], input[placeholder*="address" i]').first().inputValue();
 
   await t.step('first start: Welcome', () => U.welcome(w), { fatal: true });
@@ -149,7 +146,7 @@ H.runCase('contacts', async (t) => {
 
   await t.step('the detail: copy says so', async () => {
     await openRow('Mara O. Okafor');
-    await w.getByRole('button', { name: 'Copy Epicbox address' }).first().click();
+    await w.getByRole('button', { name: /^Copy .*Epicbox/i }).first().click();
     await U.waitText(w, /Copied/, 3000);
     const clip = await t.app.evaluate(({ clipboard }) => clipboard.readText());
     if (clip !== BOX_MARA) throw new Error('clipboard: ' + clip.slice(0, 20));
@@ -157,20 +154,19 @@ H.runCase('contacts', async (t) => {
     return 'Epicbox address on the clipboard';
   });
 
-  await t.step('search and sort', async () => {
+  await t.step('search', async () => {
     const q = w.locator(`#${p}-q`);
     await q.fill('lumen');
     await w.waitForTimeout(200);
     const one = await U.contactNames(w, ui);
     if (one.join() !== 'Café Lumen') throw new Error('search lumen: ' + one.join(', '));
     await q.fill('');
-    if (m) await w.getByRole('button', { name: 'Recent' }).click();
-    else await w.locator('#cb-sort').selectOption('recent');
     await w.waitForTimeout(200);
-    //no transactions yet: by recent falls back to the names
-    const recent = await U.contactNames(w, ui);
-    if (recent.join() !== 'Café Lumen,Juno Reyes,Mara O. Okafor') throw new Error('recent: ' + recent.join(', '));
-    return 'search: ' + one.join(', ') + '; sorted by recent: ' + recent.join(', ');
+    //the sort toggle is only there with more than 6 contacts (tests/components/contacts.spec.js has it): three are listed by name
+    if (await w.locator('.e-con-sort').count()) throw new Error('a sort toggle with 3 contacts');
+    const all = await U.contactNames(w, ui);
+    if (all.join() !== 'Café Lumen,Juno Reyes,Mara O. Okafor') throw new Error('list: ' + all.join(', '));
+    return 'search: ' + one.join(', ') + '; all: ' + all.join(', ');
   });
 
   if (SHOTS) {
@@ -197,36 +193,37 @@ H.runCase('contacts', async (t) => {
     }
   }
 
-  await t.step('a click on a contact: Send opens with its Epicbox address; its … menu: Send via HTTP', async () => {
-    await item('Mara O. Okafor').locator(row).click();
+  await t.step('a click selects a contact; its Send opens Send with the Epicbox address, HTTP by the choice above it', async () => {
+    await openRow('Mara O. Okafor');
+    if (/httpSend/.test(await U.route(w))) throw new Error('a click on a row went to Send');
+    if ((await item('Mara O. Okafor').locator(row).getAttribute('aria-current')) !== 'true') throw new Error('the row is not marked selected');
+    await w.locator('.e-con-send').click();
     await H.waitFor(async () => /httpSend/.test(await U.route(w)), { timeout: 5000 });
     const v = await H.waitFor(async () => { const x = await toValue(); return x || null; }, { timeout: 5000 });
     if (v !== BOX_MARA) throw new Error('recipient: ' + v);
     await shot('send-prefilled');
     await U.nav(w, ui, U.PAGES[ui].find((x) => x[1] === '/addressBook'));
     await w.waitForTimeout(300);
-    await item('Mara O. Okafor').locator('.rmenu-btn').click();
-    await shot('row-menu');
-    await item('Mara O. Okafor').locator('[role=menuitem]', { hasText: 'Send via HTTP' }).click();
+    await openRow('Mara O. Okafor');
+    await shot('detail-send');
+    await w.locator('.e-con-via button', { hasText: 'HTTP' }).click();
+    await w.locator('.e-con-send').click();
     const h = await H.waitFor(async () => { const x = await toValue(); return x === HTTP_MARA ? x : null; }, { timeout: 5000 });
     if (!h) throw new Error('recipient: ' + (await toValue()));
-    return 'Epicbox by the row, HTTP from the menu';
+    return 'Epicbox by Send, HTTP by the choice';
   });
 
-  await t.step('the … menu by keyboard: Enter opens it, ↓ moves, Esc closes back to the button', async () => {
+  await t.step('keyboard: a row takes Enter to select, the detail\'s Send is reachable by Tab', async () => {
     await U.nav(w, ui, U.PAGES[ui].find((x) => x[1] === '/addressBook'));
     await w.waitForTimeout(300);
-    const btn = item('Juno Reyes').locator('.rmenu-btn');
+    const btn = item('Juno Reyes').locator(row);
     await btn.focus();
     await w.keyboard.press('Enter');
-    const first = await w.evaluate(() => document.activeElement && document.activeElement.getAttribute('role') + ':' + document.activeElement.textContent.trim());
-    if (first !== 'menuitem:Details') throw new Error('focus after Enter: ' + first);
-    await w.keyboard.press('ArrowDown');
-    await w.keyboard.press('Escape');
-    const back = await w.evaluate(() => document.activeElement && document.activeElement.className);
-    if (!/rmenu-btn/.test(back)) throw new Error('focus after Esc: ' + back);
-    if (await item('Juno Reyes').locator('[role=menu]').count()) throw new Error('the menu stayed open');
-    return 'Details first, Esc back to the … button';
+    if (!(await H.waitFor(async () => (await btn.getAttribute('aria-current')) === 'true', { timeout: 3000 }))) throw new Error('Enter did not select the row');
+    await w.locator('.e-con-send').focus();
+    const on = await w.evaluate(() => document.activeElement && document.activeElement.className);
+    if (!/e-con-send/.test(on)) throw new Error('Send is not focusable: ' + on);
+    return 'Enter selects; Send focusable';
   });
 
   await t.step('Send › the contact button: choose Juno, the recipient is filled (item #38)', async () => {
@@ -250,8 +247,7 @@ H.runCase('contacts', async (t) => {
   if (SHOTS && m) {
     await t.step('Persian (right to left): Contacts and the picker', async () => {
       //Settings › Language (its save needs a reachable node: the stub first)
-      await U.typeNodeAddress(w, ui);
-      await U.saveNode(w, ui);
+      await U.setNode(w, ui);
       await U.setLanguage(w, ui, 'fa');
       //the sidebar by its links (the labels are Persian now)
       await w.locator('a[href="/addressBook"]').first().click();
@@ -276,8 +272,8 @@ H.runCase('contacts', async (t) => {
     await shot('delete');
     await w.getByRole('button', { name: 'Keep contact' }).click();
     if (!(await U.contactNames(w, ui)).includes('Café Lumen')) throw new Error('Keep deleted it');
-    //this time from the row's … menu
-    await menuPick('Café Lumen', 'Delete');
+    //then really
+    await w.locator('.e-con-del').first().click();
     await w.locator(m ? 'dialog[open]' : '.modal.is-active').getByRole('button', { name: 'Delete contact' }).click();
     const n = await H.waitFor(async () => { const x = await U.contactNames(w, ui); return x.length === 2 ? x : null; }, { timeout: 5000 });
     if (!n) throw new Error('still listed: ' + (await U.contactNames(w, ui)).join(', '));

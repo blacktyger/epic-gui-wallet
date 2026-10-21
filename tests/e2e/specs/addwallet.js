@@ -3,12 +3,12 @@
 /*
  * Adding wallets (tester item #34), Modern (Classic is frozen and no longer tested). Every way of adding lists a NEW wallet;
  * none replaces the open one. After each, the open wallet locks (its epic-wallet stops) and Unlock
- * opens with the new wallet chosen. Settings › This wallet › Open wallet folder opens the open
+ * opens with the new wallet chosen. Settings › This wallet › Open folder opens the open
  * wallet's own folder.
  *
  *   Welcome: the three ways; Advanced › App data folder (short line, the rest folded)
  *   A: Welcome › Create a new wallet -> Unlock chooses A -> unlock
- *   Settings › This wallet › Open wallet folder -> <HOME>/.epic-gui/wallets/w1 (shell.openPath stubbed)
+ *   Settings › This wallet › Open folder -> <HOME>/.epic-gui/wallets/w1 (shell.openPath stubbed)
  *   B: Settings › All wallets › Create a new wallet -> A's epic-wallet stopped, Unlock chooses B; A still unlocks
  *   C: Unlock › Add a wallet › Restore from recovery phrase (A's words) -> a new wallet, Unlock chooses C
  *   Add an existing wallet › From a wallet folder: A's own folder is refused ("already in the list");
@@ -89,17 +89,21 @@ H.runCase('addwallet', async (t) => {
   const seedA = path.join(recA.dataDir, 'wallet_data', 'wallet.seed');
   const seedHashA = sha(seedA);
 
-  /* ---- Settings › This wallet › Open wallet folder ---- */
-  await t.step('Settings › This wallet › Open wallet folder opens <HOME>/.epic-gui/wallets/w1', async () => {
+  /* ---- Settings › This wallet › Open folder ---- */
+  await t.step('Settings › This wallet › Open folder opens <HOME>/.epic-gui/wallets/w1', async () => {
     await t.app.evaluate(({ shell }) => { global.__opened = []; shell.openPath = async (p) => { global.__opened.push(p); return ''; }; });
     await thisWallet();
     await shot('settings-this-wallet');
     if (await U.clickable(w, 'Create a new wallet').count()) throw new Error('Settings › This wallet offers to add a wallet');
-    await w.getByRole('button', { name: 'Open wallet folder' }).first().click({ timeout: 10000 });
+    await w.locator('button[data-open=wallet]').click({ timeout: 10000 });   //6.1.6: "Open folder" on the wallet's row
     const opened = await H.waitFor(() => t.app.evaluate(() => global.__opened.slice()).then((o) => (o.length ? o : null)), { timeout: 5000 });
     const want = path.join(home, '.epic-gui', 'wallets', 'w1');
     if (!opened || opened.length !== 1 || opened[0] !== want || recA.dataDir !== want) throw new Error(`opened ${JSON.stringify(opened)}, want ${want} (record ${recA.dataDir})`);
-    return 'opened ' + opened[0].replace(home, '~');
+    //the copy icon next to it: the path on the clipboard
+    await w.getByRole('button', { name: /^Copy path: / }).first().click({ timeout: 5000 });
+    const clip = await H.waitFor(() => t.app.evaluate(({ clipboard }) => clipboard.readText()).then((x) => (x === want ? x : null)), { timeout: 4000 });
+    if (!clip) throw new Error('the copy button did not put ' + want + ' on the clipboard');
+    return 'opened ' + opened[0].replace(home, '~') + '; copy icon copies it';
   });
 
   /* ---- B: Settings › All wallets › Create ---- */

@@ -44,18 +44,7 @@ H.runCase('tor', async (t) => {
   await t.step('create a wallet', () => U.createWallet(w, ui, password), { fatal: true, timeout: 150000 });
   await t.step('the first-unlock tour can be skipped', () => U.skipTour(w, ui));
   //the HTTP listener Tor needs checks the node first: the stub node, not the default one on the internet
-  //(Settings › Node is one combobox since the Settings split: type the address, Enter applies it)
-  await t.step('Settings › Node: the stub node', async () => {
-    if (await U.route(w) !== '/settings') await w.locator('aside a[href="/settings"], nav a[href="/settings"]').first().click();
-    const input = w.locator('#stg-node-in');
-    await input.waitFor({ state: 'visible', timeout: 10000 });
-    await input.fill(U.NODE_URL);
-    await input.press('Enter');
-    const online = () => w.locator('[data-test=svc-node]').innerText().then((x) => (/Online/.test(x) ? x.replace(/\s+/g, ' ') : null)).catch(() => null);
-    const said = await H.waitFor(online, { timeout: 45000, interval: 300 });
-    if (!said) throw new Error('the sidebar never says the node is online');
-    return 'node ' + U.NODE_URL + ': ' + said;
-  }, { fatal: true, timeout: 90000 });
+  await t.step('Settings › Node: the stub node', () => U.setNode(w, ui, U.NODE_URL, t), { fatal: true, timeout: 90000 });
 
   const row = () => w.locator('[data-test=tor-row]');
   const sw = () => row().locator('[data-test=tor-switch]');

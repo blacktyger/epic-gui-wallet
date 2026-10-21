@@ -1,6 +1,6 @@
 // e2e-ui: modern
 /*
- * Sidebar links (Modern, tester item #37): Node and Receiving open Settings › General at #node /
+ * Sidebar links (Modern, tester item #37): Node and Receiving open Settings › Node at #node / Receiving at
  * #epicbox (scrolled, flashed, focus inside), the wallet row opens Settings › Wallet, by click and by
  * keyboard, from another page and with Settings already open; Lock stays a lock button.
  */
@@ -16,7 +16,7 @@ H.runCase('sidebar', async (t) => {
   await t.step('create a wallet', () => U.createWallet(w, ui, password), { fatal: true, timeout: 150000 });
   await t.step('the first-unlock tour can be skipped', () => U.skipTour(w, ui));
 
-  const svc = (name) => w.locator('button.e-svc', { hasText: name }).first();
+  const svc = (name) => w.locator(name === 'Node' ? '[data-test=svc-node]' : '[data-test=svc-rcv]');
   const wallet = () => w.locator('a.e-account-link').first();
   const active = () => w.evaluate(() => document.activeElement && (document.activeElement.id || document.activeElement.tagName));
   const hash = () => w.evaluate(() => location.pathname + location.hash);
@@ -28,17 +28,17 @@ H.runCase('sidebar', async (t) => {
   };
   const scrolled = async (id) => w.evaluate((i) => { const r = document.getElementById(i).getBoundingClientRect(); return r.top >= -2 && r.top < window.innerHeight; }, id);
 
-  await t.step('labels: "Open node settings", "Open Epicbox settings", "Open wallet settings"', async () => {
+  await t.step('labels: "Open node settings", "Open Receiving settings", "Open wallet settings"', async () => {
     const a = [await svc('Node').getAttribute('aria-label'), await svc('Receiving').getAttribute('aria-label'), await wallet().getAttribute('aria-label')];
-    if (!/^Open node settings/.test(a[0]) || !/^Open Epicbox settings/.test(a[1]) || !/^Open wallet settings/.test(a[2])) throw new Error(JSON.stringify(a));
+    if (!/^Open node settings/.test(a[0]) || !/^Open Receiving settings/.test(a[1]) || !/^Open wallet settings/.test(a[2])) throw new Error(JSON.stringify(a));
     return a.join(' | ');
   });
 
-  await t.step('click Receiving from another page: Settings › General#epicbox, Epicbox field focused, section flashing', async () => {
+  await t.step('click Receiving from another page: Settings › Receiving#epicbox, its heading focused, section flashing', async () => {
     await U.nav(w, ui, U.PAGES.modern.find((p) => p[1] === '/activity'));
     await svc('Receiving').click();
-    await expectFocus('stg-relay', 'Receiving');
-    if (await hash() !== '/settings#epicbox') throw new Error(await hash());
+    await expectFocus('stg-rcv-h', 'Receiving');
+    if (await hash() !== '/settings/receiving#epicbox') throw new Error(await hash());
     if (!await flashing()) throw new Error('no highlight');
     if (!await scrolled('stg-sec-epicbox')) throw new Error('section not in view');
     await w.waitForTimeout(400);
@@ -51,11 +51,11 @@ H.runCase('sidebar', async (t) => {
     if (await hash() !== '/settings#node') throw new Error(await hash());
     await w.evaluate(() => { document.querySelector('#e-main').scrollTop = 99999; document.activeElement.blur(); });
     await svc('Receiving').click();
-    await expectFocus('stg-relay', 'Receiving (Settings open)');
+    await expectFocus('stg-rcv-h', 'Receiving (Settings open)');
     if (!await scrolled('stg-sec-epicbox')) throw new Error('section not in view');
     await w.evaluate(() => { document.querySelector('#e-main').scrollTop = 0; document.activeElement.blur(); });
     await svc('Receiving').click();   //the very same hash again
-    await expectFocus('stg-relay', 'Receiving (same hash again)');
+    await expectFocus('stg-rcv-h', 'Receiving (same hash again)');
     return 'ok';
   });
 
@@ -63,7 +63,7 @@ H.runCase('sidebar', async (t) => {
     await U.nav(w, ui, U.PAGES.modern.find((p) => p[1] === '/activity'));
     await svc('Receiving').focus();
     await w.keyboard.press('Enter');
-    await expectFocus('stg-relay', 'Receiving by Enter');
+    await expectFocus('stg-rcv-h', 'Receiving by Enter');
     await w.evaluate(() => document.activeElement.blur());
     await svc('Node').focus();
     await w.keyboard.press('Space');
@@ -90,7 +90,7 @@ H.runCase('sidebar', async (t) => {
     await w.emulateMedia({ reducedMotion: 'reduce' });
     await U.nav(w, ui, U.PAGES.modern.find((p) => p[1] === '/activity'));
     await svc('Receiving').click();
-    await expectFocus('stg-relay', 'Receiving');
+    await expectFocus('stg-rcv-h', 'Receiving');
     const anim = await w.evaluate(() => getComputedStyle(document.querySelector('.e-jump-flash')).animationName);
     await w.emulateMedia({ reducedMotion: 'no-preference' });
     if (anim !== 'none') throw new Error('animation ' + anim);
