@@ -17,7 +17,7 @@ function fake(over = {}) {
     lockOutputs: async (s) => { calls.push(['tx_lock_outputs', s]); return over.lock ? over.lock(s) : ok(null); },
     finalize: async (s) => { calls.push(['finalize_tx', s]); return over.finalize ? over.finalize(s) : ok({ id: 'slate-1', tx: { kernel: 'k' } }); },
     post: async (tx, fluff) => { calls.push(['post_tx', tx, fluff]); return over.post ? over.post(tx) : ok(null); },
-    cancel: async (id) => { calls.push(['cancel_tx', id]); return ok(null); },
+    cancel: async (id) => { calls.push(['cancel_tx', id]); return over.cancel ? over.cancel(id) : ok(null); },
   };
   const foreign = async (method, params) => {
     calls.push(['foreign ' + method, params]);
@@ -101,6 +101,19 @@ test('a failed finalize cancels the transaction by slate id', async () => {
   assert.deepEqual([r.code, r.slateId], ['finalize', 'slate-1']);
   assert.deepEqual(f.calls.at(-1), ['cancel_tx', 'slate-1']);
   assert.ok(!f.calls.some(c => c[0] === 'post_tx'));
+});
+
+test('a failed finalize whose cancel fails too: finalize_pending, the tx is still pending in Activity', async () => {
+  let f = fake({ finalize: () => ({ jsonrpc: '2.0', result: { Err: 'bad signature' } }), cancel: () => ({ jsonrpc: '2.0', result: { Err: 'TransactionDoesntExist' } }) });
+  let r = await f.run();
+  assert.deepEqual([r.ok, r.code, r.slateId], [false, 'finalize_pending', 'slate-1']);
+  assert.match(r.detail, /bad signature.*; cancel: .*TransactionDoesntExist/);
+  f = fake({ finalize: () => ({ jsonrpc: '2.0', result: { Err: 'x' } }), cancel: async () => { throw new Error('owner API gone'); } });
+  r = await f.run();
+  assert.equal(r.code, 'finalize_pending');
+  f = fake({ finalize: () => ({ jsonrpc: '2.0', result: { Err: 'x' } }), cancel: () => false });
+  r = await f.run();
+  assert.equal(r.code, 'finalize_pending', 'no answer is no cancel');
 });
 
 test('a failed post keeps the transaction (no cancel) and says why', async () => {

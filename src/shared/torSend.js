@@ -65,6 +65,8 @@ function recipientError(envelope) {
  *   txData: the init_send_tx args (send_args and target_slate_version are set here)
  *   onStep(step): 'connecting' | 'signing' | 'posting'
  * → {ok: true, slate, slateId} | {ok: false, code, detail, slateId?}
+ *   code finalize: cancelled after a failed finalize; finalize_pending: the cancel failed too, the
+ *   transaction is still pending in Activity
  */
 export async function sendOverTor({ api, foreign, torReady, txData, onion, fluff = true, onStep = () => {} }) {
   const p = parseOnion(onion);
@@ -93,7 +95,9 @@ export async function sendOverTor({ api, foreign, torReady, txData, onion, fluff
 
   const [final, finErr] = okOf(await api.finalize(theirs));
   if (!final) {
-    await api.cancel(slateId);
+    //the cancel can fail too: then the outputs stay locked and the user must cancel it in Activity
+    const [, cancelErr] = okOf(await Promise.resolve(api.cancel(slateId)).catch((e) => ({ error: { message: (e && e.message) || 'failed' } })));
+    if (cancelErr) return { ok: false, code: 'finalize_pending', detail: finErr + '; cancel: ' + cancelErr, slateId };
     return { ok: false, code: 'finalize', detail: finErr, slateId };
   }
 

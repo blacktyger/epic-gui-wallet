@@ -61,7 +61,7 @@ test('torStatus: the row line for each state', () => {
 });
 
 test('error codes: a message of their own, else err_other', () => {
-  for (const c of ['unreachable', 'invalid', 'broken', 'auth', 'not_epic', 'too_old', 'refused', 'finalize', 'post', 'missing', 'start', 'network', 'clock', 'keys', 'listener', 'publish', 'tor_off']) {
+  for (const c of ['unreachable', 'invalid', 'broken', 'auth', 'not_epic', 'too_old', 'refused', 'finalize', 'finalize_pending', 'post', 'missing', 'start', 'network', 'clock', 'keys', 'listener', 'publish', 'tor_off']) {
     assert.equal(torErrorKey(c), 'msg.modern.settings.tor.err_' + c);
   }
   assert.equal(torErrorKey('???'), 'msg.modern.settings.tor.err_other');

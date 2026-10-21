@@ -12,7 +12,7 @@ import { isOnionAddress } from './sendForm.js';
 const MSG = 'msg.modern.settings.tor.';
 
 /* the error codes (§5/§6) that have a message of their own; others get err_other */
-const ERROR_CODES = ['create', 'unreachable', 'invalid', 'broken', 'auth', 'not_epic', 'too_old', 'refused', 'finalize', 'post', 'missing', 'start', 'network', 'clock', 'keys', 'listener', 'publish', 'tor_off'];
+const ERROR_CODES = ['create', 'unreachable', 'invalid', 'broken', 'auth', 'not_epic', 'too_old', 'refused', 'finalize', 'finalize_pending', 'post', 'missing', 'start', 'network', 'clock', 'keys', 'listener', 'publish', 'tor_off'];
 
 export function torPhase(tor) {
   if (!tor || !tor.enabled) return 'off';

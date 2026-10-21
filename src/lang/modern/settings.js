@@ -177,6 +177,7 @@ export default {
     err_listener: 'Tor is on, but the wallet\'s receiver stopped. Try again.',
     err_tor_off: 'Tor is off. Turn it on to send to this address.',
     err_other: 'Tor stopped working. Try again.',
+    err_finalize_pending: 'The payment couldn\'t be completed, and cancelling it failed too. It\'s still pending: cancel it in Activity to free your coins.',
     err_publish: 'Tor is connected, but your Tor address couldn\'t be published. Check your internet connection and try again.',
     send_typo: 'This Tor address has a typo.',
     send_off: 'Turn on Tor to send to this address.',
