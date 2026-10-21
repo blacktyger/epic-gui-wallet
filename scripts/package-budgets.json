@@ -1,4 +1,5 @@
 {
-  "linux": { "artifact": 161000000, "extracted": 383000000, "asar": 9000000 },
-  "win": { "artifact": 153500000, "extracted": 483000000, "asar": 9000000 }
+  "note": "6.1.6: Tor Expert Bundle 15.0.25 in bin/<plat>/tor-bundle/ adds extracted 10531653 (linux) / 10259077 (win) bytes, measured; artifact +4.4 MB linux / +3.9 MB win is the xz/gzip size of those files plus a margin (not yet measured on a real build: tighten after the first release build)",
+  "linux": { "artifact": 165400000, "extracted": 393600000, "asar": 9000000 },
+  "win": { "artifact": 157400000, "extracted": 493300000, "asar": 9000000 }
 }
