@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { REFRESH_CALL_TIMEOUT } from '@/shared/walletSync';
 import { parseEpicboxToml, normalizeEpicbox, sameServer, serverUrl, serverFromUrl, ownerApiEpicboxParams, withEpicboxSection, epicboxSwitchPlan } from '@/shared/epicboxConfig';
-import { createOldServerCheck, oldServerCheckStep, CHECK_TIMES } from '@/shared/epicboxListener';
+import { createOldServerCheck, oldServerCheckStep, CHECK_TIMES, nodeNotReadyStart, NODE_RETRY } from '@/shared/epicboxListener';
 import { EPICBOX_CHECK_DIR, isEpicboxCheckDir } from '@/shared/processOwnership';
 import { ownerApiArgs, listenArgs, epicboxArgs as buildEpicboxArgs, initArgs, statusMessageText, OWNER_API_START_DIR } from '@/shared/walletArgs';
 import { walletApiOrigin, isWalletApiUrl } from '@/shared/security';
@@ -654,7 +654,17 @@ class WalletService {
       }
       await this.stopEpicboxChecks();
       this.epicboxState({state: 'starting', server: serverUrl(cfg), address: ''});
-      const res = await this.spawnEpicbox({server: serverUrl(cfg), timeoutMs: 45000});
+      let res = await this.spawnEpicbox({server: serverUrl(cfg), timeoutMs: 45000});
+      //it asks the node once, at its start, and exits on "syncing" (a synced node may say so for a
+      //moment: 6.1.5 rig, after a server switch): started again a few times
+      for(let i = 1; i < NODE_RETRY.tries && nodeNotReadyStart(res); i++){
+        console.log('[epicbox] listener stopped at its start: node not ready; again in ' + NODE_RETRY.delayMs / 1000 + ' s (' + i + '/' + (NODE_RETRY.tries - 1) + ')');
+        await new Promise((resolve) => setTimeout(resolve, NODE_RETRY.delayMs));
+        if(session !== this.epicboxSession){
+          return {success: false, cancelled: true};
+        }
+        res = await this.spawnEpicbox({server: serverUrl(cfg), timeoutMs: 45000});
+      }
       const pid = res && res.pid ? Number(res.pid) : 0;
       if(res && res.success && pid > 0){
         this.walletIsEpicbox = true;

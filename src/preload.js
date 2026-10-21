@@ -223,6 +223,8 @@ async function startEpicboxListener(cmd, args, meta = {}){
             else if(ev.type == 'subscribed'){ live.state = 'listening'; }
             else if(ev.type == 'paused'){ live.state = 'paused'; }
             else if(ev.type == 'disconnected'){ live.state = 'disconnected'; }
+            //it exits now (shared/epicboxListener.js nodeNotReadyStart): said before its exit does
+            else if(ev.type == 'node_not_ready'){ done({success: false, msg: 'node not synced'}); }
             emitEpicbox(Object.assign({pid, dir, check}, ev, {url: ev.url || live.url}));
           }
 
