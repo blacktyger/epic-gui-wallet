@@ -4,7 +4,7 @@
  * onion recipient. Pure functions, no Vue: unit-tested in tests/torUi.test.js.
  *
  * store.state.tor: { enabled, state: 'off'|'starting'|'publishing'|'ready'|'failed', progress,
- *                    onion: '' | '<56>.onion', error: '' | code, detail }
+ *                    onion: '' | '<56>.onion', error: '' | code, detail, step: '' | 'wallet', retrying }
  */
 import { parseOnion } from './onion.js';
 import { isOnionAddress } from './sendForm.js';
@@ -12,7 +12,7 @@ import { isOnionAddress } from './sendForm.js';
 const MSG = 'msg.modern.settings.tor.';
 
 /* the error codes (§5/§6) that have a message of their own; others get err_other */
-const ERROR_CODES = ['create', 'unreachable', 'invalid', 'broken', 'auth', 'not_epic', 'too_old', 'refused', 'finalize', 'finalize_pending', 'post', 'missing', 'start', 'network', 'clock', 'keys', 'listener', 'publish', 'tor_off'];
+const ERROR_CODES = ['create', 'unreachable', 'invalid', 'broken', 'auth', 'not_epic', 'too_old', 'refused', 'finalize', 'finalize_pending', 'post', 'missing', 'start', 'network', 'clock', 'keys', 'listener', 'publish', 'tor_off', 'node'];
 
 export function torPhase(tor) {
   if (!tor || !tor.enabled) return 'off';
@@ -37,7 +37,10 @@ export function torErrorText(t, code, detail) {
 export function torStatus(tor) {
   switch (torPhase(tor)) {
     case 'off': return null;
-    case 'starting': return { tone: 'busy', key: MSG + 'connecting', params: { n: torPercent(tor) } };
+    case 'starting':
+      if (tor.step === 'wallet') return { tone: 'busy', key: MSG + 'waiting_wallet', params: {} };
+      if (tor.retrying) return { tone: 'busy', key: MSG + 'retrying', params: { n: torPercent(tor) } };
+      return { tone: 'busy', key: MSG + 'connecting', params: { n: torPercent(tor) } };
     case 'publishing': return { tone: 'busy', key: MSG + 'publishing', params: {} };
     case 'ready': return { tone: 'ok', key: MSG + 'ready', params: {} };
     default: return { tone: 'warn', key: torErrorKey(tor.error), params: { msg: tor.detail || '', detail: tor.detail || '' } };
@@ -67,7 +70,8 @@ export function onionVerdict(text, tor) {
   if (!parseOnion(text).valid) return 'typo';
   const phase = torPhase(tor);
   if (phase === 'off') return 'tor_off';
-  if (phase === 'failed') return 'failed';
+  //node: tor is up but the listener waits for the node; sending works
+  if (phase === 'failed') return tor.error === 'node' ? 'ok' : 'failed';
   return phase === 'publishing' || phase === 'ready' ? 'ok' : 'wait';
 }
 

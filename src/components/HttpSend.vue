@@ -486,7 +486,10 @@ export default {
           user_id: this.store.state.user.id,
           slateid: res.slate && res.slate.id,
           type: 'tor',
-          address: this.address ? this.address.id : null
+          address: this.address ? this.address.id : null,
+          //the onion itself (Activity shows it, txDisplay.whoOf): a column outside the schema, which
+          //JsStore stores and returns as is, so the database version and older versions are unaffected
+          tor_address: onion
         });
         this.$toast.success(this.$t("msg.httpSend.success"));
         clearSendForm(this);

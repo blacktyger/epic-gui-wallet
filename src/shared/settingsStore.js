@@ -59,6 +59,10 @@ export const WALLET_DEFAULTS = Object.freeze({
   //Tor (docs/plans/tor-616.md, D5): receive and send at the wallet's .onion address; off by default.
   //While on, the HTTP listener runs too (D6). Added in 6.1.6 without a schema change
   tor_enabled: false,
+  //the wallet's onion ('<56>.onion') once known: derived from the wallet's key, so it never changes.
+  //Tor starts with it at once instead of waiting for get_public_proof_address (behind a scan after a
+  //restore that takes minutes); checked against the wallet in the background (walletService.startTor)
+  tor_onion: '',
 });
 
 /*

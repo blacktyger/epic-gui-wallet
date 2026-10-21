@@ -27,6 +27,8 @@ test('torrc: auto ports, extended errors, isolation, cookie, owner pid; quoted p
     '__OwningControllerProcess 4242',
     'Log notice stdout',
     'AvoidDiskWrites 1',
+    'GeoIPFile "/w/c 1/tor/geoip"',
+    'GeoIPv6File "/w/c 1/tor/geoip6"',
     '',
   ].join('\n'));
   const wrc = buildTorrc({ paths: torPaths('C:\\Users\\A B\\w1', path.win32.join), ownerPid: 1 });
@@ -141,7 +143,7 @@ test('a start that reaches ready: starting with progress → publishing → read
   t.event('HS_DESC UPLOADED ' + ONION + ' UNKNOWN $AAAA~relay');
   await t.until(() => t.m.status().state === 'ready');
   assert.deepEqual(t.statuses.map(s => s.state).filter((s, i, a) => s !== a[i - 1]), ['starting', 'publishing', 'ready']);
-  assert.deepEqual(t.m.status(), { walletId: 'w1', state: 'ready', progress: 100, onion: ONION + '.onion', error: '', detail: '' });
+  assert.deepEqual(t.m.status(), { walletId: 'w1', state: 'ready', progress: 100, onion: ONION + '.onion', error: '', detail: '', retrying: false });
 
   //the command sequence and the key
   const key = Buffer.from(expandSeed(Buffer.from(SEED, 'hex'), sha512)).toString('base64');
@@ -199,8 +201,11 @@ test('stopped: tor dying after the bootstrap is restarted with the backoff', asy
   t.event('HS_DESC UPLOADED ' + ONION + ' UNKNOWN $A');
   await t.until(() => t.m.status().state === 'ready');
   t.procs[0].exit(1);
-  await t.until(() => t.m.status().state === 'failed');
-  assert.equal(t.m.status().error, 'stopped');
+  //an automatic restart follows: starting (retrying), the error only in the log
+  await t.until(() => t.logs.some(l => l.includes('failed, stopped')));
+  assert.equal(t.m.status().state, 'starting');
+  assert.equal(t.m.status().retrying, true);
+  assert.ok(!t.statuses.some(s => s.state === 'failed'), 'no error shown for a restart');
   await t.until(() => t.spawned.length === 2);
   await t.until(() => t.sent.filter(c => c.startsWith('ADD_ONION')).length === 2);
   await t.m.stop();
@@ -221,8 +226,9 @@ test('publish: no descriptor upload within the publish time fails and restarts',
   await t.until(() => t.logs.some(l => l.includes('onion service added')));
   t.event('STATUS_CLIENT NOTICE BOOTSTRAP PROGRESS=100 TAG=done SUMMARY="Done"');
   await t.until(() => t.m.status().state === 'publishing');
-  await t.until(() => t.m.status().state === 'failed');
-  assert.equal(t.m.status().error, 'publish');
+  await t.until(() => t.logs.some(l => l.includes('failed, publish')));
+  assert.equal(t.m.status().state, 'starting');
+  assert.equal(t.m.status().retrying, true);
   await t.until(() => t.spawned.length === 2);
   await t.m.stop();
   //an upload in time clears it
@@ -294,6 +300,10 @@ test('network: stuck progress fails, restarts with backoff, then stays failed; T
   await new Promise(r => setTimeout(r, 150));
   assert.equal(t.spawned.length, 4, 'three restarts (5 s, 30 s, 2 min), then it stays failed');
   assert.equal(t.m.status().error, 'network');
+  assert.equal(t.m.status().retrying, false);
+  //the restarts were starting (retrying), never failed: only the last one shows the error
+  assert.deepEqual(t.statuses.filter(s => s.state === 'failed').length, 1);
+  assert.ok(t.statuses.some(s => s.state === 'starting' && s.retrying));
   await t.m.retry();
   await t.until(() => t.spawned.length === 5);
   await t.m.stop();
@@ -360,6 +370,34 @@ test('listener: not running at the start, or stops later', async () => {
   up = false;
   await t.until(() => t.m.status().state === 'failed');
   assert.equal(t.m.status().error, 'listener');
+});
+
+test('node: with waitListener, tor bootstraps without the listener (sending works), shows node, and adds the onion once the listener answers', async () => {
+  let up = false;
+  const t = harness({ listener: () => up, timings: { listenerWaitMs: 20 } });
+  await t.m.start(START(walletDir(), { waitListener: true }));
+  await t.until(() => t.logs.some(l => l.includes('sending only')));
+  //before the bootstrap: still starting (the bootstrap's own progress or network error is what counts)
+  assert.equal(t.m.status().state, 'starting');
+  t.event('STATUS_CLIENT NOTICE BOOTSTRAP PROGRESS=100 TAG=done SUMMARY="Done"');
+  await t.until(() => t.m.status().error === 'node');
+  assert.equal(t.m.status().state, 'failed');
+  assert.equal(t.m.socksPort(), 39111, 'sending works while the listener waits');
+  assert.ok(!t.sent.some(c => c.startsWith('ADD_ONION')));
+  up = true;
+  await t.until(() => t.m.status().state === 'publishing');
+  assert.ok(t.sent.some(c => c.startsWith('ADD_ONION')));
+  t.event('HS_DESC UPLOADED ' + ONION + ' UNKNOWN $A');
+  await t.until(() => t.m.status().state === 'ready');
+  await t.m.stop();
+});
+
+test('node: no network while waiting for the listener ends in network, not node', async () => {
+  const t = harness({ listener: () => false, timings: { listenerWaitMs: 20, stallMs: 150, backoffMs: [] } });
+  await t.m.start(START(walletDir(), { waitListener: true }));
+  await t.until(() => t.m.status().state === 'failed', 3000);
+  assert.equal(t.m.status().error, 'network');
+  assert.equal(t.m.socksPort(), 0);
 });
 
 test('a start for another wallet stops the first tor; the same wallet again is a no-op', async () => {

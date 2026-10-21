@@ -2,10 +2,13 @@
 /*
  * Tor (6.1.6, docs/plans/tor-616.md §10) in the no-network sandbox: off by default with no tor
  * process; Settings › Receiving › Tor on starts the bundled tor, which can't reach the network and
- * ends in the `network` error within the test-shortened stall time (EPIC_GUI_TEST=1 +
- * EPIC_GUI_TEST_TOR_*_MS, shared/torTestTimings.js; the backoff is long, so it stays failed);
- * Try again starts over and fails the same way; Tor off leaves no tor process; Lock with Tor on
- * leaves no tor process. Needs the bundle in the build: `node scripts/fetch-tor.mjs --platform linux`.
+ * ends in the `network` error after the test-shortened stall time and its automatic restarts
+ * (EPIC_GUI_TEST=1 + EPIC_GUI_TEST_TOR_*_MS, shared/torTestTimings.js; meanwhile "trying again", not
+ * the error). First with the wallet's default node, which doesn't answer here: the HTTP listener
+ * can't start ("node not synced"), yet tor starts and it still ends in `network`, never "the
+ * receiver stopped" (Tor round bug 2). Then with the stub node: Try again starts over and fails the
+ * same way; Tor off leaves no tor process; Lock with Tor on leaves no tor process. Needs the bundle
+ * in the build: `node scripts/fetch-tor.mjs --platform linux`.
  */
 'use strict';
 const path = require('path');
@@ -15,7 +18,10 @@ const U = require('../lib/ui');
 
 const APPDIR = process.env.E2E_APPDIR;
 const STALL_MS = 6000;
-const TOR_ENV = { EPIC_GUI_TEST: '1', EPIC_GUI_TEST_TOR_STALL_MS: String(STALL_MS), EPIC_GUI_TEST_TOR_BOOT_MS: '20000', EPIC_GUI_TEST_TOR_BACKOFF_MS: '600000' };
+//three automatic restarts after a short wait each: the error shows after four stalls
+const BACKOFF_MS = 300;
+const FAIL_MS = 4 * (STALL_MS + BACKOFF_MS) + 30000;
+const TOR_ENV = { EPIC_GUI_TEST: '1', EPIC_GUI_TEST_TOR_STALL_MS: String(STALL_MS), EPIC_GUI_TEST_TOR_BOOT_MS: '20000', EPIC_GUI_TEST_TOR_BACKOFF_MS: String(BACKOFF_MS) };
 
 /* the build's own tor processes (by the program each runs) */
 function torProcs() {
@@ -43,8 +49,6 @@ H.runCase('tor', async (t) => {
   await t.step('first start: Welcome', () => U.welcome(w), { fatal: true });
   await t.step('create a wallet', () => U.createWallet(w, ui, password), { fatal: true, timeout: 150000 });
   await t.step('the first-unlock tour can be skipped', () => U.skipTour(w, ui));
-  //the HTTP listener Tor needs checks the node first: the stub node, not the default one on the internet
-  await t.step('Settings › Node: the stub node', () => U.setNode(w, ui, U.NODE_URL, t), { fatal: true, timeout: 90000 });
 
   const row = () => w.locator('[data-test=tor-row]');
   const sw = () => row().locator('[data-test=tor-switch]');
@@ -63,6 +67,23 @@ H.runCase('tor', async (t) => {
     return s;
   };
   const NETWORK = /Can't reach the Tor network/;
+  const LISTENER = /receiver stopped/;
+  //the status until the network error: never the listener error, and "trying again" on the way
+  const untilNetwork = async () => {
+    const seen = new Set();
+    const s = await H.waitFor(async () => {
+      const x = await status();
+      //(waitFor swallows a throw: noted, checked below)
+      if (LISTENER.test(x)) seen.add('listener: ' + x);
+      if (/trying again/.test(x)) seen.add('trying again');
+      return NETWORK.test(x) ? x : null;
+    }, { timeout: FAIL_MS, interval: 250 });
+    const bad = [...seen].find((x) => x.startsWith('listener'));
+    if (bad) throw new Error('the listener error was shown: "' + bad + '"');
+    if (!s) throw new Error(`Tor status not ${NETWORK} after ${FAIL_MS} ms: "${await status()}"`);
+    if (!seen.has('trying again')) throw new Error('no "trying again" during the automatic restarts');
+    return s;
+  };
 
   await t.step('Tor is off by default: the switch is off, no status, no tor process', async () => {
     await openReceiving();
@@ -72,27 +93,50 @@ H.runCase('tor', async (t) => {
     return 'off, no tor';
   }, { fatal: true });
 
-  await t.step('turn Tor on: tor starts, connecting is shown', async () => {
+  await t.step('the node doesn\'t answer (the default node, no network): Tor on still starts tor', async () => {
     await row().locator('.e-switch').click();
-    const s = await waitStatus(/Connecting to Tor|Publishing|Can't reach|stopped|couldn't/, 30000);
+    const s = await waitStatus(/Waiting for the wallet|Connecting to Tor|Can't reach|stopped|couldn't/, 30000);
+    if (LISTENER.test(s)) throw new Error('the listener error: "' + s + '"');
     return s + ' | ' + await torRuns();
   }, { fatal: true, timeout: 60000 });
 
-  await t.step('with no network it ends in the network error within the shortened stall time; Try again offered', async () => {
+  await t.step('... and ends in the network error ("trying again" meanwhile), not "the receiver stopped"', async () => {
     const began = Date.now();
-    const s = await waitStatus(NETWORK, STALL_MS + 40000);
+    const s = await untilNetwork();
+    return s + ' after ' + ((Date.now() - began) / 1000).toFixed(1) + ' s | ' + await noTor();
+  }, { timeout: FAIL_MS + 20000, shot: true });
+
+  await t.step('turn Tor off', async () => {
+    await row().locator('.e-switch').click();
+    await H.waitFor(async () => (await status()) ? null : 'gone', { timeout: 10000 });
+    return noTor();
+  }, { timeout: 30000 });
+
+  //the HTTP listener checks the node first: from here the stub node, which answers
+  await t.step('Settings › Node: the stub node', () => U.setNode(w, ui, U.NODE_URL, t), { fatal: true, timeout: 90000 });
+
+  await t.step('turn Tor on: tor starts, connecting is shown', async () => {
+    await openReceiving();
+    await row().locator('.e-switch').click();
+    const s = await waitStatus(/Waiting for the wallet|Connecting to Tor|Publishing|Can't reach|stopped|couldn't/, 30000);
+    return s + ' | ' + await torRuns();
+  }, { fatal: true, timeout: 60000 });
+
+  await t.step('with no network it ends in the network error after the automatic restarts; Try again offered', async () => {
+    const began = Date.now();
+    const s = await untilNetwork();
     await row().locator('[data-test=tor-retry]').waitFor({ timeout: 5000 });
     if (!await sw().isChecked()) throw new Error('the switch went off');
     return s + ' after ' + ((Date.now() - began) / 1000).toFixed(1) + ' s | ' + await noTor();
-  }, { timeout: 90000, shot: true });
+  }, { timeout: FAIL_MS + 20000, shot: true });
 
   await t.step('Try again: starts over (connecting, a tor runs), then the network error again (tor stopped while failed)', async () => {
     await row().locator('[data-test=tor-retry]').click();
     await waitStatus(/Connecting to Tor/, 15000);
     const up = await torRuns(10000);
-    const s = await waitStatus(NETWORK, STALL_MS + 40000);
+    const s = await untilNetwork();
     return up + ' | ' + s + ' | ' + await noTor();
-  }, { timeout: 90000 });
+  }, { timeout: FAIL_MS + 30000 });
 
   await t.step('turn Tor off: no status, no tor process', async () => {
     await row().locator('.e-switch').click();

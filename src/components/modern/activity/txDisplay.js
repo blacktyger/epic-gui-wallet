@@ -43,11 +43,12 @@ export default {
       }
       return 8;
     },
-    /* "esQ7nW…x3Rd@epicbox.epiccash.com": keeps both ends of the key, which is what people compare */
+    /* "esQ7nW…x3Rd@epicbox.epiccash.com", "mk7ca5…aluyd.onion": keeps both ends of the key, which is what people compare */
     shortAddr(addr) {
       const a = String(addr || '');
       const at = a.indexOf('@');
       if (at > 0) return truncateMid(a.slice(0, at), 6) + a.slice(at);
+      if (/\.onion$/i.test(a)) return truncateMid(a.slice(0, -6), 6) + '.onion';
       return /^https?:/i.test(a) ? a : truncateMid(a, 12);
     },
     /* an output a scan found with no transaction record of its own (#55): epic-wallet logs it as a
@@ -55,17 +56,26 @@ export default {
     foundByScan(tx) {
       return !this.isSent(tx) && tx.tx_type != 'ConfirmedCoinbase' && !tx.tx_slate_id && !tx.public_addr && !(tx.address && (tx.address.name || tx.address.type));
     },
-    /* who the tx was with: the contact's name, the address, or what kind of tx it was */
+    /* who the tx was with: the contact's name, the address, or what kind of tx it was. A send over
+       Tor has no public_addr (the GUI exchanges the slate itself): its onion is kept with the
+       address-transaction row (tor_address, HttpSend.sendTor) */
     whoOf(tx) {
       if (tx.address && tx.address.name) return { text: tx.address.name, addr: false };
       if (tx.public_addr) return { text: this.shortAddr(tx.public_addr), addr: true };
+      if (this.torAddressOf(tx)) return { text: this.shortAddr(this.torAddressOf(tx)), addr: true, tip: this.torAddressOf(tx) };
       if (this.isFile(tx)) return { text: this.$t('msg.modern.overview.file_tx'), addr: false };
       if (tx.tx_type == 'ConfirmedCoinbase') return { text: this.$t('msg.modern.overview.mining_reward'), addr: false };
       if (this.foundByScan(tx)) return { text: this.$t('msg.modern.overview.found_by_scan'), addr: false, tip: this.$t('msg.modern.overview.found_by_scan_tip') };
       return { text: this.$t(this.isSent(tx) ? 'msg.modern.overview.unknown_recipient' : 'msg.modern.overview.unknown_sender'), addr: false };
     },
+    /* the onion a Tor send went to ('' for anything else) */
+    torAddressOf(tx) {
+      const a = tx.address && tx.address.type == 'tor' ? String(tx.address.tor_address || '') : '';
+      return /^[a-z2-7]{56}\.onion$/.test(a) ? a : '';
+    },
     methodOf(tx) {
       if (this.isFile(tx)) return this.$t('msg.modern.overview.m_file');
+      if (tx.address && tx.address.type == 'tor') return this.$t('msg.modern.overview.m_tor');
       const a = String(tx.public_addr || '');
       if (a.includes('@')) return this.$t('msg.modern.overview.m_epicbox');
       if (/^https?:/i.test(a)) return this.$t('msg.modern.overview.m_http');

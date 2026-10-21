@@ -16,6 +16,7 @@ import { mountView, t } from './support/mountView.js';
 import { makeStore } from './support/fakeStore.js';
 import { button } from './support/dom.js';
 import { fakeSendWallet, NANO } from './support/sendWallet.js';
+import txDisplay from '@/components/modern/activity/txDisplay.js';
 
 function makeOnion(seed = 7) {
   const pub = Buffer.alloc(32, seed);
@@ -192,7 +193,7 @@ describe('Send to a Tor address', () => {
     expect(data.amount).toBe(1.5 * NANO);
     expect(data.send_args).toBe(null);
     expect(s.wallet.sends()).toHaveLength(0);
-    expect(s.$addressTransactionsService.addAddress).toHaveBeenCalledWith(expect.objectContaining({ slateid: 'slate-tor', type: 'tor' }));
+    expect(s.$addressTransactionsService.addAddress).toHaveBeenCalledWith(expect.objectContaining({ slateid: 'slate-tor', type: 'tor', tor_address: ONION }));
     expect(s.$toast.success).toHaveBeenCalledWith(t('msg.httpSend.success'));
     expect(s.address.element.value).toBe('');
   });
@@ -344,5 +345,29 @@ describe('Contacts › Tor address', () => {
     await m.wrapper.find('form.e-con-form').trigger('submit');
     await flushPromises();
     expect(m.$addressBookService.updateAddressById).toHaveBeenCalledWith(8, expect.objectContaining({ name: 'Old (renamed)', onion: 'old-value.onion' }));
+  });
+});
+
+describe('Activity: a Tor send', () => {
+  //the txDisplay mixin's methods with a fake component (its $t gives the key back)
+  const view = Object.assign({ $t: (key) => key }, txDisplay.methods);
+  const sent = (address) => ({ tx_type: 'TxSent', tx_slate_id: 'slate-tor', address });
+
+  test('shows the onion and a Tor tag, not "Unknown recipient"', () => {
+    const tx = sent({ type: 'tor', address: null, tor_address: ONION });
+    const who = view.whoOf(tx);
+    expect(who.addr).toBe(true);
+    expect(who.text).toBe(NAME.slice(0, 6) + '…' + NAME.slice(-6) + '.onion');
+    expect(who.tip).toBe(ONION);
+    expect(view.methodOf(tx)).toBe('msg.modern.overview.m_tor');
+  });
+
+  test('a contact keeps its name; an older row without the onion still gets the Tor tag', () => {
+    expect(view.whoOf(sent({ type: 'tor', name: 'Onion Ola', tor_address: ONION })).text).toBe('Onion Ola');
+    const old = sent({ type: 'tor', address: null });
+    expect(view.whoOf(old).text).toBe('msg.modern.overview.unknown_recipient');
+    expect(view.methodOf(old)).toBe('msg.modern.overview.m_tor');
+    //anything but an onion is not shown as one
+    expect(view.whoOf(sent({ type: 'tor', tor_address: 'javascript:x' })).text).toBe('msg.modern.overview.unknown_recipient');
   });
 });

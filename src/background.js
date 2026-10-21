@@ -876,7 +876,8 @@ ipcMain.handle('open-folder', async (event, dir) => {
      tor-start {walletId, onion}: only the wallet whose password the session holds; its dirs, network
        and listener port from settings.json; the onion from the page (get_public_proof_address), which
        only selects which of the wallet's own key files is used (torManager checks the key is that
-       onion's). → {ok, status} | {ok: false, error}
+       onion's); waitListener: the page's listener is down because of the node, tor bootstraps and
+       waits for it (torManager error node). → {ok, status} | {ok: false, error}
      tor-stop {walletId} (only that wallet's tor; '' any), tor-retry → status; 'tor-status' events carry every change
      tor-foreign {onion, method, params, isolation}: check_version / receive_tx to the onion's
        /v2/foreign over the wallet's tor (shared/torForeign.js) → {ok, result} | {ok: false, code, detail} */
@@ -902,7 +903,7 @@ ipcMain.handle('tor-start', async (event, req) => {
   try { template = fs.readFileSync(path.join(bundledBinDir, '..', 'epic-wallet.toml'), 'utf8'); } catch (e) { /* keys fail with the reason */ }
   const status = await torManager.start({
     walletId: wallet.id, configDir: wallet.configDir, dataDir: wallet.dataDir, onion: onion.host,
-    listenerPort: networkPorts(wallet.network).walletListener,
+    listenerPort: networkPorts(wallet.network).walletListener, waitListener: req.waitListener === true,
     ensureKey: ({ socksPort, signal }) => ensureOnionKey({ ptyHost, password: () => sessionSecret.copy(), signal,
       record: (pid, cmd, args) => ownProcesses.record(pid, cmd, args), forget: (pid) => ownProcesses.forget(pid),
       bin: path.join(bundledBinDir, binPlatform, isWin ? 'epic-wallet.exe' : 'epic-wallet'), fs, join: path.join, freePort,

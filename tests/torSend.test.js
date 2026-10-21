@@ -122,3 +122,28 @@ test('a failed post keeps the transaction (no cancel) and says why', async () =>
   assert.deepEqual([r.ok, r.code, r.detail, r.slateId], [false, 'post', 'no answer', 'slate-1']);
   assert.ok(!f.calls.some(c => c[0] === 'cancel_tx'));
 });
+
+test('a connect timeout of check_version is tried once more on a new circuit; receive_tx goes with that attempt', async () => {
+  const attempts = [];
+  let n = 0;
+  const f = fake();
+  //the attempt number each foreign call got
+  const res = await f.run({ foreign: async (m, p, a) => { attempts.push([m, a]); return m === 'check_version'
+    ? (n++ === 0 ? { ok: false, code: 'unreachable', detail: 'timeout' } : { ok: true, result: V(2, ['V3']) })
+    : { ok: true, result: { jsonrpc: '2.0', id: 1, result: { Ok: { id: 'slate-1' } } } }; } });
+  assert.equal(res.ok, true);
+  assert.deepEqual(attempts, [['check_version', 0], ['check_version', 1], ['receive_tx', 1]]);
+});
+
+test('no retry for tor\'s own answers (not there, bad address) or a second timeout', async () => {
+  for (const [first, calls] of [[{ ok: false, code: 'unreachable', detail: 'socks 0xf0' }, 1], [{ ok: false, code: 'invalid', detail: 'socks 0xf6' }, 1],
+    [{ ok: false, code: 'unreachable', detail: 'timeout' }, 2]]) {
+    let count = 0;
+    const f = fake();
+    const r = await f.run({ foreign: async () => { count++; return first; } });
+    assert.equal(r.ok, false);
+    assert.equal(r.code, first.code);
+    assert.equal(count, calls, first.detail);
+    assert.equal(f.calls.length, 0, 'nothing created');
+  }
+});

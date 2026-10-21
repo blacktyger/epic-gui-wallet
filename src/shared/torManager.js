@@ -3,6 +3,8 @@
  * private `auto` ports with a control port, so the app knows when it is ready and why it isn't.
  *
  *   off → starting (progress 0-100) → publishing → ready, or failed {error, detail} from any of them
+ *   retrying: true while an automatic restart (network, stopped, publish) is waiting or running: the
+ *   state stays starting (the error is only logged) until the backoff runs out, then it is failed
  *   ready: bootstrap 100 % and the first HS_DESC UPLOADED of the wallet's onion. Sending needs only
  *   the bootstrap (canSend); republishing is tor's job, a later HS_DESC FAILED is only logged.
  *
@@ -11,7 +13,11 @@
  * 30 s, 2 min, then left failed), clock (CLOCK_SKEW before the bootstrap), keys (no key for the
  * onion, or tor published another one), listener (the wallet's HTTP listener doesn't answer),
  * stopped (tor exited or closed its control port after the bootstrap: restarted like network),
- * publish (bootstrapped, but no HS_DESC UPLOADED within publishMs: restarted like network).
+ * publish (bootstrapped, but no HS_DESC UPLOADED within publishMs: restarted like network),
+ * node (started with waitListener: the page's listener could not start because the node doesn't
+ * answer; tor bootstraps anyway, so sending works, and the onion is added once the listener port
+ * answers, checked every listenerWaitMs. Shown as failed/node only once bootstrapped: before
+ * that the bootstrap's own progress, or its network error, is what counts).
  *
  * Start (start()): torrc in <configDir>/tor, data in <configDir>/tor/data (0700); `tor -f <torrc>
  * --defaults-torrc <empty>`, no shell; cookie auth; TAKEOWNERSHIP (tor exits when the app's
@@ -30,7 +36,7 @@ import { parseOnion, readOnionKeyFile, keyForTor, onionKeyPath, ONION_LEN } from
 import { createTorControl, parseControlFile } from './torControl.js';
 
 export const STATES = ['off', 'starting', 'publishing', 'ready', 'failed'];
-export const ERRORS = ['missing', 'start', 'network', 'clock', 'keys', 'listener', 'stopped', 'publish'];
+export const ERRORS = ['missing', 'start', 'network', 'clock', 'keys', 'listener', 'stopped', 'publish', 'node'];
 
 export const TIMINGS = Object.freeze({
   controlFileMs: 30000,
@@ -43,6 +49,8 @@ export const TIMINGS = Object.freeze({
   //after the kill: how long stop() still waits for tor's exit before it gives up (and says so)
   stopWaitMs: 5000,
   listenerCheckMs: 15000,
+  //waitListener: how often the listener port is checked while the node keeps the listener down
+  listenerWaitMs: 3000,
 });
 
 /* a torrc value: quoted, with tor's C-style escapes (Windows backslashes, spaces) */
@@ -54,7 +62,8 @@ function q(v) {
 export function torPaths(configDir, join) {
   const dir = join(configDir, 'tor');
   return { dir, torrc: join(dir, 'torrc'), defaults: join(dir, 'torrc-defaults'), data: join(dir, 'data'),
-    controlFile: join(dir, 'control.txt'), cookie: join(dir, 'control.cookie') };
+    controlFile: join(dir, 'control.txt'), cookie: join(dir, 'control.cookie'),
+    geoip: join(dir, 'geoip'), geoip6: join(dir, 'geoip6') };
 }
 
 export function buildTorrc({ paths, ownerPid }) {
@@ -69,6 +78,10 @@ export function buildTorrc({ paths, ownerPid }) {
     '__OwningControllerProcess ' + Number(ownerPid),
     'Log notice stdout',
     'AvoidDiskWrites 1',
+    //no GeoIP files are bundled (a client doesn't need them). Absolute paths that aren't there: tor
+    //logs only an [info] line, where the Windows default "<default>" warned "is relative" twice per start
+    'GeoIPFile ' + q(paths.geoip),
+    'GeoIPv6File ' + q(paths.geoip6),
     '',
   ].join('\n');
 }
@@ -84,7 +97,7 @@ export function torProblem(line) {
   return m ? m[2].trim().slice(0, 300) : '';
 }
 
-const OFF = Object.freeze({ state: 'off', progress: 0, onion: '', error: '', detail: '' });
+const OFF = Object.freeze({ state: 'off', progress: 0, onion: '', error: '', detail: '', retrying: false });
 
 export function createTorManager({ spawn, connect, fs, join, sha512, kill, record = () => {}, forget = () => {},
   torBin, libDir = '', win = false, ownerPid, checkPort = async () => true, onStatus = () => {}, log = {},
@@ -114,6 +127,7 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
   }
 
   function clearRunTimers(r) {
+    //listenerWait is not cleared: its poll ends by itself (r.dead), so the key in begin() is wiped
     for (const k of ['stall', 'boot', 'publish', 'listener', 'controlPoll']) {
       if (r[k]) clearTimer(r[k]);
       r[k] = null;
@@ -163,7 +177,9 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
     const auto = ['network', 'stopped', 'publish'].includes(error) && restarts < t.backoffMs.length;
     teardown(r).catch(() => {});
     run = null;
-    emit({ state: 'failed', progress: status.progress, error, detail: detail ? String(detail).slice(0, 300) : '' });
+    //an automatic restart follows: still starting (a stall that the next try gets past is no error to show)
+    if (auto) emit({ state: 'starting', progress: 0, error: '', detail: '', retrying: true });
+    else emit({ state: 'failed', progress: status.progress, error, detail: detail ? String(detail).slice(0, 300) : '', retrying: false });
     if (auto) {
       const wait = t.backoffMs[restarts++];
       info('tor: restarting in ' + Math.round(wait / 1000) + ' s');
@@ -210,17 +226,20 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
   /* the visible state from what is known */
   function advance(r) {
     if (r.dead || r !== run) return;
-    if (r.bootstrapped && r.serviceId && r.uploaded) {
+    if (r.bootstrapped && r.waitingListener) {
+      //sending works; receiving waits for the listener (the node)
+      if (status.state !== 'failed' || status.error !== 'node') emit({ state: 'failed', progress: 100, error: 'node', detail: '' });
+    } else if (r.bootstrapped && r.serviceId && r.uploaded) {
       if (r.publish) clearTimer(r.publish);
       r.publish = null;
       if (status.state !== 'ready') {
-        emit({ state: 'ready', progress: 100, error: '', detail: '' });
+        emit({ state: 'ready', progress: 100, error: '', detail: '', retrying: false });
         restarts = 0;
         watchListener(r);
       }
     } else if (r.bootstrapped && r.serviceId) {
       if (!r.publish) r.publish = timer(() => fail(r, 'publish', 'no upload after ' + Math.round(t.publishMs / 1000) + ' s'), t.publishMs);
-      if (status.state !== 'publishing') emit({ state: 'publishing', progress: 100, error: '', detail: '' });
+      if (status.state !== 'publishing') emit({ state: 'publishing', progress: 100, error: '', detail: '', retrying: false });
     } else if (status.state !== 'starting' || status.progress !== r.progress) {
       emit({ state: 'starting', progress: r.progress || 0, error: '', detail: '' });
     }
@@ -237,6 +256,21 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
       r.listener = timer(check, t.listenerCheckMs);
     };
     r.listener = timer(check, t.listenerCheckMs);
+  }
+
+  /* waitListener: the listener port, checked every listenerWaitMs until it answers → true, or the run ends → false */
+  function waitForListener(r, port) {
+    return new Promise((resolve) => {
+      const poll = async () => {
+        r.listenerWait = null;
+        if (r.dead || r !== run) return resolve(false);
+        const ok = await Promise.resolve(checkPort(port)).catch(() => false);
+        if (r.dead || r !== run) return resolve(false);
+        if (ok) return resolve(true);
+        r.listenerWait = timer(poll, t.listenerWaitMs);
+      };
+      r.listenerWait = timer(poll, t.listenerWaitMs);
+    });
   }
 
   function readFile(p) {
@@ -377,8 +411,17 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
     file.key.fill(0);
     if (k.error) return fail(r, 'keys', 'the key file is not this wallet\'s');
 
-    const listening = await Promise.resolve(checkPort(tgt.listenerPort)).catch(() => false);
+    let listening = await Promise.resolve(checkPort(tgt.listenerPort)).catch(() => false);
     if (r.dead || r !== run) { k.key.fill(0); return; }
+    if (!listening && tgt.waitListener) {
+      info('tor: the wallet listener is not running (the node does not answer): sending only until it is');
+      r.waitingListener = true;
+      advance(r);
+      listening = await waitForListener(r, tgt.listenerPort);
+      if (r.dead || r !== run) { k.key.fill(0); return; }
+      r.waitingListener = false;
+      info('tor: the wallet listener answers now');
+    }
     if (!listening) { k.key.fill(0); return fail(r, 'listener', ''); }
 
     const b64 = Buffer.from(k.key).toString('base64');
@@ -397,8 +440,9 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
 
   return {
     /*
-     * start({walletId, configDir, dataDir, onion, listenerPort, ensureKey}) for the open wallet;
-     * a tor of another wallet is stopped first. ensureKey({socksPort, signal}) → {ok, detail}: the
+     * start({walletId, configDir, dataDir, onion, listenerPort, ensureKey, waitListener}) for the
+     * open wallet; a tor of another wallet is stopped first. waitListener: the listener is down
+     * because of the node (error node above), wait for it instead of failing with listener. ensureKey({socksPort, signal}) → {ok, detail}: the
      * one-shot; signal aborts when this run is stopped (stop waits for it, bounded).
      */
     async start(opts) {
@@ -406,7 +450,7 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
       if (!p.valid) throw new Error('not a valid onion');
       if (!opts.configDir || !opts.dataDir || !(opts.listenerPort > 0)) throw new Error('start needs the wallet\'s dirs and port');
       const same = target && run && target.walletId === opts.walletId && target.onion === p.host
-        && target.listenerPort === opts.listenerPort;
+        && target.listenerPort === opts.listenerPort && !!target.waitListener === !!opts.waitListener;
       if (same && status.state !== 'failed') return status;
       await this.stop({ quiet: true });
       target = Object.assign({}, opts, { onion: p.host });

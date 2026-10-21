@@ -17,6 +17,11 @@ export function isAddrInUse(text) {
 //node doesn't answer; preload.js execListen answers 'node not synced' for that line
 const NODE_FAILED = /^node not synced$|failed to check node sync status/i;
 
+/* startListen's answer: the listener did not start because the node doesn't answer (Tor waits for it) */
+export function listenerNodeDown(res) {
+  return !!res && !res.success && !res.portInUse && NODE_FAILED.test(String(res.msg || ''));
+}
+
 export const HTTP_OFF = Object.freeze({ state: 'off', port: 0, reason: '' });
 
 /* does the HTTP listener start with the wallet (unlock, Receive › Start listener)? Modern: only with

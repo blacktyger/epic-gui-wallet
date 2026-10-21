@@ -115,6 +115,9 @@ html[data-ui='modern'][data-theme='light'] .e-stg-btl-logo .e-btl-light { displa
 
 /* the Tor address (62 characters) breaks anywhere rather than overflowing a narrow row */
 .e-tor-onion { font-size: 0.75rem; overflow-wrap: anywhere; line-height: 1.4; }
+/* Settings › Tor: a block of two even lines (31 of the 62 monospace characters each), so it never
+   breaks inside ".onion" or leaves a few letters alone on a line; narrower than that, it breaks anywhere */
+.e-tor-onion-block { display: inline-block; width: 31ch; max-width: 100%; word-break: break-all; white-space: normal; }
 
 /* narrow windows (the smallest window at 150 % zoom is ~700 px wide): the section menu goes above the
    page as one wrapping row, and each row puts its control under the text, so fields and lists keep
