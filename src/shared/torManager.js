@@ -134,6 +134,9 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
     if (!r) return;
     r.dead = true;
     clearRunTimers(r);
+    //the one-shot key run (epic-wallet holding the wallet open): stopped, and waited for (bounded)
+    if (r.keyAbort) r.keyAbort.abort();
+    if (r.keyRun) await within(r.keyRun, t.stopKillMs + t.stopWaitMs);
     const proc = r.proc;
     const exited = new Promise((resolve) => {
       if (!proc || r.exited) return resolve();
@@ -361,7 +364,10 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
     const keyPath = onionKeyPath(tgt.dataDir, tgt.onion, join);
     let file = readOnionKeyFile(readFile(keyPath));
     if (!file && tgt.ensureKey) {
-      const made = await Promise.resolve(tgt.ensureKey({ socksPort: r.socksPort })).catch((e) => ({ ok: false, detail: e && e.message }));
+      r.keyAbort = new AbortController();
+      r.keyRun = Promise.resolve(tgt.ensureKey({ socksPort: r.socksPort, signal: r.keyAbort.signal })).catch((e) => ({ ok: false, detail: e && e.message }));
+      const made = await r.keyRun;
+      r.keyRun = null;
       if (r.dead || r !== run) return;
       if (!made || !made.ok) return fail(r, 'keys', made && made.detail);
       file = readOnionKeyFile(readFile(keyPath));
@@ -392,7 +398,8 @@ export function createTorManager({ spawn, connect, fs, join, sha512, kill, recor
   return {
     /*
      * start({walletId, configDir, dataDir, onion, listenerPort, ensureKey}) for the open wallet;
-     * a tor of another wallet is stopped first. ensureKey({socksPort}) → {ok, detail}: the one-shot.
+     * a tor of another wallet is stopped first. ensureKey({socksPort, signal}) → {ok, detail}: the
+     * one-shot; signal aborts when this run is stopped (stop waits for it, bounded).
      */
     async start(opts) {
       const p = parseOnion(opts && opts.onion);

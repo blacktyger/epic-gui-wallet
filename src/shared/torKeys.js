@@ -14,7 +14,11 @@
  * epic-wallet only writes the key when the onion's folder is missing: a folder without a good key
  * file (missing, damaged) is moved aside first (<folder>.bad-<time>, never deleted: user data).
  *
- * The toml with use_tor_listener = true is removed afterwards. Nothing here reads or logs the key.
+ * The run is recorded (record/forget: the process registry, role listen in <configDir>/tor-keys)
+ * and ends early when `signal` aborts (lock, wallet switch, Tor off, quit: torManager's stop);
+ * the promise settles only once the kill is done. The toml with use_tor_listener = true is
+ * removed afterwards (and at the app's start, background.js, after a crash). Nothing here reads
+ * or logs the key.
  * Plain ESM with its I/O passed in (tests/torKeys.test.js).
  */
 import { onionKeyPath, readOnionKeyFile, parseOnion } from './onion.js';
@@ -27,11 +31,13 @@ export const TIMEOUT_MS = 30000;
 /*
  *   ptyHost: shared/ptyHost.js; password(): a Buffer copy of the session password (null: locked)
  *   bin: the app's epic-wallet; fs (sync); join; freePort() → Promise<port>; template: the toml
- *   template's text; wallet: {network, configDir, dataDir, nodeUrl}; onion; socksPort
+ *   template's text; wallet: {network, configDir, dataDir, nodeUrl}; onion; socksPort;
+ *   signal: an AbortSignal (optional); record(pid, cmd, args) / forget(pid): the process registry
  * → {ok: true} | {ok: false, detail}
  */
 export async function ensureOnionKey({ ptyHost, password, bin, fs, join, freePort, template, wallet, onion, socksPort,
-  timeoutMs = TIMEOUT_MS, pollMs = 100, log = () => {}, setTimer = setTimeout, clearTimer = clearTimeout, now = () => Date.now() }) {
+  timeoutMs = TIMEOUT_MS, pollMs = 100, log = () => {}, setTimer = setTimeout, clearTimer = clearTimeout, now = () => Date.now(),
+  signal = null, record = () => {}, forget = () => {} }) {
   const p = parseOnion(onion);
   if (!p.valid) return { ok: false, detail: 'invalid onion' };
   const keyPath = onionKeyPath(wallet.dataDir, p.host, join);
@@ -39,6 +45,7 @@ export async function ensureOnionKey({ ptyHost, password, bin, fs, join, freePor
     try { return !!readOnionKeyFile(fs.readFileSync(keyPath)); } catch (e) { return false; }
   };
   if (have()) return { ok: true };
+  if (signal && signal.aborted) return { ok: false, detail: 'stopped' };
   const keysDir = join(wallet.configDir, KEYS_DIR);
   const tomlPath = join(keysDir, 'epic-wallet.toml');
   let pw = password();
@@ -62,17 +69,25 @@ export async function ensureOnionKey({ ptyHost, password, bin, fs, join, freePor
     fs.writeFileSync(tomlPath, renderTorKeysToml({ template, network: wallet.network, keysDir, dataDir: wallet.dataDir,
       nodeUrl: wallet.nodeUrl, socksPort, listenPort: port }), { mode: 0o600 });
     const args = torKeysArgs({ network: wallet.network, keysDir, dataDir: wallet.dataDir });
+    if (signal && signal.aborted) return { ok: false, detail: 'stopped' };
     return await new Promise((resolve) => {
       let done = false;
       let poll = null;
+      let pid = 0;
       const lines = [];
+      const onAbort = () => finish({ ok: false, detail: 'stopped' });
       const finish = (r) => {
         if (done) return;
         done = true;
         clearTimer(poll);
         clearTimer(deadline);
-        if (id !== null) Promise.resolve(ptyHost.kill(id)).catch(() => {});
-        resolve(r);
+        if (signal) signal.removeEventListener('abort', onAbort);
+        //settles once the process is gone: a lock right after must not find it still holding the wallet
+        const killed = id !== null ? Promise.resolve(ptyHost.kill(id)).catch(() => {}) : Promise.resolve();
+        killed.then(() => {
+          if (pid) forget(pid);
+          resolve(r);
+        });
       };
       const deadline = setTimer(() => finish({ ok: false, detail: 'no key after ' + Math.round(timeoutMs / 1000) + ' s' }), timeoutMs);
       let r;
@@ -82,6 +97,7 @@ export async function ensureOnionKey({ ptyHost, password, bin, fs, join, freePor
         onLines: (ls) => { lines.push(...ls); lines.splice(0, Math.max(0, lines.length - 5)); },
         onExit: (e) => {
           id = null;
+          if (pid) forget(pid);
           //the key may have been written just before it exited
           if (have()) return finish({ ok: true });
           finish({ ok: false, detail: e.fail || ('epic-wallet exited (' + e.code + ')' + (lines.length ? ': ' + lines.at(-1).slice(0, 200) : '')) });
@@ -92,6 +108,9 @@ export async function ensureOnionKey({ ptyHost, password, bin, fs, join, freePor
       //ptyHost owns the password copy now (zeroed once written)
       pw = null;
       id = r.id;
+      pid = r.pid || 0;
+      if (pid) record(pid, bin, args);
+      if (signal) signal.addEventListener('abort', onAbort);
       log('tor keys: one-shot started (' + r.mode + ')');
       const check = () => {
         if (done) return;

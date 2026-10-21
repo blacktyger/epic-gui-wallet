@@ -600,3 +600,14 @@ test('6.1.6: our tor is recorded as role tor (bundled tor, -f <configDir>/tor/to
   //a reused pid running something else is not ours
   assert.deepEqual(findOwned([entry], [proc(40, '/usr/bin/tor -f /etc/tor/torrc')]).owned, []);
 });
+
+test('the one-shot key run (torKeys) is recorded as a listener of <configDir>/tor-keys, found by that dir only', () => {
+  const keys = DIR + '/tor-keys';
+  const args = ['--offline_mode', '-t', DIR, '-c', keys, 'listen', '--method', 'http'];
+  const d = describeSpawn(BIN, args);
+  assert.deepEqual([d.role, d.dir, d.topDir], ['listen', keys, DIR]);
+  const entry = { pid: 40, at: 1, ...d };
+  const procs = [proc(40, `${BIN} ${args.join(' ')}`)];
+  assert.deepEqual(findOwned([entry], procs, { roles: ['listen'], dir: keys }).owned.map(p => p.pid), [40]);
+  assert.deepEqual(findOwned([entry], procs, { roles: ['listen'], dir: DIR }).owned, [], 'not the wallet\'s own listener');
+});

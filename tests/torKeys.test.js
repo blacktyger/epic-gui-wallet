@@ -123,3 +123,27 @@ test('the onion folder without a good key is moved aside (never deleted), then t
   await h.run({ password: () => null, now: () => 1 });
   assert.equal(fs.existsSync(path.dirname(h.keyFile)), true);
 });
+
+test('an abort (lock, switch, Tor off, quit) stops the one-shot at once; its pid is recorded and forgotten; the toml goes', async () => {
+  const h = setup();
+  const ac = new AbortController();
+  const rec = [];
+  const forgot = [];
+  const began = Date.now();
+  const p = h.run({ timeoutMs: 5000, signal: ac.signal, record: (pid, cmd, args) => rec.push({ pid, cmd, args }), forget: (pid) => forgot.push(pid) });
+  await new Promise(r => setTimeout(r, 30));
+  assert.equal(h.started.length, 1);
+  assert.deepEqual(rec, [{ pid: 99, cmd: '/app/bin/linux/epic-wallet', args: h.started[0].args }]);
+  ac.abort();
+  assert.deepEqual(await p, { ok: false, detail: 'stopped' });
+  assert.ok(Date.now() - began < 1000);
+  assert.deepEqual(h.killed, [7]);
+  assert.deepEqual(forgot, [99]);
+  assert.equal(fs.existsSync(path.join(h.wallet.configDir, 'tor-keys', 'epic-wallet.toml')), false);
+  //aborted before it started: nothing runs
+  const h2 = setup();
+  const ac2 = new AbortController();
+  ac2.abort();
+  assert.deepEqual(await h2.run({ signal: ac2.signal }), { ok: false, detail: 'stopped' });
+  assert.equal(h2.started.length, 0);
+});

@@ -237,6 +237,21 @@ test('publish: no descriptor upload within the publish time fails and restarts',
   await u.m.stop();
 });
 
+test('stop during the one-shot key run aborts it and waits for it', async () => {
+  const t = harness();
+  let signal = null;
+  let ended = false;
+  await t.m.start(START(walletDir({ key: false }), { ensureKey: (o) => new Promise((resolve) => {
+    signal = o.signal;
+    o.signal.addEventListener('abort', () => setTimeout(() => { ended = true; resolve({ ok: false, detail: 'stopped' }); }, 20));
+  }) }));
+  await t.until(() => signal);
+  await t.m.stop();
+  assert.equal(signal.aborted, true);
+  assert.equal(ended, true, 'stop returned only once the key run had ended');
+  assert.equal(t.m.status().state, 'off');
+});
+
 test('missing: no tor binary in this build', async () => {
   const t = harness({ missing: true });
   await t.m.start(START(walletDir()));
@@ -288,7 +303,8 @@ test('keys: no key file and the one-shot fails; the one-shot gets the SOCKS port
   let asked = null;
   await t.m.start(START(walletDir({ key: false }), { ensureKey: async (o) => { asked = o; return { ok: false, detail: 'timeout' }; } }));
   await t.until(() => t.m.status().state === 'failed');
-  assert.deepEqual(asked, { socksPort: 39111 });
+  assert.equal(asked.socksPort, 39111);
+  assert.ok(asked.signal instanceof AbortSignal, 'the run can be stopped');
   assert.deepEqual([t.m.status().error, t.m.status().detail], ['keys', 'timeout']);
 
   //the one-shot writes the file: then it is used

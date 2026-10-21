@@ -25,7 +25,7 @@ import { createSupport, intakeResult } from './shared/supportReport'
 import { SUPPORT_PUBLIC_KEY, supportUrl } from './shared/supportKey'
 import { sanitizeText, KNOWN_PUBLIC_HOSTS } from './shared/logSanitize'
 import { createTorManager } from './shared/torManager'
-import { ensureOnionKey } from './shared/torKeys'
+import { ensureOnionKey, KEYS_DIR } from './shared/torKeys'
 import { checkForeignRequest, foreignCall } from './shared/torForeign'
 import { parseOnion } from './shared/onion'
 import { networkPorts } from './shared/walletToml'
@@ -239,6 +239,29 @@ const torManager = createTorManager({
   onStatus: (s) => { if (win && !win.isDestroyed()) win.webContents.send('tor-status', s); },
   log: { info: (m) => log.info(m), warn: (m) => log.warn(m) },
 });
+
+/* what a one-shot key run (shared/torKeys.js) left after a crash: its epic-wallet (recorded, role
+   listen in <configDir>/tor-keys; quit stops it with the other listeners) and its toml with
+   use_tor_listener = true. walletId: only that wallet's, else every wallet's (the app's start) */
+async function cleanTorKeysLeftovers(walletId){
+  let wallets = [];
+  try {
+    const s = JSON.parse(fs.readFileSync(appLayout.settingsFile, 'utf8'));
+    wallets = (Array.isArray(s && s.wallets) ? s.wallets : []).filter(w => w && typeof w.configDir === 'string'
+      && path.isAbsolute(w.configDir) && (!walletId || w.id === walletId));
+  } catch (e) { /* no settings yet */ }
+  for (const w of wallets) {
+    const keysDir = path.join(w.configDir, KEYS_DIR);
+    try {
+      const left = await ownProcesses.list(['listen'], { dir: keysDir });
+      if (left.length) {
+        await ownProcesses.stop(left);
+        log.info('tor keys: stopped a leftover key run ' + left.map(p => p.pid).join(', '));
+      }
+    } catch (e) { /* the scan failed */ }
+    try { fs.unlinkSync(path.join(keysDir, 'epic-wallet.toml')); } catch (e) { /* not there */ }
+  }
+}
 
 /* on quit: stop the wallet, listener (and the short-lived one that checks an old Epicbox server),
    scan and node processes the app started, except the node when it runs in the background, the
@@ -516,6 +539,7 @@ app.on('ready', async (event) => {
   //a temp copy of an old profile that couldn't be removed at quit (Windows file locks: the reading
   //session holds its leveldb until the app exits); a scan waits for this, so a retry never meets a new copy
   leftoverImportCleanup = cleanLeftoverImport({ fs, path, root: appLayout.root, log: (m) => log.info(m) }).catch(() => false);
+  cleanTorKeysLeftovers().catch(() => {});
   //console.log('app', noderuninbackground);
   console.log('noderuninbackground', noderuninbackground);
 
@@ -868,6 +892,7 @@ ipcMain.handle('tor-start', async (event, req) => {
       log.info('tor: stopped a leftover tor ' + left.map(p => p.pid).join(', '));
     }
   } catch (e) { /* the scan failed: tor says so itself if its data dir is busy */ }
+  await cleanTorKeysLeftovers(wallet.id).catch(() => {});
   const settings = wallet.settings || {};
   const nodeUrl = /^https?:\/\//.test(String(settings.check_node_api_http_addr || '')) ? settings.check_node_api_http_addr : '';
   let template = '';
@@ -875,7 +900,8 @@ ipcMain.handle('tor-start', async (event, req) => {
   const status = await torManager.start({
     walletId: wallet.id, configDir: wallet.configDir, dataDir: wallet.dataDir, onion: onion.host,
     listenerPort: networkPorts(wallet.network).walletListener,
-    ensureKey: ({ socksPort }) => ensureOnionKey({ ptyHost, password: () => sessionSecret.copy(),
+    ensureKey: ({ socksPort, signal }) => ensureOnionKey({ ptyHost, password: () => sessionSecret.copy(), signal,
+      record: (pid, cmd, args) => ownProcesses.record(pid, cmd, args), forget: (pid) => ownProcesses.forget(pid),
       bin: path.join(bundledBinDir, binPlatform, isWin ? 'epic-wallet.exe' : 'epic-wallet'), fs, join: path.join, freePort,
       template, wallet: { network: wallet.network, configDir: wallet.configDir, dataDir: wallet.dataDir, nodeUrl }, onion: onion.host, socksPort,
       log: (m) => log.info(m) }),
