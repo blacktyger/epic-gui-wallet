@@ -390,7 +390,9 @@
           this.emitter.emit('app.startTor');
           return;
         }
-        const r = await this.$walletService.setTorEnabled(false);
+        //Start with wallet on: the listener stays, it is the user's own switch (§6)
+        const keepListener = httpAutostart(this.configService.config || {}, this.store.state.ui);
+        const r = await this.$walletService.setTorEnabled(false, { keepListener });
         this.store.commit('tor', { enabled: false, state: 'off', progress: 0, error: '', detail: '' });
         if(r && r.listenerStopped){
           this.store.commit('httpListener', null);
