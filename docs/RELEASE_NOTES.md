@@ -29,6 +29,12 @@ Tor is back, plus looks and small fixes in the BT Labs Theme interface; Classic 
 **Fixed**
 
 - After an Epicbox server change, Epicbox sometimes stayed off when the node briefly said it was syncing. It now tries again.
+- Epicbox no longer stays on "Connecting…" after the node briefly fell behind: it shows "Paused (waiting for the node)" while epic-wallet holds payments, and "Listening" again as soon as it carries on.
+- Overview's Status card uses the same words as the sidebar: node dot and word, Epicbox listening, connecting, paused or not responding, and a Tor line while Tor is on.
+- A node that is slow to answer the version check reads "The node didn't answer in time. Try again." (after one more try), not "Not an Epic node".
+- Long server names in the node and Epicbox fields end in "…" in a narrow window instead of being cut off.
+- With no internet, Tor says "Can't reach the Tor network" after its second failed start (about 2 minutes) and keeps trying in the background.
+- Payments a scan found now really read "Found by scan": epic-wallet stores "Restore" as their address, which is no longer shown as one.
 
 ## 6.1.5
 
