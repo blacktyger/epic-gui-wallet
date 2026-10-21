@@ -223,6 +223,31 @@ describe.each(INTERFACES)('Send form ($name)', (ui) => {
     expect(s.wrapper.text()).toContain(t('msg.validators.spendable'));
   });
 
+  /* rig 6.1.6: the balance read waited on a wallet busy scanning (12 s) and the screen was left
+     meanwhile; vue-i18n takes $t off an unmounted component, so the message threw */
+  test('"All" whose balance comes after the screen was left ends quietly', async () => {
+    const wallet = fakeSendWallet({ spendable: 0 });
+    let answer;
+    wallet.getSummaryInfo = vi.fn(() => new Promise((resolve) => { answer = resolve; }));
+    const errors = [];
+    const onError = (e) => errors.push(e);
+    process.on('unhandledRejection', onError);
+    const warn = vi.spyOn(console, 'warn');
+    try {
+      const s = setup(ui, { wallet, state: { summary: { spendable: 0, unconfirmed: 0 } } });
+      await button(s.wrapper, t('msg.transaction.sendall')).trigger('click');
+      s.wrapper.unmount();
+      answer({ result: { Ok: [true, { amount_currently_spendable: '0' }] } });
+      await flushPromises();
+      await new Promise((r) => setTimeout(r, 0));
+      expect(errors).toEqual([]);
+      expect(warn.mock.calls.map((c) => String(c[0])).filter((m) => /Unhandled error/.test(m))).toEqual([]);
+      expect(wallet.estimates()).toHaveLength(0);
+    } finally {
+      process.off('unhandledRejection', onError);
+    }
+  });
+
   test('the fee is estimated once typing pauses, not on every key', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const s = setup(ui);

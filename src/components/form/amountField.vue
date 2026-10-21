@@ -94,6 +94,8 @@
     },
 
     beforeUnmount() {
+      //"All" may still wait on the wallet (a refresh, a scan): it ends without touching the screen
+      this.gone = true;
       clearTimeout(this.feeTimer);
       this.latest.cancel();
     },
@@ -149,6 +151,8 @@
               start = parseNano(summary.result.Ok[1]['amount_currently_spendable']) || 0;
             }
           } catch (e) { /* the estimates find it */ }
+          //the screen was left meanwhile (vue-i18n has taken $t off it by now)
+          if (this.gone) return;
 
           const r = await this.latest(() => planSendAll((amount) => this.estimate(amount, true), start));
           //typed into meanwhile: what was typed wins
