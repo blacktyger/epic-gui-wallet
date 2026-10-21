@@ -60,6 +60,8 @@ export const store = createStore({
     kernelHeights: {},
     /* the HTTP listener on its own (shared/httpListener.js, QA W01): {state: 'off'|'on'|'failed', port, reason} */
     httpListener: {state: 'off', port: 0, reason: ''},
+    /* TOR-CORE: replaced by feat/tor-616-core. Tor (spec §7): fed by the tor-status events */
+    tor: {enabled: false, state: 'off', progress: 0, onion: '', error: '', detail: ''},
     /* our Epicbox listener, from its own output (App.onEpicboxEvent) and walletService:
        state: '' | starting | connecting | listening | paused | switching | checking_old | off;
        server: the wss:// url it connected to (or is starting on); checking: the old server being
@@ -133,6 +135,10 @@ export const store = createStore({
     /* null resets it (logout, stopped) */
     httpListener(state, payload){
       state.httpListener = payload ? Object.assign({state: 'off', port: 0, reason: ''}, payload) : {state: 'off', port: 0, reason: ''};
+    },
+    /* TOR-CORE: replaced by feat/tor-616-core. null resets it (lock, logout) */
+    tor(state, payload){
+      state.tor = Object.assign({enabled: false, state: 'off', progress: 0, onion: '', error: '', detail: ''}, payload || {});
     },
 
 

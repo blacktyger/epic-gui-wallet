@@ -988,6 +988,11 @@ class WalletService {
 
     }
 
+    /* TOR-CORE: replaced by feat/tor-616-core. The three Tor calls of spec §7 */
+    async setTorEnabled(on){ return {ok: false, code: 'missing', detail: ''}; }
+    async torAddress(){ return ''; }
+    async sendOverTor(txData, onion, onStep){ return {ok: false, code: 'missing', detail: ''}; }
+
 }
 
 export default WalletService

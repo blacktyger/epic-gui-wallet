@@ -29,7 +29,7 @@
             <b>{{ c.name }}</b>
             <small translate="no">{{ short(first(c).address) }}</small>
           </span>
-          <span class="e-tag" :class="{ 'e-gold': first(c).kind == 'epicbox' }"><EIcon :name="first(c).kind == 'epicbox' ? 'antenna' : 'web'" />{{ $t('msg.contacts.kind_' + first(c).kind) }}</span>
+          <span class="e-tag" :class="{ 'e-gold': first(c).kind == 'epicbox' }"><EIcon :name="first(c).kind == 'epicbox' ? 'antenna' : 'web'" />{{ first(c).kind == 'tor' ? $t('msg.modern.settings.tor.kind') : $t('msg.contacts.kind_' + first(c).kind) }}</span>
         </button>
         <button v-if="addressesOf(c).length > 1" type="button" class="e-btn e-btn-ghost e-btn-sm e-cpick-alt" :aria-label="$t('msg.contacts.use_http_label', { name: c.name })" @click="$emit('pick', c, addressesOf(c)[1].field)"><EIcon name="web" size="sm" />{{ $t('msg.contacts.use_http') }}</button>
       </li>
@@ -63,7 +63,7 @@
     computed: {
       shown() {
         const locale = (this.$i18n && this.$i18n.locale) || 'en';
-        return sortContacts(pickableContacts(this.contacts, this.keyword), 'name', new Map(), locale);
+        return sortContacts(pickableContacts(this.contacts, this.keyword, { tor: true }), 'name', new Map(), locale);
       },
     },
     watch: {
@@ -76,8 +76,8 @@
       },
     },
     methods: {
-      addressesOf(c) { return contactAddresses(c); },
-      first(c) { return contactAddresses(c)[0] || { field: '', kind: 'http', address: '' }; },
+      addressesOf(c) { return contactAddresses(c, { tor: true }); },
+      first(c) { return contactAddresses(c, { tor: true })[0] || { field: '', kind: 'http', address: '' }; },
       short(a) { return shortAddress(a); },
       pickFirst() {
         const c = this.shown[0];
