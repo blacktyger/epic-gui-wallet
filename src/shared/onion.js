@@ -149,15 +149,18 @@ function sameBytes(a, b) {
 
 /*
  * The 64-byte expanded key for ADD_ONION from a key file's 64 key bytes, for the onion it must
- * publish. 4.1.0's format (seed ‖ pubkey, the pubkey the onion's): the seed expanded. Anything
- * else is taken as already expanded (a fixed epic-wallet); tor's ServiceID then tells whether it
- * was right (torManager checks it). → {key, format: 'seed' | 'expanded'} | {error: 'mismatch'}
- * when the file is the seed format of another onion.
+ * publish. 4.1.0's format (seed ‖ pubkey, the pubkey the onion's): the seed expanded. Otherwise
+ * an expanded key (a fixed epic-wallet) starts with a clamped scalar (expandSeed); one that
+ * doesn't is the seed format of another onion → {error: 'mismatch'}. A clamped one is used as it
+ * is, and tor's ServiceID tells whether it was right (torManager checks it; a seed passes the
+ * clamp test by chance 1 in 32). → {key, format: 'seed' | 'expanded'} | {error: 'mismatch'}
  */
 export function keyForTor(key64, onion, sha512) {
   const pub = pubkeyOfOnion(onion);
   if (!pub || !key64 || key64.length !== 64) return { error: 'mismatch' };
   if (sameBytes(key64.slice(32, 64), pub)) return { key: expandSeed(key64.slice(0, 32), sha512), format: 'seed' };
+  const clamped = (key64[0] & 7) === 0 && (key64[31] & 0xc0) === 0x40;
+  if (!clamped) return { error: 'mismatch' };
   return { key: Uint8Array.from(key64), format: 'expanded' };
 }
 

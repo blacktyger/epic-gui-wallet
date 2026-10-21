@@ -100,6 +100,9 @@ test('the key file: epic-wallet 4.1.0\'s seed ‖ pubkey is expanded; an already
   assert.equal(r2.format, 'expanded');
   assert.equal(hex(r2.key), hex(expanded));
   assert.deepEqual(keyForTor(k.key, 'bad', sha512), { error: 'mismatch' });
+  //the seed format of another onion (its seed isn't a clamped scalar): the mismatch the comment promises
+  const other = keyFile(SEED, new Uint8Array(32).fill(9));
+  assert.deepEqual(keyForTor(readOnionKeyFile(other).key, ONION, sha512), { error: 'mismatch' });
 });
 
 test('readOnionKeyFile refuses other files', () => {
