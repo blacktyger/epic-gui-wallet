@@ -27,7 +27,7 @@
             <div class="e-stg-progress-top">
               <span class="e-spinner" aria-hidden="true"></span>
               <b id="stg-scan-l" role="status">{{ $t('msg.check.checking') }}</b>
-              <button type="button" class="e-btn e-sm e-right" @click="stop"><EIcon name="stop" />{{ $t('msg.check.stop') }}</button>
+              <button type="button" class="e-btn-inline e-right" @click="stop"><EIcon name="stop" />{{ $t('msg.check.stop') }}</button>
             </div>
             <div class="e-progress e-indet" role="progressbar" aria-labelledby="stg-scan-l"><i></i></div>
             <details class="e-tech e-stg-log" open>

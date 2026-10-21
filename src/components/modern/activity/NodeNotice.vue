@@ -25,7 +25,7 @@
       <h3 class="e-sr-only">{{ $t('msg.node_problem.fixes') }}</h3>
       <ul class="e-nn-fixes">
         <li>
-          <router-link to="/settings" class="e-btn e-btn-sm">
+          <router-link to="/settings" class="e-btn-inline">
             <EIcon name="web" />{{ $t(mainnet ? 'msg.node_problem.fix_public' : 'msg.node_problem.fix_other') }}
           </router-link>
           <a v-if="mainnet" class="e-link-btn e-nn-ext" :href="nodeListUrl" @click.prevent="openExternal(nodeListUrl)" @auxclick.prevent>
@@ -33,8 +33,8 @@
           </a>
         </li>
         <li>
-          <button type="button" class="e-btn e-btn-sm" :aria-busy="switching ? 'true' : null" :disabled="switching" @click="useBuiltinNode">
-            <span v-if="switching" class="e-spinner" aria-hidden="true"></span><EIcon v-else name="server" />{{ $t('msg.node_problem.fix_builtin') }}
+          <button type="button" class="e-btn-inline" :class="{ 'e-is-busy': switching }" :aria-busy="switching ? 'true' : null" :disabled="switching" @click="useBuiltinNode">
+            <EIcon name="server" />{{ $t('msg.node_problem.fix_builtin') }}
           </button>
         </li>
         <li v-if="showsUpgrade">

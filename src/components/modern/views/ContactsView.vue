@@ -149,7 +149,7 @@
             <dt><EIcon :name="a.kind == 'epicbox' ? 'antenna' : a.kind == 'tor' ? 'shield' : 'web'" size="sm" />{{ kindName(a.kind) }}</dt>
             <dd class="e-addr">
               <code translate="no"><template v-if="a.kind == 'epicbox' && addressParts(a.address).mid"><span class="e-hl">{{ addressParts(a.address).head }}</span>{{ addressParts(a.address).mid }}<span class="e-hl">{{ addressParts(a.address).tail }}</span>{{ addressParts(a.address).rest }}</template><template v-else>{{ a.address }}</template></code>
-              <button type="button" class="e-btn e-btn-ghost e-btn-sm e-con-copy" :class="{ 'e-is-copied': copied == a.field }" :aria-label="$t('msg.modern.settings.copy_field', { what: kindName(a.kind) })" @click="copy(a.address, a.field)">
+              <button type="button" class="e-btn-inline e-con-copy" :class="{ 'e-is-copied': copied == a.field }" :aria-label="$t('msg.modern.settings.copy_field', { what: kindName(a.kind) })" @click="copy(a.address, a.field)">
                 <EIcon :name="copied == a.field ? 'check' : 'copy'" size="sm" /><span aria-hidden="true">{{ copied == a.field ? $t('msg.contacts.copied') : $t('msg.contacts.copy') }}</span>
               </button>
             </dd>

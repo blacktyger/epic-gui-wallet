@@ -47,7 +47,7 @@
               </small>
             </span>
             <span class="e-tx-state">
-              <router-link v-if="finalizable(row.tx)" to="/finalizeTransaction" class="e-btn e-btn-sm e-act-fin"><EIcon name="filedown" />{{ $t('msg.modern.overview.finalize') }}</router-link>
+              <router-link v-if="finalizable(row.tx)" to="/finalizeTransaction" class="e-btn-inline e-act-fin"><EIcon name="filedown" />{{ $t('msg.modern.overview.finalize') }}</router-link>
               <TxRing v-if="statusOf(row.tx).ring && !finalizable(row.tx)" :state="statusOf(row.tx).ring.state" :confirmations="statusOf(row.tx).ring.confirmations" />
               <EIcon v-else-if="statusOf(row.tx).icon && !finalizable(row.tx)" :name="statusOf(row.tx).icon" size="sm" />
               <span :class="[statusOf(row.tx).tone ? 'e-' + statusOf(row.tx).tone : null, { 'e-sr-only': finalizable(row.tx) }]">{{ statusOf(row.tx).text }}</span>

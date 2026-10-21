@@ -43,8 +43,8 @@
               <b>{{ $t('msg.wallets.missing_title') }}</b>
               <p>{{ $t('msg.wallets.missing_lead') }} <span class="e-mono" translate="no">{{ missing.dir }}</span></p>
               <div class="e-row">
-                <button type="button" class="e-btn e-btn-sm e-btn-danger" @click="askRemove"><EIcon name="trash" />{{ $t('msg.removal.open') }}</button>
-                <button type="button" class="e-btn e-btn-sm" @click="retry"><EIcon name="refresh" />{{ $t('msg.wallets.try_again') }}</button>
+                <button type="button" class="e-btn-inline e-inline-danger" @click="askRemove"><EIcon name="trash" />{{ $t('msg.removal.open') }}</button>
+                <button type="button" class="e-btn-inline" @click="retry"><EIcon name="refresh" />{{ $t('msg.wallets.try_again') }}</button>
               </div>
             </div>
           </div>

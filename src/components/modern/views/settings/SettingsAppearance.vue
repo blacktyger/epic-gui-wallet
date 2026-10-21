@@ -53,7 +53,7 @@
           <div v-if="uiRestartNeeded" class="e-notice e-gold e-stg-span" role="status">
             <EIcon name="info" />
             <div><b>{{ $t('msg.modern.settings.restart_title') }}</b><p>{{ $t('msg.modern.interface_restart') }}</p></div>
-            <div class="e-actions"><button type="button" class="e-btn e-btn-primary e-sm" @click="restartUi">{{ $t('msg.modern.restart_now') }}</button></div>
+            <div class="e-actions"><button type="button" class="e-btn-inline" @click="restartUi">{{ $t('msg.modern.restart_now') }}</button></div>
           </div>
         </div>
         <div class="e-set-row">

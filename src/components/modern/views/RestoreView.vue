@@ -148,8 +148,8 @@
             <b>{{ $t('msg.modern.unlock.restore_failed_title') }}</b>
             <p>{{ failure.message }}</p>
             <div class="e-row e-notice-actions">
-              <button type="button" class="e-btn e-btn-sm" @click="retry"><EIcon name="refresh" />{{ $t('msg.modern.unlock.try_again') }}</button>
-              <button type="button" class="e-btn e-btn-sm e-btn-ghost" @click="failure = null">{{ $t('msg.back') }}</button>
+              <button type="button" class="e-btn-inline" @click="retry"><EIcon name="refresh" />{{ $t('msg.modern.unlock.try_again') }}</button>
+              <button type="button" class="e-btn-inline" @click="failure = null">{{ $t('msg.back') }}</button>
             </div>
           </div>
         </div>

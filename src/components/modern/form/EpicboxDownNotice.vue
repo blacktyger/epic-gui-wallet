@@ -7,7 +7,7 @@
     <span>
       <b>{{ $t('msg.modern.eb_down_title') }}</b>{{ ' ' + (suggest ? $t('msg.modern.eb_switch_q', { server: suggest.domain }) : $t('msg.modern.eb_down_wait')) }}
     </span>
-    <button v-if="suggest" type="button" class="e-btn e-btn-sm" data-test="epicbox-switch" :class="{ 'e-is-busy': busy }" :aria-busy="busy ? 'true' : null" :disabled="busy" @click="$emit('switch', suggest.domain)"><EIcon name="swap" />{{ $t('msg.modern.eb_switch') }}</button>
+    <button v-if="suggest" type="button" class="e-btn-inline" data-test="epicbox-switch" :class="{ 'e-is-busy': busy }" :aria-busy="busy ? 'true' : null" :disabled="busy" @click="$emit('switch', suggest.domain)"><EIcon name="swap" />{{ $t('msg.modern.eb_switch') }}</button>
   </div>
 </template>
 

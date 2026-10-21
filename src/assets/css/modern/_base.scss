@@ -243,9 +243,17 @@ html[data-ui='modern'] { -webkit-text-size-adjust: 100%; }
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 .e-btn-inline:hover:not(:disabled) { background: var(--hover); }
+.e-btn-inline.e-inline-danger { color: var(--risk); }
+.e-btn-inline.e-inline-danger:hover:not(:disabled) { background: var(--risk-soft); }
 .e-btn-inline:disabled { color: var(--faint); cursor: default; }
 .e-btn-inline .e-icon { width: 14px; height: 14px; }
-.e-btn-inline.e-is-busy { cursor: progress; opacity: 0.7; }
+.e-btn-inline.e-is-busy { cursor: progress; }
+.e-btn-inline.e-is-busy .e-icon { display: none; }
+.e-btn-inline.e-is-busy::before {
+  content: ''; width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid currentColor; border-right-color: transparent;
+  animation: e-spin 0.8s linear infinite;
+}
 .e-icon-btn.e-inline { width: 24px; height: 24px; vertical-align: middle; }
 .e-icon-btn.e-inline .e-icon { width: 16px; height: 16px; }
 
@@ -486,6 +494,7 @@ html[data-ui='modern'] { -webkit-text-size-adjust: 100%; }
 .e-trace.e-is-syncing path,
 .e-spinner,
 .e-btn.e-is-busy::before,
+.e-btn-inline.e-is-busy::before,
   .e-ring.e-is-wait .e-arc { stroke-dasharray: 3 3 !important; }
 }
 

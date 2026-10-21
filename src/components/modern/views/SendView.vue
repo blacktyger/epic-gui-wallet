@@ -71,11 +71,11 @@
           <!-- a Tor address: Tor off → Turn on Tor; on but not connected → where it stands, in place -->
           <div v-if="torHint" class="e-send-tor" role="status" data-test="send-tor">
             <template v-if="onionState == 'tor_off'">
-              <button type="button" class="e-btn e-btn-sm" data-test="send-tor-on" :class="{ 'e-is-busy': torTurning }" :aria-busy="torTurning ? 'true' : null" @click="turnOnTor"><EIcon name="shield" size="sm" />{{ $t('msg.modern.settings.tor.send_turn_on') }}</button>
+              <button type="button" class="e-btn-inline" data-test="send-tor-on" :class="{ 'e-is-busy': torTurning }" :aria-busy="torTurning ? 'true' : null" @click="turnOnTor"><EIcon name="shield" size="sm" />{{ $t('msg.modern.settings.tor.send_turn_on') }}</button>
             </template>
             <template v-else>
               <span class="e-stg-meta"><span class="e-st" :class="torDot" aria-hidden="true"></span><span>{{ torHint }}</span></span>
-              <button v-if="onionState == 'failed'" type="button" class="e-btn e-btn-sm" data-test="send-tor-retry" @click="retryTor"><EIcon name="refresh" size="sm" />{{ $t('msg.modern.settings.tor.retry') }}</button>
+              <button v-if="onionState == 'failed'" type="button" class="e-btn-inline" data-test="send-tor-retry" @click="retryTor"><EIcon name="refresh" size="sm" />{{ $t('msg.modern.settings.tor.retry') }}</button>
             </template>
           </div>
 
