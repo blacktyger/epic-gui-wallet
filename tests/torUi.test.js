@@ -56,6 +56,8 @@ test('torStatus: the row line for each state', () => {
   assert.deepEqual(torStatus(tor({ progress: 45 })), { tone: 'busy', key: 'msg.modern.settings.tor.connecting', params: { n: 45 } });
   //the onion is asked from the wallet (no saved one): not 0 %
   assert.deepEqual(torStatus(tor({ step: 'wallet' })), { tone: 'busy', key: 'msg.modern.settings.tor.waiting_wallet', params: {} });
+  //an automatic restart: still starting, not the error
+  assert.deepEqual(torStatus(tor({ retrying: true, progress: 10 })), { tone: 'busy', key: 'msg.modern.settings.tor.retrying', params: { n: 10 } });
   assert.equal(torStatus(tor({ state: 'publishing' })).key, 'msg.modern.settings.tor.publishing');
   assert.deepEqual(torStatus(tor({ state: 'ready' })).tone, 'ok');
   const f = torStatus(tor({ state: 'failed', error: 'start', detail: 'boom' }));

@@ -168,7 +168,7 @@
         if (s.walletId && s.walletId !== this.configService.walletId) return;
         //off at lock or Tor off: enabled stays what the setting says
         this.store.commit('tor', { state: s.state, progress: s.progress, onion: s.onion || this.store.state.tor.onion,
-          error: s.error || '', detail: s.detail || '', step: '' });
+          error: s.error || '', detail: s.detail || '', step: '', retrying: !!s.retrying });
       });
 
       //the window hidden or minimized polls less (nodePoll.js, walletSync.js); shown again, the node

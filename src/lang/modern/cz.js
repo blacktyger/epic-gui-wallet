@@ -662,6 +662,7 @@ export default {
       text: 'Přijímejte a posílejte na soukromou adresu .onion. Není třeba otevírat porty. Připojení trvá déle.',
       connecting: 'Připojování k Tor… {n} %',
       waiting_wallet: 'Čekání na peněženku…',
+      retrying: 'Připojování k Tor, nový pokus… {n} %',
       publishing: 'Zveřejňování vaší adresy Tor…',
       ready: 'Připraveno',
       retry: 'Zkusit znovu',
