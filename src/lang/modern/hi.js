@@ -667,6 +667,7 @@ export default {
       connecting: 'Tor से कनेक्ट हो रहा है… {n} %',
       waiting_wallet: 'वॉलेट की प्रतीक्षा हो रही है…',
       retrying: 'Tor से कनेक्ट हो रहा है, फिर से कोशिश… {n} %',
+      still_trying: 'पृष्ठभूमि में कोशिशें जारी हैं।',
       publishing: 'आपका Tor पता प्रकाशित हो रहा है…',
       ready: 'तैयार',
       retry: 'फिर कोशिश करें',

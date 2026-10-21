@@ -292,21 +292,46 @@ test('start: tor exits before its control port, with its [err] line as the detai
   assert.equal(t.m.status().detail, 'Failed to bind one of the listener ports.');
 });
 
-test('network: stuck progress fails, restarts with backoff, then stays failed; Try again starts over', async () => {
-  const t = harness({ timings: { stallMs: 40, bootMs: 5000 } });
+/* final 6.1.6 QA bug 4: with no network the error showed only after 394 s (four quiet restarts) */
+test('network: one quiet restart, then the error shows while the restarts go on behind it; a later bootstrap is ready by itself', async () => {
+  const t = harness({ timings: { stallMs: 150, bootMs: 5000 } });
   await t.m.start(START(walletDir()));
-  await t.until(() => t.spawned.length === 4, 3000);
-  await t.until(() => t.m.status().state === 'failed' && t.spawned.length === 4 && t.procs.every(p => p.gone), 3000);
-  await new Promise(r => setTimeout(r, 150));
-  assert.equal(t.spawned.length, 4, 'three restarts (5 s, 30 s, 2 min), then it stays failed');
+  await t.until(() => t.m.status().state === 'failed', 3000);
+  assert.equal(t.spawned.length, 2, 'shown at the 2nd failed bootstrap');
   assert.equal(t.m.status().error, 'network');
+  assert.equal(t.m.status().retrying, true);
+  assert.ok(t.statuses.some(s => s.state === 'starting' && s.retrying), 'the first restart is quiet');
+  //past the end of the backoff list (its last wait again), and their starts never hide the error
+  const shownAt = t.statuses.findIndex(s => s.state === 'failed');
+  await t.until(() => t.spawned.length >= 5, 5000);
+  assert.ok(t.statuses.slice(shownAt).every(s => s.state === 'failed' && s.error === 'network'), 'no "connecting" over the shown error');
+  //the network is back: the next start bootstraps and publishes, and the row is ready by itself
+  const added = () => t.logs.filter(l => l.includes('onion service added')).length;
+  const before = added();
+  await t.until(() => added() > before, 3000);
+  t.event('STATUS_CLIENT NOTICE BOOTSTRAP PROGRESS=100 TAG=done SUMMARY="Done"');
+  t.event('HS_DESC UPLOADED ' + ONION + ' UNKNOWN $A');
+  await t.until(() => t.m.status().state === 'ready');
+  assert.equal(t.m.status().error, '');
   assert.equal(t.m.status().retrying, false);
-  //the restarts were starting (retrying), never failed: only the last one shows the error
-  assert.deepEqual(t.statuses.filter(s => s.state === 'failed').length, 1);
-  assert.ok(t.statuses.some(s => s.state === 'starting' && s.retrying));
-  await t.m.retry();
-  await t.until(() => t.spawned.length === 5);
   await t.m.stop();
+});
+
+test('network: Try again starts over, quietly (connecting), with the backoff reset', async () => {
+  //a long wait after the error: Try again comes before the next automatic restart
+  const t = harness({ timings: { stallMs: 40, bootMs: 5000, backoffMs: [30, 5000] } });
+  await t.m.start(START(walletDir()));
+  await t.until(() => t.m.status().state === 'failed', 3000);
+  //(the fake tor's SHUTDOWN ends its newest process: the failed one first)
+  await t.until(() => t.procs.every(p => p.gone));
+  await t.m.retry();
+  assert.equal(t.m.status().state, 'starting');
+  const from = t.statuses.length;
+  const next = () => t.statuses.slice(from).find(s => s.state === 'failed' || s.retrying);
+  await t.until(() => next(), 3000);
+  assert.deepEqual([next().state, next().retrying], ['starting', true], 'the first failure after Try again is quiet again');
+  await t.m.stop();
+  assert.equal(t.m.status().state, 'off');
 });
 
 test('network: no 100 % within the boot time even with progress', async () => {

@@ -667,6 +667,7 @@ export default {
       connecting: 'Свързване с Tor… {n} %',
       waiting_wallet: 'Изчакване на портфейла…',
       retrying: 'Свързване с Tor, нов опит… {n} %',
+      still_trying: 'Опитите продължават във фонов режим.',
       publishing: 'Публикуване на вашия Tor адрес…',
       ready: 'Готово',
       retry: 'Опитайте отново',

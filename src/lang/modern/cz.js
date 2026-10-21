@@ -667,6 +667,7 @@ export default {
       connecting: 'Připojování k Tor… {n} %',
       waiting_wallet: 'Čekání na peněženku…',
       retrying: 'Připojování k Tor, nový pokus… {n} %',
+      still_trying: 'Další pokusy běží na pozadí.',
       publishing: 'Zveřejňování vaší adresy Tor…',
       ready: 'Připraveno',
       retry: 'Zkusit znovu',

@@ -667,6 +667,7 @@ export default {
       connecting: 'Łączenie z Tor… {n} %',
       waiting_wallet: 'Oczekiwanie na portfel…',
       retrying: 'Łączenie z Tor, kolejna próba… {n} %',
+      still_trying: 'Kolejne próby trwają w tle.',
       publishing: 'Publikowanie Twojego adresu Tor…',
       ready: 'Gotowe',
       retry: 'Spróbuj ponownie',

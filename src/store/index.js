@@ -64,7 +64,8 @@ export const store = createStore({
        tor-status events: 'off'|'starting'|'publishing'|'ready'|'failed', progress 0-100, onion
        '' | '<56>.onion', error '' | missing|start|network|clock|keys|listener|node, detail;
        step: '' | 'wallet' (starting, the onion is asked from the wallet: "Waiting for the wallet…");
-       retrying: starting again after a network/stopped/publish failure (the error shows once the retries run out) */
+       retrying: starting again after a network/stopped/publish failure (quietly the first time, then
+       behind the shown error, failed with retrying) */
     tor: {enabled: false, state: 'off', progress: 0, onion: '', error: '', detail: '', step: '', retrying: false},
     /* our Epicbox listener, from its own output (App.onEpicboxEvent) and walletService:
        state: '' | starting | connecting | listening | paused | switching | checking_old | off;

@@ -152,6 +152,8 @@ export default {
     connecting: 'Connecting to Tor… {n} %',
     waiting_wallet: 'Waiting for the wallet…',
     retrying: 'Connecting to Tor, trying again… {n} %',
+    //the error is shown while the automatic restarts go on (torManager quietRestarts)
+    still_trying: 'Still trying in the background.',
     publishing: 'Publishing your Tor address…',
     ready: 'Ready',
     retry: 'Try again',

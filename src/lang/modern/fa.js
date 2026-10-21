@@ -667,6 +667,7 @@ export default {
       connecting: 'در حال اتصال به Tor… {n}٪',
       waiting_wallet: 'در انتظار کیف پول…',
       retrying: 'در حال اتصال به Tor، تلاش دوباره… {n}٪',
+      still_trying: 'تلاش‌ها در پس‌زمینه ادامه دارد.',
       publishing: 'در حال انتشار آدرس Tor شما…',
       ready: 'آماده',
       retry: 'تلاش دوباره',
