@@ -198,15 +198,13 @@ const done = (opts = {}) => {
   return wz({ step: 6, back: false, cont: 'Open my wallet', body, dialog: dlg });
 };
 const delDlg = (od) => `<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dh" style="width:540px"><h2 id="dh">Delete the old folder?</h2>
-  <div class="pathbox" style="margin-top:12px" title="${od ? 'C:\\Users\\Anna\\OneDrive\\.epic\\main' : P.def}">${od ? 'C:\\Users\\Anna\\OneDrive\\.epic\\main' : P.def}</div>
+  <div class="pathbox" style="margin-top:12px">${P.def}</div>
   <div class="dlg-list"><div>${ic('file')}<span>What goes: wallet files (14 MB), old settings and logs.</span></div></div>
   <label class="dlg-chk"><input type="checkbox" class="e-check"><span>Also delete the blockchain data in it (8.1 GB)</span></label>
   <p class="body" style="margin-top:16px">It goes to the Recycle Bin, so you can still get it back.</p>
-  ${od ? `<div class="e-notice e-warn" style="margin-top:16px">${ic('alertc')}<div style="color:var(--text)">This folder is in OneDrive: deleting it also removes it from OneDrive on your other devices.</div><div></div></div>` : ''}
   <div class="dlg-foot"><button class="e-btn">Cancel</button><button class="e-btn e-btn-danger-fill">Move to Recycle Bin</button></div></div>`;
 add('w6', 'Done', 'Wizard', 'Step 6. Savings is not verified yet (Delete off); Default is verified (Delete on).', () => done());
 add('w6d', 'Delete confirm', 'Wizard', 'Dialog over Done.', () => done({ dlg: delDlg(false) }));
-add('w6d2', 'Delete · OneDrive', 'Wizard', 'Same dialog; the extra line shows only when the folder is in OneDrive.', () => done({ dlg: delDlg(true) }));
 add('w6v', 'Done · after delete', 'Wizard', 'Done after the verified folder was moved to the Recycle Bin.', () => done({ defDel: true }));
 
 /* ---------- mockup chrome ---------- */

@@ -1,7 +1,7 @@
 # Plan: the Import wizard
 
 Status: proposal (2026-10-21), branch `plan/import-wizard` off `build/6.1.6-rc` (5a83e2f). Docs only.
-Mockups: `docs/plans/import-wizard-mockup/index.html` (static HTML, dark/light and 1280/1044 toggles; `?s=<id>&theme=light&w=1044`). The 88 PNGs are in the published link only, not in git.
+Clickable prototype: `docs/plans/import-wizard-proto/index.html` (open it in a browser; its Demo panel sets the scenarios). Static mockups: `docs/plans/import-wizard-mockup/index.html` (static HTML, dark/light and 1280/1044 toggles; `?s=<id>&theme=light&w=1044`). The 88 PNGs are in the published link only, not in git.
 Builds on `docs/plans/fresh-start.md` (paths, settings.json, the importer) and `plan/accounts:docs/plans/accounts.md`.
 
 ## Why
@@ -291,7 +291,7 @@ again.
     says: "The built-in node still uses the blockchain data in it: [Copy it into the app first] or
     keep the folder."
 - The confirmation [w6d] names the path, says "It goes to the Recycle Bin (Trash), so you can still
-  get it back.", and adds an OneDrive line when the path is under a OneDrive root.
+  get it back.".
 - The delete is **`shell.trashItem`** per listed entry (decision 3). If the trash fails (no
   Recycle Bin on that drive, no gio on Linux), a second confirmation offers "Delete permanently",
   otherwise Keep.
@@ -355,7 +355,6 @@ warning row [m3]; the move offer [m4]; the test-open path in the unlock flow and
 |---|---|
 | Several accounts in an old GUI | Each account is its own folder, seed and password (fresh-start.md); each is a row, imported as its own wallet with its own password; label = old account name. CLI-internal accounts (`account -c`) live inside one database: copied whole, still shown on `default` only (unchanged). |
 | Floonet / usernet | Found on all networks; network tag on the row; copied to `wallets/<id>` with that network's toml; a testnet's node setting → local node. |
-| Windows: OneDrive | A wallet on a OneDrive Desktop may hold cloud-only placeholders: reading hydrates them; a read error (offline) → "This folder is in OneDrive and not on this computer. Right-click it › Always keep on this device, then try again." Delete warns that OneDrive deletes it on other devices too. |
 | Windows: long paths | Copy and hash use Node fs only (`toNamespacedPath` gives `\\?\` paths), never a shell; test fixture with a > 260-char source path. |
 | Windows: case | Keys, dedupe and "already in the app" compare `realpath` lowercased on win32 (as `legacyScan` does). |
 | Folder on another drive | Copy crosses volumes; staging is under `<root>`, so placement is a same-volume rename; space is checked on `<root>`'s volume. Removable drive pulled mid-copy → read error → roll back. |
@@ -470,7 +469,6 @@ contract are fixed (they are, above).
      - an old GUI still running → locked;
      - a wallet on `D:` (or a `subst` drive);
      - a > 260-char path;
-     - a wallet under a OneDrive-like `Desktop` path;
      - Recycle Bin delete;
      - Tor on after import (the onion is the same as the old wallet's).
   3. Update the existing `fresh-start` spec: no Found screen, the Welcome probe line.
