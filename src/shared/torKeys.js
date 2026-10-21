@@ -11,6 +11,9 @@
  *   3. once the key file for <onion> is there (96 bytes, its public half the onion's, or a key a
  *      fixed epic-wallet wrote expanded), the process is stopped; 30 s, then it fails (keys)
  *
+ * epic-wallet only writes the key when the onion's folder is missing: a folder without a good key
+ * file (missing, damaged) is moved aside first (<folder>.bad-<time>, never deleted: user data).
+ *
  * The toml with use_tor_listener = true is removed afterwards. Nothing here reads or logs the key.
  * Plain ESM with its I/O passed in (tests/torKeys.test.js).
  */
@@ -28,7 +31,7 @@ export const TIMEOUT_MS = 30000;
  * → {ok: true} | {ok: false, detail}
  */
 export async function ensureOnionKey({ ptyHost, password, bin, fs, join, freePort, template, wallet, onion, socksPort,
-  timeoutMs = TIMEOUT_MS, pollMs = 100, log = () => {}, setTimer = setTimeout, clearTimer = clearTimeout }) {
+  timeoutMs = TIMEOUT_MS, pollMs = 100, log = () => {}, setTimer = setTimeout, clearTimer = clearTimeout, now = () => Date.now() }) {
   const p = parseOnion(onion);
   if (!p.valid) return { ok: false, detail: 'invalid onion' };
   const keyPath = onionKeyPath(wallet.dataDir, p.host, join);
@@ -36,11 +39,22 @@ export async function ensureOnionKey({ ptyHost, password, bin, fs, join, freePor
     try { return !!readOnionKeyFile(fs.readFileSync(keyPath)); } catch (e) { return false; }
   };
   if (have()) return { ok: true };
-
   const keysDir = join(wallet.configDir, KEYS_DIR);
   const tomlPath = join(keysDir, 'epic-wallet.toml');
   let pw = password();
   if (!pw) return { ok: false, detail: 'locked' };
+  //a folder without a good key: epic-wallet would leave it as it is and never write the key
+  const onionDir = join(wallet.dataDir, 'wallet_tor', 'onion_service_addresses', p.host.slice(0, -'.onion'.length));
+  if (fs.existsSync(onionDir)) {
+    const aside = onionDir + '.bad-' + now();
+    try {
+      fs.renameSync(onionDir, aside);
+      log('tor keys: moved a folder without a good key aside');
+    } catch (e) {
+      pw.fill(0);
+      return { ok: false, detail: 'could not move the damaged key folder aside: ' + (e && (e.code || e.message)) };
+    }
+  }
   let id = null;
   try {
     const port = await freePort();

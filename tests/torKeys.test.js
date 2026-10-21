@@ -104,3 +104,22 @@ test('no key in time: keys error, process stopped; an early exit says why; locke
   r = await h.run({ onion: 'nope' });
   assert.equal(r.ok, false);
 });
+
+test('the onion folder without a good key is moved aside (never deleted), then the one-shot runs', async () => {
+  for (const damaged of [null, Buffer.from('short')]) {
+    const h = setup({ write: 20 });
+    fs.mkdirSync(path.dirname(h.keyFile), { recursive: true });
+    fs.writeFileSync(path.join(path.dirname(h.keyFile), 'hostname'), 'keep me');
+    if (damaged) fs.writeFileSync(h.keyFile, damaged);
+    assert.deepEqual(await h.run({ now: () => 1234 }), { ok: true });
+    assert.equal(h.started.length, 1);
+    const aside = path.dirname(h.keyFile) + '.bad-1234';
+    assert.equal(fs.readFileSync(path.join(aside, 'hostname'), 'utf8'), 'keep me');
+    assert.equal(fs.readFileSync(h.keyFile).length, 96);
+  }
+  //locked: nothing is moved
+  const h = setup();
+  fs.mkdirSync(path.dirname(h.keyFile), { recursive: true });
+  await h.run({ password: () => null, now: () => 1 });
+  assert.equal(fs.existsSync(path.dirname(h.keyFile)), true);
+});
