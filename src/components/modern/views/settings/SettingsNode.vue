@@ -138,6 +138,8 @@
       async applyNode() {
         const internal = this.nodeserverField.select == 'internal';
         const ok = await this.save();
+        //the page is gone (Lock while the node was checked): Settings.vue saved nothing, no field to update
+        if (this.leaving) return;
         if (ok !== false) {
           this.savedInternal = internal;
           this.savedAddress = String((this.configService.config || {}).check_node_api_http_addr || '');

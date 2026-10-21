@@ -401,6 +401,10 @@ import { formatBytes, formatDate } from "@/components/wallets";
         if(!isFormAllValid.includes(false)){
           isFormAllValid.push(await this.nodeserverField.verifyNode());
         }
+        //Settings left (Lock, another screen) while the node was checked: nothing is saved
+        if(this.leaving){
+          return false;
+        }
 
         if(!isFormAllValid.includes(false)){
 

@@ -142,6 +142,10 @@
         }
       }
     },
+    //vue-i18n takes $t off an unmounted component: a check still running ends without it (verifyNode)
+    beforeUnmount() {
+      this.gone = true;
+    },
     watch: {
       //prefill the default node when external is picked and the address is empty
       select(value){
@@ -160,10 +164,14 @@
         this.checking = true;
         let check = await this.$nodeService.checkNodeVersion(this.defaultValue);
         //no reply in time says nothing about what answers there (a busy node): ask once more
-        if(!check.ok && check.timeout){
+        if(!check.ok && check.timeout && !this.gone){
           check = await this.$nodeService.checkNodeVersion(this.defaultValue);
         }
         this.checking = false;
+        //the field was left meanwhile (Lock, another screen): nothing to say, and nothing to save
+        if(this.gone){
+          return false;
+        }
         if(!check.ok){
           this.errors.nodeaddress = check.timeout
             ? this.$t("msg.modern.settings.node_check_timeout")
