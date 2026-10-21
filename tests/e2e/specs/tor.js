@@ -43,6 +43,19 @@ H.runCase('tor', async (t) => {
   await t.step('first start: Welcome', () => U.welcome(w), { fatal: true });
   await t.step('create a wallet', () => U.createWallet(w, ui, password), { fatal: true, timeout: 150000 });
   await t.step('the first-unlock tour can be skipped', () => U.skipTour(w, ui));
+  //the HTTP listener Tor needs checks the node first: the stub node, not the default one on the internet
+  //(Settings › Node is one combobox since the Settings split: type the address, Enter applies it)
+  await t.step('Settings › Node: the stub node', async () => {
+    if (await U.route(w) !== '/settings') await w.locator('aside a[href="/settings"], nav a[href="/settings"]').first().click();
+    const input = w.locator('#stg-node-in');
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    await input.fill(U.NODE_URL);
+    await input.press('Enter');
+    const online = () => w.locator('[data-test=svc-node]').innerText().then((x) => (/Online/.test(x) ? x.replace(/\s+/g, ' ') : null)).catch(() => null);
+    const said = await H.waitFor(online, { timeout: 45000, interval: 300 });
+    if (!said) throw new Error('the sidebar never says the node is online');
+    return 'node ' + U.NODE_URL + ': ' + said;
+  }, { fatal: true, timeout: 90000 });
 
   const row = () => w.locator('[data-test=tor-row]');
   const sw = () => row().locator('[data-test=tor-switch]');
@@ -71,8 +84,8 @@ H.runCase('tor', async (t) => {
   }, { fatal: true });
 
   await t.step('turn Tor on: tor starts, connecting is shown', async () => {
-    await sw().check();
-    const s = await waitStatus(/Connecting to Tor|Publishing|Can't reach/, 30000);
+    await row().locator('.e-switch').click();
+    const s = await waitStatus(/Connecting to Tor|Publishing|Can't reach|stopped|couldn't/, 30000);
     return s + ' | ' + await torRuns();
   }, { fatal: true, timeout: 60000 });
 
@@ -81,18 +94,19 @@ H.runCase('tor', async (t) => {
     const s = await waitStatus(NETWORK, STALL_MS + 40000);
     await row().locator('[data-test=tor-retry]').waitFor({ timeout: 5000 });
     if (!await sw().isChecked()) throw new Error('the switch went off');
-    return s + ' after ' + ((Date.now() - began) / 1000).toFixed(1) + ' s';
+    return s + ' after ' + ((Date.now() - began) / 1000).toFixed(1) + ' s | ' + await noTor();
   }, { timeout: 90000, shot: true });
 
-  await t.step('Try again: starts over (connecting), then the network error again', async () => {
+  await t.step('Try again: starts over (connecting, a tor runs), then the network error again (tor stopped while failed)', async () => {
     await row().locator('[data-test=tor-retry]').click();
     await waitStatus(/Connecting to Tor/, 15000);
+    const up = await torRuns(10000);
     const s = await waitStatus(NETWORK, STALL_MS + 40000);
-    return s + ' | ' + await torRuns(5000);
+    return up + ' | ' + s + ' | ' + await noTor();
   }, { timeout: 90000 });
 
   await t.step('turn Tor off: no status, no tor process', async () => {
-    await sw().uncheck();
+    await row().locator('.e-switch').click();
     await H.waitFor(async () => (await status()) ? null : 'gone', { timeout: 10000 });
     if (await sw().isChecked()) throw new Error('still on');
     return noTor();
@@ -100,7 +114,7 @@ H.runCase('tor', async (t) => {
 
   await t.step('Tor on again, then Lock: no tor process', async () => {
     await openReceiving();
-    await sw().check();
+    await row().locator('.e-switch').click();
     await torRuns();
     await U.lock(w, ui);
     return noTor();
