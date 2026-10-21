@@ -75,11 +75,7 @@ H.runCase('pl', async (t) => {
   if (ui === 'modern') await t.step('skip the tour', () => U.skipTour(w, ui));
   //the node is a setting of each wallet: the stub for both
   const stubNode = async () => {
-    await U.openSettings(w, ui);
-    if (ui === 'modern') await w.getByText('External node server', { exact: true }).first().click();
-    else await w.locator('section.is-main-section select').first().selectOption('external');
-    await w.locator(ui === 'modern' ? 'input[id^="e-nodeserverField"][id$="-a"]' : 'section.is-main-section input.input').first().fill(U.NODE_URL);
-    return U.saveNode(w, ui);
+    return U.setNode(w, ui);
   };
   await t.step('node: the stub', stubNode, { fatal: true, timeout: 90000 });
   await t.step('add a second wallet in English (its label: "Wallet 2")', async () => {

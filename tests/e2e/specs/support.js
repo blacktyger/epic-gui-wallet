@@ -79,7 +79,7 @@ H.runCase('support', async (t) => {
       return seen.length + ' steps: ' + seen.join(' | ');
     });
   }
-  await t.step('Settings: the stub node', async () => { await U.typeNodeAddress(w, ui); return U.saveNode(w, ui); }, { fatal: true, timeout: 90000 });
+  await t.step('Settings: the stub node', async () => { await U.typeNodeAddress(w, ui); return U.saveNode(w, ui, U.NODE_URL, t); }, { fatal: true, timeout: 90000 });
   await t.step('lock and unlock (the wallet processes log)', async () => {
     await U.lock(w, ui);
     await shot(w, '0-unlock-link');

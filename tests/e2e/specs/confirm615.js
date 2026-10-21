@@ -150,9 +150,8 @@ H.runCase('confirm615', async (t) => {
   /* ---------- a: node field ---------- */
   await check('a', 'type http://127.0.0.1:13413 key by key; the field holds each key, slashes included', async () => {
     await U.openSettings(w, ui);
-    if (ui === 'modern') { const ext = w.locator('input[name^="e-nodeserverField"][value="external"]').first(); if (!(await ext.isChecked())) await w.getByText('External node server', { exact: true }).first().click(); }
-    else { const sel = w.locator('section.is-main-section select').first(); if ((await sel.inputValue()) !== 'external') await sel.selectOption('external'); }
-    const input = (ui === 'modern' ? w.locator('#e-nodeserverField-1-a, input[id^="e-nodeserverField"][id$="-a"]') : w.locator('section.is-main-section input.input')).first();
+    if (ui === 'classic') { const sel = w.locator('section.is-main-section select').first(); if ((await sel.inputValue()) !== 'external') await sel.selectOption('external'); }
+    const input = U.nodeInput(w, ui);
     await input.click(); await input.press('Control+A'); await input.press('Delete');
     let typed = '';
     for (const ch of U.NODE_URL) {
@@ -161,7 +160,7 @@ H.runCase('confirm615', async (t) => {
       if (v !== typed) throw new Error(`after ${JSON.stringify(typed)} the field shows ${JSON.stringify(v)}`);
       if (typed === 'http://') await snap('a', 'typing-http-slashes');
     }
-    await input.press('Tab');
+    if (ui === 'classic') await input.press('Tab');
     await snap('a', 'typed-full-address');
     return 'every key kept: ' + await input.inputValue();
   }, { fatal: true });

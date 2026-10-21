@@ -40,11 +40,7 @@ H.runCase('checks', async (t) => {
   await t.step('create a wallet', () => U.createWallet(w, ui, password), { fatal: true, timeout: 150000 });
   if (ui === 'modern') await t.step('skip the tour', () => U.skipTour(w, ui));
   await t.step('node: the stub', async () => {
-    await U.openSettings(w, ui);
-    if (ui === 'modern') await w.getByText('External node server', { exact: true }).first().click();
-    else await w.locator('section.is-main-section select').first().selectOption('external');
-    await w.locator(ui === 'modern' ? '#e-nodeserverField-1-a' : 'section.is-main-section input.input').first().fill(U.NODE_URL);
-    return U.saveNode(w, ui);
+    return U.setNode(w, ui);
   }, { fatal: true, timeout: 90000 });
   await t.step(`About shows ${version}`, async () => {
     await U.nav(w, ui, U.PAGES[ui].find((p) => p[1] === '/about'));

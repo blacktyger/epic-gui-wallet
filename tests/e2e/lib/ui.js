@@ -7,6 +7,8 @@
  * Classic's gear menu is a click toggle, and its "Log out" is an <a> without href (no link role).
  */
 'use strict';
+const fs = require('fs');
+const path = require('path');
 const { addSecrets, waitFor } = require('./harness');
 
 const ADDR_RE = /\bes[a-zA-Z0-9]{40,60}@[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?/;
@@ -111,7 +113,7 @@ const PAGES = {
     ['Settings', '/settings', 'Settings', 'side'],
     ['This wallet', '/account', 'Settings', 'stg'], ['All wallets', '/wallets', 'Settings', 'stg'], ['Recovery phrase', '/mnemonic', 'Settings', 'stg'],
     ['Rescan', '/recheckBalance', 'Settings', 'stg'], ['About', '/about', 'Settings', 'stg'], ['Help', '/help', 'Settings', 'stg'],
-    ['Node and receiving', '/settings', 'Settings', 'stg'],
+    ['Node', '/settings', 'Settings', 'stg'], ['Receiving', '/settings/receiving', 'Settings', 'stg'], ['Appearance', '/settings/appearance', 'Settings', 'stg'],
     //Receive › Transaction files
     ['Sign a transaction file', '/importTransaction', null, 'rcv-sign'], ['Finalize a transaction file', '/finalizeTransaction', null, 'rcv-fin'],
   ],
@@ -136,7 +138,7 @@ async function nav(w, ui, [label, path, , where]) {
     await openGear(w);
     await w.locator(`.navbar-dropdown a[href="${path}"]`).first().click();
   } else if (ui === 'modern' && where === 'stg') {
-    if (!/^\/(settings|account|wallets|mnemonic|recheckBalance|about|help)$/.test(await route(w))) await w.locator('aside a[href="/settings"], nav a[href="/settings"]').first().click();
+    if (!/^\/(settings(\/\w+)?|account|wallets|mnemonic|recheckBalance|about|help)$/.test(await route(w))) await w.locator('aside a[href="/settings"], nav a[href="/settings"]').first().click();
     await w.locator(`nav.e-stg-nav a[href="${path}"]`).first().click();
   } else if (ui === 'modern' && /^rcv-/.test(where || '')) {
     if (await route(w) !== '/httpReceive') await w.locator('a[href="/httpReceive"]').first().click();
@@ -202,19 +204,27 @@ async function setupAssistant(w) {
 }
 
 /* ---------- Settings: the node ---------- */
-const nodeInput = (w, ui) => (ui === 'modern' ? w.locator('#e-nodeserverField-1-a, input[id^="e-nodeserverField"][id$="-a"]') : w.locator('section.is-main-section input[type=nodeaddress], section.is-main-section input.input').first()).first();
+const nodeInput = (w, ui) => (ui === 'modern' ? w.locator('input[data-test=node-combo]') : w.locator('section.is-main-section input[type=nodeaddress], section.is-main-section input.input').first()).first();
 
 async function openSettings(w, ui) {
-  return nav(w, ui, ui === 'modern' ? PAGES.modern.find((p) => p[0] === 'Settings') : PAGES.classic.find((p) => p[0] === 'Settings'));
+  return nav(w, ui, ui === 'modern' ? PAGES.modern.find((p) => p[0] === 'Node') : PAGES.classic.find((p) => p[0] === 'Settings'));
 }
 
-/** External node, address typed key by key: after every key the field holds exactly what was typed. */
+/** The node address the wallet has saved (Modern: the default wallet's settings in settings.json). */
+function storedNode(t) {
+  const s = JSON.parse(fs.readFileSync(path.join(t.home, '.epic-gui', 'settings.json'), 'utf8'));
+  const w = (s.wallets || []).find((x) => x.id === s.defaultWallet) || (s.wallets || [])[0] || {};
+  return (w.settings || {}).check_node_api_http_addr;
+}
+
+/**
+ * External node, address typed key by key: after every key the field holds exactly what was typed.
+ * Modern: the node combobox on Settings › Node; the field stays focused, the address is applied by
+ * saveNode (Enter).
+ */
 async function typeNodeAddress(w, ui, url = NODE_URL) {
   await openSettings(w, ui);
-  if (ui === 'modern') {
-    const ext = w.locator('input[name^="e-nodeserverField"][value="external"]').first();
-    if (!(await ext.isChecked())) await w.getByText('External node server', { exact: true }).first().click();
-  } else {
+  if (ui === 'classic') {
     const sel = w.locator('section.is-main-section select').first();
     if ((await sel.inputValue()) !== 'external') await sel.selectOption('external');
   }
@@ -230,18 +240,38 @@ async function typeNodeAddress(w, ui, url = NODE_URL) {
     const v = await input.inputValue();
     if (v !== typed) throw new Error(`after typing ${JSON.stringify(typed)} the field shows ${JSON.stringify(v)}`);
   }
-  await input.press('Tab');
-  await w.waitForTimeout(400);
-  const v = await input.inputValue();
-  if (v !== url) throw new Error(`after leaving the field it shows ${JSON.stringify(v)}, typed ${JSON.stringify(url)}`);
-  return `typed ${url} key by key; field holds ${JSON.stringify(v)} (both slashes)`;
+  if (ui === 'classic') {
+    await input.press('Tab');
+    await w.waitForTimeout(400);
+    const v = await input.inputValue();
+    if (v !== url) throw new Error(`after leaving the field it shows ${JSON.stringify(v)}, typed ${JSON.stringify(url)}`);
+    return `typed ${url} key by key; field holds ${JSON.stringify(v)} (both slashes)`;
+  }
+  //the typed address gets its live-check row in the list, the text stays as typed
+  await w.locator('[data-test=node-list]').waitFor({ state: 'visible', timeout: 8000 });
+  return `typed ${url} key by key; field holds ${JSON.stringify(await input.inputValue())} (both slashes), live check shown`;
 }
 
-/** Save the settings page; the app then talks to the stub node: "Node online and ready" at the stub's height. */
-async function saveNode(w, ui, url = NODE_URL) {
+/** Settings › node: the address filled at once (not key by key), then applied like saveNode. */
+async function setNode(w, ui, url = NODE_URL, t = null) {
+  await openSettings(w, ui);
+  if (ui === 'classic') {
+    const sel = w.locator('section.is-main-section select').first();
+    if ((await sel.inputValue()) !== 'external') await sel.selectOption('external');
+  }
+  const input = nodeInput(w, ui);
+  await input.click();
+  await input.fill(url);
+  return saveNode(w, ui, url, t);
+}
+
+/**
+ * Apply the typed node (Modern: Enter in the combobox, no Save bar; Classic: Save); the app then talks
+ * to the stub node: "Node online and ready" at the stub's height. Modern with t: the stored address is the typed one.
+ */
+async function saveNode(w, ui, url = NODE_URL, t = null) {
   if (ui === 'modern') {
-    const save = w.locator('.e-stg-savebar').getByRole('button', { name: 'Save', exact: true });
-    await save.click({ timeout: 8000 });
+    await nodeInput(w, ui).press('Enter');
     await waitNodeOnline(w, 45000);
   } else {
     await w.locator('section.is-main-section button.is-primary').filter({ hasText: /^\s*Save\s*$/ }).first().click({ timeout: 8000 });
@@ -249,8 +279,15 @@ async function saveNode(w, ui, url = NODE_URL) {
   }
   await openSettings(w, ui);
   const v = await nodeInput(w, ui).inputValue();
-  if (v !== url) throw new Error('after saving, the node field shows ' + JSON.stringify(v));
-  return `saved; node field still ${JSON.stringify(v)}; ` + (ui === 'modern' ? 'sidebar: Node online and ready' : 'header: Node (' + url + ')');
+  const host = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  if (v !== (ui === 'modern' ? host : url)) throw new Error('after saving, the node field shows ' + JSON.stringify(v));
+  let stored = '';
+  if (ui === 'modern' && t) {
+    const sv = storedNode(t);
+    if (sv !== url) throw new Error('the stored node address is ' + JSON.stringify(sv) + ', typed ' + JSON.stringify(url));
+    stored = `; stored ${sv}`;
+  }
+  return `saved; node field shows ${JSON.stringify(v)}${stored}; ` + (ui === 'modern' ? 'sidebar: Node online and ready' : 'header: Node (' + url + ')');
 }
 
 /* ---------- Send ---------- */
@@ -386,13 +423,13 @@ async function cancelContact(w, ui) {
 
 /* ---------- language ---------- */
 const htmlAttrs = (w) => w.evaluate(() => ({ lang: document.documentElement.lang, dir: document.documentElement.dir || getComputedStyle(document.documentElement).direction }));
-/** Settings › language select, then Save (Modern: the save bar; Classic: the page's Save). */
+/** Settings › language select (Modern: Appearance, applies at once; Classic: then the page's Save). */
 async function setLanguage(w, ui, code) {
-  await openSettings(w, ui);
+  if (ui === 'modern') await nav(w, ui, PAGES.modern.find((p) => p[0] === 'Appearance'));
+  else await openSettings(w, ui);
   const sel = ui === 'modern' ? w.locator('#stg-lang') : w.locator('section.is-main-section select').filter({ has: w.locator('option[value=de]') }).first();
   await sel.selectOption(code);
-  const save = ui === 'modern' ? w.locator('.e-stg-savebar button.e-btn-primary') : w.locator('section.is-main-section button.is-primary').last();
-  await save.click({ timeout: 8000 });
+  if (ui === 'classic') await w.locator('section.is-main-section button.is-primary').last().click({ timeout: 8000 });
   const want = code === 'cz' ? 'cs' : code;
   const a = await waitFor(async () => { const x = await htmlAttrs(w); return x.lang === want ? x : null; }, { timeout: 30000 });
   if (!a) throw new Error(`html lang is ${JSON.stringify(await htmlAttrs(w))} after choosing ${code}`);
@@ -400,5 +437,5 @@ async function setLanguage(w, ui, code) {
 }
 
 module.exports = { startHttpListener, ADDR_RE, toasts, contactNames, contactMessages, addContact, cancelContact, htmlAttrs, setLanguage, NODE_URL, PAGES, clickable, text, route, main, waitText, waitNodeOnline, welcome, createWallet, createOnly, unlockChosen, submitPassword, skipTour, nav, heading, visit,
-  openSettings, typeNodeAddress, saveNode, sendTo, sendAmt, sendBtn, sendErrors, trySend, epicAddress, receiveAddress, stopListener,
+  openSettings, typeNodeAddress, saveNode, setNode, nodeInput, sendTo, sendAmt, sendBtn, sendErrors, trySend, epicAddress, receiveAddress, stopListener,
   lock, unlock, wrongPassword, openGear, setupAssistant };

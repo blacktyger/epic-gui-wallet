@@ -20,7 +20,7 @@ H.runCase('smoke', async (t) => {
 
   //the default node is the public one, unreachable here: the stub first, so every page sees a synced node
   await t.step('Settings: type the node address key by key, both slashes stay', () => U.typeNodeAddress(w, ui), { fatal: true });
-  await t.step('Settings: save; the wallet uses the stub node', () => U.saveNode(w, ui), { fatal: true, timeout: 90000 });
+  await t.step('Settings: Enter applies it; the wallet uses the stub node, the stored value is the typed address', () => U.saveNode(w, ui, U.NODE_URL, t), { fatal: true, timeout: 90000 });
 
   /* ---- lock, a wrong password, unlock: the wallet now starts with a synced node ---- */
   await t.step(ui === 'modern' ? 'Lock wallet' : 'Log out', () => U.lock(w, ui), { fatal: true });

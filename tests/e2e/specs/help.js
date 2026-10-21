@@ -30,12 +30,9 @@ H.runCase('help', async (t) => {
 
   await t.step('create a wallet', () => U.createWallet(w, ui, password), { fatal: true, timeout: 150000 });
   await t.step('skip the tour', () => U.skipTour(w, ui));
-  //Settings › Save checks the node: the stub first (the default public node is unreachable here), so the language can be saved later
+  //Applying the node checks it: the stub first (the default public node is unreachable here), so the language can be saved later
   await t.step('node: the stub', async () => {
-    await U.openSettings(w, ui);
-    await w.getByText('External node server', { exact: true }).first().click();
-    await w.locator('#e-nodeserverField-1-a').first().fill(U.NODE_URL);
-    return U.saveNode(w, ui);
+    return U.setNode(w, ui);
   }, { fatal: true, timeout: 90000 });
   await t.step('Settings › Help opens', help, { fatal: true });
 
