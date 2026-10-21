@@ -15,8 +15,6 @@
 .e-con-sort { margin-inline-start: auto; }
 .e-con-sort button { padding: 0 var(--sp-3); }
 .e-con-list { list-style: none; margin: 0; padding: var(--sp-2); overflow-y: auto; flex: 1; min-height: 0; }
-.e-con-item { display: flex; align-items: center; gap: 2px; }
-.e-con-item .e-con-row { flex: 1; min-width: 0; }
 .e-con-row {
   display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: 60px;
   padding-block: var(--sp-2); padding-inline: var(--sp-2) var(--sp-3); border: 0; border-radius: var(--r-sm);
@@ -30,10 +28,7 @@
 .e-con-row-text { flex: 1; min-width: 0; }
 .e-con-row-text b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .e-con-row-addr { display: block; margin-top: 2px; color: var(--faint); font: 400 0.75rem var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.e-con-row-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
-.e-con-row-meta small { color: var(--faint); font-size: var(--fs-xs); white-space: nowrap; }
-.e-con-kinds { display: flex; gap: 4px; }
-.e-con-kind { padding: 0 6px; min-height: 20px; font-size: 0.6875rem; }
+.e-con-kind { flex: none; padding: 0 6px; min-height: 20px; font-size: 0.6875rem; }
 .e-con-none { padding: var(--sp-6) var(--sp-4); display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-3); }
 
 /* the pane: one contact, or the form */
@@ -43,15 +38,19 @@
 .e-con-head { display: flex; align-items: center; gap: var(--sp-5); }
 .e-con-head h2 { font-size: var(--fs-h2); overflow-wrap: anywhere; }
 .e-con-head p { margin-top: 2px; }
-.e-con-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-5) 0 var(--sp-6); padding-bottom: var(--sp-6); border-bottom: 1px solid var(--line); }
-.e-con-del { margin-inline-start: auto; color: var(--risk); }
+.e-con-actions { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-3); margin: var(--sp-6) 0; padding-bottom: var(--sp-6); border-bottom: 1px solid var(--line); }
+.e-con-via { align-self: flex-start; }
+.e-con-send { min-width: 200px; height: 40px; }
+.e-con-more { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-inline-start: calc(var(--sp-3) * -1); }
+.e-con-more .e-btn { height: 40px; }
+.e-con-del { color: var(--risk); }
 .e-con-del:hover:not(:disabled) { background: var(--risk-soft); color: var(--risk); }
 
 .e-con-facts { margin: 0; display: flex; flex-direction: column; gap: var(--sp-5); }
 .e-con-facts dt { display: flex; align-items: center; gap: 6px; color: var(--dim); font-size: var(--fs-sm); margin-bottom: 6px; }
 .e-con-facts dt .e-icon { color: var(--faint); }
 .e-con-facts dd { margin: 0; }
-.e-con-facts dd.e-addr { padding-block: var(--sp-2); padding-inline: var(--sp-4) var(--sp-2); gap: var(--sp-3); }
+.e-con-facts dd.e-addr { padding-block: var(--sp-2); padding-inline: 0 var(--sp-2); gap: var(--sp-3); background: none; border: 0; }
 .e-con-facts dd.e-addr code { font-size: 0.8125rem; overflow-wrap: anywhere; }
 .e-con-copy { flex: none; min-width: 92px; justify-content: center; }
 .e-con-copy.e-is-copied, .e-con-copy.e-is-copied .e-icon { color: var(--ok); }

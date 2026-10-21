@@ -17,7 +17,7 @@ export default {
   menu_details: 'Details',
   copy_epicbox: 'Copy Epicbox address',
   copy_http: 'Copy HTTP address',
-  pick_hint: 'Choose a contact to send to them. The … button next to each one has their details, Edit and Delete.',
+  pick_hint: 'Choose a contact to see their details, send to them, edit or delete them.',
 
   //one contact
   epicbox_address: 'Epicbox address',
@@ -26,6 +26,7 @@ export default {
   send: 'Send',
   send_epicbox: 'Send via Epicbox',
   send_http: 'Send via HTTP',
+  send_via: 'Send using',
   copy: 'Copy',
   copied: 'Copied',
   txs_title: 'Transactions with {name}',

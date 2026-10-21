@@ -39,7 +39,7 @@
               <input id="con-q" v-model="keyword" class="e-input" type="search" autocomplete="off" :placeholder="$t('msg.modern.settings.search_ph')" @keydown.esc="keyword && (keyword = '')" />
             </div>
           </form>
-          <div class="e-con-sortrow">
+          <div v-if="longList" class="e-con-sortrow">
             <span class="e-small e-dim" role="status" aria-live="polite">{{ searched ? $t('msg.contacts.found_count', shownList.length) : $t('msg.modern.settings.contacts_count', addressList.length) }}</span>
             <div class="e-seg e-con-sort" role="group" :aria-label="$t('msg.contacts.sort_label')">
               <button type="button" :aria-pressed="sort == 'name' ? 'true' : 'false'" @click="sort = 'name'">{{ $t('msg.contacts.sort_name') }}</button>
@@ -49,22 +49,15 @@
         </div>
         <ul v-if="shownList.length" class="e-con-list">
           <li v-for="c in shownList" :key="c.id" class="e-con-item">
-            <!-- the row sends: Send opens with this contact's address (its details are in the … menu) -->
-            <button type="button" class="e-con-row" :aria-current="isSelected(c) ? 'true' : null" @click="openContact(c)">
+            <!-- a row selects the contact (double-click goes straight to Send); the actions are in the detail -->
+            <button type="button" class="e-con-row" :aria-current="isSelected(c) ? 'true' : null" @click="callAddress(c)" @dblclick="openContact(c)">
               <ContactAvatar :name="c.name" :image="avatarOf(c)" size="md" />
               <span class="e-con-row-text">
-                <span v-if="sendableOf(c).length" class="e-sr-only">{{ $t('msg.contacts.row_send') }}</span>
                 <b>{{ c.name }}</b>
                 <small class="e-con-row-addr" translate="no">{{ shortOf(c) }}</small>
               </span>
-              <span class="e-con-row-meta">
-                <span class="e-con-kinds">
-                  <span v-for="k in kindsOf(c)" :key="k" class="e-tag e-con-kind" :class="{ 'e-gold': k == 'epicbox' }">{{ $t('msg.contacts.kind_' + k) }}</span>
-                </span>
-                <small v-if="lastShort(c)">{{ lastShort(c) }}</small>
-              </span>
+              <span v-if="kindsOf(c).length" class="e-tag e-con-kind" :class="{ 'e-gold': kindsOf(c)[0] == 'epicbox' }">{{ $t('msg.contacts.kind_' + kindsOf(c)[0]) }}</span>
             </button>
-            <RowMenu :label="$t('msg.contacts.menu_label', { name: c.name })" :items="menuItems(c)" @select="onMenu(c, $event)" />
           </li>
         </ul>
         <div v-else-if="addressList.length" class="e-con-none">
@@ -133,8 +126,16 @@
           </div>
         </div>
         <div class="e-con-actions">
-          <button type="button" class="e-btn" @click="edit()"><EIcon name="pencil" />{{ $t('msg.edit') }}</button>
-          <button type="button" class="e-btn e-btn-ghost e-con-del" @click="trashModalOpen(selectedAddress)"><EIcon name="trash" />{{ $t('msg.delete') }}</button>
+          <template v-if="selectedSendable.length">
+            <div v-if="selectedSendable.length > 1" class="e-seg e-con-via" role="group" :aria-label="$t('msg.contacts.send_via')">
+              <button v-for="a in selectedSendable" :key="a.field" type="button" :aria-pressed="sendField == a.field ? 'true' : 'false'" @click="sendUse = a.field">{{ $t('msg.contacts.kind_' + a.kind) }}</button>
+            </div>
+            <button type="button" class="e-btn e-btn-primary e-con-send" @click="sendTo(sendField)"><EIcon name="send" />{{ selectedSendable.length > 1 ? $t('msg.contacts.send_' + sendKind) : $t('msg.contacts.send') }}</button>
+          </template>
+          <div class="e-con-more">
+            <button type="button" class="e-btn e-btn-ghost" @click="edit()"><EIcon name="pencil" />{{ $t('msg.edit') }}</button>
+            <button type="button" class="e-btn e-btn-ghost e-con-del" @click="trashModalOpen(selectedAddress)"><EIcon name="trash" />{{ $t('msg.delete') }}</button>
+          </div>
         </div>
 
         <dl class="e-con-facts">
@@ -188,20 +189,28 @@
   import EDialog from '@/components/modern/ui/EDialog.vue';
   import ContactAvatar from '@/components/ContactAvatar.vue';
   import ContactTx from '@/components/modern/activity/ContactTx.vue';
-  import RowMenu from '@/components/RowMenu.vue';
 
   export default reskin(AddressBook, {
-    components: { EIcon, EDialog, ContactAvatar, ContactTx, RowMenu },
+    components: { EIcon, EDialog, ContactAvatar, ContactTx },
+    data() {
+      return { sendUse: '' };
+    },
     computed: {
+      /* the sort toggle and the count only earn their place in a long list */
+      longList() {
+        return this.addressList.length > 6;
+      },
+      /* the address Send uses: the one chosen above the button, else the first sendable */
+      sendField() {
+        const s = this.selectedSendable;
+        return (s.find((a) => a.field == this.sendUse) || s[0] || {}).field;
+      },
+      sendKind() {
+        const s = this.selectedSendable.find((a) => a.field == this.sendField);
+        return s ? s.kind : 'epicbox';
+      },
       showEmpty() {
         return this.listReady && !this.addressList.length && !this.isNewAddress;
-      },
-    },
-    methods: {
-      /* the list's right column: "yesterday", "12 Oct" (the detail says "Last transaction: …") */
-      lastShort(c) {
-        const a = this.activity.get(Number(c && c.id));
-        return a && a.last ? this.whenText(a.last) : '';
       },
     },
   });
