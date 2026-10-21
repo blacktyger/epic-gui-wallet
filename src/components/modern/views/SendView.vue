@@ -71,9 +71,10 @@
         </div>
 
         <div class="e-field">
-          <label class="e-label" for="e-send-amt">{{ $t('msg.modern.send.amount') }}
-            <span class="e-aside">{{ $t('msg.modern.send.available') }} <MoneyText :value="store.state.summary.spendable" :updating="store.state.walletSync != 'synced'" /> EPIC</span>
-          </label>
+          <div class="e-label-row">
+            <label class="e-label" for="e-send-amt">{{ $t('msg.modern.send.amount') }}</label>
+            <button type="button" class="e-avail" @click="$refs.amountField && $refs.amountField.sendAll()">{{ $t('msg.modern.send.available') }} <MoneyText :value="store.state.summary.spendable" :updating="store.state.walletSync != 'synced'" /> EPIC</button>
+          </div>
           <AmountField ref="amountField" input-id="e-send-amt" />
           <p v-if="store.state.summary.unconfirmed > 0" class="e-help">{{ $t('msg.modern.send.unconfirmed_note', { n: unconfirmedText }) }}</p>
         </div>

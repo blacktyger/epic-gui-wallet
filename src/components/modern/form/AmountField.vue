@@ -2,12 +2,13 @@
   <!-- the fee (Base: `feeNano`, `fee` in EPIC) is shown by the Send view's summary -->
   <div class="e-input-wrap">
     <input
-      class="e-input e-input-lg"
+      class="e-input e-amount-input"
       type="text"
       inputmode="decimal"
       :id="inputId || null"
-      :placeholder="$t('msg.httpSend.sendAmount')"
+      placeholder="0.00"
       required
+      :aria-label="$t('msg.httpSend.sendAmount')"
       autocomplete="off"
       translate="no"
       :aria-invalid="errors.amount ? 'true' : null"
@@ -18,9 +19,10 @@
       <span class="e-unit">EPIC</span>
       <button
         type="button"
-        class="e-btn e-btn-ghost e-btn-sm"
+        class="e-amount-all"
         :class="{ 'e-is-busy': sendAllBusy }"
         :aria-busy="sendAllBusy ? 'true' : null"
+        :aria-label="$t('msg.transaction.sendall')"
         @click="sendAll"
       >{{ $t("msg.transaction.sendall") }}</button>
     </div>
