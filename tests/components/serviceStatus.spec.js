@@ -92,6 +92,15 @@ describe('sidebar Receiving row', () => {
     expect(http.rcvCard.text()).toContain(t('msg.modern.svc_http_on'));
   });
 
+  /* final 6.1.6 QA bug 1: paused (node not synced) showed "Connecting…" for the rest of the session */
+  test('Epicbox paused: Paused with the pause dot, waiting for the node in the card, never Connecting', async () => {
+    const { rcv, rcvCard } = await sidebar({ walletEpicboxService: true, epicbox: { state: 'paused', server: 'wss://epicbox.epiccash.com:443', since: Date.now() - 600000 } });
+    expect(dot(rcv)).toContain('e-pause');
+    expect(rcv.text()).toContain(t('msg.modern.eb_paused'));
+    expect(rcvCard.text()).toContain(t('msg.modern.eb_paused') + ' (' + t('msg.modern.eb_why_node') + ')');
+    expect(rcv.text() + rcvCard.text()).not.toContain(t('msg.modern.eb_connecting'));
+  });
+
   test('Epicbox connecting for a long time: Not responding with the reason', async () => {
     const { rcv, rcvCard } = await sidebar({ walletEpicboxService: true, epicbox: { state: 'connecting', server: 'wss://epicbox.epiccash.com:443', since: Date.now() - 60000 } });
     expect(dot(rcv)).toContain('e-down');

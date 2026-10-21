@@ -62,7 +62,7 @@ test('unreachable and timeout', async () => {
   const slow = { fetch: (url, opts) => new Promise((resolve, reject) => opts.signal.addEventListener('abort', () => {
     const e = new Error('aborted'); e.name = 'AbortError'; reject(e);
   })), timeoutMs: 20 };
-  assert.deepEqual(await fetchNodeVersion('https://slow.example', slow), { ok: false, reason: 'no reply within 1 s' });
+  assert.deepEqual(await fetchNodeVersion('https://slow.example', slow), { ok: false, reason: 'no reply within 1 s', timeout: true });
 });
 
 // ---- classification and status, over the replies recorded from real nodes (tests/fixtures/nodeReplies.json):

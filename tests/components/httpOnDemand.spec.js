@@ -112,6 +112,20 @@ describe('Settings › Receiving › Epicbox', () => {
     expect(configService.updateConfig).toHaveBeenCalledWith({ walletlisten_on_startup: false });
     expect(wrapper.find('[data-test=epicbox-status]').text()).toContain(t('msg.modern.eb_connecting'));
   });
+
+  test('paused (node not synced): Paused, waiting for the node; back to Listening when the store says so', async () => {
+    const { wrapper, store } = setup();
+    store.commit('epicbox', { state: 'paused', server: 'wss://epicbox.epiccash.com:443', since: Date.now() - 600000 });
+    await flushPromises();
+    const st = wrapper.find('[data-test=epicbox-status]');
+    expect(st.text()).toContain(t('msg.modern.eb_paused'));
+    expect(st.text()).toContain(t('msg.modern.settings.eb_paused_line'));
+    expect(st.text()).not.toContain(t('msg.modern.eb_connecting'));
+    expect(st.find('.e-stword').classes()).toContain('e-pause');
+    store.commit('epicbox', { state: 'listening', server: 'wss://epicbox.epiccash.com:443', since: Date.now() });
+    await flushPromises();
+    expect(wrapper.find('[data-test=epicbox-status]').text()).toContain(t('msg.modern.eb_listening'));
+  });
 });
 
 describe('Welcome tour (Modern)', () => {

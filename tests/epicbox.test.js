@@ -7,7 +7,7 @@ import {
 } from '../src/shared/epicboxConfig.js';
 import {
   createLineSplitter, parseListenerLine, wantsRefresh, createOldServerCheck, oldServerCheckStep, CHECK_TIMES,
-  nodeNotReadyStart,
+  nodeNotReadyStart, resumesListening,
 } from '../src/shared/epicboxListener.js';
 import { epicboxStatus } from '../src/shared/epicboxStatus.js';
 import { isEpicboxCheckDir } from '../src/shared/processOwnership.js';
@@ -182,8 +182,27 @@ test('listener events', () => {
   assert.deepEqual(parseListenerLine(`INFO - Slate [${id}] finalized successfully`), { type: 'slate', stage: 'finalized', id });
   assert.equal(parseListenerLine(`INFO - Transaction with slate_id ${id} found in mempool and marked as TxSentMempool.`).stage, 'mempool');
   assert.equal(parseListenerLine('ERROR - Error process incoming slate. X').stage, 'failed');
-  assert.equal(parseListenerLine('DEBUG - Response Ok.'), null);
+  assert.deepEqual(parseListenerLine('DEBUG - Response Ok.'), { type: 'alive' });
   assert.equal(parseListenerLine(''), null);
+});
+
+/* final 6.1.6 QA bug 1: one "pausing" line when the node blipped, then "Response Ok." every minute and
+   no "resumed" line; the status said Connecting… for the rest of the session */
+test('paused, then a sign of life: listening again', () => {
+  const log = [
+    '20261021 05:17:35.534 WARN epic_wallet_impls::adapters::epicbox - Node not synced, pausing Epicbox message processing...',
+    '20261021 05:17:40.534 DEBUG epic_wallet_impls::adapters::epicbox - Response Ok.',
+  ].map(parseListenerLine);
+  assert.deepEqual(log, [{ type: 'paused' }, { type: 'alive' }]);
+  assert.ok(!resumesListening(log[0]));
+  assert.ok(resumesListening(log[1]));
+  assert.ok(resumesListening({ type: 'subscribed' }));
+  assert.ok(resumesListening(parseListenerLine('DEBUG - Slate [2e81b617-d22c-4cee-b2c6-224da874d31a] received from [es1@a.b] for [1.0] epics')));
+  assert.ok(!resumesListening({ type: 'disconnected' }));
+  assert.ok(!resumesListening({ type: 'node_not_ready' }));
+  assert.ok(!resumesListening(null));
+  //the whole line's end, not the words inside another message
+  assert.equal(parseListenerLine('DEBUG - Response Ok. extra'), null);
 });
 
 /* 6.1.5 rig "Epicbox server switch back" (1 in 3): the new listener asked the node at its start, got

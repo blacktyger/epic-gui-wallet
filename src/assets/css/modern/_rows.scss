@@ -46,10 +46,12 @@ html[data-ui='modern'] { --ctl-col: 224px; }
 .e-st.e-down { border: 2px solid var(--risk); }
 .e-st.e-down::after { content: ''; position: absolute; left: 50%; top: -2px; width: 2px; height: 10px; margin-left: -1px; background: var(--risk); transform: rotate(45deg); }
 .e-st.e-off { border: 2px solid var(--faint); }
+/* paused: two bars, the pause sign */
+.e-st.e-pause { border-radius: 2px; background: linear-gradient(90deg, var(--warn) 0 35%, transparent 35% 65%, var(--warn) 65% 100%); }
 @media (prefers-reduced-motion: reduce) { .e-st.e-sync, .e-st.e-busy { animation: none; } }
 .e-stword { font-weight: 600; font-size: var(--fs-sm); white-space: nowrap; }
 .e-stword.e-ok { color: var(--ok); }
-.e-stword.e-sync { color: var(--warn); }
+.e-stword.e-sync, .e-stword.e-pause { color: var(--warn); }
 .e-stword.e-down { color: var(--risk); }
 .e-stword.e-off, .e-stword.e-busy { color: var(--dim); }
 
@@ -147,7 +149,7 @@ html[data-ui='modern'] { --ctl-col: 224px; }
 .e-sbA-row b { font-weight: 500; white-space: nowrap; }
 .e-sbA-row small { justify-self: end; min-width: 0; color: var(--faint); font-size: var(--fs-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .e-sbA-row small.e-down { color: var(--risk); }
-.e-sbA-row small.e-sync { color: var(--warn); }
+.e-sbA-row small.e-sync, .e-sbA-row small.e-pause { color: var(--warn); }
 /* the hover card: to the right of the sidebar, never over the menu */
 .e-hcard {
   position: fixed; z-index: 60; left: 234px; bottom: 8px; width: 280px; padding: 10px 12px;

@@ -147,13 +147,12 @@
       <aside aria-labelledby="ov-status-h">
         <div class="e-section-head"><h2 id="ov-status-h">{{ $t('msg.modern.overview.status') }}</h2></div>
         <div class="e-panel e-ov-status">
-          <div class="e-ov-row">
-            <span class="e-ov-nodeicon" :title="badgeTip">
-              <span v-if="badge.state == 'connecting'" class="e-spinner" aria-hidden="true"></span>
-              <EIcon v-else :name="badge.icon" :class="'e-' + badge.tone" />
-            </span>
+          <!-- the same dot, word and lines as the sidebar and its hover cards (modern/serviceRows.js) -->
+          <div class="e-ov-row" data-test="ov-node">
+            <span class="e-st" :class="'e-' + ovNode.glyph" aria-hidden="true"></span>
             <div class="e-grow">
-              <b>{{ isInternal ? $t('msg.modern.overview.node_builtin') : $t('msg.modern.overview.node_external') }}</b>
+              <b>{{ $t('msg.modern.svc_node') }} <span class="e-sep" aria-hidden="true">·</span> <span class="e-stword" :class="'e-' + ovNode.glyph">{{ ovNode.word }}</span></b>
+              <small v-for="(line, i) in ovNode.lines" :key="i" translate="no">{{ line }}</small>
               <small role="status" class="e-sr-only" :data-node-state="badge.state">{{ badgeTip }}</small>
               <small v-if="badge.behind"><router-link to="/settings#node" class="e-link-btn">{{ $t('msg.modern.switch_node') }}</router-link></small>
               <small v-if="isInternal && !configService.config.nodesynced && (configService.defaultAccountNetwork || 'mainnet') == 'mainnet'" class="e-faint">{{ $t('msg.modern.overview.node_fallback', { addr: nodeFallBack }) }}</small>
@@ -168,12 +167,11 @@
               @click.prevent="restartNode"
             ><EIcon name="restart" /></button>
           </div>
-          <div class="e-ov-row">
-            <span v-if="receiving.busy" class="e-spinner" aria-hidden="true"></span>
-            <EIcon v-else name="antenna" :class="receiving.tone == 'ok' ? 'e-ok' : 'e-warn'" />
+          <div class="e-ov-row" data-test="ov-rcv">
+            <span class="e-st" :class="'e-' + ovRcv.glyph" aria-hidden="true"></span>
             <div class="e-grow">
-              <b>{{ $t('msg.modern.overview.receiving') }}</b>
-              <small>{{ receiving.text }}</small>
+              <b>{{ $t('msg.modern.svc_receiving') }} <span class="e-sep" aria-hidden="true">·</span> <span class="e-stword" :class="'e-' + ovRcv.glyph">{{ ovRcv.word }}</span></b>
+              <small v-for="(line, i) in ovRcv.lines" :key="i" translate="no">{{ line }}</small>
             </div>
           </div>
           <div class="e-ov-addr">
@@ -205,8 +203,8 @@
   const lastFiat = { total: null, usd: 0 };
   import { nodeSyncPercent } from '@/components/modern/format';
   import { nodeBadge, nodeBadgeText } from '@/components/modern/nodeBadge';
-  import { epicboxStatus } from '@/shared/epicboxStatus';
-  import { httpShown } from '@/shared/httpListener';
+  import { nodeRow, receivingRow } from '@/components/modern/serviceRows';
+  import epicboxSwitch from '@/components/modern/epicboxSwitch';
   import EIcon from '@/components/modern/ui/EIcon.vue';
   import MoneyText from '@/components/modern/ui/MoneyText.vue';
   import RecentTx from '@/components/modern/activity/RecentTx.vue';
@@ -217,6 +215,8 @@
   export default reskin(HeaderBar, {
     name: 'OverviewView',
     components: { EIcon, MoneyText, RecentTx, SyncNotes, TxRing, ETour, NodeNotice },
+    //ebHealth: our Epicbox listener's status, as the sidebar has it
+    mixins: [epicboxSwitch],
     data() {
       return {
         showUpgraded: !noticeSeen('upgraded'),
@@ -329,28 +329,14 @@
           },
         ];
       },
-      receiving() {
-        const t = k => this.$t('msg.modern.overview.' + k);
+      /* the Status card: the sidebar's rows (modern/serviceRows.js), so the two can't say different things */
+      ovNode() {
+        const addr = String((this.configService.config || {}).check_node_api_http_addr || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
+        return nodeRow({ status: this.store.state.nodeStatus, problem: this.store.state.nodeProblem, internal: this.isInternal, addr, locale: this.$i18n.locale }, (k, a) => this.$t(k, a));
+      },
+      ovRcv() {
         const st = this.store.state;
-        //the server the Epicbox listener is really on (its own output), not the saved setting
-        const box = epicboxStatus(st.epicbox, st.walletEpicboxService);
-        const ts = (k, s) => this.$t('msg.modern.overview.' + k, { s });
-        if (box.kind == 'checking') return { busy: true, tone: 'warn', text: ts('rcv_checking', box.checking) };
-        if ((box.kind == 'starting' || box.kind == 'connecting') && box.server) return { busy: true, tone: 'warn', text: ts('rcv_connecting', box.server) };
-        if (st.listenerStarting) return { busy: true, tone: 'warn', text: t('rcv_starting') };
-        //HTTP only while its listener runs, and why it doesn't (shared/httpListener.js, QA W01)
-        const http = httpShown(st.httpListener);
-        const failed = http == 'failed' ? (st.httpListener.reason == 'port_in_use' ? this.$t('msg.modern.send.rcv_http_failed_port_short', { port: st.httpListener.port }) : this.$t(st.httpListener.reason == 'node' ? 'msg.modern.send.rcv_http_failed_node_short' : 'msg.modern.send.rcv_http_failed_error_short')) : '';
-        if (st.walletEpicboxService && box.server) {
-          if (failed) return { busy: false, tone: 'warn', text: this.$t('msg.modern.overview.rcv_epicbox_on_http_failed', { s: box.server, reason: failed }) };
-          return { busy: false, tone: box.kind == 'paused' ? 'warn' : 'ok', text: ts(http == 'on' ? 'rcv_both_on' : 'rcv_epicbox_on', box.server) };
-        }
-        if (failed) return { busy: false, tone: 'warn', text: this.$t(st.walletEpicboxService ? 'msg.modern.overview.rcv_epicbox_http_failed' : 'msg.modern.overview.rcv_http_failed', { reason: failed }) };
-        if (http == 'on' && st.walletEpicboxService) return { busy: false, tone: 'ok', text: t('rcv_both') };
-        if (st.walletEpicboxService) return { busy: false, tone: 'ok', text: t('rcv_epicbox') };
-        if (http == 'on') return { busy: false, tone: 'warn', text: t(this.nodeSynced ? 'rcv_http_off' : 'rcv_http_wait') };
-        if (st.walletSync == 'loading') return { busy: true, tone: 'warn', text: t('rcv_after_balance') };
-        return { busy: false, tone: 'warn', text: t('rcv_off') };
+        return receivingRow({ health: this.ebHealth, domain: this.ebDomain, httpListener: st.httpListener, listenerStarting: st.listenerStarting, tor: st.tor }, (k, a) => this.$t(k, a));
       },
       /* file sends waiting for the response file: the test of the sidebar badge */
       pendingFiles() {

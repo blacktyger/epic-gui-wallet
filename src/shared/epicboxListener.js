@@ -36,6 +36,7 @@ const SLATE_ID = /Slate \[([0-9a-fA-F-]{8,})\]/;
  *   {type: 'listening', address}        "Starting epicbox listener for: <key>@<domain>"
  *   {type: 'subscribed'}                "Starting epicbox subscription..." (queued slates come now)
  *   {type: 'paused'}                    node not synced: the listener holds slates
+ *   {type: 'alive'}                     "Response Ok." (the server answered; about once a minute)
  *   {type: 'node_not_ready'}            at its start the node said it syncs (or didn't answer): it exits
  *   {type: 'disconnected'}              the connection broke; the wallet reconnects (5 times)
  *   {type: 'slate', stage, id}          stage: received (a payment), reply (the answer to our send),
@@ -50,6 +51,7 @@ export function parseListenerLine(raw) {
   if (m) return { type: 'listening', address: m[1] };
   if (/Starting epicbox subscription/.test(line)) return { type: 'subscribed' };
   if (/Node not synced, pausing Epicbox/.test(line)) return { type: 'paused' };
+  if (/\bResponse Ok\.\s*$/.test(line)) return { type: 'alive' };
   if (/Node is currently syncing|Failed to check node sync status/.test(line)) return { type: 'node_not_ready' };
   if (/Error in listener loop|Client closed connection|Reconnect to epicbox/.test(line)) return { type: 'disconnected' };
   const id = (line.match(SLATE_ID) || [])[1] || '';
@@ -67,6 +69,12 @@ export function parseListenerLine(raw) {
 /* the wallet's data changed: refresh balance and transactions now */
 export function wantsRefresh(ev) {
   return !!ev && ev.type === 'slate' && ['replied', 'finalized', 'mempool', 'failed'].includes(ev.stage);
+}
+
+/* paused (node not synced) and now a sign of life: listening again. 4.1.0 has no "resumed" line;
+   while paused it logs the pause every 5 s, then "Response Ok." once it works again */
+export function resumesListening(ev) {
+  return !!ev && (ev.type === 'alive' || ev.type === 'subscribed' || ev.type === 'slate');
 }
 
 /* the listener's start (preload execEpicbox's answer) ended because the node was not ready: it

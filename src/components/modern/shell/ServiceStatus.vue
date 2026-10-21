@@ -22,13 +22,10 @@
 <script>
   import { useStore } from '@/store';
   import { openSettingsSection } from '@/components/modern/settings/jump';
-  import { nodeBadge, nodeBadgeText } from '@/components/modern/nodeBadge';
-  import { httpShown } from '@/shared/httpListener';
-  import { torCardLine } from '@/shared/torUi';
+  import { nodeRow, receivingRow } from '@/components/modern/serviceRows';
   import epicboxSwitch from '@/components/modern/epicboxSwitch';
 
   let seq = 0;
-  const GLYPH = { online: 'ok', syncing: 'sync', offline: 'down' };
 
   export default {
     name: 'ServiceStatus',
@@ -43,41 +40,17 @@
     },
     computed: {
       node() {
-        const t = (k, a) => this.$t(k, a);
-        const b = nodeBadge(this.store.state.nodeStatus, this.store.state.nodeProblem);
-        const s = this.store.state.nodeStatus || {};
         const internal = !!(this.store.state.user && this.store.state.user.nodeInternal);
         const addr = String(((this.configService && this.configService.config) || {}).check_node_api_http_addr || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
-        const height = s.tip && s.tip.height > 0 && !s.error ? Number(s.tip.height).toLocaleString(this.$i18n.locale) : '';
-        const lines = [[internal ? t('msg.modern.settings.node_builtin') : addr, height].filter(Boolean).join(' · ')];
-        if (b.state != 'online') lines.push(nodeBadgeText(b, t));
-        return {
-          key: 'node', name: t('msg.modern.svc_node'), to: { path: '/settings', hash: '#node' }, open: t('msg.modern.svc_open_node'),
-          glyph: GLYPH[b.state] || 'busy',
-          word: { online: t('msg.mynodes.state_online'), syncing: t('msg.mynodes.state_syncing'), offline: t('msg.mynodes.state_offline') }[b.state] || t('msg.modern.eb_connecting'),
-          lines: lines.filter(Boolean),
-        };
+        const row = nodeRow({ status: this.store.state.nodeStatus, problem: this.store.state.nodeProblem, internal, addr, locale: this.$i18n.locale }, (k, a) => this.$t(k, a));
+        return { key: 'node', name: this.$t('msg.modern.svc_node'), to: { path: '/settings', hash: '#node' }, open: this.$t('msg.modern.svc_open_node'), glyph: row.glyph, word: row.word, lines: row.lines };
       },
       receiving() {
-        const t = (k, a) => this.$t(k, a);
-        const h = this.ebHealth;
-        //HTTP only while its listener runs, "failed" when it couldn't start (shared/httpListener.js)
-        const http = httpShown(this.store.state.httpListener);
-        const epicLine = h.state == 'off' ? t('msg.modern.svc_epicbox_off')
-          : t('msg.modern.svc_epicbox_line', { server: h.server || this.ebDomain, state: t('msg.modern.eb_' + h.state) + (h.why ? ' (' + t('msg.modern.eb_why_' + h.why) + ')' : '') });
-        const httpLine = t(http == 'on' ? 'msg.modern.svc_http_on' : http == 'failed' ? 'msg.modern.svc_http_failed_line' : 'msg.modern.svc_http_off');
-        let glyph = { listening: 'ok', connecting: 'sync', down: 'down', off: 'off' }[h.state];
-        let word = t('msg.modern.eb_' + h.state);
-        if (h.state == 'listening') word = t('msg.modern.svc_on');
-        if (h.state == 'off' && http == 'on') { glyph = 'ok'; word = t('msg.modern.svc_http_only_word'); }
-        if (h.state == 'listening' && http == 'failed') glyph = 'sync';
-        if (this.store.state.listenerStarting && h.state == 'off') { glyph = 'sync'; word = t('msg.modern.eb_connecting'); }
-        //Tor: one more line, only while it is on
-        const tor = torCardLine(this.store.state.tor, t);
-        const lines = tor ? [epicLine, httpLine, tor] : [epicLine, httpLine];
+        const st = this.store.state;
+        const row = receivingRow({ health: this.ebHealth, domain: this.ebDomain, httpListener: st.httpListener, listenerStarting: st.listenerStarting, tor: st.tor }, (k, a) => this.$t(k, a));
         return {
-          key: 'rcv', name: t('msg.modern.svc_receiving'), to: { path: '/settings/receiving', hash: '#epicbox' }, open: t('msg.modern.svc_open_epicbox'),
-          glyph, word, lines,
+          key: 'rcv', name: this.$t('msg.modern.svc_receiving'), to: { path: '/settings/receiving', hash: '#epicbox' }, open: this.$t('msg.modern.svc_open_epicbox'),
+          glyph: row.glyph, word: row.word, lines: row.lines,
         };
       },
       rows() {

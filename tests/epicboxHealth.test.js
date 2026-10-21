@@ -42,6 +42,16 @@ test('the status site lists the server as down: not responding, status_down', ()
   assert.equal(epicboxHealth({ epicbox: { state: 'listening', server: A }, on: true, domain: A, servers, now: NOW }).state, 'listening');
 });
 
+test('paused (node not synced): its own state, never connecting or down', () => {
+  const h = epicboxHealth({ epicbox: { state: 'paused', server: 'wss://' + A + ':443', since: NOW - 10 * NO_ANSWER_MS }, on: true, domain: A, now: NOW });
+  assert.deepEqual(h, { state: 'paused', server: A, why: 'node', since: NOW - 10 * NO_ANSWER_MS });
+  //the status site doesn't turn a paused listener into "not responding": it is connected
+  const servers = [{ domain: A, state: 'down', latencyMs: null }];
+  assert.equal(epicboxHealth({ epicbox: { state: 'paused', server: A }, on: true, domain: A, servers, now: NOW }).state, 'paused');
+  //listening again after the pause
+  assert.equal(epicboxHealth({ epicbox: { state: 'listening', server: A }, on: true, domain: A, now: NOW }).state, 'listening');
+});
+
 test('off: not started, not failed', () => {
   const h = epicboxHealth({ epicbox: { state: 'off' }, on: false, domain: A, now: NOW });
   assert.equal(h.state, 'off');

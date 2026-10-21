@@ -65,6 +65,7 @@
   import { jumpTo, JUMP_EVENT } from '@/components/modern/settings/jump';
   import httpListenerSwitch from '@/components/modern/httpListenerSwitch';
   import epicboxSwitch from '@/components/modern/epicboxSwitch';
+  import { epicboxGlyph } from '@/components/modern/serviceRows';
 
   /* Settings › Receiving: Epicbox (the server field, its status, the not-responding notice) and the HTTP
      listener. Every control applies at once; there is no Save bar. */
@@ -81,7 +82,7 @@
     },
     computed: {
       ebGlyph() {
-        return { listening: 'ok', connecting: 'sync', down: 'down', off: 'off' }[this.ebHealth.state];
+        return epicboxGlyph(this.ebHealth.state);
       },
       ebShownServer() {
         return this.ebHealth.server || this.ebDomain;
@@ -96,6 +97,7 @@
         const s = this.ebHealth.state;
         if (s == 'listening') return this.$t('msg.modern.settings.eb_delivers');
         if (s == 'down') return this.$t('msg.modern.settings.eb_down_line');
+        if (s == 'paused') return this.$t('msg.modern.settings.eb_paused_line');
         if (s == 'off') return this.$t(this.listenOnStartup ? 'msg.modern.settings.eb_off_unlock' : 'msg.modern.settings.eb_off');
         return this.$t('msg.modern.settings.eb_connecting');
       },

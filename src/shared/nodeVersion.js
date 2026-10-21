@@ -127,11 +127,12 @@ async function probeVersion(address, {fetch: fetchFn = defaultNodeFetch(), timeo
  * (3.0.0 to 4.1.0-1 tested), so a 401 is asked again there instead of being taken as "not an Epic node".
  *
  * redirect: passed to fetch ('manual' to not follow an http -> https redirect)
- * returns {ok: true, version} or {ok: false, reason}
+ * returns {ok: true, version} or {ok: false, reason}, plus timeout: true when no reply came in time
+ * (a busy node: no proof that it isn't an Epic node)
  */
 export async function fetchNodeVersion(address, options = {}){
-  const {ok, version, reason} = await probeVersion(address, options);
-  return ok ? {ok, version} : {ok, reason};
+  const {ok, version, reason, code} = await probeVersion(address, options);
+  return ok ? {ok, version} : code == 'timeout' ? {ok, reason, timeout: true} : {ok, reason};
 }
 
 //a node at most this many blocks below the reference height counts as synced (a block a minute)

@@ -28,6 +28,9 @@ vi.mock('@/shared/theme', () => ({
   saveScheme: () => true,
   saveScale: () => true,
   resetNotice: () => {},
+  //notices (Overview's new-look notice, the tour): seen, so they stay out of the way
+  noticeSeen: () => true,
+  markNoticeSeen: () => {},
   applyTheme: () => {},
   applyScale: () => {},
 }));
