@@ -338,6 +338,7 @@ export default {
     found_by_scan_tip: 'Ein Scan hat diese Zahlung gefunden; die Wallet weiß nicht, wer sie gesendet hat. Die Uhrzeit gibt an, wann der Scan sie gefunden hat.',
     m_epicbox: 'Epicbox',
     m_http: 'HTTP',
+    m_tor: 'Tor',
     m_file: 'Datei',
     has_proof: 'Zahlungsnachweis',
     open_row: '{what}. Details anzeigen',

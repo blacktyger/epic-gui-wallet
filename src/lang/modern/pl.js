@@ -338,6 +338,7 @@ export default {
     found_by_scan_tip: 'Tę płatność znaleziono podczas skanowania; portfel nie wie, kto ją wysłał. Podany czas to moment jej znalezienia.',
     m_epicbox: 'Epicbox',
     m_http: 'HTTP',
+    m_tor: 'Tor',
     m_file: 'Plik',
     has_proof: 'Dowód płatności',
     open_row: '{what}. Pokaż szczegóły',

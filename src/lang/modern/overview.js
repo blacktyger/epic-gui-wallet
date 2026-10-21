@@ -127,6 +127,7 @@ export default {
   found_by_scan_tip: 'A scan found this payment; the wallet has no record of who sent it. The time is when the scan found it.',
   m_epicbox: 'Epicbox',
   m_http: 'HTTP',
+  m_tor: 'Tor',
   m_file: 'File',
   has_proof: 'Payment proof',
   open_row: '{what}. Show details',

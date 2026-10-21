@@ -338,6 +338,7 @@ export default {
     found_by_scan_tip: 'यह भुगतान स्कैन में मिला; वॉलेट को नहीं पता कि इसे किसने भेजा। समय बताता है कि स्कैन में यह कब मिला।',
     m_epicbox: 'Epicbox',
     m_http: 'HTTP',
+    m_tor: 'Tor',
     m_file: 'फ़ाइल',
     has_proof: 'भुगतान का प्रमाण',
     open_row: '{what}। विवरण दिखाएं',

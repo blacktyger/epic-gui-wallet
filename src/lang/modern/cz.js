@@ -338,6 +338,7 @@ export default {
     found_by_scan_tip: 'Tuto platbu našlo skenování; peněženka neví, kdo ji poslal. Čas udává, kdy ji skenování našlo.',
     m_epicbox: 'Epicbox',
     m_http: 'HTTP',
+    m_tor: 'Tor',
     m_file: 'Soubor',
     has_proof: 'Doklad o platbě',
     open_row: '{what}. Zobrazit podrobnosti',

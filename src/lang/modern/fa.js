@@ -338,6 +338,7 @@ export default {
     found_by_scan_tip: 'این پرداخت در اسکن پیدا شد؛ کیف پول نمی‌داند چه کسی آن را فرستاده است. زمان، لحظهٔ پیدا شدن آن در اسکن است.',
     m_epicbox: 'Epicbox',
     m_http: 'HTTP',
+    m_tor: 'Tor',
     m_file: 'فایل',
     has_proof: 'سند پرداخت',
     open_row: '{what}. نمایش جزئیات',
