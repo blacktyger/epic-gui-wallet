@@ -53,7 +53,9 @@ H.runCase('tor', async (t) => {
 
   const row = () => w.locator('[data-test=tor-row]');
   const sw = () => row().locator('[data-test=tor-switch]');
-  const status = async () => ((await row().locator('[data-test=tor-status]').count()) ? (await row().locator('[data-test=tor-status]').innerText()).trim() : '');
+  //the line can go between count() and innerText() (Tor off): '' then, not Playwright's 30 s wait for it
+  const status = async () => ((await row().locator('[data-test=tor-status]').count())
+    ? (await row().locator('[data-test=tor-status]').innerText({ timeout: 1000 }).catch(() => '')).trim() : '');
   const openReceiving = async () => {
     if (await U.route(w) !== '/settings/receiving') {
       if (!/^\/settings/.test(await U.route(w))) await w.locator('aside a[href="/settings"], nav a[href="/settings"]').first().click();
