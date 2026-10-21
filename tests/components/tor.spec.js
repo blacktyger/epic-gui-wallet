@@ -283,15 +283,38 @@ describe('Contacts › Tor address', () => {
   });
 
   test('a contact with a Tor address shows it, is found by it, and Send fills it in', async () => {
-    const m = await open([row({ id: 7, name: 'Tor Tom', onion: ONION })], OFF);
+    const m = await open([row({ id: 7, name: 'Tor Tom', onion: ONION }), row({ id: 8, name: 'Box Bea', externalOne: BOX })], OFF);
     expect(m.wrapper.text()).toContain('Tor Tom');
-    expect(m.wrapper.find('.e-con-kinds').text()).toContain(t(k('kind')));
+    //the row's one kind tag
+    const tomRow = () => m.wrapper.findAll('.e-con-row').find((r) => r.text().includes('Tor Tom'));
+    expect(tomRow().find('.e-con-kind').text()).toBe(t(k('kind')));
+    //found by a piece of the onion
     await m.wrapper.find('#con-q').setValue(NAME.slice(8, 20));
     await flushPromises();
     expect(m.wrapper.text()).toContain('Tor Tom');
-    await m.wrapper.find('.e-con-row').trigger('click');
+    expect(m.wrapper.text()).not.toContain('Box Bea');
+    //the detail panel shows the onion; its Send goes to Send with the onion filled in
+    await tomRow().trigger('click');
+    await flushPromises();
+    expect(m.wrapper.find('.e-con-facts').text()).toContain(t(k('address')));
+    expect(m.wrapper.find('.e-con-facts').text()).toContain(ONION);
+    await m.wrapper.find('.e-con-send').trigger('click');
     await flushPromises();
     expect(m.$router.push).toHaveBeenCalledWith({ name: 'httpSend', query: { contact: '7', use: 'onion' } });
+  });
+
+  test('a contact with Epicbox and Tor: the "Send using" toggle and the Send button name Tor in words', async () => {
+    const m = await open([row({ id: 9, name: 'Both Bo', externalOne: BOX, onion: ONION })], tor({ state: 'ready' }));
+    await m.wrapper.find('.e-con-row').trigger('click');
+    await flushPromises();
+    const via = m.wrapper.find('.e-con-via');
+    expect(via.text()).toContain(t(k('kind')));
+    expect(via.text()).not.toContain('msg.');
+    await via.findAll('button').find((b) => b.text() == t(k('kind'))).trigger('click');
+    expect(m.wrapper.find('.e-con-send').text()).toBe(t(k('menu_send')));
+    await m.wrapper.find('.e-con-send').trigger('click');
+    await flushPromises();
+    expect(m.$router.push).toHaveBeenCalledWith({ name: 'httpSend', query: { contact: '9', use: 'onion' } });
   });
 
   test('Send opened from that contact fills the recipient (Tor off: with the Turn on Tor button)', async () => {

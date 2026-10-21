@@ -56,7 +56,7 @@
                 <b>{{ c.name }}</b>
                 <small class="e-con-row-addr" translate="no">{{ shortOf(c) }}</small>
               </span>
-              <span v-if="kindsOf(c).length" class="e-tag e-con-kind" :class="{ 'e-gold': kindsOf(c)[0] == 'epicbox' }">{{ kindsOf(c)[0] == 'tor' ? $t('msg.modern.settings.tor.kind') : $t('msg.contacts.kind_' + kindsOf(c)[0]) }}</span>
+              <span v-if="kindsOf(c).length" class="e-tag e-con-kind" :class="{ 'e-gold': kindsOf(c)[0] == 'epicbox' }">{{ kindTag(kindsOf(c)[0]) }}</span>
             </button>
           </li>
         </ul>
@@ -134,9 +134,9 @@
         <div class="e-con-actions">
           <template v-if="selectedSendable.length">
             <div v-if="selectedSendable.length > 1" class="e-seg e-con-via" role="group" :aria-label="$t('msg.contacts.send_via')">
-              <button v-for="a in selectedSendable" :key="a.field" type="button" :aria-pressed="sendField == a.field ? 'true' : 'false'" @click="sendUse = a.field">{{ $t('msg.contacts.kind_' + a.kind) }}</button>
+              <button v-for="a in selectedSendable" :key="a.field" type="button" :aria-pressed="sendField == a.field ? 'true' : 'false'" @click="sendUse = a.field">{{ kindTag(a.kind) }}</button>
             </div>
-            <button type="button" class="e-btn e-btn-primary e-con-send" @click="sendTo(sendField)"><EIcon name="send" />{{ selectedSendable.length > 1 ? $t('msg.contacts.send_' + sendKind) : $t('msg.contacts.send') }}</button>
+            <button type="button" class="e-btn e-btn-primary e-con-send" @click="sendTo(sendField)"><EIcon name="send" />{{ selectedSendable.length > 1 ? sendLabel(sendKind) : $t('msg.contacts.send') }}</button>
           </template>
           <div class="e-con-more">
             <button type="button" class="e-btn e-btn-ghost" @click="edit()"><EIcon name="pencil" />{{ $t('msg.edit') }}</button>
@@ -205,6 +205,13 @@
     },
     methods: {
       addressParts,
+      //the short kind word (row tag, "Send using" toggle) and the Send button: Tor's keys are in the tor block
+      kindTag(kind) {
+        return kind == 'tor' ? this.$t('msg.modern.settings.tor.kind') : this.$t('msg.contacts.kind_' + kind);
+      },
+      sendLabel(kind) {
+        return kind == 'tor' ? this.$t('msg.modern.settings.tor.menu_send') : this.$t('msg.contacts.send_' + kind);
+      },
       kindName(kind) {
         return kind == 'tor' ? this.$t('msg.modern.settings.tor.address') : this.$t('msg.contacts.' + kind + '_address');
       },
