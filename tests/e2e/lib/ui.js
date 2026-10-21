@@ -22,9 +22,11 @@ const main = (w) => w.evaluate(() => {
   const el = document.querySelector('#e-main, .e-content, section.is-main-section') || document.body;
   return el.innerText.replace(/\s+/g, ' ').trim();
 });
-/** Modern: the sidebar's node icon says "Node online and ready" (its aria-label; no height in the main views). */
+/** Modern: the sidebar's Node row says Online (6.1.6: its aria-label "Open node settings: Online"); throws when it never does. */
 async function waitNodeOnline(w, timeout = 30000) {
-  return waitFor(async () => (await w.locator('button.e-svc[aria-label*="Node online and ready"]').count()) ? true : null, { timeout, interval: 300 });
+  const ok = await waitFor(async () => (await w.locator('[data-test=svc-node][aria-label$=": Online"]').count()) ? true : null, { timeout, interval: 300 });
+  if (!ok) throw new Error('the sidebar never says the node is Online: ' + JSON.stringify(await w.locator('[data-test=svc-node]').getAttribute('aria-label').catch(() => null)));
+  return 'sidebar: node Online';
 }
 
 async function waitText(w, re, timeout = 20000) {
